@@ -1,0 +1,239 @@
+/**
+ * Refonte visuelle — Devis/BL (admin/devis/index.php) & Comptabilité (admin/comptabilite/index.php)
+ * Icônes colorées, surfaces nettes, cohérence avec la page Paramètres
+ */
+
+/* =============================================================================
+   DEVIS & BL
+   ============================================================================= */
+
+.page-devis-admin .content-header.dashboard-hero.page-devis-hero {
+  background: var(--fond-principal);
+  border: 1px solid var(--border-input);
+  box-shadow: 0 2px 20px rgba(53, 100, 166, 0.1);
+  overflow: hidden;
+}
+
+.page-devis-admin .content-header.dashboard-hero.page-devis-hero::before {
+  width: 4px;
+  background: #00897b;
+  border-radius: 0;
+  top: 0;
+  left: 0;
+  height: 100%;
+}
+
+.page-devis-admin .page-devis-hero .dashboard-eyebrow {
+  color: #00695c;
+}
+
+.page-devis-admin .content-section.page-devis-section {
+  background: var(--fond-principal);
+  border: 1px solid var(--border-input);
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.06);
+}
+
+/* Onglets avec icônes en pastilles colorées */
+.page-devis-section .admin-devis-bl-tabs .admin-tab {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  text-align: left;
+}
+
+.page-devis-section .admin-devis-bl-tabs .admin-tab__ic {
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+  border-radius: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.02rem;
+  line-height: 1;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.page-devis-section .admin-tab--devis .admin-tab__ic {
+  background: rgba(0, 137, 123, 0.14);
+  color: #00695c;
+}
+
+.page-devis-section .admin-tab--bl .admin-tab__ic {
+  background: rgba(255, 107, 53, 0.16);
+  color: #c2410c;
+}
+
+.page-devis-section .admin-devis-bl-tabs .admin-tab:hover .admin-tab__ic {
+  transform: scale(1.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.page-devis-section .admin-devis-bl-tabs .admin-tab.is-active.admin-tab--devis .admin-tab__ic {
+  background: #00897b;
+  color: #fff;
+  box-shadow: 0 2px 10px rgba(0, 105, 92, 0.35);
+}
+
+.page-devis-section .admin-devis-bl-tabs .admin-tab.is-active.admin-tab--bl .admin-tab__ic {
+  background: #ff6b35;
+  color: #fff;
+  box-shadow: 0 2px 10px rgba(255, 107, 53, 0.35);
+}
+
+.page-devis-section .admin-devis-bl-tabs .admin-tab:disabled .admin-tab__ic {
+  opacity: 0.5;
+  transform: none;
+}
+
+.page-devis-section .admin-devis-bl-tabs .admin-tab__txt {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-weight: 600;
+  font-size: 0.95rem;
+  line-height: 1.25;
+  text-align: left;
+}
+
+/* Cartes devis : bandeau supérieur */
+.page-devis-admin .commande-item {
+  position: relative;
+  padding-top: 1.35rem;
+  border-top: 3px solid #3564a6;
+  overflow: hidden;
+}
+
+/* Empty state */
+.page-devis-admin .page-devis-empty {
+  background: var(--fond-secondaire);
+  border: 1px dashed var(--border-input);
+  box-shadow: none;
+}
+
+.page-devis-admin .page-devis-empty .page-devis-empty__ic {
+  width: 3.5rem;
+  height: 3.5rem;
+  margin: 0 auto 1rem;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(53, 100, 166, 0.12);
+  color: #3564a6;
+  font-size: 1.5rem;
+}
+
+.page-devis-admin .page-devis-empty > i {
+  display: none;
+}
+
+/* =============================================================================
+   COMPTABILITÉ
+   ============================================================================= */
+
+.page-compta-admin .content-header.dashboard-hero.page-compta-hero {
+  background: var(--fond-principal);
+  border: 1px solid var(--border-input);
+  box-shadow: 0 2px 20px rgba(53, 100, 166, 0.1);
+}
+
+.page-compta-admin .content-header.dashboard-hero.page-compta-hero::before {
+  width: 4px;
+  background: #2e7d32;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background-image: none;
+}
+
+.page-compta-admin .page-compta-hero .dashboard-eyebrow {
+  color: #1b5e20;
+}
+
+.page-compta-section.content-section.compta-page {
+  background: var(--fond-principal);
+  border: 1px solid var(--border-input);
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.06);
+}
+
+/* Onglets : une couleur par domaine */
+.page-compta-admin .compta-tab__ic {
+  transition: background 0.2s, color 0.2s, box-shadow 0.2s, transform 0.2s;
+}
+
+.page-compta-admin .compta-tab--ventes .compta-tab__ic {
+  background: rgba(194, 24, 91, 0.1);
+  color: #ad1457;
+}
+
+.page-compta-admin .compta-tab--depenses .compta-tab__ic {
+  background: rgba(93, 64, 55, 0.12);
+  color: #5d4037;
+}
+
+.page-compta-admin .compta-tab--bl .compta-tab__ic {
+  background: rgba(230, 81, 0, 0.1);
+  color: #e65100;
+}
+
+.page-compta-admin .compta-tab--caisse .compta-tab__ic {
+  background: rgba(0, 105, 92, 0.12);
+  color: #00695c;
+}
+
+.page-compta-admin .compta-tab:hover {
+  border-color: var(--couleur-dominante);
+}
+
+.page-compta-admin .compta-tab.is-active {
+  background: var(--fond-principal);
+  border-color: var(--couleur-dominante);
+  box-shadow: 0 4px 20px rgba(53, 100, 166, 0.12);
+  background-image: none;
+}
+
+.page-compta-admin .compta-tab.is-active .compta-tab__ic {
+  background-image: none;
+  color: #fff;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
+}
+
+.page-compta-admin .compta-tab--ventes.is-active .compta-tab__ic {
+  background: #c2185b;
+  color: #fff;
+}
+
+.page-compta-admin .compta-tab--depenses.is-active .compta-tab__ic {
+  background: #5d4037;
+  color: #fff;
+}
+
+.page-compta-admin .compta-tab--bl.is-active .compta-tab__ic {
+  background: #ef6c00;
+  color: #fff;
+}
+
+.page-compta-admin .compta-tab--caisse.is-active .compta-tab__ic {
+  background: #00796b;
+  color: #fff;
+}
+
+/* Héros de panneau compta : fond uni */
+.page-compta-admin .compta-hero--ventes,
+.page-compta-admin .compta-hero--depenses,
+.page-compta-admin .compta-hero--bl,
+.page-compta-admin .compta-hero--caisse {
+  background: var(--fond-secondaire);
+  background-image: none;
+}
+
+.page-compta-admin .compta-hero::before {
+  background: var(--couleur-dominante);
+  background-image: none;
+}
+
+@media (max-width: 600px) {
+  .page-devis-section .admin-devis-bl-tabs .admin-tab {
+    flex-wrap: wrap;
+  }
+}

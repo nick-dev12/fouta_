@@ -1,0 +1,141 @@
+/**
+ * Palette - Bleu et Blanc
+ * Couleurs principales du site
+ * #3564a6 (bleu principal) | #FFFFFF (blanc)
+ * Typographie : Poppins (chargée ci-dessous)
+ */
+
+@import url("https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap");
+
+:root {
+  /* Couleurs de base */
+  --bleu-principal: #3564a6;
+  --bleu-principal-hover: #2d5690;
+  --blanc: #ffffff;
+  --noir: #0d0d0d;
+  --orange: #ff6b35;
+
+  /* Nuances dérivées */
+  --noir-doux: #1a1a1a;
+  --noir-clair: #2d2d2d;
+  --gris-fonce: #4a4a4a;
+  --gris-moyen: #737373;
+  --gris-clair: #a3a3a3;
+  /* Fonds légèrement teintés bleu (harmonisés à la couleur dominante) */
+  --blanc-casse: #f7f9fd;
+  --blanc-neige: #f3f6fb;
+
+  --orange-clair: #ff8f65;
+  --orange-fonce: #e85a2a;
+  --orange-pale: rgba(255, 107, 53, 0.12);
+
+  --bleu: #3564a6;
+  --bleu-clair: #4a7ab8;
+  --bleu-fonce: #2d5690;
+  --bleu-pale: rgba(53, 100, 166, 0.12);
+
+  /* Textes */
+  --texte-fonce: #0d0d0d;
+  --texte-clair: #ffffff;
+  /* Texte secondaire (labels, onglets inactifs) — aligné sur la grille grise */
+  --texte-mute: var(--gris-moyen);
+
+  /* Fond de page (sous le halo flouté) — quasi blanc, très léger teint */
+  --fond-page-site: #f4f7fc;
+
+  /* Rôles sémantiques - Bleu comme couleur dominante */
+  --fond-principal: #ffffff;
+  --fond-secondaire: #f5f8fc;
+  --couleur-dominante: #3564a6;
+  --couleur-dominante-hover: #2d5690;
+  --boutons-secondaires: #3564a6;
+  --boutons-secondaires-hover: #2d5690;
+  --accent-promo: #ff6b35;
+  --titres: #0d0d0d;
+
+  /* Rétrocompatibilité */
+  --rose: var(--couleur-dominante);
+  --jaune-wilton: var(--orange);
+  --beige-creme: var(--blanc);
+  --turquoise: var(--bleu-clair);
+
+  /* Glassmorphisme */
+  --glass-bg: #ffffff;
+  --glass-border: rgba(0, 0, 0, 0.08);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+
+  /* Ombres - bleu harmonisé */
+  --ombre-douce: 0 4px 20px rgba(53, 100, 166, 0.12);
+  --ombre-promo: 0 4px 15px rgba(53, 100, 166, 0.25);
+  --ombre-gourmande: 0 8px 30px rgba(53, 100, 166, 0.15);
+
+  /* États - succès et erreur */
+  --success-bg: rgba(53, 100, 166, 0.12);
+  --success-border: var(--bleu);
+  --error-bg: rgba(255, 107, 53, 0.12);
+  --error-border: var(--orange);
+  --border-input: rgba(53, 100, 166, 0.2);
+  --border-input-focus: var(--couleur-dominante);
+  --focus-ring: rgba(53, 100, 166, 0.15);
+
+  /* Variantes pour fonds et accents */
+  --noir-pale: rgba(13, 13, 13, 0.08);
+
+  /* Typographie — Poppins partout */
+  --font-titres: "Poppins", system-ui, -apple-system, sans-serif;
+  --font-corps: "Poppins", system-ui, -apple-system, sans-serif;
+}
+
+/* --------------------------------------------------------------------------
+   Fond de page : halo bleu (couleur dominante) flouté — toute page liant ce fichier
+   -------------------------------------------------------------------------- */
+html {
+  min-height: 100%;
+}
+
+body {
+  font-family: var(--font-corps);
+  background-color: var(--fond-page-site);
+  background-image: none;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  /* Calques plus légers = rendu plus « transparent » et aéré */
+  background: radial-gradient(
+      ellipse 82% 52% at 25% 18%,
+      rgba(53, 100, 166, 0.14) 0%,
+      transparent 58%
+    ),
+    radial-gradient(
+      ellipse 68% 48% at 88% 24%,
+      rgba(45, 86, 144, 0.1) 0%,
+      transparent 55%
+    ),
+    radial-gradient(
+      ellipse 74% 56% at 50% 88%,
+      rgba(255, 255, 255, 0.42) 0%,
+      transparent 52%
+    ),
+    radial-gradient(
+      ellipse 52% 44% at 8% 72%,
+      rgba(53, 100, 166, 0.07) 0%,
+      transparent 48%
+    ),
+    radial-gradient(
+      ellipse 58% 50% at 78% 66%,
+      rgba(74, 122, 184, 0.09) 0%,
+      transparent 50%
+    ),
+    linear-gradient(168deg, #e8f0f9 0%, #f2f6fc 45%, #f9fbfe 100%);
+  opacity: 0.82;
+  filter: blur(78px);
+  -webkit-filter: blur(78px);
+  pointer-events: none;
+  z-index: -1;
+}

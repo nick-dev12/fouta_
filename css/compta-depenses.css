@@ -1,0 +1,1092 @@
+/**
+ * Onglet Dépenses — comptabilité (variables.css via admin-dashboard)
+ */
+
+body.compta-dep-modal-open {
+  overflow: hidden;
+}
+
+.compta-dep-hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.compta-dep-hero .compta-hero__lead {
+  margin-bottom: 0;
+}
+
+.compta-dep-hero__actions {
+  flex-shrink: 0;
+  align-self: center;
+}
+
+@media (max-width: 640px) {
+  .compta-dep-hero__actions {
+    width: 100%;
+  }
+
+  .compta-dep-hero__actions .compta-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* --- Modale plein écran — nouvelle dépense --- */
+.compta-dep-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 10050;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  padding: 0;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.28s ease, visibility 0.28s ease;
+}
+
+.compta-dep-modal.is-open {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.compta-dep-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(13, 13, 13, 0.62);
+  backdrop-filter: blur(6px);
+}
+
+.compta-dep-modal__scroll {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  padding: 16px 12px 32px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.compta-dep-modal__inner {
+  width: 100%;
+  max-width: 640px;
+  background: var(--fond-principal);
+  border-radius: 20px;
+  box-shadow: 0 24px 64px rgba(53, 100, 166, 0.22);
+  border: 1px solid var(--glass-border);
+  overflow: hidden;
+  margin-bottom: auto;
+}
+
+.compta-dep-modal__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 22px;
+  background: linear-gradient(125deg, var(--bleu-fonce) 0%, var(--couleur-dominante) 45%, var(--bleu-clair) 100%);
+  color: var(--texte-clair);
+}
+
+.compta-dep-modal__head-text h2 {
+  margin: 0 0 8px;
+  font-size: 1.28rem;
+  font-family: var(--font-titres);
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.compta-dep-modal__head-text p {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  opacity: 0.95;
+  max-width: 480px;
+}
+
+.compta-dep-modal__close {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.compta-dep-modal__close:hover {
+  background: rgba(255, 255, 255, 0.32);
+}
+
+.compta-dep-modal__body {
+  padding: 22px 22px 26px;
+  background: linear-gradient(180deg, var(--blanc) 0%, var(--bleu-pale) 100%);
+}
+
+.compta-dep-modal__form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 8px;
+  padding-top: 18px;
+  border-top: 1px solid var(--glass-border);
+}
+
+.compta-dep-modal__btn-cancel {
+  padding: 11px 18px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.92rem;
+  cursor: pointer;
+  font-family: inherit;
+  border: 2px solid var(--border-input);
+  background: var(--fond-principal);
+  color: var(--gris-fonce);
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.compta-dep-modal__btn-cancel:hover {
+  border-color: var(--couleur-dominante);
+  background: var(--bleu-pale);
+  color: var(--titres);
+}
+
+.compta-dep-modal .compta-dep-submit {
+  width: auto;
+  min-width: 200px;
+  flex: 1 1 200px;
+}
+
+@media (max-width: 520px) {
+  .compta-dep-modal__form-actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .compta-dep-modal .compta-dep-submit {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .compta-dep-modal__btn-cancel {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+.compta-dep-msg {
+  margin-bottom: 16px;
+}
+
+.compta-dep-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 14px;
+  margin-bottom: 22px;
+}
+
+.compta-dep-kpi {
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: var(--fond-principal);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  border-top: 3px solid var(--couleur-dominante);
+}
+
+.compta-dep-kpi--tva {
+  border-top-color: var(--accent-promo);
+}
+
+.compta-dep-kpi--ttc {
+  border-top-color: var(--bleu-clair);
+}
+
+.compta-dep-kpi__label {
+  display: block;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--gris-moyen);
+  margin-bottom: 6px;
+}
+
+.compta-dep-kpi__val {
+  font-size: 1.35rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--titres);
+}
+
+.compta-dep-kpi__val small {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--gris-moyen);
+}
+
+.compta-dep-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr);
+  gap: 20px;
+  margin-bottom: 28px;
+  align-items: start;
+  max-width: 920px;
+}
+
+.compta-dep-card {
+  background: var(--fond-principal);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 20px 22px;
+  box-shadow: var(--ombre-douce);
+}
+
+.compta-dep-card--filters {
+  border-left: 4px solid var(--couleur-dominante);
+}
+
+.compta-dep-card__title {
+  margin: 0 0 16px;
+  font-family: var(--font-titres);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--titres);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.compta-dep-card__title i {
+  color: var(--couleur-dominante);
+}
+
+.compta-dep-form__row {
+  margin-bottom: 14px;
+}
+
+.compta-dep-form__row label {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--gris-fonce);
+  margin-bottom: 6px;
+}
+
+.compta-dep-form__row .req {
+  color: var(--accent-promo);
+}
+
+.compta-dep-form__row input[type="text"],
+.compta-dep-form__row input[type="date"],
+.compta-dep-form__row select,
+.compta-dep-form__row textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border-input);
+  font-family: inherit;
+  font-size: 0.95rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.compta-dep-form__row input:focus,
+.compta-dep-form__row select:focus,
+.compta-dep-form__row textarea:focus {
+  outline: none;
+  border-color: var(--border-input-focus);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.compta-dep-form__row--2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 520px) {
+  .compta-dep-form__row--2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.compta-dep-submit {
+  width: 100%;
+  margin-top: 6px;
+  padding: 12px 18px;
+  border: none;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  font-family: inherit;
+  background: linear-gradient(135deg, var(--accent-promo), var(--orange-fonce));
+  color: var(--texte-clair);
+  box-shadow: 0 4px 16px rgba(255, 107, 53, 0.35);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.compta-dep-submit:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 22px rgba(255, 107, 53, 0.45);
+}
+
+.compta-dep-filters__grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px 14px;
+  margin-bottom: 14px;
+}
+
+.compta-dep-filters__field--full {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 520px) {
+  .compta-dep-filters__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.compta-dep-filters__field label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--gris-moyen);
+  margin-bottom: 4px;
+}
+
+.compta-dep-filters__field input,
+.compta-dep-filters__field select {
+  width: 100%;
+  padding: 9px 11px;
+  border-radius: 10px;
+  border: 1px solid var(--border-input);
+  font-family: inherit;
+  font-size: 0.9rem;
+}
+
+.compta-dep-filters__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.compta-dep-filters__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  background: var(--couleur-dominante);
+  color: var(--texte-clair);
+  box-shadow: var(--ombre-promo);
+  transition: transform 0.2s, background 0.2s;
+}
+
+.compta-dep-filters__btn:hover {
+  background: var(--couleur-dominante-hover);
+  transform: translateY(-1px);
+}
+
+.compta-dep-filters__reset {
+  font-size: 0.9rem;
+  color: var(--couleur-dominante);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.compta-dep-filters__reset:hover {
+  text-decoration: underline;
+}
+
+.compta-dep-list-title {
+  margin-top: 8px;
+}
+
+.compta-dep-empty {
+  text-align: center;
+  padding: 40px 20px;
+  border-radius: 14px;
+  background: var(--blanc-casse);
+  border: 2px dashed var(--border-input);
+  color: var(--gris-moyen);
+}
+
+.compta-dep-empty i {
+  font-size: 2.2rem;
+  opacity: 0.35;
+  display: block;
+  margin-bottom: 10px;
+}
+
+/* Liste des dépenses — cartes */
+.compta-dep-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+  gap: 18px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.compta-dep-item {
+  margin: 0;
+  padding: 18px 20px;
+  border-radius: 16px;
+  background: var(--fond-principal);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+}
+
+.compta-dep-item:hover {
+  box-shadow: var(--ombre-douce);
+  border-color: rgba(53, 100, 166, 0.22);
+  transform: translateY(-2px);
+}
+
+.compta-dep-item__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.compta-dep-item__date {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--gris-moyen);
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.compta-dep-item__title {
+  margin: 0;
+  font-family: var(--font-titres);
+  font-size: 1.08rem;
+  font-weight: 700;
+  color: var(--titres);
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.compta-dep-item__cat {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--gris-fonce);
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  line-height: 1.4;
+}
+
+.compta-dep-item__cat i {
+  margin-top: 3px;
+  color: var(--couleur-dominante);
+  opacity: 0.85;
+  flex-shrink: 0;
+}
+
+.compta-dep-item__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.compta-dep-item__amounts {
+  margin: 6px 0 0;
+  padding: 14px 12px 12px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px 8px;
+  background: var(--bleu-pale);
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.compta-dep-item__amt {
+  margin: 0;
+  text-align: center;
+}
+
+.compta-dep-item__amt dt {
+  margin: 0 0 4px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--gris-moyen);
+}
+
+.compta-dep-item__amt dd {
+  margin: 0;
+  font-size: 0.92rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.3;
+}
+
+.compta-dep-item__num {
+  font-weight: 600;
+  color: var(--titres);
+}
+
+.compta-dep-item__num--muted {
+  font-weight: 500;
+  color: var(--gris-moyen);
+}
+
+.compta-dep-item__num--ttc {
+  font-weight: 800;
+  font-size: 1.05rem;
+  color: var(--couleur-dominante);
+}
+
+.compta-dep-item__cur {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--gris-moyen);
+}
+
+.compta-dep-item__amt--ttc dt {
+  color: var(--couleur-dominante);
+}
+
+@media (max-width: 420px) {
+  .compta-dep-item__amounts {
+    grid-template-columns: 1fr;
+    text-align: left;
+  }
+
+  .compta-dep-item__amt {
+    text-align: left;
+    display: grid;
+    grid-template-columns: 56px 1fr;
+    align-items: baseline;
+    gap: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  }
+
+  .compta-dep-item__amt:last-child {
+    padding-bottom: 0;
+    border-bottom: none;
+  }
+
+  .compta-dep-item__amt dt {
+    margin: 0;
+  }
+
+  .compta-dep-item__amt dd {
+    text-align: right;
+  }
+}
+
+.compta-dep-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.compta-dep-badge--sans_tva {
+  background: var(--bleu-pale);
+  color: var(--bleu-fonce);
+}
+
+.compta-dep-badge--avec_tva {
+  background: var(--orange-pale);
+  color: var(--orange-fonce);
+}
+
+.compta-dep-footnote {
+  margin-top: 12px;
+  font-size: 0.85rem;
+  color: var(--gris-moyen);
+  line-height: 1.45;
+}
+
+.compta-dep-footnote i {
+  color: var(--couleur-dominante);
+  margin-right: 6px;
+}
+
+/* --- Onglet Caisse magasin (comptabilité) --- */
+.compta-hero--caisse .compta-hero__title {
+  color: var(--titres);
+}
+
+.compta-caisse-msg {
+  margin-bottom: 16px;
+}
+
+.compta-caisse-kpis {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.compta-caisse-kpi {
+  flex: 1 1 180px;
+  padding: 16px 18px;
+  border-radius: 14px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  box-shadow: var(--glass-shadow);
+}
+
+.compta-caisse-kpi__label {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--gris-moyen);
+  margin-bottom: 6px;
+}
+
+.compta-caisse-kpi__val {
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: var(--couleur-dominante);
+}
+
+.compta-caisse-kpi__val small {
+  font-size: 0.65em;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+.compta-caisse-kpi--ttc .compta-caisse-kpi__val {
+  color: var(--accent-promo);
+}
+
+.compta-caisse-modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 22px;
+}
+
+.compta-caisse-mode-chip {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--bleu-pale);
+  border: 1px solid var(--border-input);
+  font-size: 0.88rem;
+}
+
+.compta-caisse-mode-chip__name {
+  font-weight: 700;
+  color: var(--titres);
+}
+
+.compta-caisse-mode-chip__nb {
+  color: var(--gris-moyen);
+  font-size: 0.8rem;
+}
+
+.compta-caisse-mode-chip__sum {
+  font-weight: 700;
+  color: var(--couleur-dominante);
+}
+
+.compta-caisse-filters-card {
+  margin-bottom: 8px;
+}
+
+.compta-caisse-list-title {
+  margin-top: 8px;
+}
+
+.compta-caisse-empty {
+  margin-top: 8px;
+}
+
+.compta-caisse-table-wrap {
+  overflow-x: auto;
+  margin-top: 8px;
+  border-radius: 14px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  box-shadow: var(--glass-shadow);
+}
+
+.compta-caisse-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.compta-caisse-table thead th {
+  text-align: left;
+  padding: 12px 14px;
+  background: var(--bleu-pale);
+  color: var(--titres);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.compta-caisse-table tbody td {
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  vertical-align: middle;
+}
+
+.compta-caisse-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.compta-caisse-table__num {
+  text-align: right;
+  font-weight: 700;
+  white-space: nowrap;
+  color: var(--texte-fonce);
+}
+
+.compta-caisse-cur {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--gris-moyen);
+}
+
+.compta-caisse-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: var(--orange-pale);
+  color: var(--orange-fonce);
+}
+
+.compta-caisse-table__act {
+  white-space: nowrap;
+  width: 1%;
+}
+
+.compta-caisse-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--couleur-dominante);
+  text-decoration: none;
+}
+
+.compta-caisse-link:hover {
+  text-decoration: underline;
+}
+
+.compta-caisse-link i {
+  font-size: 0.75rem;
+  opacity: 0.85;
+}
+
+.compta-caisse-footnote {
+  margin-top: 14px;
+}
+
+@media (max-width: 720px) {
+  .compta-caisse-table thead {
+    display: none;
+  }
+
+  .compta-caisse-table tbody tr {
+    display: block;
+    padding: 12px;
+    border-bottom: 1px solid var(--glass-border);
+  }
+
+  .compta-caisse-table tbody td {
+    display: grid;
+    grid-template-columns: minmax(100px, 38%) 1fr;
+    gap: 6px 12px;
+    padding: 6px 0;
+    border: none;
+    text-align: left;
+  }
+
+  .compta-caisse-table tbody td::before {
+    content: attr(data-label);
+    font-weight: 700;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    color: var(--gris-moyen);
+  }
+
+  .compta-caisse-table tbody td.compta-caisse-table__act {
+    grid-template-columns: 1fr;
+  }
+
+  .compta-caisse-table tbody td.compta-caisse-table__act::before {
+    content: '';
+  }
+}
+
+/* ========== Onglet Dépenses (tab=depenses) — mise en page premium, variables.css ========== */
+
+.compta-dep-eyebrow {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--couleur-dominante);
+  margin: 0 0 8px;
+}
+
+.compta-dep-hero--premium {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(
+    135deg,
+    var(--fond-principal) 0%,
+    var(--bleu-pale) 45%,
+    rgba(53, 100, 166, 0.08) 100%
+  );
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.92);
+}
+
+.compta-dep-hero--premium::after {
+  content: "";
+  position: absolute;
+  right: -20px;
+  top: -30px;
+  width: 160px;
+  height: 160px;
+  background: radial-gradient(circle, rgba(53, 100, 166, 0.14) 0%, transparent 68%);
+  pointer-events: none;
+}
+
+.compta-dep-hero--premium .compta-hero__copy {
+  position: relative;
+  z-index: 1;
+}
+
+.compta-dep-hero--premium .compta-hero__title {
+  font-size: clamp(1.2rem, 2.4vw, 1.5rem);
+  letter-spacing: -0.02em;
+}
+
+.compta-dep-body {
+  display: flex;
+  flex-direction: column;
+  margin-top: 6px;
+}
+
+.compta-dep-alerts {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.compta-dep-alerts .compta-dep-msg {
+  margin-bottom: 0;
+  border-radius: 12px;
+  box-shadow: var(--ombre-douce);
+}
+
+.compta-dep-msg--standalone {
+  margin-top: 8px;
+  border-radius: 12px;
+  box-shadow: var(--ombre-douce);
+}
+
+#compta-panel-depenses .compta-dep-kpis {
+  margin-bottom: 24px;
+}
+
+#compta-panel-depenses .compta-dep-kpi {
+  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.2s;
+}
+
+#compta-panel-depenses .compta-dep-kpi:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--ombre-gourmande);
+  border-color: var(--border-input);
+}
+
+#compta-panel-depenses .compta-dep-kpi:first-child {
+  border-top-color: var(--gris-moyen);
+}
+
+#compta-panel-depenses .compta-dep-grid {
+  max-width: none;
+  margin-bottom: 8px;
+}
+
+#compta-panel-depenses .compta-dep-card--filters {
+  transition: box-shadow 0.22s, border-color 0.2s, transform 0.2s;
+}
+
+#compta-panel-depenses .compta-dep-card--filters:hover {
+  box-shadow: var(--ombre-gourmande);
+  border-color: var(--border-input-focus);
+  transform: translateY(-1px);
+}
+
+.compta-section-title.compta-dep-list-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 26px 0 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--glass-border);
+  font-size: clamp(1.05rem, 1.8vw, 1.2rem);
+  color: var(--titres);
+}
+
+.compta-dep-list-title i {
+  color: var(--couleur-dominante);
+  opacity: 0.95;
+}
+
+#compta-panel-depenses .compta-dep-empty {
+  background: linear-gradient(180deg, var(--fond-principal) 0%, var(--bleu-pale) 100%);
+  border: 1px dashed var(--border-input);
+  padding: 48px 28px;
+  border-radius: 18px;
+}
+
+#compta-panel-depenses .compta-dep-empty i {
+  color: var(--couleur-dominante);
+  opacity: 0.4;
+  margin-bottom: 12px;
+}
+
+#compta-panel-depenses .compta-dep-item {
+  position: relative;
+  overflow: hidden;
+}
+
+#compta-panel-depenses .compta-dep-item::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: linear-gradient(180deg, var(--couleur-dominante), var(--bleu-clair));
+  opacity: 0;
+  transition: opacity 0.2s;
+  border-radius: 16px 0 0 16px;
+}
+
+#compta-panel-depenses .compta-dep-item:hover::before {
+  opacity: 1;
+}
+
+#compta-panel-depenses .compta-dep-item:hover {
+  border-color: var(--border-input-focus);
+  box-shadow: var(--ombre-gourmande);
+}
+
+#compta-panel-depenses .compta-dep-filters__field input:focus,
+#compta-panel-depenses .compta-dep-filters__field select:focus {
+  outline: none;
+  border-color: var(--border-input-focus);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+  background: var(--fond-principal);
+}
+
+#compta-panel-depenses .compta-dep-filters__reset {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 10px 18px;
+  border-radius: 10px;
+  border: 1px solid var(--border-input);
+  background: var(--fond-principal);
+  color: var(--titres);
+  text-decoration: none;
+  font-weight: 600;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+
+#compta-panel-depenses .compta-dep-filters__reset:hover {
+  text-decoration: none;
+  background: var(--bleu-pale);
+  border-color: var(--couleur-dominante);
+  color: var(--couleur-dominante);
+}
+
+#compta-panel-depenses .compta-dep-footnote {
+  padding: 12px 14px;
+  background: var(--fond-secondaire);
+  border-radius: 10px;
+  border: 1px solid var(--glass-border);
+  max-width: 100%;
+}
+
+@media (max-width: 768px) {
+  .compta-dep-hero--premium .compta-dep-hero__actions {
+    width: 100%;
+  }
+
+  .compta-dep-hero--premium .compta-dep-hero__actions .compta-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  #compta-panel-depenses .compta-dep-kpis {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 520px) {
+  #compta-panel-depenses .compta-dep-kpis {
+    grid-template-columns: 1fr;
+  }
+
+  .compta-section-title.compta-dep-list-title {
+    flex-wrap: wrap;
+  }
+}

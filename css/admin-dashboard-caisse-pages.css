@@ -1,0 +1,210 @@
+/**
+ * Tableau de bord (dashboard.php) + pages Caisse — en-têtes plats, icônes en couleur
+ * Chargé après admin-dashboard.css (et après admin-caisse-encaisser-ticket.css pour l’encaissement)
+ */
+
+/* =============================================================================
+   TABLEAU DE BORD
+   ============================================================================= */
+
+.dashboard-page .content-header.dashboard-hero {
+  background: var(--fond-principal);
+  border: 1px solid var(--border-input);
+  box-shadow: 0 2px 20px rgba(53, 100, 166, 0.1);
+  background-image: none;
+}
+
+.dashboard-page .content-header.dashboard-hero::before {
+  width: 4px;
+  background: var(--couleur-dominante);
+  background-image: none;
+  border-radius: 0;
+}
+
+/* Cartes stats — pastilles en couleurs unies (sans dégradé) */
+.dashboard-page .stat-card--total .stat-card-icon {
+  background: rgba(53, 100, 166, 0.18);
+  color: #2d5690;
+  background-image: none;
+}
+
+.dashboard-page .stat-en-attente .stat-card-icon {
+  background: rgba(255, 107, 53, 0.18);
+  color: #c2410c;
+  background-image: none;
+}
+
+.dashboard-page .stat-prise .stat-card-icon {
+  background: rgba(0, 137, 123, 0.16);
+  color: #00695c;
+  background-image: none;
+}
+
+.dashboard-page .stat-livraison .stat-card-icon {
+  background: rgba(94, 53, 177, 0.12);
+  color: #5e35b1;
+  background-image: none;
+}
+
+/* Bloc catalogue */
+.dashboard-page .produits-section--dashboard {
+  border: 1px solid var(--border-input);
+  border-top: 3px solid var(--couleur-dominante);
+  background: var(--fond-principal);
+  background-image: none;
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.06);
+}
+
+.dashboard-page .section-title--dashboard h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.dashboard-page .section-title--dashboard h2 .fas {
+  display: inline-flex;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 10px;
+  align-items: center;
+  justify-content: center;
+  background: rgba(53, 100, 166, 0.12);
+  color: var(--couleur-dominante);
+  font-size: 1rem;
+}
+
+/* =============================================================================
+   CAISSE (toutes les pages .admin-caisse-page)
+   ============================================================================= */
+
+.admin-caisse-page .caisse-page-head {
+  background: var(--fond-principal);
+  color: var(--titres);
+  border: 1px solid var(--border-input);
+  border-left: 4px solid #00796b;
+  border-radius: 16px;
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.07);
+  background-image: none;
+}
+
+.admin-caisse-page .caisse-page-title {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+  color: var(--titres);
+}
+
+.admin-caisse-page .caisse-page-title i {
+  display: inline-flex;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  border-radius: 12px;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  margin-right: 0;
+  color: #00796b;
+  background: rgba(0, 121, 107, 0.12);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.admin-caisse-page .caisse-page-lead {
+  color: var(--gris-fonce);
+  opacity: 1;
+  line-height: 1.5;
+  max-width: 42rem;
+}
+
+/* Page encaissement : en-tête aligné, halo décoratif retiré */
+.page-caisse-encaisser .page-caisse-encaisser__hero::after {
+  display: none;
+}
+
+.page-caisse-encaisser .page-caisse-encaisser__eyebrow {
+  color: #00695c;
+}
+
+/* Historique : KPIs avec icônes en pastille */
+.caisse-hist-stat-card {
+  position: relative;
+  border-top: 3px solid var(--border-input);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.caisse-hist-stats .caisse-hist-stat-card:nth-child(1) {
+  border-top-color: #3564a6;
+}
+
+.caisse-hist-stat-card--accent {
+  border-top-color: #ff6b35;
+  background: var(--fond-principal);
+  background-image: none;
+  border-color: var(--border-input);
+}
+
+.caisse-hist-stat-card__label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.caisse-hist-stat-card__label i {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 0;
+  font-size: 0.9rem;
+}
+
+.caisse-hist-stats .caisse-hist-stat-card:nth-child(1) .caisse-hist-stat-card__label i {
+  background: rgba(53, 100, 166, 0.12);
+  color: #3564a6;
+}
+
+.caisse-hist-stat-card--accent .caisse-hist-stat-card__label i {
+  background: rgba(255, 107, 53, 0.12);
+  color: #e65100;
+}
+
+.caisse-hist-stat-card--note .caisse-hist-stat-card__label i {
+  background: rgba(0, 137, 123, 0.1);
+  color: #00695c;
+}
+
+.caisse-hist-filters__title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.caisse-hist-filters__title i {
+  display: inline-flex;
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  align-items: center;
+  justify-content: center;
+  background: rgba(53, 100, 166, 0.1);
+  color: var(--couleur-dominante);
+  margin-right: 0;
+}
+
+/* Zone labels caisse (index) : icônes légèrement teintées */
+.caisse-zone-label i {
+  color: #00796b;
+  opacity: 0.9;
+}
+
+@media (max-width: 600px) {
+  .dashboard-page .stat-card-icon {
+    width: 48px;
+    height: 48px;
+  }
+}

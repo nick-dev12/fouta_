@@ -1,0 +1,147 @@
+.vendre{
+    background-color: #3c3c3c;
+}
+
+.section{
+    height: auto;
+}
+
+.section .container2 .box-produit{
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.section .container2 .box-produit h1{
+    width: 80%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 18px;
+    border-bottom: 1.5px solid #6363632a;
+    color: #5c5c5c;
+    font-weight: 400;
+    margin-top: 20px;
+}
+
+
+.formulaire{
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 30px;
+}
+.formulaire form {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.339);
+    width: 500px;
+}
+
+.formulaire form label {
+    display: block;
+    margin-bottom: 8px;
+    color: #868484;
+}
+
+.formulaire form select {
+    width: 100%;
+    padding: 8px;
+    margin-bottom: 16px;
+    box-sizing: border-box;
+    color: #868484;
+    border-radius: 10px;
+    border: 1.5px solid ;
+    outline: none;
+    transition: all 0.3s;
+}
+.formulaire form input {
+    width: 100%;
+    padding: 8px;
+    margin-bottom: 14px;
+    box-sizing: border-box;
+    color: #868484;
+    border-radius: 7px;
+    border: 1.5px solid #868484;
+    outline: none;
+    transition: all 0.3s;
+}
+
+.formulaire form input:hover {
+    border:1.5px solid #e4144d;
+    box-shadow: 0 0 1px 0px #e4144d;
+}
+.formulaire form select:hover {
+    border: 1.5px solid #e4144d;
+    box-shadow: 0 0 1px 0px #e4144d;
+}
+
+.formulaire form button {
+    background-color: #e4144d;
+    color: #fff;
+    padding: 10px;
+    border: none;
+    border-radius: 7px;
+    cursor: pointer;
+}
+.formulaire form  textarea{
+    width: 80%;
+    height: 150px;
+    display: block;
+    border-radius: 10px;
+    border: 1.5px solid #868484;
+    padding: 20px;
+    font-size: 15px;
+}
+.formulaire form button:hover {
+    background-color: #45a049;
+}
+
+
+
+/* Ajoutez ces styles à la section <style> de votre code */
+
+    .formulaire form input[type="file"] {
+    display: none;
+    /* Masque le champ de fichier par défaut */
+}
+
+.formulaire form .label-file {
+    background-color: #4caf50;
+    color: #fff;
+    padding: 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    display: inline-block;
+}
+
+.formulaire form .label-file:hover {
+    background-color: #45a049;
+}
+
+/* Style pour afficher le nom du fichier sélectionné */
+.formulaire form #productImageLabel {
+    margin-top: 10px;
+    display: block;
+}
+
+
+
+.formulaire #imagePreviewContainer {
+    display: block;
+}
+
+.formulaire #imagePreviewContainer img {
+    width: 150px;
+    height: 150px;
+    object-fit: cover;
+    border-radius: 7px;
+}
+
+.formulaire #productImageLabel {
+    font-size: 13px;
+    color: #606060;
+}

@@ -1,0 +1,744 @@
+[13-Mar-2026 01:08:01 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[13-Mar-2026 01:08:01 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(333): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[13-Mar-2026 01:15:20 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[13-Mar-2026 01:15:20 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(333): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[13-Mar-2026 01:15:33 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[13-Mar-2026 01:15:33 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(333): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[13-Mar-2026 01:15:43 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[13-Mar-2026 01:15:43 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(333): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[13-Mar-2026 01:18:04 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[13-Mar-2026 01:18:04 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(333): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[13-Mar-2026 01:18:09 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[13-Mar-2026 01:18:09 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(333): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[13-Mar-2026 09:24:47 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[13-Mar-2026 09:24:47 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(333): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[16-Mar-2026 08:49:23 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[16-Mar-2026 08:49:23 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(333): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[16-Mar-2026 13:13:36 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[16-Mar-2026 13:13:36 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(333): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[16-Mar-2026 13:23:00 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[16-Mar-2026 13:23:00 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(333): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[16-Mar-2026 13:24:33 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[16-Mar-2026 13:24:33 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(333): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[16-Mar-2026 13:46:50 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[16-Mar-2026 13:46:50 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(333): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[16-Mar-2026 15:11:21 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[16-Mar-2026 15:11:21 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(333): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[16-Mar-2026 15:17:25 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[16-Mar-2026 15:17:25 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(333): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[16-Mar-2026 16:39:44 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[16-Mar-2026 16:39:44 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(333): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[16-Mar-2026 17:25:45 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[16-Mar-2026 17:25:45 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(333): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[16-Mar-2026 17:26:37 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[16-Mar-2026 17:26:37 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(333): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[16-Mar-2026 17:35:36 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[16-Mar-2026 17:35:36 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(333): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[16-Mar-2026 17:39:22 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[16-Mar-2026 17:39:22 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(333): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[16-Mar-2026 17:43:14 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[16-Mar-2026 17:43:14 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(333): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[16-Mar-2026 17:44:44 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[16-Mar-2026 17:44:44 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(333): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[16-Mar-2026 17:45:56 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[16-Mar-2026 17:45:56 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(333): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[16-Mar-2026 17:50:49 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[16-Mar-2026 17:50:49 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(333): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[16-Mar-2026 17:54:47 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[16-Mar-2026 17:54:47 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(333): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[16-Mar-2026 17:57:29 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[16-Mar-2026 17:57:29 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(333): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[16-Mar-2026 17:57:51 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[16-Mar-2026 17:57:51 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(333): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[16-Mar-2026 19:40:18 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[16-Mar-2026 19:40:18 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(333): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[16-Mar-2026 19:45:10 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[16-Mar-2026 19:45:10 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(333): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[16-Mar-2026 21:42:22 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[16-Mar-2026 21:42:22 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(333): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[16-Mar-2026 22:31:20 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[16-Mar-2026 22:31:20 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(333): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[16-Mar-2026 22:39:55 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[16-Mar-2026 22:39:55 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(333): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[16-Mar-2026 22:43:34 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[16-Mar-2026 22:43:34 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(333): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[17-Mar-2026 09:04:41 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[17-Mar-2026 09:04:41 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(333): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[17-Mar-2026 15:18:51 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[17-Mar-2026 15:18:51 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(333): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[17-Mar-2026 15:20:21 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[17-Mar-2026 15:20:21 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(333): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[17-Mar-2026 15:24:13 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[17-Mar-2026 15:24:13 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(333): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[17-Mar-2026 15:26:01 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[17-Mar-2026 15:26:01 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(333): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[17-Mar-2026 15:32:56 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[17-Mar-2026 15:32:56 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(333): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[17-Mar-2026 15:35:10 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[17-Mar-2026 15:35:10 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(333): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[17-Mar-2026 15:40:16 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[17-Mar-2026 15:40:16 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(333): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[17-Mar-2026 16:12:42 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[17-Mar-2026 16:12:42 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(333): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[17-Mar-2026 16:15:26 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[17-Mar-2026 16:15:26 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(333): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[17-Mar-2026 17:28:51 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[17-Mar-2026 17:28:51 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(333): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[20-Mar-2026 18:30:59 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[20-Mar-2026 18:30:59 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(333): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[20-Mar-2026 18:32:00 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[20-Mar-2026 18:32:00 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(333): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[20-Mar-2026 18:35:59 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[20-Mar-2026 18:35:59 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(333): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[24-Mar-2026 11:53:42 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[24-Mar-2026 11:53:42 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(333): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[24-Mar-2026 11:53:53 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[24-Mar-2026 11:53:53 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(333): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[25-Mar-2026 11:36:00 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[25-Mar-2026 11:36:00 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(333): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[25-Mar-2026 11:37:59 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[25-Mar-2026 11:37:59 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(333): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[25-Mar-2026 11:38:30 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[25-Mar-2026 11:38:30 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(333): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[25-Mar-2026 11:39:19 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[25-Mar-2026 11:39:19 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(333): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[25-Mar-2026 11:39:48 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[25-Mar-2026 11:39:48 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(333): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[25-Mar-2026 11:41:11 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[25-Mar-2026 11:41:11 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(333): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[27-Mar-2026 21:57:50 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[27-Mar-2026 21:57:50 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(333): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[30-Mar-2026 22:33:57 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[30-Mar-2026 22:33:57 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(333): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[31-Mar-2026 00:20:11 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[31-Mar-2026 00:20:11 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(333): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[31-Mar-2026 22:45:23 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[31-Mar-2026 22:45:23 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[31-Mar-2026 22:50:25 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[31-Mar-2026 22:50:25 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[31-Mar-2026 22:50:59 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[31-Mar-2026 22:50:59 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[31-Mar-2026 22:52:09 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[31-Mar-2026 22:52:09 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[31-Mar-2026 22:53:04 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[31-Mar-2026 22:53:04 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[31-Mar-2026 22:56:25 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[31-Mar-2026 22:56:25 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[31-Mar-2026 22:59:49 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[31-Mar-2026 22:59:49 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[31-Mar-2026 23:32:22 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[31-Mar-2026 23:32:22 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[31-Mar-2026 23:47:44 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[31-Mar-2026 23:47:44 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[31-Mar-2026 23:48:25 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[31-Mar-2026 23:48:25 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[31-Mar-2026 23:48:54 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[31-Mar-2026 23:48:54 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 00:05:42 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 00:05:42 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 00:11:29 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 00:11:29 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 00:14:45 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 00:14:45 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 00:17:29 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 00:17:29 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 00:17:45 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 00:17:45 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 00:21:16 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 00:21:16 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 00:21:56 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 00:21:56 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 08:48:22 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 08:48:22 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 08:54:14 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 08:54:14 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 09:04:36 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 09:04:36 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 09:10:43 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 09:10:43 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 09:12:58 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 09:12:58 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 09:23:48 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 09:23:48 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 09:25:29 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 09:25:29 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 09:27:03 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 09:27:03 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 09:31:27 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 09:31:27 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 09:33:06 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 09:33:06 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 09:36:31 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 09:36:31 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 09:42:51 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 09:42:51 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 09:44:32 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 09:44:32 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 09:47:08 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 09:47:08 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 09:47:39 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 09:47:39 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 09:56:24 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 09:56:24 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 09:57:39 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 09:57:39 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 10:00:41 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 10:00:41 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 10:17:59 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 10:17:59 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 10:20:27 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 10:20:27 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 10:20:42 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 10:20:42 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 10:21:21 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 10:21:21 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 10:22:06 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 10:22:06 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 10:24:56 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 10:24:56 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 12:07:01 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 12:07:01 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 12:38:28 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 12:38:28 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 12:39:37 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 12:39:37 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 12:47:19 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 12:47:19 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 12:47:56 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 12:47:56 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 12:47:58 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 12:47:58 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 13:23:35 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 13:23:35 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 15:20:39 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 15:20:39 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 15:23:32 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 15:23:32 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 15:29:06 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 15:29:06 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 15:38:07 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 15:38:07 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[02-Apr-2026 12:31:56 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[02-Apr-2026 12:31:56 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[02-Apr-2026 12:39:37 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[02-Apr-2026 12:39:37 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[03-Apr-2026 17:06:27 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[03-Apr-2026 17:06:27 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[03-Apr-2026 17:11:33 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[03-Apr-2026 17:11:33 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[03-Apr-2026 17:13:18 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[03-Apr-2026 17:13:18 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[03-Apr-2026 22:28:16 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[03-Apr-2026 22:28:16 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[03-Apr-2026 22:39:43 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[03-Apr-2026 22:39:43 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[16-Apr-2026 15:57:55 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[16-Apr-2026 15:57:55 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[16-Apr-2026 15:58:30 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[16-Apr-2026 15:58:30 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[21-Apr-2026 20:34:48 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[21-Apr-2026 20:34:48 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[22-Apr-2026 12:01:25 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[22-Apr-2026 12:01:25 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[23-Apr-2026 11:56:20 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[23-Apr-2026 11:56:20 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[23-Apr-2026 11:59:49 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[23-Apr-2026 11:59:49 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[23-Apr-2026 12:05:20 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[23-Apr-2026 12:05:20 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/admin/dashboard.php(335): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6

@@ -1,0 +1,330 @@
+/**
+ * Onglet Bons de livraison (tab=bl) — comptabilité
+ * Complète admin-dashboard / compta-depenses, variables via admin-dashboard
+ */
+
+/* ========== Hero premium ========== */
+
+#compta-panel-bl .compta-bl-eyebrow {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--couleur-dominante);
+  margin: 0 0 8px;
+}
+
+#compta-panel-bl .compta-bl-hero--premium {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(
+    135deg,
+    var(--fond-principal) 0%,
+    var(--bleu-pale) 42%,
+    rgba(53, 100, 166, 0.1) 100%
+  );
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.92);
+}
+
+#compta-panel-bl .compta-bl-hero--premium::after {
+  content: "";
+  position: absolute;
+  right: -24px;
+  top: -28px;
+  width: 180px;
+  height: 180px;
+  background: radial-gradient(circle, rgba(53, 100, 166, 0.16) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+#compta-panel-bl .compta-bl-hero--premium .compta-hero__copy {
+  position: relative;
+  z-index: 1;
+}
+
+#compta-panel-bl .compta-bl-hero--premium .compta-hero__title {
+  font-size: clamp(1.2rem, 2.4vw, 1.5rem);
+  letter-spacing: -0.02em;
+}
+
+/* ========== Corps de page ========== */
+
+#compta-panel-bl .compta-bl-body {
+  display: flex;
+  flex-direction: column;
+  margin-top: 6px;
+}
+
+#compta-panel-bl .compta-bl-alerts {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+#compta-panel-bl .compta-bl-alerts .compta-bl-msg {
+  margin-bottom: 0;
+  border-radius: 12px;
+  box-shadow: var(--ombre-douce);
+}
+
+#compta-panel-bl .compta-bl-msg--standalone {
+  margin-top: 8px;
+  border-radius: 12px;
+  box-shadow: var(--ombre-douce);
+}
+
+/* ========== Titre section synthèse ========== */
+
+#compta-panel-bl .compta-bl-synth-title {
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--glass-border);
+  font-size: clamp(1.05rem, 1.8vw, 1.2rem);
+}
+
+/* ========== Filtre période ========== */
+
+#compta-panel-bl .compta-bl-filter {
+  transition: box-shadow 0.22s ease, border-color 0.2s, transform 0.2s;
+  border-radius: 16px;
+}
+
+#compta-panel-bl .compta-bl-filter:hover {
+  box-shadow: var(--ombre-gourmande);
+  border-color: var(--border-input);
+  transform: translateY(-1px);
+}
+
+#compta-panel-bl .compta-bl-filter__select:focus,
+#compta-panel-bl .compta-bl-filter__btn:focus {
+  outline: none;
+}
+
+#compta-panel-bl .compta-bl-filter__select:focus {
+  border-color: var(--border-input-focus);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+#compta-panel-bl .compta-bl-filter__btn:focus-visible {
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+/* ========== KPIs ========== */
+
+#compta-panel-bl .compta-bl-kpis {
+  margin-bottom: 8px;
+}
+
+#compta-panel-bl .compta-bl-kpi {
+  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.2s;
+}
+
+#compta-panel-bl .compta-bl-kpi:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--ombre-gourmande);
+  border-color: var(--border-input);
+}
+
+#compta-panel-bl .compta-bl-synth-note {
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: var(--fond-secondaire);
+  border: 1px solid var(--glass-border);
+  line-height: 1.55;
+  max-width: 100%;
+  margin-top: 4px;
+  margin-bottom: 8px;
+}
+
+#compta-panel-bl .compta-bl-synth-note strong {
+  color: var(--couleur-dominante);
+  font-weight: 700;
+}
+
+/* ========== Titres de listes (clients, factures) ========== */
+
+#compta-panel-bl .compta-section-title.compta-bl-list-title,
+#compta-panel-bl .compta-section-title.compta-bl-fm-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  margin: 26px 0 16px;
+  padding-top: 10px;
+  font-size: clamp(1.05rem, 1.8vw, 1.2rem);
+  color: var(--titres);
+}
+
+#compta-panel-bl .compta-bl-list-title i,
+#compta-panel-bl .compta-bl-fm-title i {
+  color: var(--couleur-dominante);
+  opacity: 0.95;
+}
+
+#compta-panel-bl .compta-bl-fm-title .compta-section-title__per {
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--gris-moyen);
+  margin-left: 6px;
+}
+
+/* ========== Surface contacts B2B ========== */
+
+#compta-panel-bl .compta-bl-tab-surface {
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: var(--ombre-douce);
+  border: 1px solid var(--glass-border);
+  background: var(--fond-principal);
+}
+
+#compta-panel-bl .compta-bl-tab-surface .bl-contacts-hero {
+  background: linear-gradient(135deg, var(--fond-principal) 0%, var(--bleu-pale) 100%);
+}
+
+#compta-panel-bl .compta-bl-tab-surface .bl-contact-card {
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+}
+
+#compta-panel-bl .compta-bl-tab-surface .bl-contact-card:hover {
+  transform: translateY(-2px);
+}
+
+/* ========== États vides ========== */
+
+#compta-panel-bl .compta-bl-empty {
+  text-align: center;
+  padding: 40px 24px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, var(--fond-principal) 0%, var(--bleu-pale) 100%);
+  border: 1px dashed var(--border-input);
+}
+
+#compta-panel-bl .compta-bl-empty p {
+  margin: 0;
+  max-width: 34rem;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.6;
+  color: var(--gris-fonce);
+  font-size: 0.95rem;
+}
+
+#compta-panel-bl .compta-bl-empty i {
+  display: block;
+  font-size: 2.1rem;
+  color: var(--couleur-dominante);
+  opacity: 0.4;
+  margin-bottom: 12px;
+}
+
+#compta-panel-bl .compta-bl-empty a {
+  font-weight: 600;
+  color: var(--couleur-dominante);
+}
+
+#compta-panel-bl .compta-bl-empty a:hover {
+  text-decoration: underline;
+}
+
+#compta-panel-bl .compta-bl-empty--fm i {
+  opacity: 0.45;
+}
+
+/* ========== Tableau factures mensuelles ========== */
+
+#compta-panel-bl .compta-bl-fm-table-wrap {
+  border-radius: 16px;
+  transition: box-shadow 0.22s, border-color 0.2s;
+}
+
+#compta-panel-bl .compta-bl-fm-table-wrap:hover {
+  box-shadow: var(--ombre-gourmande);
+  border-color: var(--border-input);
+}
+
+#compta-panel-bl .compta-fm-table tbody tr {
+  transition: background 0.15s;
+}
+
+#compta-panel-bl .compta-fm-table tbody tr:hover td {
+  background: rgba(53, 100, 166, 0.06);
+}
+
+#compta-panel-bl .compta-fm-table__link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-weight: 600;
+  transition: background 0.2s, color 0.2s;
+}
+
+#compta-panel-bl .compta-fm-table__link:hover {
+  background: var(--bleu-pale);
+  text-decoration: none;
+}
+
+#compta-panel-bl .compta-fm-table th {
+  position: relative;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--gris-moyen);
+}
+
+/* ========== Alerte seule (sans synthèse au-dessus) ========== */
+
+#compta-panel-bl .compta-bl-alerts + .compta-bl-list-title {
+  border-top: none;
+  margin-top: 4px;
+  padding-top: 0;
+}
+
+/* ========== Responsive ========== */
+
+@media (max-width: 768px) {
+  #compta-panel-bl .compta-bl-hero__actions {
+    width: 100%;
+  }
+
+  #compta-panel-bl .compta-bl-hero__actions .compta-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  #compta-panel-bl .compta-bl-kpis {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  #compta-panel-bl .compta-bl-filter__controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  #compta-panel-bl .compta-bl-filter__btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 520px) {
+  #compta-panel-bl .compta-bl-kpis {
+    grid-template-columns: 1fr;
+  }
+
+  #compta-panel-bl .compta-bl-fm-title .compta-section-title__per {
+    display: block;
+    width: 100%;
+    margin-left: 0;
+    margin-top: 4px;
+    font-size: 0.85rem;
+  }
+
+  #compta-panel-bl .compta-fm-table-wrap {
+    border-radius: 12px;
+  }
+}

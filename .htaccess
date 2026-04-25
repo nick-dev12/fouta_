@@ -1,0 +1,19 @@
+# Configuration PHP pour l'upload de fichiers volumineux
+# Ces valeurs surchargent les valeurs du php.ini si nécessaire
+
+# Réécriture pour SEO : robots.txt et sitemap.xml
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteBase /
+RewriteRule ^robots\.txt$ robots.php [L]
+RewriteRule ^sitemap\.xml$ sitemap.php [L]
+</IfModule>
+
+# Session persistante pour les utilisateurs connectés (30 jours)
+php_value session.gc_maxlifetime 2592000
+
+php_value upload_max_filesize 1000M
+php_value post_max_size 1000M
+php_value max_execution_time 300
+php_value max_input_time 300
+php_value memory_limit 512M

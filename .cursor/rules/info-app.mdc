@@ -1,0 +1,415 @@
+---
+alwaysApply: true
+---
+
+# Application E-Commerce - Produits Naturels
+
+## Informations Générales
+
+### Type d'Application
+- **Langage**: PHP (pur, sans framework)
+- **Type**: Site e-commerce B2C
+- **Secteur**: Produits naturels issus de la production propre de l'entreprise
+
+### Produits
+- Tous les produits sont issus de la production propre de l'entreprise
+- Produits naturels uniquement
+- Gestion des stocks en temps réel
+
+### Codes Couleurs
+Les couleurs suivantes doivent être utilisées dans le design de l'application :
+- `#918a44` - Couleur principale (doré/beige)
+- `#c26638` - Couleur secondaire (orange/terre)
+- `#000000` - Noir (textes, bordures)
+- `#6b2f20` - Marron foncé (accents)
+- `#ffffff` - Blanc (arrière-plans, textes clairs)
+- `#ffffff` - Blanc (arrière-plans secondaires)
+
+## Catégories de Produits
+
+### 1. Les Noix
+- Description: Noix diverses (noix de cajou, noix de coco, amandes, etc.)
+- Caractéristiques: Produits secs, longue conservation
+
+### 2. Les Feuilles
+- Description: Feuilles médicinales et aromatiques
+- Caractéristiques: Produits frais ou séchés
+
+### 3. Les Fruits
+- Description: Fruits naturels de saison
+- Caractéristiques: Produits frais, saisonniers
+
+### 4. Les Huiles
+- Description: Huiles végétales naturelles (huile de palme, huile de coco, etc.)
+- Caractéristiques: Produits liquides, conditionnés en bouteilles
+
+### 5. Les Céréales
+- Description: Céréales diverses (riz, mil, maïs, etc.)
+- Caractéristiques: Produits secs, conditionnés en sachets
+
+### 6. Les Racines
+- Description: Racines médicinales et comestibles
+- Caractéristiques: Produits frais ou séchés
+
+### 7. Les ![1764696742399](image/info-app/1764696742399.png)
+- Description: Produits cosmétiques naturels (savons, crèmes, baumes, etc.)
+- Caractéristiques: Produits transformés, conditionnés
+
+## Structure de la Base de Données
+
+### Table: `users` (Utilisateurs)
+- `id` (INT, PRIMARY KEY, AUTO_INCREMENT)
+- `nom` (VARCHAR)
+- `prenom` (VARCHAR)
+- `email` (VARCHAR, UNIQUE)
+- `telephone` (VARCHAR)
+- `password` (VARCHAR, hashé)
+- `date_creation` (DATETIME)
+- `statut` (ENUM: 'actif', 'inactif')
+
+### Table: `admin` (Administrateurs)
+- `id` (INT, PRIMARY KEY, AUTO_INCREMENT)
+- `nom` (VARCHAR)
+- `prenom` (VARCHAR)
+- `email` (VARCHAR, UNIQUE)
+- `password` (VARCHAR, hashé)
+- `date_creation` (DATETIME)
+- `derniere_connexion` (DATETIME, NULL)
+- `statut` (ENUM: 'actif', 'inactif')
+
+### Table: `categories` (Catégories)
+- `id` (INT, PRIMARY KEY, AUTO_INCREMENT)
+- `nom` (VARCHAR, UNIQUE)
+- `description` (TEXT)
+- `image` (VARCHAR)
+- `date_creation` (DATETIME)
+
+### Table: `produits` (Produits)
+- `id` (INT, PRIMARY KEY, AUTO_INCREMENT)
+- `nom` (VARCHAR)
+- `description` (TEXT)
+- `prix` (DECIMAL(10,2))
+- `prix_promotion` (DECIMAL(10,2), NULL)
+- `stock` (INT)
+- `categorie_id` (INT, FOREIGN KEY -> categories.id)
+- `image_principale` (VARCHAR)
+- `images` (TEXT, JSON ou séparées par virgule)
+- `poids` (VARCHAR, ex: "500g", "1kg")
+- `unite` (VARCHAR, ex: "kg", "g", "L", "unité")
+- `date_creation` (DATETIME)
+- `date_modification` (DATETIME)
+- `statut` (ENUM: 'actif', 'inactif', 'rupture_stock')
+
+### Table: `panier` (Panier)
+- `id` (INT, PRIMARY KEY, AUTO_INCREMENT)
+- `user_id` (INT, FOREIGN KEY -> users.id)
+- `produit_id` (INT, FOREIGN KEY -> produits.id)
+- `quantite` (INT)
+- `date_ajout` (DATETIME)
+
+### Table: `commandes` (Commandes)
+- `id` (INT, PRIMARY KEY, AUTO_INCREMENT)
+- `user_id` (INT, FOREIGN KEY -> users.id)
+- `numero_commande` (VARCHAR, UNIQUE)
+- `montant_total` (DECIMAL(10,2))
+- `adresse_livraison` (TEXT)
+- `telephone_livraison` (VARCHAR)
+- `statut` (ENUM: 'en_attente', 'confirmee', 'en_preparation', 'expediee', 'livree', 'annulee')
+- `date_commande` (DATETIME)
+- `date_livraison` (DATETIME, NULL)
+- `notes` (TEXT, NULL)
+
+### Table: `commande_produits` (Détails des commandes)
+- `id` (INT, PRIMARY KEY, AUTO_INCREMENT)
+- `commande_id` (INT, FOREIGN KEY -> commandes.id)
+- `produit_id` (INT, FOREIGN KEY -> produits.id)
+- `quantite` (INT)
+- `prix_unitaire` (DECIMAL(10,2))
+- `prix_total` (DECIMAL(10,2))
+
+## Espace Administrateur
+
+### Fonctionnalités Admin
+
+#### 1. Authentification
+- Page de connexion admin (`admin/login.php`)
+- Session admin sécurisée
+- Déconnexion
+
+#### 2. Tableau de Bord (`admin/dashboard.php`)
+- Statistiques générales:
+  - Nombre total de commandes
+  - Chiffre d'affaires du mois
+  - Nombre de clients
+  - Produits en rupture de stock
+  - Commandes en attente
+
+#### 3. Gestion des Produits (`admin/produits/`)
+- Liste des produits (`admin/produits/index.php`)
+- Ajouter un produit (`admin/produits/ajouter.php`)
+- Modifier un produit (`admin/produits/modifier.php?id=X`)
+- Supprimer un produit (avec confirmation)
+- Gestion des images (upload multiple)
+- Gestion du stock
+- Activation/Désactivation de produits
+
+#### 4. Gestion des Catégories (`admin/categories/`)
+- Liste des catégories (`admin/categories/index.php`)
+- Ajouter une catégorie (`admin/categories/ajouter.php`)
+- Modifier une catégorie (`admin/categories/modifier.php?id=X`)
+- Supprimer une catégorie (vérifier qu'aucun produit n'est associé)
+
+#### 5. Gestion des Commandes (`admin/commandes/`)
+- Liste des commandes (`admin/commandes/index.php`)
+- Détails d'une commande (`admin/commandes/details.php?id=X`)
+- Changer le statut d'une commande
+- Filtrer par statut
+- Exporter les commandes (optionnel)
+
+#### 6. Gestion des Utilisateurs (`admin/users/`)
+- Liste des utilisateurs (`admin/users/index.php`)
+- Détails d'un utilisateur (`admin/users/details.php?id=X`)
+- Activer/Désactiver un utilisateur
+- Voir l'historique des commandes d'un utilisateur
+
+#### 7. Paramètres (`admin/parametres.php`)
+- Informations de l'entreprise
+- Coordonnées de contact
+- Paramètres de livraison
+
+## Espace Client (Frontend)
+
+### Fonctionnalités Client
+
+#### 1. Page d'Accueil (`index.php`)
+- Slider/Carrousel de produits en vedette
+- Catégories principales
+- Produits populaires
+- Produits récents
+
+#### 2. Catalogue Produits (`produits.php`)
+- Liste de tous les produits
+- Filtrage par catégorie
+- Recherche de produits
+- Tri (prix, nom, date)
+- Pagination
+
+#### 3. Page Catégorie (`categorie.php?id=X`)
+- Liste des produits d'une catégorie
+- Filtres et tri
+
+#### 4. Page Produit (`produit.php?id=X`)
+- Détails du produit
+- Images multiples
+- Prix et promotion
+- Stock disponible
+- Description complète
+- Bouton "Ajouter au panier"
+- Produits similaires
+
+#### 5. Panier (`panier.php`)
+- Liste des produits dans le panier
+- Modifier les quantités
+- Supprimer un produit
+- Calcul du total
+- Bouton "Passer la commande"
+
+#### 6. Authentification Client
+- Inscription (`inscription.php`)
+  - Formulaire: nom, prénom, email, téléphone, mot de passe
+  - Validation côté serveur (PHP)
+  - Vérification email unique
+- Connexion (`connexion.php`)
+  - Formulaire: email, mot de passe
+  - Session utilisateur
+- Déconnexion (`deconnexion.php`)
+- Profil utilisateur (`mon-compte.php`)
+  - Voir/modifier les informations personnelles
+  - Historique des commandes
+
+#### 7. Commande (`commande.php`)
+- Récapitulatif du panier
+- Formulaire d'adresse de livraison
+- Validation de la commande
+- Génération d'un numéro de commande unique
+- Confirmation de commande (`commande-confirmee.php?id=X`)
+
+#### 8. Suivi de Commande (`suivi-commande.php`)
+- Voir le statut de sa commande
+- Historique des commandes
+
+## Système de Panier
+
+### Fonctionnement
+- Panier stocké en session PHP pour les utilisateurs non connectés
+- Panier stocké en base de données pour les utilisateurs connectés
+- Synchronisation session/BDD lors de la connexion
+- Gestion des quantités
+- Vérification du stock avant ajout
+- Calcul automatique des totaux
+
+### Actions Panier
+- Ajouter au panier (avec quantité)
+- Modifier la quantité
+- Supprimer un produit
+- Vider le panier
+- Vérifier le stock disponible
+
+## Processus de Commande
+
+### Étapes
+1. Client ajoute des produits au panier
+2. Client consulte son panier
+3. Client se connecte ou s'inscrit (si non connecté)
+4. Client valide la commande avec adresse de livraison
+5. Génération du numéro de commande
+6. Enregistrement en base de données
+7. Vidage du panier
+8. Email de confirmation (optionnel)
+9. Notification admin (optionnel)
+10. Suivi du statut par le client
+
+## Sécurité
+
+### Mesures de Sécurité
+- Hashage des mots de passe (password_hash avec PASSWORD_BCRYPT)
+- Protection CSRF (tokens sur les formulaires)
+- Validation et sanitization de toutes les entrées utilisateur
+- Préparation des requêtes SQL (PDO avec prepared statements)
+- Protection contre les injections SQL
+- Protection XSS (htmlspecialchars)
+- Vérification des permissions (table `admin` séparée de `users`)
+- Sessions sécurisées
+- Upload d'images sécurisé (vérification type, taille, renommage)
+
+## Structure des Fichiers
+
+```
+/
+├── index.php (Page d'accueil)
+├── produits.php (Catalogue)
+├── categorie.php (Page catégorie)
+├── produit.php (Détails produit)
+├── panier.php (Panier)
+├── inscription.php (Inscription)
+├── connexion.php (Connexion)
+├── deconnexion.php (Déconnexion)
+├── mon-compte.php (Profil client)
+├── commande.php (Passer commande)
+├── commande-confirmee.php (Confirmation)
+├── suivi-commande.php (Suivi)
+├── admin/
+│   ├── index.php (Redirection login)
+│   ├── login.php (Connexion admin)
+│   ├── logout.php (Déconnexion admin)
+│   ├── dashboard.php (Tableau de bord)
+│   ├── produits/
+│   │   ├── index.php
+│   │   ├── ajouter.php
+│   │   ├── modifier.php
+│   │   └── supprimer.php
+│   ├── categories/
+│   │   ├── index.php
+│   │   ├── ajouter.php
+│   │   ├── modifier.php
+│   │   └── supprimer.php
+│   ├── commandes/
+│   │   ├── index.php
+│   │   ├── details.php
+│   │   └── modifier-statut.php
+│   └── users/
+│       ├── index.php
+│       └── details.php
+├── config/
+│   ├── database.php (Connexion BDD)
+│   └── config.php (Configuration générale)
+├── includes/
+│   ├── header.php
+│   ├── footer.php
+│   ├── nav.php
+│   └── functions.php (Fonctions utilitaires)
+├── controller/
+│   ├── controller_panier.php
+│   ├── controller_auth.php
+│   ├── controller_produits.php
+│   ├── controller_commandes.php
+│   └── controller_admin.php
+├── upload/
+│   └── produits/ (Images produits)
+├── css/
+│   └── style.css
+├── js/
+│   └── main.js (Animations et interactions uniquement)
+└── .htaccess (Configuration Apache)
+
+```
+
+## Règles de Développement
+
+### PHP
+- **IMPORTANT**: Programmation procédurale uniquement (PAS de Programmation Orientée Objet)
+- Code PHP propre et structuré
+- Séparation des responsabilités avec des fonctions
+- Fonctions réutilisables dans `includes/functions.php`
+- Gestion d'erreurs appropriée
+- Pas de framework, PHP pur
+- Pas de classes, pas d'objets, uniquement des fonctions
+
+### JavaScript
+- **IMPORTANT**: JavaScript utilisé UNIQUEMENT pour:
+  - Animations (apparition, disparition d'éléments)
+  - Interactions UI (carrousels, modals, etc.)
+  - Amélioration de l'expérience utilisateur
+- **PAS de validation de formulaire en JS**
+- **PAS d'envoi de données via AJAX**
+- Toutes les validations et soumissions se font côté serveur (PHP)
+
+### Formulaires
+- Tous les formulaires utilisent l'attribut `action` pour soumettre vers PHP
+- Validation complète côté serveur (PHP)
+- Messages d'erreur clairs
+- Protection CSRF avec tokens
+
+### Base de Données
+- Utilisation de PDO
+- Requêtes préparées pour toutes les requêtes SQL
+- Gestion des transactions pour les commandes
+- Index sur les colonnes fréquemment utilisées
+
+### Design
+- Interface moderne et responsive
+- Utilisation des couleurs définies dans la section "Codes Couleurs"
+- UX intuitive
+- Mobile-first (responsive design)
+
+## Fonctionnalités Essentielles
+
+### Obligatoires
+1. ✅ Authentification (inscription/connexion)
+2. ✅ Gestion des produits (CRUD admin)
+3. ✅ Gestion des catégories (CRUD admin)
+4. ✅ Catalogue produits (frontend)
+5. ✅ Panier (ajout, modification, suppression)
+6. ✅ Commande (processus complet)
+7. ✅ Gestion des commandes (admin)
+8. ✅ Gestion des utilisateurs (admin)
+9. ✅ Profil utilisateur
+10. ✅ Suivi de commande
+
+### Optionnelles (à implémenter plus tard si besoin)
+- Système de paiement en ligne
+- Email de confirmation
+- Recherche avancée
+- Filtres multiples
+- Avis clients
+- Wishlist
+- Codes promo
+- Livraison multiple
+
+## Notes Importantes
+
+- **Simplicité**: Garder les fonctionnalités de base, ne pas surcharger
+- **Sécurité**: Toujours prioriser la sécurité dans le code
+- **Performance**: Optimiser les requêtes SQL, utiliser la pagination
+- **Maintenabilité**: Code propre, commenté, structuré
+- **Expérience utilisateur**: Interface intuitive et agréable

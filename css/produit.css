@@ -1,0 +1,176 @@
+.prod{
+    background-color: #313131;
+}
+
+.section{
+    height: auto;
+}
+
+.section .container2 .box-produit{
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.section .container2 .box-produit h1{
+    width: 80%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 20px;
+    border-bottom: 1.5px solid #6363632a;
+    color: #5c5c5c;
+}
+
+
+
+/* produit_vedete */
+
+
+.produit_vedete{
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    margin-top: 30px;
+ }
+ 
+ .produit_vedete h1{
+     margin-bottom: 25px;
+     text-transform: uppercase;
+     font-weight: 200;
+ }
+ 
+ .produit_vedete .box1{
+     display: flex;
+     align-items: center;
+     justify-content: center;
+ }
+ 
+ .produit_vedete .articles{
+     width: 80%;
+     display: flex;
+     justify-content: center;
+     align-items: center;
+     flex-wrap: wrap;
+ }
+ 
+ .produit_vedete .articles .carousel{
+     height: 300px;
+     width: 200px;
+     background-color: rgba(247, 247, 247, 0.499);
+     border-radius: 5px;
+     overflow: hidden;
+     border: 1px solid rgba(105, 103, 103, 0.257);
+     box-shadow: 7px 6px 10px -5px #00000093;
+     transition: all 0.5s ease-in-out;
+     position: relative;
+     margin: 20px ;
+ }
+ 
+ 
+ .produit_vedete .articles .carousel:hover{
+     transform: scale(1.05);
+ }
+ 
+ .produit_vedete .articles .carousel img{
+     height: 150px;
+     width: 100%;
+     object-fit: cover;
+     border-bottom: 1px solid rgba(148, 146, 146, 0.499);
+ }
+ 
+ .produit_vedete .articles .carousel #nom{
+     font-weight: 400;
+     overflow: hidden;
+     font-size: 17px;
+     width: 100%;
+     margin:10px;
+     padding-left:10px ;
+ }
+ .produit_vedete .articles .carousel #ville{
+     font-size: 13px;
+     color: #484848;
+     text-transform: capitalize;
+     width: 100%;
+     margin:10px;
+     padding-left:10px ;
+ }
+ .produit_vedete .articles .carousel .prix {
+     font-size: 13px;
+     width: 100%;
+     margin:10px;
+     padding-left:10px ;
+     font-family: Arial, Helvetica, sans-serif;
+ }
+ .produit_vedete .articles .carousel .prix .span1{
+     color: #e4144d;
+     font-size: 10px;
+ }
+ .produit_vedete .articles .carousel .prix .span2{
+     padding:0 2px;
+     background-color: #ededed;
+     color: #737373;
+     text-decoration: line-through;
+ }
+ .produit_vedete .articles .carousel .prix .span3{
+     padding:0 2px;
+     font-size: 11px;
+     background-color: #ff5029;
+     color: #ffffff;
+ }
+ 
+ .produit_vedete .articles .carousel a{
+     width: 200px;
+     padding: 5px 15px;
+     background-color: #000000;
+     color: white;
+     text-decoration: none;
+     font-size: 15px;
+     border-radius: 10px;
+     display: block;
+     margin-top:10px ;
+     transition: all 0.5s ease-in-out;
+     position: absolute;
+     bottom: 4px;
+     text-align: center;
+ }
+ .produit_vedete .articles .carousel a:hover{
+     background-color: #2C3E50;
+ }
+ 
+ 
+ .produit_vedete .box2{
+     width: 70%;
+     height: 50px;
+     display: flex;
+     align-items: center;
+     justify-content: space-between;
+     margin-bottom: 10px;
+ }
+ 
+ .produit_vedete .box2 span{
+     height: 40px;
+     width: 50px;
+     background-color: #2C3E50;
+     display: flex;
+     align-items: center;
+     justify-content: center;
+     border-radius: 7px;
+     transition: all 0.5s ease-in-out;
+ }
+ .produit_vedete .box2 p{
+     font-size: 20px;
+ }
+ .produit_vedete .box2 span:hover{
+     transform: scale(1.1);
+     background-color: #e4144d;
+ }
+ .produit_vedete .box2 span{
+     color: white;
+     font-size: 25px;
+ }
+
+

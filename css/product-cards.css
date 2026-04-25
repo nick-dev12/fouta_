@@ -1,0 +1,532 @@
+/**
+ * Styles pour les cartes de produits - Design moderne et professionnel
+ * Basé sur le design de l'image fournie
+ */
+
+/* Container : flex + space-around + wrap pour disposition automatique */
+.produits-container,
+.produit_vedete .articles,
+.produit_vedetes .articles,
+.carousel11 {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center !important;
+  align-items: flex-start !important;
+  width: 100%;
+  box-sizing: border-box;
+  gap: 10px;
+}
+
+/* Carte de produit - 320px par défaut */
+.produit_vedete .articles .carousel,
+.produit_vedetes .articles .carousel,
+.carousel11 .carousel {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 16px;
+  overflow: hidden;
+  width: 300px !important;
+  min-width: 160px !important;
+  max-width: 300px !important;
+  flex: 0 0 300px !important;
+  transition: all 0.3s ease;
+  box-shadow: var(--ombre-douce);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  margin: 0 4px;
+}
+
+/* À partir de 650px : cartes passent à 190px */
+@media (max-width: 649px) {
+  .carousel1-flex-mode .carousel,
+  .produit_vedete .articles .carousel,
+  .produit_vedetes .articles .carousel,
+  .carousel11 .carousel {
+    width: 190px !important;
+    max-width: 190px !important;
+    flex: 0 0 190px !important;
+  }
+}
+
+/* À partir de 500px : cartes passent à 170px (définitif) */
+@media (max-width: 499px) {
+  .carousel1-flex-mode .carousel,
+  .produit_vedete .articles .carousel,
+  .produit_vedetes .articles .carousel,
+  .carousel11 .carousel {
+    width: 160px !important;
+    max-width: 160px !important;
+  }
+}
+
+/* À partir de 350px : 1 seule carte par ligne (pleine largeur) */
+@media (max-width: 349px) {
+  .carousel1-flex-mode .carousel,
+  .produit_vedete .articles .carousel,
+  .produit_vedetes .articles .carousel,
+  .carousel11 .carousel {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}
+
+.produit_vedete .articles .carousel:hover,
+.produit_vedetes .articles .carousel:hover,
+.carousel11 .carousel:hover {
+  box-shadow: var(--ombre-gourmande);
+  transform: translateY(-6px);
+  border-color: rgba(53, 100, 166, 0.2);
+}
+
+/* Section image avec badge */
+.produit_vedete .articles .carousel .image-wrapper,
+.produit_vedetes .articles .carousel .image-wrapper,
+.carousel11 .carousel .image-wrapper {
+  position: relative;
+  width: 100%;
+  height: 200px !important;
+  overflow: hidden;
+  background: #f8f8f8;
+}
+
+.produit_vedete .articles .carousel img,
+.produit_vedetes .articles .carousel img,
+.carousel11 .carousel img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+/* Badge statut (ACTIF) - en haut à droite */
+.produit-card-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background-color: var(--couleur-dominante);
+  color: var(--texte-clair);
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  z-index: 10;
+  box-shadow: var(--ombre-douce);
+}
+
+/* Corps de la carte */
+.produit_vedete .articles .carousel .produit-content,
+.produit_vedetes .articles .carousel .produit-content,
+.carousel11 .carousel .produit-content {
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  gap: 10px;
+}
+
+/* Nom du produit */
+.produit_vedete .articles .carousel #nom,
+.produit_vedetes .articles .carousel #nom,
+.carousel11 .carousel #nom {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--titres);
+  margin: 0;
+  padding: 0;
+  line-height: 1.4;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Catégorie/Marque */
+.produit_vedete .articles .carousel #ville,
+.produit_vedetes .articles .carousel #ville,
+.carousel11 .carousel #ville {
+  font-size: 12px;
+  color: var(--couleur-dominante);
+  margin: 0;
+  padding: 0;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+/* Prix */
+.produit_vedete .articles .carousel .prix,
+.produit_vedetes .articles .carousel .prix,
+.carousel11 .carousel .prix {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--titres);
+  margin: 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.produit_vedete .articles .carousel .prix .span1,
+.produit_vedetes .articles .carousel .prix .span1,
+.carousel11 .carousel .prix .span1 {
+  font-size: 13px;
+  color: var(--texte-fonce);
+  font-weight: 400;
+}
+
+/* Prix original barré (promotion) */
+.produit_vedete .articles .carousel .prix .span2,
+.produit_vedetes .articles .carousel .prix .span2,
+.carousel11 .carousel .prix .span2 {
+  font-size: 14px;
+  color: var(--texte-fonce);
+  text-decoration: line-through;
+  font-weight: 400;
+}
+
+/* Prix promotionnel */
+.produit_vedete .articles .carousel .prix .prix-promo,
+.produit_vedetes .articles .carousel .prix .prix-promo,
+.carousel11 .carousel .prix .prix-promo {
+  font-size: 14px;
+  color: var(--accent-promo);
+  font-weight: 700;
+}
+
+/* Badge pourcentage promo */
+.produit_vedete .articles .carousel .prix .span3,
+.produit_vedetes .articles .carousel .prix .span3,
+.carousel11 .carousel .prix .span3 {
+  font-size: 12px;
+  background-color: var(--accent-promo);
+  color: #ffffff;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+/* Informations stock */
+.produit-card-stock-info {
+  font-size: 13px;
+  color: var(--texte-fonce);
+  margin: 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.produit-card-stock-info strong {
+  color: var(--couleur-dominante);
+  font-weight: 600;
+}
+
+/* Lien carte produit (image + contenu) - cliquable vers la page détail */
+/* Override style.css .carousel a qui applique position:absolute et masque le contenu */
+.produit_vedete .articles .carousel .product-card-link,
+.produit_vedetes .articles .carousel .product-card-link,
+.carousel11 .carousel .product-card-link,
+.produits-visites-grid .carousel .product-card-link {
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  cursor: pointer;
+  position: static !important;
+  width: 100% !important;
+  margin: 0 !important;
+  bottom: auto !important;
+  right: auto !important;
+  left: auto !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+  margin-top: 0 !important;
+  margin-left: 0 !important;
+}
+
+/* Bouton d'action - Ajouter au panier (formulaire) */
+.produit_vedete .articles .carousel .add-to-cart-form,
+.produit_vedetes .articles .carousel .add-to-cart-form,
+.carousel11 .carousel .add-to-cart-form,
+.produits-visites-grid .carousel .add-to-cart-form {
+  width: calc(100% - 36px);
+  margin: 0 18px 18px 18px;
+}
+
+.produit_vedete .articles .carousel .btn-add-cart,
+.produit_vedetes .articles .carousel .btn-add-cart,
+.carousel11 .carousel .btn-add-cart,
+.produits-visites-grid .carousel .btn-add-cart {
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--couleur-dominante);
+  border: 1px solid var(--couleur-dominante);
+  color: var(--texte-clair);
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 25px;
+  text-align: center;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  box-shadow: var(--ombre-douce);
+  font-family: inherit;
+}
+
+.produit_vedete .articles .carousel .btn-add-cart:hover,
+.produit_vedetes .articles .carousel .btn-add-cart:hover,
+.carousel11 .carousel .btn-add-cart:hover,
+.produits-visites-grid .carousel .btn-add-cart:hover {
+  background: var(--couleur-dominante-hover);
+  border-color: var(--couleur-dominante-hover);
+  transform: translateY(-2px);
+  box-shadow: var(--ombre-promo);
+}
+
+.produit_vedete .articles .carousel .btn-add-cart i,
+.produit_vedetes .articles .carousel .btn-add-cart i,
+.carousel11 .carousel .btn-add-cart i,
+.produits-visites-grid .carousel .btn-add-cart i {
+  font-size: 14px;
+}
+
+/* Responsive Design */
+@media (max-width: 1400px) {
+  .produits-container,
+  .produit_vedete .articles,
+  .produit_vedetes .articles,
+  .carousel11 {
+    gap: 25px;
+    padding: 20px;
+  }
+}
+
+@media (max-width: 1200px) {
+  .produits-container,
+  .produit_vedete .articles,
+  .produit_vedetes .articles,
+  .carousel11 {
+    gap: 20px;
+    padding: 5px;
+  }
+}
+
+@media (max-width: 768px) {
+  .produits-container,
+  .produit_vedete .articles,
+  .produit_vedetes .articles,
+  .carousel11 {
+    gap: 2px;
+  }
+}
+@media (max-width: 349px) {
+  .produits-container,
+  .produit_vedete .articles,
+  .produit_vedetes .articles,
+  .carousel11 {
+    gap: 5px;
+  }
+}
+
+/* Responsive mobile : réduire texte et boutons pour meilleure ergonomie */
+@media (max-width: 650px) {
+  .carousel1-flex-mode .carousel .produit-content,
+  .produit_vedete .articles .carousel .produit-content,
+  .produit_vedetes .articles .carousel .produit-content,
+  .carousel11 .carousel .produit-content {
+    gap: 6px;
+  }
+  .carousel1-flex-mode .carousel #nom,
+  .produit_vedete .articles .carousel #nom,
+  .produit_vedetes .articles .carousel #nom,
+  .carousel11 .carousel #nom {
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .carousel1-flex-mode .carousel #ville,
+  .produit_vedete .articles .carousel #ville,
+  .produit_vedetes .articles .carousel #ville,
+  .carousel11 .carousel #ville {
+    font-size: 11px;
+  }
+  .carousel1-flex-mode .carousel .prix,
+  .produit_vedete .articles .carousel .prix,
+  .produit_vedetes .articles .carousel .prix,
+  .carousel11 .carousel .prix {
+    font-size: 12px;
+  }
+  .carousel1-flex-mode .carousel .prix .span1,
+  .produit_vedete .articles .carousel .prix .span1,
+  .produit_vedetes .articles .carousel .prix .span1,
+  .carousel11 .carousel .prix .span1 {
+    font-size: 11px;
+  }
+  .carousel1-flex-mode .carousel .prix .span2,
+  .carousel1-flex-mode .carousel .prix .prix-promo,
+  .produit_vedete .articles .carousel .prix .span2,
+  .produit_vedetes .articles .carousel .prix .span2,
+  .carousel11 .carousel .prix .span2,
+  .produit_vedete .articles .carousel .prix .prix-promo,
+  .produit_vedetes .articles .carousel .prix .prix-promo,
+  .carousel11 .carousel .prix .prix-promo {
+    font-size: 12px;
+  }
+  .produit-card-stock-info {
+    font-size: 11px;
+  }
+  .carousel1-flex-mode .carousel .add-to-cart-form,
+  .produit_vedete .articles .carousel .add-to-cart-form,
+  .produit_vedetes .articles .carousel .add-to-cart-form,
+  .carousel11 .carousel .add-to-cart-form {
+    width: calc(100% - 24px);
+    margin: 0 12px 12px 12px;
+  }
+  .carousel1-flex-mode .carousel .btn-add-cart,
+  .produit_vedete .articles .carousel .btn-add-cart,
+  .produit_vedetes .articles .carousel .btn-add-cart,
+  .carousel11 .carousel .btn-add-cart {
+    padding: 8px 10px;
+    font-size: 11px;
+    border-radius: 20px;
+    gap: 6px;
+  }
+  .carousel1-flex-mode .carousel .btn-add-cart i,
+  .produit_vedete .articles .carousel .btn-add-cart i,
+  .produit_vedetes .articles .carousel .btn-add-cart i,
+  .carousel11 .carousel .btn-add-cart i {
+    font-size: 12px;
+  }
+  .carousel1-flex-mode .carousel .image-wrapper,
+  .produit_vedete .articles .carousel .image-wrapper,
+  .produit_vedetes .articles .carousel .image-wrapper,
+  .carousel11 .carousel .image-wrapper {
+    height: 150px !important;
+  }
+}
+
+/* Très petit écran : encore plus compact */
+@media (max-width: 400px) {
+  .carousel1-flex-mode .carousel .produit-content,
+  .produit_vedete .articles .carousel .produit-content,
+  .produit_vedetes .articles .carousel .produit-content,
+  .carousel11 .carousel .produit-content {
+    padding: 5px;
+    gap: 4px;
+  }
+  .carousel1-flex-mode .carousel #nom,
+  .produit_vedete .articles .carousel #nom,
+  .produit_vedetes .articles .carousel #nom,
+  .carousel11 .carousel #nom {
+    font-size: 12px;
+  }
+  .carousel1-flex-mode .carousel .btn-add-cart,
+  .produit_vedete .articles .carousel .btn-add-cart,
+  .produit_vedetes .articles .carousel .btn-add-cart,
+  .carousel11 .carousel .btn-add-cart {
+    padding: 6px 8px;
+    font-size: 10px;
+  }
+  .carousel1-flex-mode .carousel .image-wrapper,
+  .produit_vedete .articles .carousel .image-wrapper,
+  .produit_vedetes .articles .carousel .image-wrapper,
+  .carousel11 .carousel .image-wrapper {
+    height: 130px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .produits-container,
+  .produit_vedete .articles,
+  .produit_vedetes .articles,
+  .carousel11 {
+    gap: 5px;
+    padding: 4px;
+    justify-content: center;
+  }
+}
+
+/* Styles pour les sections de produits */
+.produit_vedete,
+.produit_vedetes {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex-direction: column;
+  margin-top: 30px;
+  padding: 0 5px;
+  box-sizing: border-box;
+}
+
+.produit_vedete .articles,
+.produit_vedetes .articles {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* Support pour les carrousels Owl Carousel */
+.owl-carousel .owl-stage {
+  display: flex;
+  align-items: flex-start;
+}
+
+.owl-carousel .owl-item {
+  display: flex;
+  justify-content: center;
+}
+
+/* Responsive pour les sections */
+@media (max-width: 1024px) {
+  .produit_vedete,
+  .produit_vedetes {
+    padding: 0 5px;
+  }
+}
+
+@media (max-width: 768px) {
+  .produit_vedete,
+  .produit_vedetes {
+    padding: 0 0px;
+  }
+
+  .produit_vedete .box1,
+  .produit_vedetes .box1 {
+    flex-wrap: wrap;
+    text-align: center;
+  }
+
+  .produit_vedete h1,
+  .produit_vedetes h1 {
+    font-size: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .produit_vedete,
+  .produit_vedetes {
+    padding: 0 0px;
+    margin-top: 20px;
+  }
+
+  .produit_vedete h1,
+  .produit_vedetes h1 {
+    font-size: 18px;
+  }
+}
+
+@media (max-width: 576px) {
+  .produits-container,
+  .produit_vedete .articles,
+  .produit_vedetes .articles,
+  .carousel11 {
+    padding: 12px 0px !important;
+  }
+}

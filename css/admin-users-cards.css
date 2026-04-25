@@ -1,0 +1,459 @@
+/**
+ * Redesign des cartes - Comptes & Utilisateurs
+ * Couleurs : variables.css (importée via admin-dashboard.css)
+ */
+
+/* ===== Header ===== */
+.page-comptes .content-header,
+.page-users .content-header {
+  margin-bottom: 24px;
+}
+
+.page-comptes .content-header .btn-primary,
+.page-users .content-header .btn-primary {
+  background: var(--couleur-dominante);
+  padding: 12px 24px;
+  border-radius: 10px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.page-comptes .content-header .btn-primary:hover,
+.page-users .content-header .btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--ombre-promo);
+}
+
+/* ===== Stats ===== */
+.page-comptes .users-stats,
+.page-users .users-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.page-comptes .stat-box,
+.page-users .stat-box {
+  background: var(--fond-principal);
+  padding: 24px;
+  border-radius: 16px;
+  box-shadow: var(--glass-shadow);
+  border: 1px solid var(--glass-border);
+  border-left: 4px solid var(--couleur-dominante);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.page-comptes .stat-box::before,
+.page-users .stat-box::before {
+  display: none;
+}
+
+.page-comptes .stat-box:hover,
+.page-users .stat-box:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--ombre-gourmande);
+}
+
+.page-comptes .stat-box h3,
+.page-users .stat-box h3 {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--titres);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.page-comptes .stat-box .stat-value,
+.page-users .stat-box .stat-value {
+  font-size: 36px;
+  font-weight: 700;
+  color: var(--couleur-dominante);
+  font-family: var(--font-titres);
+}
+
+/* ===== Grille des cartes ===== */
+.page-comptes .users-grid,
+.page-users .users-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 24px;
+  margin-top: 24px;
+}
+
+/* ===== Carte utilisateur / compte ===== */
+.page-comptes .user-card,
+.page-users .user-card {
+  background: var(--fond-principal);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: var(--glass-shadow);
+  border: 1px solid var(--glass-border);
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+}
+
+.page-comptes .user-card:hover,
+.page-users .user-card:hover {
+  box-shadow: var(--ombre-gourmande);
+  transform: translateY(-4px);
+  border-color: rgba(53, 100, 166, 0.28);
+}
+
+.page-comptes .user-card.inactive,
+.page-users .user-card.inactive {
+  opacity: 0.85;
+  background: linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%);
+}
+
+/* En-tête de carte - couleur dominante (rose) */
+.page-comptes .user-card .card-header-wrap,
+.page-users .user-card .card-header-wrap {
+  background: var(--couleur-dominante);
+  padding: 24px 20px;
+  color: var(--texte-clair);
+}
+
+/* Fiches employé : dégradé bleu (variables.css) */
+.page-comptes .user-card-employe .card-header-wrap {
+  background: linear-gradient(145deg, var(--bleu-fonce) 0%, var(--couleur-dominante) 50%, var(--bleu-clair) 100%);
+}
+
+.page-comptes .user-card .card-badges,
+.page-users .user-card .card-badges {
+  position: static;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.page-comptes .user-card .card-badges .user-statut,
+.page-users .user-card .card-badges .user-statut {
+  position: static;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.page-comptes .user-card .card-badges .user-statut.statut-actif,
+.page-users .user-card .card-badges .user-statut.statut-actif {
+  background: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+
+.page-comptes .user-card .card-badges .user-statut.statut-inactif,
+.page-users .user-card .card-badges .user-statut.statut-inactif {
+  background: rgba(0, 0, 0, 0.2);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.page-comptes .user-card .card-badges .role-badge,
+.page-users .user-card .card-badges .role-badge {
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.page-comptes .user-card .card-badges .role-badge.role-admin,
+.page-users .user-card .card-badges .role-badge.role-admin {
+  background: rgba(255, 255, 255, 0.3);
+  color: #ffffff;
+}
+
+.page-comptes .user-card .card-badges .role-badge.role-utilisateur,
+.page-users .user-card .card-badges .role-badge.role-utilisateur,
+.page-comptes .user-card .card-badges .role-badge.role-gestion_stock,
+.page-users .user-card .card-badges .role-badge.role-gestion_stock {
+  background: rgba(255, 107, 53, 0.45);
+  color: var(--texte-clair);
+}
+
+/* Users - badge statut dans le header (en haut à droite) */
+.page-users .user-card .card-header-wrap {
+  position: relative;
+}
+
+.page-users .user-card .card-header-wrap > .user-statut {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.page-users .user-card .card-header-wrap > .user-statut.statut-actif {
+  background: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+
+.page-users .user-card .card-header-wrap > .user-statut.statut-inactif {
+  background: rgba(0, 0, 0, 0.2);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* Avatar et infos */
+.page-comptes .user-card .user-header,
+.page-users .user-card .user-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.page-comptes .user-card .user-avatar,
+.page-users .user-card .user-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  color: #ffffff;
+  font-size: 22px;
+  font-weight: 700;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+}
+
+.page-comptes .user-card .user-name,
+.page-users .user-card .user-name {
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 4px;
+  font-family: var(--font-titres);
+}
+
+.page-comptes .user-card .user-email,
+.page-users .user-card .user-email {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.9);
+  word-break: break-word;
+}
+
+/* Corps de la carte */
+.page-comptes .user-card .card-body,
+.page-users .user-card .card-body {
+  padding: 20px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.page-comptes .user-card .user-details,
+.page-users .user-card .user-details {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 20px;
+  margin-bottom: 16px;
+}
+
+.page-comptes .user-card .user-details .detail-item,
+.page-users .user-card .user-details .detail-item {
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.page-comptes .user-card .user-details .detail-item label,
+.page-users .user-card .user-details .detail-item label {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--couleur-dominante);
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+
+.page-comptes .user-card .user-details .detail-item .value,
+.page-users .user-card .user-details .detail-item .value {
+  font-size: 14px;
+  color: var(--titres);
+}
+
+/* Stats mini (utilisateurs) */
+.page-users .user-card .user-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 0;
+  background: transparent;
+}
+
+.page-users .user-card .stat-item {
+  background: rgba(229, 72, 138, 0.06);
+  padding: 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(229, 72, 138, 0.15);
+  text-align: center;
+}
+
+.page-users .user-card .stat-item-label {
+  font-size: 11px;
+  color: var(--couleur-dominante);
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+
+.page-users .user-card .stat-item-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--titres);
+}
+
+/* Actions */
+.page-comptes .user-card .user-actions,
+.page-users .user-card .user-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.page-comptes .user-card .user-action-form,
+.page-users .user-card .user-action-form {
+  flex: 1;
+  min-width: 100px;
+}
+
+.page-comptes .user-card .user-action-form {
+  min-width: 90px;
+}
+
+.page-comptes .user-card .btn-action,
+.page-users .user-card .btn-action {
+  width: 100%;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.page-comptes .user-card .btn-activate,
+.page-users .user-card .btn-activate {
+  background: var(--boutons-secondaires);
+  color: var(--texte-clair);
+}
+
+.page-comptes .user-card .btn-activate:hover,
+.page-users .user-card .btn-activate:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(53, 100, 166, 0.4);
+}
+
+.page-comptes .user-card .btn-deactivate,
+.page-users .user-card .btn-deactivate {
+  background: var(--couleur-dominante);
+  color: var(--texte-clair);
+}
+
+.page-comptes .user-card .btn-deactivate:hover,
+.page-users .user-card .btn-deactivate:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--ombre-promo);
+}
+
+.page-comptes .user-card .btn-role {
+  background: var(--accent-promo);
+  color: var(--texte-clair);
+}
+
+.page-comptes .user-card .btn-role:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(255, 107, 53, 0.4);
+}
+
+.page-comptes .user-card .btn-self {
+  background: var(--bleu-pale);
+  color: var(--titres);
+  cursor: default;
+  opacity: 0.9;
+}
+
+/* Section title */
+.page-comptes .section-title,
+.page-users .section-title {
+  margin-bottom: 8px;
+}
+
+.page-comptes .section-title h2,
+.page-users .section-title h2 {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--titres);
+}
+
+.page-comptes .section-subtitle,
+.page-users .section-subtitle {
+  font-size: 13px;
+  color: var(--couleur-dominante);
+  margin-top: 4px;
+}
+
+/* Empty state */
+.page-comptes .empty-state,
+.page-users .empty-state {
+  padding: 60px 30px;
+  text-align: center;
+  background: var(--glass-bg);
+  border-radius: 16px;
+  border: 2px dashed rgba(53, 100, 166, 0.28);
+}
+
+.page-comptes .empty-state i,
+.page-users .empty-state i {
+  font-size: 48px;
+  color: var(--couleur-dominante);
+  margin-bottom: 16px;
+  opacity: 0.6;
+}
+
+.page-comptes .hub-section-title {
+  border-bottom-color: rgba(53, 100, 166, 0.28) !important;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .page-comptes .users-grid,
+  .page-users .users-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .page-comptes .user-card .user-details,
+  .page-users .user-card .user-details {
+    grid-template-columns: 1fr;
+  }
+
+  .page-comptes .user-card .user-actions,
+  .page-users .user-card .user-actions {
+    flex-direction: column;
+  }
+
+  .page-comptes .user-card .user-action-form,
+  .page-users .user-card .user-action-form {
+    min-width: 100%;
+  }
+}

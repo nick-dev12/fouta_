@@ -1,0 +1,213 @@
+*{
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    text-decoration: none;
+    list-style: none;
+}
+
+body{
+}
+.boutique{
+    background-color: #1f1f1f;
+    color: #ededed;
+    display: flex;
+    align-items: center;
+    padding: 7px 10px;
+}
+.boutique img{
+    width: 25px;
+    height: 25px;
+    margin-right: 10px;
+}
+.section {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    overflow: auto;
+}
+.section .container1{
+    width: 280px;
+    height: 150vh;
+    background-color: #636363;
+    padding: 20px 30px;
+    position: static;
+}
+.section .container1 h4{
+    font-size: 18px;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+}
+.section .container1 h4 img{
+    height: 30px;
+    width: 30px;
+}
+.section .container1 .box {
+    margin-top:10px ;
+}
+.section .container1 .box a{
+    color: #ededed;
+    font-size: 14px;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+}
+.section .container1 .box a img{
+    width: 15px;
+    height: 15px;
+    margin-left: 10px;
+}
+.section .container1 .box a .panier{
+    width: 25px;
+    height: 25px;
+}
+.section .container1 .box a .img{
+    width: 25px;
+    height: 25px;
+    margin-right: 6px;
+    margin-left: 0px;
+}
+.section .container1 .box .item{
+    display: flex;
+    align-items: left;
+    flex-direction: column;
+    padding: 10px 10px;
+}
+.section .container1 .box .item a{
+    border-bottom: 1px solid #ededed48;
+    padding: 7px 0px;
+    font-size: 12px;
+    margin-left: 10px;
+}
+.section .container1 .box .item a:hover{
+    background-color: #1c1c1c6f;
+}
+
+
+
+
+
+.section .container2{
+    width: 100%;
+    height: 150vh;
+}
+.infos{
+    display: flex ;
+    align-items: center;
+    justify-content: space-around;
+    width: 100%;
+    margin-bottom: 50px;
+    height: 250px;
+    background-color: #fdfdfd;
+    border: 1px solid #5d5d5d67;
+    box-shadow: 7px 7px 5px 1px #5d5d5d71;
+
+}
+.infos .box1{
+    display: flex;
+    align-items: center;
+    width: 300px;
+}
+.infos .box1 img{
+    width: 200px;
+    height: 200px;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 1px solid #5d5d5d4e;
+}
+.infos .box1 .span1{
+    width: 10px;
+    height: 200px;
+    border: 2px solid #04f600;
+    background-color: #04f600;
+    transform: rotate(20deg);
+    margin-left: 30px;
+}
+.infos .box1 .span3{
+    width: 10px;
+    height: 200px;
+    border: 2px solid #007BF6;
+    background-color: #007BF6;
+    transform: rotate(20deg);
+    margin-left: 10px;
+}
+.infos .box1 .span2{
+    width: 10px;
+    height: 200px;
+    border: 2px solid #fffb0e;
+    transform: rotate(20deg);
+    margin-left: 10px;
+    background-color: #fffb0c;
+}
+.infos .box2{
+    width: 250px;
+}
+.infos .box2 p{
+    font-size: 30px;
+    font-style: italic;
+    width: 250px;
+}
+.infos .box3{
+    width: 350px;
+}
+.infos .box3 p{
+    font-size: 16px;
+    width: 350px;
+    line-height: 25px;
+}
+
+.section .container2 .container-box{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.section .container2 .container-box .box{
+    height: 200px;
+    width: 350px;
+    border-radius: 15px;
+    border:1px solid #9f9f9f3d;
+    background: linear-gradient(90deg, #FE6387 0, #F4F60C 100%);
+    margin: 20px;
+    box-shadow: 7px 7px 7px 2px #6363638a;
+    overflow: hidden;
+}
+.section .container2 .container-box .box3{
+    background: linear-gradient(90deg, #09FF00 0, #EEFF00 100%);
+}
+.section .container2 .container-box .box2{
+    background: linear-gradient(90deg, #F3ECFE 0, #007BF6 100%);
+}
+
+.section .container2 .container-box .box h5{
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 5px 20px;
+    border-bottom: 1px solid #6363632a;
+    margin-top: 10px;
+    color: #ededed;
+}
+.section .container2 .container-box .box ul li{
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 5px 20px;
+    margin-top: 10px;
+    color: #ededed;
+}
+.section .container2 .container-box .box3 h5, ul li{
+   color: #353535be;
+}
+.section .container2 .container-box .box3 ul li{
+    color: #292929be;
+ }
+ .section .container2 .container-box .box2 h5, ul li{
+    color: #5d5d5d;
+ }
+ .section .container2 .container-box .box2 ul li{
+    color: #5d5d5d;
+  }

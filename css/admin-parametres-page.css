@@ -1,0 +1,263 @@
+/**
+ * Page admin Paramètres (parametres.php) — cartes, icônes en couleur
+ */
+
+.page-parametres-admin .parametres-page {
+  max-width: 1100px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* En-tête */
+.page-parametres-admin .parametres-hero {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.15rem;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.page-parametres-admin .parametres-hero__eyebrow {
+  margin: 0 0 0.4rem;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--couleur-dominante);
+}
+
+.page-parametres-admin .parametres-hero__title {
+  margin: 0 0 0.5rem;
+  font-size: clamp(1.35rem, 2.2vw, 1.75rem);
+  font-weight: 700;
+  font-family: var(--font-titres);
+  color: var(--titres);
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  line-height: 1.2;
+}
+
+.page-parametres-admin .parametres-hero__title i {
+  color: var(--couleur-dominante);
+  opacity: 0.95;
+  font-size: 0.95em;
+}
+
+.page-parametres-admin .parametres-hero__lead {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  color: var(--texte-mute, var(--gris-moyen));
+  max-width: 40rem;
+}
+
+.page-parametres-admin .parametres-page .message.success {
+  border-radius: 12px;
+  margin-bottom: 1.25rem;
+}
+
+/* Grille */
+.page-parametres-admin .parametres-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1.15rem;
+  margin-top: 0.5rem;
+  list-style: none;
+  padding: 0;
+}
+
+/* Carte */
+.page-parametres-admin .parametre-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 11rem;
+  padding: 0;
+  margin: 0;
+  background: var(--fond-principal);
+  border: 1px solid var(--border-input);
+  border-radius: 16px;
+  box-shadow: 0 2px 12px rgba(53, 100, 166, 0.08);
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.page-parametres-admin .parametre-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 28px rgba(53, 100, 166, 0.14);
+  border-color: rgba(53, 100, 166, 0.28);
+}
+
+/* Bandeau couleur en haut (identité visuelle) */
+.page-parametres-admin .parametre-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 3px;
+  background: var(--param-accent, var(--couleur-dominante));
+  opacity: 0.9;
+}
+
+.page-parametres-admin .parametre-card--banner {
+  --param-accent: #3564a6;
+  --param-icon-bg: rgba(53, 100, 166, 0.14);
+  --param-icon-fg: #2d5690;
+  --param-btn-bg: rgba(53, 100, 166, 0.1);
+  --param-btn-border: rgba(53, 100, 166, 0.35);
+  --param-btn-text: #1a3d6b;
+  --param-btn-hover: rgba(53, 100, 166, 0.18);
+}
+
+.page-parametres-admin .parametre-card--affiche {
+  --param-accent: #ff6b35;
+  --param-icon-bg: rgba(255, 107, 53, 0.16);
+  --param-icon-fg: #c2410c;
+  --param-btn-bg: rgba(255, 107, 53, 0.1);
+  --param-btn-border: rgba(255, 107, 53, 0.4);
+  --param-btn-text: #8b2500;
+  --param-btn-hover: rgba(255, 107, 53, 0.2);
+}
+
+.page-parametres-admin .parametre-card--videos {
+  --param-accent: #5e35b1;
+  --param-icon-bg: rgba(94, 53, 177, 0.12);
+  --param-icon-fg: #4527a0;
+  --param-btn-bg: rgba(94, 53, 177, 0.08);
+  --param-btn-border: rgba(94, 53, 177, 0.32);
+  --param-btn-text: #311b92;
+  --param-btn-hover: rgba(94, 53, 177, 0.16);
+}
+
+.page-parametres-admin .parametre-card--logos {
+  --param-accent: #00897b;
+  --param-icon-bg: rgba(0, 137, 123, 0.12);
+  --param-icon-fg: #00695c;
+  --param-btn-bg: rgba(0, 137, 123, 0.08);
+  --param-btn-border: rgba(0, 137, 123, 0.32);
+  --param-btn-text: #004d40;
+  --param-btn-hover: rgba(0, 137, 123, 0.16);
+}
+
+.page-parametres-admin .parametre-card__body {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 1.15rem 1.2rem 1rem;
+  gap: 0.9rem;
+}
+
+.page-parametres-admin .parametre-card__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.9rem;
+  width: 100%;
+}
+
+.page-parametres-admin .parametre-icon {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  margin: 0;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+  background: var(--param-icon-bg);
+  color: var(--param-icon-fg);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.page-parametres-admin .parametre-card:hover .parametre-icon {
+  transform: scale(1.04);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.page-parametres-admin .parametre-title {
+  margin: 0;
+  padding: 0.2rem 0 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  font-family: var(--font-titres);
+  color: var(--titres);
+  line-height: 1.3;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Lien d’action */
+.page-parametres-admin .parametre-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  margin-top: auto;
+  margin-bottom: 0;
+  padding: 0.65rem 0.9rem;
+  text-decoration: none;
+  font-size: 0.86rem;
+  font-weight: 700;
+  border-radius: 10px;
+  border: 1px solid var(--param-btn-border);
+  background: var(--param-btn-bg);
+  color: var(--param-btn-text);
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+}
+
+.page-parametres-admin .parametre-link i.parametre-link__chev {
+  font-size: 0.75rem;
+  opacity: 0.75;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.page-parametres-admin .parametre-link:hover {
+  background: var(--param-btn-hover);
+  color: var(--param-btn-text);
+  transform: none;
+  box-shadow: none;
+  border-color: var(--param-accent);
+}
+
+.page-parametres-admin .parametre-link:hover i.parametre-link__chev {
+  transform: translateX(3px);
+  opacity: 1;
+}
+
+.page-parametres-admin .parametre-link:focus {
+  outline: none;
+}
+
+.page-parametres-admin .parametre-link:focus-visible {
+  outline: 2px solid var(--param-accent);
+  outline-offset: 2px;
+}
+
+.page-parametres-admin .parametre-link__txt {
+  flex: 1 1 auto;
+  text-align: left;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.page-parametres-admin .parametre-link__txt i {
+  font-size: 0.82rem;
+  opacity: 0.88;
+}
+
+@media (max-width: 768px) {
+  .page-parametres-admin .parametres-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .produits-section.parametres-page {
+    padding: 1.1rem 0.9rem 1.25rem;
+  }
+}

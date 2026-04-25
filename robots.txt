@@ -1,0 +1,24 @@
+# Robots.txt pour FOUTA POIDS LOURDS - Pièces poids lourds
+# https://www.robotstxt.org/
+
+User-agent: *
+Allow: /
+
+# Pages à ne pas indexer (espace utilisateur, admin, panier, commande)
+Disallow: /user/
+Disallow: /admin/
+Disallow: /panier.php
+Disallow: /commande.php
+Disallow: /add-to-panier.php
+
+# Autoriser les pages publiques importantes
+Allow: /index.php
+Allow: /produits.php
+Allow: /produit.php
+Allow: /categorie.php
+Allow: /contact.php
+Allow: /nouveautes.php
+Allow: /promo.php
+
+# Sitemap - Remplacer VOTRE_DOMAINE par votre URL (ex: https://sugar-paper.com)
+# Sitemap: https://sugar-paper.com/sitemap.php

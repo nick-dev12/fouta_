@@ -1,0 +1,85 @@
+================================================================================
+  ARCHITECTURE ESPACE ADMIN — COMMERCIAL / COMPTABILITÉ / RH
+  FOUTA POIDS LOURDS — Document de référence (v1)
+================================================================================
+
+1. ORGANISATION DES RÔLES (table admin.role)
+--------------------------------------------------------------------------------
+  - admin          : accès complet (configuration, comptes admin, tout le reste)
+  - utilisateur    : rôle historique (équivalent restreint, inchangé)
+  - commercial     : devis, BL, clients B2B ; pas la compta ni les dépenses sensibles
+  - comptabilite   : BL validés, factures mensuelles HT, dépenses ; pas gestion catalogue
+  - rh             : ressources humaines (travailleurs, plannings futurs) — module évolutif
+
+  Règle : un compte = un rôle principal. Les admins peuvent cumuler via rôle "admin".
+
+
+2. ARBORESCENCE FICHIERS PROPOSÉE (sous admin/)
+--------------------------------------------------------------------------------
+  commercial/
+    index.php           — tableau de bord commercial
+    devis/              — lien ou réutilisation de admin/devis/ (existant)
+    bl/                 — liste, création, édition BL (bons de livraison)
+    clients-b2b/        — fiches clients professionnels (optionnel si tout est dans BL)
+
+  comptabilite/
+    index.php           — tableau de bord compta
+    bl/                 — vue tous BL validés, filtres client / mois, regroupement
+    factures-mensuelles/ — génération, brouillon, validée, payée (SANS TVA)
+    depenses/           — dépenses sans TVA + dépenses avec TVA (module séparé des ventes)
+
+  rh/
+    index.php
+    employes/           — à développer (fiches, contrats, absences…)
+
+  includes/
+    admin_permissions.php — fonctions require_role(), can_access_commercial(), etc.
+
+
+3. MODÈLE DE DONNÉES (résumé)
+--------------------------------------------------------------------------------
+  clients_b2b
+    Client « métier » pour BL et factures (indépendant du compte web users si besoin).
+
+  bons_livraison + bl_lignes
+    Montants uniquement HT. Statuts : brouillon | valide
+    valide = envoyé / visible par la comptabilité (équivalent « envoyé à la comptabilité »).
+    Plusieurs BL par client et par mois autorisés.
+    Lien optionnel devis_id / converti_bl_id sur devis pour traçabilité conversion devis → BL.
+
+  factures_mensuelles
+    Une ligne par (client_b2b + année + mois) — contrainte UNIQUE.
+    Total HT = somme des BL rattachés. Aucun champ TVA.
+    Statuts : brouillon | validee | payee
+
+  facture_mensuelle_bl
+    Table de liaison : plusieurs BL → une facture. UNIQUE(bl_id) : un BL ne peut être
+    facturé qu’une seule fois.
+
+  depenses + categories_depenses
+    Dépenses hors ventes. Type sans_tva ou avec_tva (TVA uniquement ici, pas sur BL/factures).
+
+  produits (colonnes ajoutées)
+    identifiant_interne UNIQUE (FPL + 6 chiffres)
+    etage, numero_rayon — emplacement entrepôt / magasin
+
+
+4. RÈGLES MÉTIER CRITIQUES
+--------------------------------------------------------------------------------
+  - Aucune TVA sur BL ni sur factures mensuelles (affichage et stockage HT uniquement).
+  - Une seule facture mensuelle par client et par mois calendaire.
+  - Un BL validé ne peut être inclus que dans une seule facture ; pas de double facturation.
+  - Seuls les BL au statut « valide » sont éligibles à la facturation mensuelle.
+  - Les dépenses gèrent la TVA dans un module séparé.
+
+
+5. ÉTAPES DE DÉVELOPPEMENT RECOMMANDÉES
+--------------------------------------------------------------------------------
+  Phase A — Fait : migration SQL + permissions + squelettes + identifiant FPL + emplacement.
+  Phase B — CRUD clients_b2b + BL + lignes (commercial).
+  Phase C — Liste / filtres compta + génération facture mensuelle (agrégation BL).
+  Phase D — Module dépenses (formulaires + listes + catégories).
+  Phase E — Conversion devis → BL (préremplissage depuis devis existant).
+  Phase F — RH (comptes + fiches employés selon besoins métier).
+
+================================================================================

@@ -1,0 +1,85 @@
+---
+alwaysApply: true
+---
+/**
+ * Palette - Bleu et Blanc
+ * Couleurs principales du site
+ * #3564a6 (bleu principal) | #FFFFFF (blanc)
+ */
+
+:root {
+  /* Couleurs de base */
+  --bleu-principal: #3564a6;
+  --bleu-principal-hover: #2d5690;
+  --blanc: #FFFFFF;
+  --noir: #0D0D0D;
+  --orange: #FF6B35;
+
+  /* Nuances dérivées */
+  --noir-doux: #1a1a1a;
+  --noir-clair: #2d2d2d;
+  --gris-fonce: #4a4a4a;
+  --gris-moyen: #737373;
+  --gris-clair: #a3a3a3;
+  --blanc-casse: #FAFAFA;
+  --blanc-neige: #F5F5F5;
+
+  --orange-clair: #FF8F65;
+  --orange-fonce: #E85A2A;
+  --orange-pale: rgba(255, 107, 53, 0.12);
+
+  --bleu: #3564a6;
+  --bleu-clair: #4a7ab8;
+  --bleu-fonce: #2d5690;
+  --bleu-pale: rgba(53, 100, 166, 0.12);
+
+  /* Textes */
+  --texte-fonce: #0D0D0D;
+  --texte-clair: #FFFFFF;
+  /* Texte secondaire (labels, onglets inactifs) — aligné sur la grille grise */
+  --texte-mute: var(--gris-moyen);
+
+  /* Rôles sémantiques - Bleu comme couleur dominante */
+  --fond-principal: #FFFFFF;
+  --fond-secondaire: #FAFAFA;
+  --couleur-dominante: #3564a6;
+  --couleur-dominante-hover: #2d5690;
+  --boutons-secondaires: #3564a6;
+  --boutons-secondaires-hover: #2d5690;
+  --accent-promo: #FF6B35;
+  --titres: #0D0D0D;
+
+  /* Rétrocompatibilité */
+  --rose: var(--couleur-dominante);
+  --jaune-wilton: var(--orange);
+  --beige-creme: var(--blanc);
+  --turquoise: var(--bleu-clair);
+
+  /* Glassmorphisme */
+  --glass-bg: #FFFFFF;
+  --glass-border: rgba(0, 0, 0, 0.08);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+
+  /* Ombres - bleu harmonisé */
+  --ombre-douce: 0 4px 20px rgba(53, 100, 166, 0.12);
+  --ombre-promo: 0 4px 15px rgba(53, 100, 166, 0.25);
+  --ombre-gourmande: 0 8px 30px rgba(53, 100, 166, 0.15);
+
+  /* États - succès et erreur */
+  --success-bg: rgba(53, 100, 166, 0.12);
+  --success-border: var(--bleu);
+  --error-bg: rgba(255, 107, 53, 0.12);
+  --error-border: var(--orange);
+  --border-input: rgba(53, 100, 166, 0.2);
+  --border-input-focus: var(--couleur-dominante);
+  --focus-ring: rgba(53, 100, 166, 0.15);
+
+  /* Variantes pour fonds et accents */
+  --noir-pale: rgba(13, 13, 13, 0.08);
+
+  /* Typographie */
+  --font-titres: 'Playfair Display', serif;
+  --font-corps: 'Quicksand', 'Nunito', sans-serif;
+}
+
+

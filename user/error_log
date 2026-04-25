@@ -1,0 +1,50 @@
+[13-Mar-2026 00:43:00 Europe/Paris] PHP Fatal error:  Uncaught RuntimeException: Composer detected issues in your platform: Your Composer dependencies require a PHP version ">= 8.2.0". You are running 8.1.33. in /home/c2605417c/public_html/e-FPL/vendor/composer/platform_check.php:22
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/vendor/composer/autoload_real.php(25): require()
+#1 /home/c2605417c/public_html/e-FPL/vendor/autoload.php(22): ComposerAutoloaderInit69954a7e045b163fad9a6fc4d4db33ac::getLoader()
+#2 /home/c2605417c/public_html/e-FPL/controllers/controller_users.php(9): require_once('/home/c2605417c...')
+#3 /home/c2605417c/public_html/e-FPL/user/connexion.php(30): require_once('/home/c2605417c...')
+#4 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/vendor/composer/platform_check.php on line 22
+[13-Mar-2026 00:52:36 Europe/Paris] PHP Fatal error:  Uncaught RuntimeException: Composer detected issues in your platform: Your Composer dependencies require a PHP version ">= 8.2.0". You are running 8.1.33. in /home/c2605417c/public_html/e-FPL/vendor/composer/platform_check.php:22
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/vendor/composer/autoload_real.php(25): require()
+#1 /home/c2605417c/public_html/e-FPL/vendor/autoload.php(22): ComposerAutoloaderInit69954a7e045b163fad9a6fc4d4db33ac::getLoader()
+#2 /home/c2605417c/public_html/e-FPL/controllers/controller_users.php(9): require_once('/home/c2605417c...')
+#3 /home/c2605417c/public_html/e-FPL/user/connexion.php(30): require_once('/home/c2605417c...')
+#4 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/vendor/composer/platform_check.php on line 22
+[13-Mar-2026 00:59:43 Europe/Paris] PHP Fatal error:  Uncaught RuntimeException: Composer detected issues in your platform: Your Composer dependencies require a PHP version ">= 8.2.0". You are running 8.1.33. in /home/c2605417c/public_html/e-FPL/vendor/composer/platform_check.php:22
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/vendor/composer/autoload_real.php(25): require()
+#1 /home/c2605417c/public_html/e-FPL/vendor/autoload.php(22): ComposerAutoloaderInit69954a7e045b163fad9a6fc4d4db33ac::getLoader()
+#2 /home/c2605417c/public_html/e-FPL/controllers/controller_users.php(9): require_once('/home/c2605417c...')
+#3 /home/c2605417c/public_html/e-FPL/user/connexion.php(30): require_once('/home/c2605417c...')
+#4 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/vendor/composer/platform_check.php on line 22
+[13-Mar-2026 01:01:35 Europe/Paris] PHP Fatal error:  Uncaught RuntimeException: Composer detected issues in your platform: Your Composer dependencies require a PHP version ">= 8.2.0". You are running 8.1.33. in /home/c2605417c/public_html/e-FPL/vendor/composer/platform_check.php:22
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/vendor/composer/autoload_real.php(25): require()
+#1 /home/c2605417c/public_html/e-FPL/vendor/autoload.php(22): ComposerAutoloaderInit69954a7e045b163fad9a6fc4d4db33ac::getLoader()
+#2 /home/c2605417c/public_html/e-FPL/controllers/controller_users.php(9): require_once('/home/c2605417c...')
+#3 /home/c2605417c/public_html/e-FPL/user/connexion.php(30): require_once('/home/c2605417c...')
+#4 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/vendor/composer/platform_check.php on line 22
+[01-Apr-2026 15:16:49 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 15:16:49 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/user/mon-compte.php(191): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 15:16:55 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 15:16:55 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/user/mon-compte.php(191): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 15:18:41 Europe/Paris] PHP Warning:  require(/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6
+[01-Apr-2026 15:18:41 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/includes/../config/firebase_config.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php:6
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/user/mon-compte.php(191): require_once()
+#1 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/includes/firebase_init.php on line 6

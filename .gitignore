@@ -1,0 +1,45 @@
+# Fichiers sensibles - NE JAMAIS committer
+# Clés privées Firebase (service account)
+sugar-paper-*.json
+*-firebase-adminsdk-*.json
+*firebase*credentials*.json
+
+# Configuration base de données (identifiants)
+conn/conn.php
+
+# Configuration API (clés secrètes)
+config/emailjs.php
+config/email.php
+config/site.php
+config/firebase_config.php
+config/firebase_server.php
+
+# Variables d'environnement
+.env
+.env.*
+!.env.example
+
+# Uploads utilisateurs
+upload/
+uploads/
+
+# Logs et cache
+*.log
+logs/
+cache/
+tmp/
+temp/
+
+# IDE et éditeurs
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Système d'exploitation
+.DS_Store
+Thumbs.db
+desktop.ini
+
+

@@ -1,0 +1,76 @@
+/**
+ * Boutons réseaux sociaux flottants - position fixe bas à droite
+ */
+
+.social-floating {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.social-floating-btn {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff !important;
+    text-decoration: none !important;
+    font-size: 24px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.social-floating-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+.social-floating-btn:active {
+    transform: scale(0.98);
+}
+
+/* WhatsApp - vert */
+.social-whatsapp {
+    background: #25D366;
+}
+
+.social-whatsapp:hover {
+    background: #20bd5a;
+}
+
+/* Instagram - dégradé */
+.social-instagram {
+    background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+}
+
+.social-instagram:hover {
+    background: linear-gradient(45deg, #f5a042 0%, #e87a4a 25%, #e02d4d 50%, #d02a6e 75%, #c01d96 100%);
+}
+
+/* Facebook - bleu */
+.social-facebook {
+    background: #1877F2;
+}
+
+.social-facebook:hover {
+    background: #166fe5;
+}
+
+@media (max-width: 600px) {
+    .social-floating {
+        bottom: 16px;
+        right: 16px;
+    }
+
+    .social-floating-btn {
+        width: 46px;
+        height: 46px;
+        font-size: 20px;
+    }
+}

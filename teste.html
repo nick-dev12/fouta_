@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        form {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: 400px;
+        }
+
+        form label {
+            display: block;
+            margin-bottom: 8px;
+            color: #868484;
+        }
+
+        form select {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 16px;
+            box-sizing: border-box;
+            color: #868484;
+            border-radius: 10px;
+            border: 1.5px solid ;
+            outline: none;
+            transition: all 0.3s;
+        }
+        form input {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 14px;
+            box-sizing: border-box;
+            color: #868484;
+            border-radius: 7px;
+            border: 1.5px solid #868484;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        form input:hover {
+            border:1.5px solid #e4144d;
+            box-shadow: 0 0 1px 0px #e4144d;
+        }
+        form select:hover {
+            border: 1.5px solid #e4144d;
+            box-shadow: 0 0 1px 0px #e4144d;
+        }
+
+        form button {
+            background-color: #e4144d;
+            color: #fff;
+            padding: 10px;
+            border: none;
+            border-radius: 7px;
+            cursor: pointer;
+        }
+        form  textarea{
+            width: 80%;
+            height: 150px;
+            display: block;
+            border-radius: 10px;
+            border: 1.5px solid #868484;
+            padding: 20px;
+            font-size: 15px;
+        }
+        form button:hover {
+            background-color: #45a049;
+        }
+
+
+
+        /* Ajoutez ces styles à la section <style> de votre code */
+
+            form input[type="file"] {
+            display: none;
+            /* Masque le champ de fichier par défaut */
+        }
+
+        form .label-file {
+            background-color: #4caf50;
+            color: #fff;
+            padding: 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: inline-block;
+        }
+
+        form .label-file:hover {
+            background-color: #45a049;
+        }
+
+        /* Style pour afficher le nom du fichier sélectionné */
+        form #productImageLabel {
+            margin-top: 10px;
+            display: block;
+        }
+
+
+
+        #imagePreviewContainer {
+            display: block;
+        }
+
+        #imagePreviewContainer img {
+            width: 150px;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 7px;
+        }
+
+        #productImageLabel {
+            font-size: 13px;
+            color: #606060;
+        }
+    </style>
+</head>
+
+<body>
+    <form>
+        <div>
+            <label for="productName">Nom du Produit :</label>
+            <input type="text" id="productName" name="productName" required>
+        </div>
+
+        <div>
+            <label for="category">Catégorie :</label>
+            <select id="category" name="category" required>
+                <option value="Électronique">Électronique</option>
+                <option value="Vêtements">Vêtements</option>
+                <option value="Livres">Livres</option>
+                <option value="Électroménagers">Électroménagers</option>
+                <option value="Meubles">Meubles</option>
+                <option value="Jouets">Jouets</option>
+                <option value="Articles de sport">Articles de sport</option>
+                <option value="Beauté et soins personnels">Beauté et soins personnels</option>
+                <option value="Alimentation">Alimentation</option>
+                <option value="Animaux de compagnie">Animaux de compagnie</option>
+                <option value="Outils et équipement">Outils et équipement</option>
+                <option value="Arts">Arts</option>
+            </select>
+        </div>
+
+        <div>
+            <label for="category"> Sous Catégorie :</label>
+            <select id="category" name="category" required>
+                <option value="Électronique">Homme</option>
+                <option value="Vêtements">Enfant</option>
+                <option value="Livres">Femme</option>
+                <option value="Électroménagers">Mixte</option>
+            </select>
+        </div>
+
+        <div>
+            <label for="description">Description :</label>
+            <textarea id="description" name="description" required></textarea>
+        </div>
+
+        <div>
+            <label for="price">Prix :</label>
+            <input type="number" id="price" name="price" min="0.01" step="0.01" required>
+        </div>
+
+        <div>
+            <label for="quantity">Quantité en stock :</label>
+            <input type="number" id="quantity" name="quantity" min="1" required>
+        </div>
+
+        <div>
+            <label for="productImage" class="label-file">Sélectionner une Image</label>
+            <span id="productImageLabel"></span>
+            <input type="file" id="productImage" name="productImage" accept="image/*" onchange="displayImagePreview()"
+                required>
+            <div id="imagePreviewContainer"></div>
+        </div>
+        <button type="submit">Publier le Produit</button>
+
+        <script>
+            function displayImagePreview() {
+                const input = document.getElementById('productImage');
+                const label = document.getElementById('productImageLabel');
+                const previewContainer = document.getElementById('imagePreviewContainer');
+
+                label.textContent = ''; // Réinitialise le texte du label
+
+                const files = input.files;
+
+                if (files.length > 0) {
+                    const file = files[0]; // Prend uniquement le premier fichier
+                    label.textContent = file.name;
+
+                    const reader = new FileReader();
+
+                    reader.onload = function (e) {
+                        previewContainer.innerHTML = ''; // Réinitialise le contenu du conteneur
+
+                        const img = document.createElement('img');
+                        img.src = e.target.result;
+
+                        previewContainer.appendChild(img);
+                    };
+
+                    reader.readAsDataURL(file);
+                }
+            }
+        </script>
+    </form>
+</body>
+
+</html>

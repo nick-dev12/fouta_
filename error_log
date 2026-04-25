@@ -1,0 +1,93 @@
+[13-Mar-2026 00:42:53 Europe/Paris] PHP Warning:  require_once(/home/c2605417c/public_html/e-FPL/models/../conn/conn.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/models/model_categories.php on line 8
+[13-Mar-2026 00:42:53 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/models/../conn/conn.php' (include_path='.:/opt/alt/php81/usr/share/pear:/opt/alt/php81/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/models/model_categories.php:8
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/nav_bar.php(681): require_once()
+#1 /home/c2605417c/public_html/e-FPL/index.php(318): include('/home/c2605417c...')
+#2 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/models/model_categories.php on line 8
+[13-Mar-2026 00:43:13 Europe/Paris] PHP Warning:  require_once(/home/c2605417c/public_html/e-FPL/models/../conn/conn.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/models/model_categories.php on line 8
+[13-Mar-2026 00:43:13 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/models/../conn/conn.php' (include_path='.:/opt/alt/php81/usr/share/pear:/opt/alt/php81/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/models/model_categories.php:8
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/nav_bar.php(681): require_once()
+#1 /home/c2605417c/public_html/e-FPL/index.php(318): include('/home/c2605417c...')
+#2 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/models/model_categories.php on line 8
+[13-Mar-2026 00:47:22 Europe/Paris] PHP Warning:  require_once(/home/c2605417c/public_html/e-FPL/models/../conn/conn.php): Failed to open stream: No such file or directory in /home/c2605417c/public_html/e-FPL/models/model_categories.php on line 8
+[13-Mar-2026 00:47:22 Europe/Paris] PHP Fatal error:  Uncaught Error: Failed opening required '/home/c2605417c/public_html/e-FPL/models/../conn/conn.php' (include_path='.:/opt/alt/php81/usr/share/pear:/opt/alt/php81/usr/share/php:/usr/share/pear:/usr/share/php') in /home/c2605417c/public_html/e-FPL/models/model_categories.php:8
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/nav_bar.php(681): require_once()
+#1 /home/c2605417c/public_html/e-FPL/index.php(318): include('/home/c2605417c...')
+#2 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/models/model_categories.php on line 8
+[13-Mar-2026 00:50:34 Europe/Paris] PHP Fatal error:  Uncaught Error: Call to a member function prepare() on null in /home/c2605417c/public_html/e-FPL/models/model_categories.php:19
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/nav_bar.php(682): get_all_categories()
+#1 /home/c2605417c/public_html/e-FPL/index.php(318): include('/home/c2605417c...')
+#2 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/models/model_categories.php on line 19
+[13-Mar-2026 00:50:35 Europe/Paris] PHP Fatal error:  Uncaught Error: Call to a member function prepare() on null in /home/c2605417c/public_html/e-FPL/models/model_categories.php:19
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/nav_bar.php(682): get_all_categories()
+#1 /home/c2605417c/public_html/e-FPL/index.php(318): include('/home/c2605417c...')
+#2 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/models/model_categories.php on line 19
+[13-Mar-2026 00:50:37 Europe/Paris] PHP Fatal error:  Uncaught Error: Call to a member function prepare() on null in /home/c2605417c/public_html/e-FPL/models/model_categories.php:19
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/nav_bar.php(682): get_all_categories()
+#1 /home/c2605417c/public_html/e-FPL/index.php(318): include('/home/c2605417c...')
+#2 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/models/model_categories.php on line 19
+[13-Mar-2026 00:50:37 Europe/Paris] PHP Fatal error:  Uncaught Error: Call to a member function prepare() on null in /home/c2605417c/public_html/e-FPL/models/model_categories.php:19
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/nav_bar.php(682): get_all_categories()
+#1 /home/c2605417c/public_html/e-FPL/index.php(318): include('/home/c2605417c...')
+#2 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/models/model_categories.php on line 19
+[13-Mar-2026 00:50:38 Europe/Paris] PHP Fatal error:  Uncaught Error: Call to a member function prepare() on null in /home/c2605417c/public_html/e-FPL/models/model_categories.php:19
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/nav_bar.php(682): get_all_categories()
+#1 /home/c2605417c/public_html/e-FPL/index.php(318): include('/home/c2605417c...')
+#2 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/models/model_categories.php on line 19
+[13-Mar-2026 00:50:39 Europe/Paris] PHP Fatal error:  Uncaught Error: Call to a member function prepare() on null in /home/c2605417c/public_html/e-FPL/models/model_categories.php:19
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/nav_bar.php(682): get_all_categories()
+#1 /home/c2605417c/public_html/e-FPL/index.php(318): include('/home/c2605417c...')
+#2 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/models/model_categories.php on line 19
+[13-Mar-2026 00:50:39 Europe/Paris] PHP Fatal error:  Uncaught Error: Call to a member function prepare() on null in /home/c2605417c/public_html/e-FPL/models/model_categories.php:19
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/nav_bar.php(682): get_all_categories()
+#1 /home/c2605417c/public_html/e-FPL/index.php(318): include('/home/c2605417c...')
+#2 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/models/model_categories.php on line 19
+[13-Mar-2026 00:50:41 Europe/Paris] PHP Fatal error:  Uncaught Error: Call to a member function prepare() on null in /home/c2605417c/public_html/e-FPL/models/model_categories.php:19
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/nav_bar.php(682): get_all_categories()
+#1 /home/c2605417c/public_html/e-FPL/index.php(318): include('/home/c2605417c...')
+#2 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/models/model_categories.php on line 19
+[13-Mar-2026 00:50:42 Europe/Paris] PHP Fatal error:  Uncaught Error: Call to a member function prepare() on null in /home/c2605417c/public_html/e-FPL/models/model_categories.php:19
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/nav_bar.php(682): get_all_categories()
+#1 /home/c2605417c/public_html/e-FPL/index.php(318): include('/home/c2605417c...')
+#2 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/models/model_categories.php on line 19
+[13-Mar-2026 00:50:42 Europe/Paris] PHP Fatal error:  Uncaught Error: Call to a member function prepare() on null in /home/c2605417c/public_html/e-FPL/models/model_categories.php:19
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/nav_bar.php(682): get_all_categories()
+#1 /home/c2605417c/public_html/e-FPL/index.php(318): include('/home/c2605417c...')
+#2 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/models/model_categories.php on line 19
+[13-Mar-2026 00:50:48 Europe/Paris] PHP Fatal error:  Uncaught Error: Call to a member function prepare() on null in /home/c2605417c/public_html/e-FPL/models/model_categories.php:19
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/nav_bar.php(682): get_all_categories()
+#1 /home/c2605417c/public_html/e-FPL/index.php(318): include('/home/c2605417c...')
+#2 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/models/model_categories.php on line 19
+[13-Mar-2026 00:51:14 Europe/Paris] PHP Fatal error:  Uncaught Error: Call to a member function prepare() on null in /home/c2605417c/public_html/e-FPL/models/model_categories.php:19
+Stack trace:
+#0 /home/c2605417c/public_html/e-FPL/nav_bar.php(682): get_all_categories()
+#1 /home/c2605417c/public_html/e-FPL/index.php(318): include('/home/c2605417c...')
+#2 {main}
+  thrown in /home/c2605417c/public_html/e-FPL/models/model_categories.php on line 19
