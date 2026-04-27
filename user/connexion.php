@@ -39,8 +39,9 @@ if (isset($result['success']) && $result['success'] && $result['type'] === 'admi
     $_SESSION['admin_statut'] = $result['admin']['statut'];
     $_SESSION['admin_role'] = normalize_admin_role($result['admin']['role'] ?? 'admin');
 
-    // Redirection vers l'espace admin. Si l'admin utilise "retour", connexion.php le redirigera à nouveau.
-    header('Location: /admin/dashboard.php');
+    require_once __DIR__ . '/../includes/post_login_welcome.php';
+    $_SESSION['just_logged_in_target'] = post_login_sanitize_next_url('/admin/dashboard.php');
+    header('Location: /post-login-welcome.php');
     exit;
 }
 
@@ -53,7 +54,9 @@ if (isset($result['success']) && $result['success'] && $result['type'] === 'user
     $_SESSION['user_telephone'] = $result['user']['telephone'];
     $_SESSION['user_statut'] = $result['user']['statut'];
 
-    header('Location: ' . $redirect_url);
+    require_once __DIR__ . '/../includes/post_login_welcome.php';
+    $_SESSION['just_logged_in_target'] = post_login_sanitize_next_url($redirect_url);
+    header('Location: /post-login-welcome.php');
     exit;
 }
 
