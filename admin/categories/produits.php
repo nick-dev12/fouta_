@@ -51,82 +51,95 @@ $produits = get_produits_by_categorie($categorie_id);
 <body>
     <?php include '../includes/nav.php'; ?>
 
-    <div class="content-header">
-        <h1>
-            <i class="fas fa-box"></i> Produits de la catégorie: <?php echo htmlspecialchars($categorie['nom']); ?>
-        </h1>
-        <div class="header-actions">
-            <a href="../stock/index.php" class="btn-back" style="margin-right: 10px;">
-                <i class="fas fa-arrow-left"></i> Retour au stock
-            </a>
-            <a href="../produits/ajouter.php?categorie_id=<?php echo (int) $categorie_id; ?>" class="btn-primary">
-                <i class="fas fa-plus"></i> Ajouter un produit
-            </a>
+    <div class="contents-container dashboard-page page-categorie-produits">
+        <div class="content-header dashboard-hero">
+            <div class="dashboard-hero-text">
+                <p class="dashboard-eyebrow">Catégorie</p>
+                <h1>
+                    <i class="fas fa-box" aria-hidden="true"></i>
+                    <?php echo htmlspecialchars($categorie['nom']); ?>
+                </h1>
+                <p class="dashboard-subtitle">
+                    <?php echo count($produits); ?> produit<?php echo count($produits) > 1 ? 's' : ''; ?>
+                    dans cette catégorie — ajustement de stock, modification ou suppression.
+                </p>
+            </div>
+            <div class="header-actions header-actions--categorie-produits">
+                <a href="../stock/index.php" class="btn-back">
+                    <i class="fas fa-arrow-left"></i> Retour au stock
+                </a>
+                <a href="../produits/ajouter.php?categorie_id=<?php echo (int) $categorie_id; ?>" class="btn-primary">
+                    <i class="fas fa-plus"></i> Ajouter un produit
+                </a>
+            </div>
         </div>
-    </div>
 
-    <section class="produits-section">
-        <div class="section-title">
-            <h2>
-                <i class="fas fa-box"></i>
-                Produits de "<?php echo htmlspecialchars($categorie['nom']); ?>"
-                (<?php echo count($produits); ?>)
-            </h2>
-        </div>
+        <section class="produits-section produits-section--dashboard" aria-labelledby="cat-produits-heading">
+            <div class="section-title section-title--dashboard">
+                <div>
+                    <h2 id="cat-produits-heading">
+                        <i class="fas fa-list" aria-hidden="true"></i>
+                        Produits
+                    </h2>
+                    <p class="section-title-hint">Catalogue filtré sur « <?php echo htmlspecialchars($categorie['nom']); ?> »</p>
+                </div>
+            </div>
 
-        <?php if (empty($produits)): ?>
-            <div style="text-align: center; padding: 40px; color: #666;">
-                <i class="fas fa-box-open" style="font-size: 48px; margin-bottom: 20px; opacity: 0.5;"></i>
+            <?php if (empty($produits)): ?>
+            <div class="empty-state page-categorie-produits-empty">
+                <i class="fas fa-box-open" aria-hidden="true"></i>
                 <p>Aucun produit dans cette catégorie pour le moment.</p>
-                <a href="../produits/ajouter.php?categorie_id=<?php echo (int) $categorie_id; ?>" class="btn-primary"
-                    style="margin-top: 20px; display: inline-block;">
+                <a href="../produits/ajouter.php?categorie_id=<?php echo (int) $categorie_id; ?>" class="btn-primary">
                     <i class="fas fa-plus"></i> Ajouter un produit à cette catégorie
                 </a>
             </div>
-        <?php else: ?>
+            <?php else: ?>
             <div class="produits-grid">
                 <?php foreach ($produits as $produit): ?>
-                    <div class="produit-card">
-                        <?php
-                        $statut_class = 'statut-actif';
-                        if ($produit['statut'] == 'inactif') {
-                            $statut_class = 'statut-inactif';
-                        } elseif ($produit['statut'] == 'rupture_stock') {
-                            $statut_class = 'statut-rupture';
-                        }
-                        $statut_label = ucfirst(str_replace('_', ' ', $produit['statut']));
-                        ?>
+                    <?php
+                    $statut_class = 'statut-actif';
+                    if ($produit['statut'] == 'inactif') {
+                        $statut_class = 'statut-inactif';
+                    } elseif ($produit['statut'] == 'rupture_stock') {
+                        $statut_class = 'statut-rupture';
+                    }
+                    $statut_label = ucfirst(str_replace('_', ' ', $produit['statut']));
+                    ?>
+                    <div class="produit-card produit-card--dashboard">
                         <span class="statut-badge <?php echo $statut_class; ?>"><?php echo $statut_label; ?></span>
-                        <img src="../../upload/<?php echo htmlspecialchars($produit['image_principale']); ?>"
-                            alt="<?php echo htmlspecialchars($produit['nom']); ?>" class="produit-card-image"
-                            onerror="this.src='../../image/produit1.jpg'">
+                        <div class="produit-card-media">
+                            <img src="../../upload/<?php echo htmlspecialchars($produit['image_principale']); ?>"
+                                alt="<?php echo htmlspecialchars($produit['nom']); ?>"
+                                class="produit-card-image"
+                                onerror="this.src='../../image/produit1.jpg'">
+                        </div>
                         <div class="produit-card-body">
                             <h3 class="produit-card-nom"><?php echo htmlspecialchars($produit['nom']); ?></h3>
                             <p class="produit-card-categorie">
-                                <?php echo htmlspecialchars($produit['categorie_nom'] ?? 'Sans catégorie'); ?>
+                                <i class="fas fa-tag" aria-hidden="true"></i>
+                                <?php echo htmlspecialchars($categorie['nom']); ?>
                             </p>
                             <p class="produit-card-prix">
-                                <?php echo number_format($produit['prix'], 0, ',', ' '); ?>
+                                <span class="prix-montant"><?php echo number_format($produit['prix'], 0, ',', ' '); ?></span>
                                 <span class="prix-unite">FCFA</span>
                                 <?php if ($produit['prix_promotion']): ?>
-                                    <span style="color: #c26638; font-size: 12px; margin-left: 5px;">
-                                        (Promo: <?php echo number_format($produit['prix_promotion'], 0, ',', ' '); ?> FCFA)
-                                    </span>
+                                <span class="prix-promo-inline">Promo <?php echo number_format($produit['prix_promotion'], 0, ',', ' '); ?> FCFA</span>
                                 <?php endif; ?>
                             </p>
                             <p class="produit-card-stock">
-                                Stock: <span class="stock-value"><?php echo $produit['stock']; ?></span>
-
+                                <i class="fas fa-cubes" aria-hidden="true"></i>
+                                Stock <span class="stock-value"><?php echo (int) $produit['stock']; ?></span>
                             </p>
-                            <div class="produit-card-actions">
-                                <a href="../produits/ajuster-stock.php?id=<?php echo $produit['id']; ?>"
+                            <div class="produit-card-actions produit-card-actions--triple">
+                                <a href="../produits/ajuster-stock.php?id=<?php echo (int) $produit['id']; ?>"
                                     class="btn-card btn-stock" title="Ajuster le stock">
                                     <i class="fas fa-boxes-stacked"></i> Stock
                                 </a>
-                                <a href="../produits/modifier.php?id=<?php echo $produit['id']; ?>" class="btn-card btn-edit">
+                                <a href="../produits/modifier.php?id=<?php echo (int) $produit['id']; ?>" class="btn-card btn-edit">
                                     <i class="fas fa-edit"></i> Modifier
                                 </a>
-                                <a href="../produits/supprimer.php?id=<?php echo $produit['id']; ?>" class="btn-card btn-delete"
+                                <a href="../produits/supprimer.php?id=<?php echo (int) $produit['id']; ?>"
+                                    class="btn-card btn-delete"
                                     onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce produit ?');">
                                     <i class="fas fa-trash"></i> Supprimer
                                 </a>
@@ -135,7 +148,8 @@ $produits = get_produits_by_categorie($categorie_id);
                     </div>
                 <?php endforeach; ?>
             </div>
-        <?php endif; ?>
-    </section>
+            <?php endif; ?>
+        </section>
+    </div>
 
     <?php include '../includes/footer.php'; ?>

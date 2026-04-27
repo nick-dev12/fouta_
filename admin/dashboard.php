@@ -25,9 +25,13 @@ $categorie_id = isset($_GET['categorie_id']) ? (int) $_GET['categorie_id'] : 0;
 $admin_show_catalogue = admin_can_gestion_boutique();
 $categories = [];
 $produits = [];
+$derniers_produits_ajoutes = [];
 if ($admin_show_catalogue) {
     $categories = get_all_categories();
     $produits = get_all_produits();
+    if (admin_is_full_admin()) {
+        $derniers_produits_ajoutes = get_derniers_produits_ajoutes(10);
+    }
 }
 
 if ($admin_show_catalogue && !empty($produits)) {
@@ -201,6 +205,87 @@ if ($admin_show_catalogue && !empty($produits)) {
 
         <!-- Section produits (gestion des stocks) -->
         <?php if ($admin_show_catalogue): ?>
+        <?php if (admin_is_full_admin()): ?>
+        <section class="dashboard-recent-produits" aria-labelledby="recent-produits-heading">
+            <div class="section-title section-title--dashboard">
+                <div>
+                    <h2 id="recent-produits-heading"><i class="fas fa-clock-rotate-left" aria-hidden="true"></i> Derniers produits ajoutés</h2>
+                    <p class="section-title-hint">Les ajouts les plus récents au catalogue (tous comptes confondus)</p>
+                </div>
+                <a href="produits/index.php" class="btn-primary btn-secondary-style"><i class="fas fa-list"></i> Liste produits</a>
+            </div>
+            <?php if (empty($derniers_produits_ajoutes)): ?>
+                <p class="dashboard-recent-empty">Aucun produit enregistré pour le moment.</p>
+            <?php else: ?>
+                <div class="produits-grid produits-grid--recent">
+                    <?php foreach ($derniers_produits_ajoutes as $dp): ?>
+                        <?php
+                        $statut_class = 'statut-actif';
+                        if (($dp['statut'] ?? '') == 'inactif') {
+                            $statut_class = 'statut-inactif';
+                        } elseif (($dp['statut'] ?? '') == 'rupture_stock') {
+                            $statut_class = 'statut-rupture';
+                        }
+                        $statut_label = ucfirst(str_replace('_', ' ', (string) ($dp['statut'] ?? '')));
+                        $img_dp = $dp['image_principale'] ?? '';
+                        $date_ajout = !empty($dp['date_creation']) ? date('d/m/Y H:i', strtotime($dp['date_creation'])) : '—';
+                        $par = trim((string) ($dp['createur_prenom'] ?? '') . ' ' . (string) ($dp['createur_nom'] ?? ''));
+                        ?>
+                        <div class="produit-card produit-card-linkable produit-card--dashboard"
+                            data-href="produits/modifier.php?id=<?php echo (int) $dp['id']; ?>">
+                            <span class="statut-badge <?php echo $statut_class; ?>"><?php echo htmlspecialchars($statut_label); ?></span>
+                            <div class="produit-card-media">
+                                <?php if ($img_dp !== ''): ?>
+                                <img src="/upload/<?php echo htmlspecialchars($img_dp); ?>"
+                                    alt="<?php echo htmlspecialchars($dp['nom'] ?? ''); ?>" class="produit-card-image"
+                                    onerror="this.src='/image/produit1.jpg'">
+                                <?php else: ?>
+                                <img src="/image/produit1.jpg" alt="" class="produit-card-image">
+                                <?php endif; ?>
+                            </div>
+                            <div class="produit-card-body">
+                                <h3 class="produit-card-nom"><?php echo htmlspecialchars($dp['nom'] ?? ''); ?></h3>
+                                <p class="produit-card-categorie">
+                                    <i class="fas fa-tag" aria-hidden="true"></i>
+                                    <?php echo htmlspecialchars($dp['categorie_nom'] ?? 'Sans catégorie'); ?>
+                                </p>
+                                <p class="produit-card-ajout-meta">
+                                    <span><i class="fas fa-calendar-plus" aria-hidden="true"></i> <?php echo htmlspecialchars($date_ajout); ?></span>
+                                    <?php if ($par !== ''): ?>
+                                    <span><i class="fas fa-user" aria-hidden="true"></i> <?php echo htmlspecialchars($par); ?></span>
+                                    <?php endif; ?>
+                                </p>
+                                <p class="produit-card-prix">
+                                    <span class="prix-montant"><?php echo number_format((float) ($dp['prix'] ?? 0), 0, ',', ' '); ?></span>
+                                    <span class="prix-unite">FCFA</span>
+                                    <?php if (!empty($dp['prix_promotion'])): ?>
+                                        <span class="prix-promo">
+                                            Promo <?php echo number_format((float) $dp['prix_promotion'], 0, ',', ' '); ?> FCFA
+                                        </span>
+                                    <?php endif; ?>
+                                </p>
+                                <p class="produit-card-stock">
+                                    <i class="fas fa-cubes" aria-hidden="true"></i>
+                                    Stock <span class="stock-value"><?php echo (int) ($dp['stock'] ?? 0); ?></span>
+                                </p>
+                                <div class="produit-card-actions">
+                                    <a href="produits/modifier.php?id=<?php echo (int) $dp['id']; ?>" class="btn-card btn-edit">
+                                        <i class="fas fa-edit"></i> Modifier
+                                    </a>
+                                    <a href="produits/supprimer.php?id=<?php echo (int) $dp['id']; ?>"
+                                        class="btn-card btn-delete"
+                                        onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce produit ?');">
+                                        <i class="fas fa-trash"></i> Supprimer
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+        </section>
+        <?php endif; ?>
+
         <section class="produits-section produits-section--dashboard" aria-labelledby="produits-heading">
             <div class="section-title section-title--dashboard">
                 <div>

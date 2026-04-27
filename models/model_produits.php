@@ -96,6 +96,44 @@ function get_all_produits($statut = null)
 }
 
 /**
+ * Derniers produits ajoutés au catalogue (tableau de bord, suivi des ajouts)
+ *
+ * @param int $limit Nombre max (1–50)
+ * @return array<int, array<string, mixed>>
+ */
+function get_derniers_produits_ajoutes($limit = 8)
+{
+    global $db;
+    $limit = max(1, min(50, (int) $limit));
+    try {
+        $has_admin = produits_has_column('admin_createur_id');
+        if ($has_admin) {
+            $sql = "
+                SELECT p.id, p.nom, p.image_principale, p.prix, p.prix_promotion, p.stock, p.statut, p.date_creation,
+                       c.nom AS categorie_nom,
+                       a.prenom AS createur_prenom, a.nom AS createur_nom
+                FROM produits p
+                LEFT JOIN categories c ON p.categorie_id = c.id
+                LEFT JOIN admin a ON p.admin_createur_id = a.id
+                ORDER BY p.date_creation DESC, p.id DESC
+                LIMIT " . (int) $limit;
+        } else {
+            $sql = "
+                SELECT p.id, p.nom, p.image_principale, p.prix, p.prix_promotion, p.stock, p.statut, p.date_creation,
+                       c.nom AS categorie_nom
+                FROM produits p
+                LEFT JOIN categories c ON p.categorie_id = c.id
+                ORDER BY p.date_creation DESC, p.id DESC
+                LIMIT " . (int) $limit;
+        }
+        $stmt = $db->query($sql);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (PDOException $e) {
+        return [];
+    }
+}
+
+/**
  * Récupère les produits d'une catégorie spécifique
  * @param int $categorie_id L'ID de la catégorie
  * @return array|false Tableau des produits ou False en cas d'erreur

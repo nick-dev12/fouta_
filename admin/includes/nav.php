@@ -93,6 +93,11 @@ if ($is_produits || $is_categories || $is_stock || $is_slider || $is_parametres 
                 <span class="menu-item-icon" aria-hidden="true"><i class="fas fa-boxes-stacked"></i></span>
                 <span class="menu-item-text">Stock</span>
             </a>
+            <a href="<?php echo $base_path; ?>produits/index.php"
+                class="menu-item mi-produits<?php echo ($is_produits) ? ' active' : ''; ?>">
+                <span class="menu-item-icon" aria-hidden="true"><i class="fas fa-box"></i></span>
+                <span class="menu-item-text">Produits</span>
+            </a>
             <a href="<?php echo $base_path; ?>commandes/index.php"
                 class="menu-item mi-commandes<?php echo ($is_commandes && ($current_page == 'index.php' || $current_page == 'livrees.php' || $current_page == 'annulees.php' || $current_page == 'details.php' || $current_page == 'historique-ventes.php')) ? ' active' : ''; ?>">
                 <span class="menu-item-icon" aria-hidden="true"><i class="fas fa-shopping-cart"></i></span>

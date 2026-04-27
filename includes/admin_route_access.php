@@ -63,12 +63,13 @@ if (!function_exists('admin_route_relative_path')) {
             if ($p === 'profil.php' || $p === 'inscription-admin.php' || $p === 'parametres.php' || $p === 'test-notification.php') {
                 return true;
             }
-            $interdits = ['produits/', 'caisse/', 'zones-livraison/'];
+            $interdits = ['caisse/', 'zones-livraison/'];
             foreach ($interdits as $prefix) {
                 if (strpos($p, $prefix) === 0) {
                     return false;
                 }
             }
+            // Produits / catégories (catalogue) : accès autorisé pour supervision et édition
             return true;
         }
 

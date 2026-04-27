@@ -59,507 +59,48 @@ $categories = get_all_categories();
     <?php require_once __DIR__ . '/../../includes/asset_version.php'; ?>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../../css/admin-dashboard.css<?php echo asset_version_query(); ?>">
-    <style>
-    .form-container {
-        background: #ffffff;
-        padding: 30px;
-        border-radius: 10px;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-        max-width: 800px;
-        margin: 0 auto;
-    }
-
-    .form-group {
-        margin-bottom: 25px;
-    }
-
-    .form-group label {
-        display: block;
-        color: #6b2f20;
-        font-weight: 500;
-        margin-bottom: 8px;
-        font-size: 14px;
-    }
-
-    .form-group input,
-    .form-group select,
-    .form-group textarea {
-        width: 100%;
-        padding: 12px 15px;
-        border: 2px solid #e8e8e8;
-        border-radius: 8px;
-        font-size: 15px;
-        transition: all 0.3s ease;
-        background: #ffffff;
-        color: #000000;
-        font-family: inherit;
-    }
-
-    .form-group input:focus,
-    .form-group select:focus,
-    .form-group textarea:focus {
-        outline: none;
-        border-color: #918a44;
-        box-shadow: 0 0 0 3px rgba(145, 138, 68, 0.1);
-    }
-
-    .form-group textarea {
-        min-height: 120px;
-        resize: vertical;
-    }
-
-    .form-row {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 20px;
-    }
-
-    .error-message {
-        background: #fee;
-        border-left: 4px solid #c26638;
-        color: #6b2f20;
-        padding: 12px 15px;
-        border-radius: 6px;
-        margin-bottom: 20px;
-        font-size: 14px;
-    }
-
-    .btn-back {
-        background: #e0e0e0;
-        color: #6b2f20;
-        padding: 10px 20px;
-        border: none;
-        border-radius: 8px;
-        text-decoration: none;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        margin-bottom: 20px;
-        transition: all 0.3s ease;
-    }
-
-    .btn-back:hover {
-        background: #d0d0d0;
-    }
-
-    .current-image {
-        margin-top: 10px;
-        max-width: 200px;
-        border-radius: 8px;
-    }
-
-    .gallery-preview-edit {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 12px;
-        margin: 15px 0;
-    }
-
-    .gallery-thumb-edit {
-        position: relative;
-    }
-
-    .gallery-thumb-edit img {
-        width: 80px;
-        height: 80px;
-        object-fit: cover;
-        border-radius: 8px;
-        border: 2px solid rgba(145, 138, 68, 0.3);
-    }
-
-    .gallery-thumb-edit .img-remove-btn {
-        position: absolute;
-        top: 4px;
-        right: 4px;
-        width: 22px;
-        height: 22px;
-        border: none;
-        background: rgba(0, 0, 0, 0.6);
-        color: #fff;
-        border-radius: 50%;
-        cursor: pointer;
-        font-size: 14px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0;
-        line-height: 1;
-    }
-
-    .gallery-thumb-edit .img-remove-btn:hover {
-        background: #c00;
-    }
-
-    .gallery-thumb-edit .img-badge {
-        position: absolute;
-        top: 4px;
-        left: 4px;
-        background: #918a44;
-        color: #fff;
-        font-size: 10px;
-        padding: 2px 6px;
-        border-radius: 4px;
-    }
-
-    .image-preview-container {
-        margin-top: 12px;
-    }
-
-    .image-preview-container img {
-        max-width: 200px;
-        max-height: 200px;
-        border-radius: 8px;
-        border: 2px solid rgba(229, 72, 138, 0.3);
-    }
-
-    .image-preview-grid {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 12px;
-        margin-top: 12px;
-    }
-
-    .image-preview-grid .preview-item img {
-        width: 80px;
-        height: 80px;
-        object-fit: cover;
-        border-radius: 8px;
-        border: 2px solid rgba(229, 72, 138, 0.3);
-    }
-
-    .couleurs-picker-block {
-        margin-top: 8px;
-    }
-
-    .couleurs-add-row {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        margin-bottom: 12px;
-        flex-wrap: wrap;
-    }
-
-    .couleurs-add-row input[type="color"] {
-        width: 50px;
-        height: 40px;
-        padding: 2px;
-        border: 2px solid #ddd;
-        border-radius: 8px;
-        cursor: pointer;
-    }
-
-    .btn-add-couleur {
-        padding: 12px 18px;
-        background: #918a44;
-        color: #fff;
-        border: none;
-        border-radius: 8px;
-        cursor: pointer;
-        font-size: 14px;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .btn-add-couleur:hover {
-        background: #7a7340;
-    }
-
-    .couleurs-swatches {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-        padding: 10px 0;
-    }
-
-    .couleur-swatch {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        padding: 6px 10px;
-        background: #f5f5f5;
-        border-radius: 20px;
-        border: 2px solid #ddd;
-    }
-
-    .couleur-swatch .swatch-preview {
-        width: 24px;
-        height: 24px;
-        border-radius: 50%;
-        border: 2px solid #333;
-    }
-
-    .couleur-swatch .swatch-hex {
-        font-size: 12px;
-        color: #333;
-    }
-
-    .couleur-swatch .swatch-remove {
-        width: 24px;
-        height: 24px;
-        border: none;
-        background: #c00;
-        color: #fff;
-        border-radius: 50%;
-        cursor: pointer;
-        font-size: 14px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0;
-        line-height: 1;
-    }
-
-    .couleur-swatch .swatch-remove:hover {
-        background: #a00;
-    }
-
-    .options-add-block {
-        margin-top: 8px;
-    }
-
-    .options-add-row {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        margin-bottom: 12px;
-        flex-wrap: wrap;
-    }
-
-    .options-input {
-        flex: 1;
-        min-width: 150px;
-        padding: 10px 14px;
-        border: 2px solid #e8e8e8;
-        border-radius: 8px;
-        font-size: 14px;
-    }
-
-    .options-input:focus {
-        outline: none;
-        border-color: #918a44;
-    }
-
-    .btn-add-op
-
-    /* The above code is a HTML form element with a dropdown select menu for selecting a
-    default unit. The PHP code inside the option tags is used to dynamically set the
-    selected attribute based on the value of `['unite']`. This allows the form to
-    pre-select the unit that was previously saved or selected. */
-    tion {
-        padding: 10px 16px;
-        background: #918a44;
-        color: #fff;
-        border: none;
-        border-radius: 8px;
-        cursor: pointer;
-        font-size: 14px;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .btn-add-option:hover {
-        background: #7a7340;
-    }
-
-    .options-tags-list {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        padding: 10px 0;
-    }
-
-    .option-tag {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        padding: 6px 12px;
-        background: #f5f5f5;
-        border-radius: 20px;
-        border: 2px solid #ddd;
-        font-size: 13px;
-    }
-
-    .option-tag .tag-remove {
-        width: 22px;
-        height: 22px;
-        border: none;
-        background: #c00;
-        color: #fff;
-        border-radius: 50%;
-        cursor: pointer;
-        font-size: 14px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0;
-        line-height: 1;
-    }
-
-    .option-tag .tag-remove:hover {
-        background: #a00;
-    }
-
-    .options-surcharge {
-        width: 90px;
-        padding: 8px 10px;
-        border: 2px solid #e8e8e8;
-        border-radius: 8px;
-        font-size: 13px;
-    }
-
-    .option-tag .tag-surcharge {
-        font-size: 11px;
-        color: #666;
-        margin-left: 4px;
-    }
-
-    .variantes-container {
-        margin-bottom: 15px;
-    }
-
-    .variante-item {
-        margin-bottom: 12px;
-        padding: 12px;
-        background: #f9f9f9;
-        border-radius: 8px;
-        border: 1px solid #eee;
-    }
-
-    .variante-row {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        flex-wrap: wrap;
-    }
-
-    .variante-nom {
-        flex: 1;
-        min-width: 150px;
-        padding: 10px 14px;
-        border: 2px solid #e8e8e8;
-        border-radius: 8px;
-    }
-
-    .variante-prix,
-    .variante-prix-promo {
-        width: 100px;
-        padding: 10px 14px;
-        border: 2px solid #e8e8e8;
-        border-radius: 8px;
-    }
-
-    .variante-image-wrap {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-
-    .variante-image-area {
-        position: relative;
-        min-width: 100px;
-        min-height: 80px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        border: 2px dashed #ddd;
-        border-radius: 8px;
-        background: #fff;
-        cursor: pointer;
-        overflow: hidden;
-    }
-
-    .variante-image-area:hover {
-        border-color: #918a44;
-        background: #fafaf8;
-    }
-
-    .variante-image-input {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        opacity: 0;
-        cursor: pointer;
-        z-index: 1;
-    }
-
-    .variante-image-label {
-        padding: 8px 14px;
-        color: #918a44;
-        font-size: 13px;
-    }
-
-    .variante-preview-img {
-        max-width: 90px;
-        max-height: 70px;
-        object-fit: cover;
-        border-radius: 6px;
-        margin: 4px;
-    }
-
-    .btn-remove-variante {
-        width: 32px;
-        height: 32px;
-        border: none;
-        background: #c00;
-        color: #fff;
-        border-radius: 50%;
-        cursor: pointer;
-        font-size: 18px;
-        line-height: 1;
-    }
-
-    .btn-remove-variante:hover {
-        background: #a00;
-    }
-
-    .btn-add-variante {
-        padding: 10px 18px;
-        background: #918a44;
-        color: #fff;
-        border: none;
-        border-radius: 8px;
-        cursor: pointer;
-        font-size: 14px;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .btn-add-variante:hover {
-        background: #7a7340;
-    }
-
-    @media (max-width: 768px) {
-        .form-row {
-            grid-template-columns: 1fr;
-        }
-    }
-    </style>
+    <link rel="stylesheet" href="../../css/admin-produit-modifier.css<?php echo asset_version_query(); ?>">
 </head>
 
-<body>
+<body class="page-produit-modifier">
     <?php include '../includes/nav.php'; ?>
 
-    <div class="content-header">
-        <h1><i class="fas fa-edit"></i> Modifier un Produit</h1>
-        <a href="index.php" class="btn-back">
-            <i class="fas fa-arrow-left"></i> Retour
-        </a>
-    </div>
+    <div class="contents-container pm-page">
+        <header class="pm-hero" role="banner">
+            <div class="pm-hero__text">
+                <p class="pm-eyebrow">Fiche produit n°&nbsp;<?php echo (int) $produit_id; ?></p>
+                <h1 class="pm-title">
+                    <i class="fas fa-pen-to-square" aria-hidden="true"></i> Modifier le produit
+                </h1>
+                <p class="pm-subtitle"><?php echo htmlspecialchars($produit['nom']); ?></p>
+            </div>
+            <div class="pm-hero__actions">
+                <span class="pm-badge-id">#<?php echo (int) $produit_id; ?></span>
+                <a href="index.php" class="pm-btn-back">
+                    <i class="fas fa-arrow-left" aria-hidden="true"></i> Retour à la liste
+                </a>
+            </div>
+        </header>
 
     <div class="form-container">
         <?php if (isset($result['message']) && !empty($result['message']) && !$result['success']): ?>
-        <div class="error-message">
-            <i class="fas fa-exclamation-circle"></i> <?php echo $result['message']; ?>
+        <div class="error-message" role="alert">
+            <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
+            <span><?php echo $result['message']; ?></span>
         </div>
         <?php endif; ?>
 
-        <form method="POST" action="" enctype="multipart/form-data">
+        <form method="POST" action="" enctype="multipart/form-data" class="pm-form" id="form-produit-modifier">
+        <div class="pm-sections">
+            <section class="pm-card" aria-labelledby="pm-sec-info">
+                <div class="pm-card__head">
+                    <span class="pm-card__icon" aria-hidden="true"><i class="fas fa-align-left"></i></span>
+                    <div>
+                        <h2 id="pm-sec-info" class="pm-card__title">Informations générales</h2>
+                        <p class="pm-card__hint">Nom et description tels qu’affichés sur la boutique</p>
+                    </div>
+                </div>
+                <div class="pm-card__body">
             <div class="form-group">
                 <label for="nom">Nom du produit *</label>
                 <input type="text" id="nom" name="nom" required
@@ -571,7 +112,18 @@ $categories = get_all_categories();
                 <textarea id="description" name="description"
                     required><?php echo htmlspecialchars($produit['description']); ?></textarea>
             </div>
+                </div>
+            </section>
 
+            <section class="pm-card" aria-labelledby="pm-sec-prix">
+                <div class="pm-card__head">
+                    <span class="pm-card__icon" aria-hidden="true"><i class="fas fa-coins"></i></span>
+                    <div>
+                        <h2 id="pm-sec-prix" class="pm-card__title">Prix, stock &amp; catégorie</h2>
+                        <p class="pm-card__hint">Tarif, inventaire et classement</p>
+                    </div>
+                </div>
+                <div class="pm-card__body">
             <div class="form-row">
                 <div class="form-group">
                     <label for="prix">Prix (FCFA) *</label>
@@ -609,15 +161,25 @@ $categories = get_all_categories();
                         <?php endif; ?>
                     </select>
                     <?php if (!$categories || count($categories) == 0): ?>
-                    <small style="color: #c26638; font-size: 12px; display: block; margin-top: 5px;">
+                    <small class="form-hint form-hint--warning">
                         <i class="fas fa-exclamation-triangle"></i>
-                        Aucune catégorie disponible. <a href="../categories/ajouter.php" style="color: #918a44;">Créer
-                            une catégorie</a>
+                        Aucune catégorie disponible. <a href="../categories/ajouter.php">Créer une catégorie</a>
                     </small>
                     <?php endif; ?>
                 </div>
             </div>
+                </div>
+            </section>
 
+            <section class="pm-card" aria-labelledby="pm-sec-ref">
+                <div class="pm-card__head">
+                    <span class="pm-card__icon" aria-hidden="true"><i class="fas fa-warehouse"></i></span>
+                    <div>
+                        <h2 id="pm-sec-ref" class="pm-card__title">Référence &amp; emplacement</h2>
+                        <p class="pm-card__hint">Code interne FPL et repères entrepôt</p>
+                    </div>
+                </div>
+                <div class="pm-card__body">
             <?php
             $identifiant_ro = $produit['identifiant_interne'] ?? '';
             $etage_val = isset($_POST['etage']) ? $_POST['etage'] : ($produit['etage'] ?? '');
@@ -627,12 +189,12 @@ $categories = get_all_categories();
             <div class="form-group">
                 <label>Identifiant interne (FPL)</label>
                 <input type="text" readonly value="<?php echo htmlspecialchars($identifiant_ro); ?>"
-                    style="background: #f0f0f0; cursor: default;">
-                <small style="color: #666; font-size: 12px;">Référence interne unique, non modifiable.</small>
+                    class="pm-input-readonly">
+                <small class="form-hint">Référence interne unique, non modifiable.</small>
             </div>
             <?php else: ?>
-            <p style="font-size: 13px; color: #666; margin-bottom: 12px;">
-                <i class="fas fa-info-circle"></i> L’identifiant <strong>FPLxxxxxx</strong> sera généré après migration base de données si absent.
+            <p class="pm-hint">
+                <i class="fas fa-info-circle"></i> L’identifiant <strong>FPLxxxxxx</strong> sera généré après migration de la base de données si absent.
             </p>
             <?php endif; ?>
             <div class="form-row">
@@ -647,11 +209,21 @@ $categories = get_all_categories();
                         value="<?php echo htmlspecialchars((string) $rayon_val); ?>">
                 </div>
             </div>
+                </div>
+            </section>
 
+            <section class="pm-card" aria-labelledby="pm-sec-var">
+                <div class="pm-card__head">
+                    <span class="pm-card__icon" aria-hidden="true"><i class="fas fa-layer-group"></i></span>
+                    <div>
+                        <h2 id="pm-sec-var" class="pm-card__title">Variantes (optionnel)</h2>
+                        <p class="pm-card__hint">Noms, prix et visuels distincts (les options poids / couleurs s’y appliquent aussi)</p>
+                    </div>
+                </div>
+                <div class="pm-card__body">
             <div class="form-group">
-                <label><i class="fas fa-layer-group"></i> Variantes du produit (optionnel)</label>
-                <p style="font-size: 12px; color: #666; margin-bottom: 12px;">Ajoutez des variantes avec un nom, un prix
-                    et une image différents. Les options couleur, poids et taille s'appliquent aussi aux variantes.</p>
+                <p class="form-hint" style="margin-bottom: 12px;">Ajoutez des variantes avec un nom, un prix
+                    et une image différents.</p>
                 <div id="variantes-container" class="variantes-container">
                     <?php if (!empty($variantes)): ?>
                     <?php foreach ($variantes as $idx => $var): ?>
@@ -708,7 +280,18 @@ $categories = get_all_categories();
                 <button type="button" id="btn-add-variante" class="btn-add-variante"><i class="fas fa-plus"></i> Ajouter
                     une variante</button>
             </div>
+                </div>
+            </section>
 
+            <section class="pm-card" aria-labelledby="pm-sec-opts">
+                <div class="pm-card__head">
+                    <span class="pm-card__icon" aria-hidden="true"><i class="fas fa-sliders"></i></span>
+                    <div>
+                        <h2 id="pm-sec-opts" class="pm-card__title">Options d’achat</h2>
+                        <p class="pm-card__hint">Poids et couleurs proposés au client</p>
+                    </div>
+                </div>
+                <div class="pm-card__body">
             <div class="form-row">
                 <div class="form-group">
                     <label>Poids disponibles</label>
@@ -740,7 +323,7 @@ $categories = get_all_categories();
                         <input type="hidden" name="poids" id="poids-hidden"
                             value="<?php echo htmlspecialchars($poids_val); ?>">
                     </div>
-                    <small style="color: #666; font-size: 12px; display: block; margin-top: 5px;">Poids + montant
+                    <small class="form-hint">Poids + montant
                         optionnel (ex: 1kg + 300). Laissez vide pour 0.</small>
                 </div>
 
@@ -772,7 +355,7 @@ $categories = get_all_categories();
                     <label>Couleurs disponibles (optionnel)</label>
                     <div class="couleurs-picker-block">
                         <div class="couleurs-add-row">
-                            <input type="color" id="couleur-input" value="#E5488A" title="Choisir une couleur">
+                            <input type="color" id="couleur-input" value="#3564A6" title="Choisir une couleur">
                             <button type="button" class="btn-add-couleur" id="btn-add-couleur">
                                 <i class="fas fa-plus"></i> Ajouter cette couleur
                             </button>
@@ -785,11 +368,11 @@ $categories = get_all_categories();
                             value="<?php echo htmlspecialchars($couleurs_hidden_val); ?>">
                     </div>
                     <?php if ($couleurs_raw && empty($couleurs_init)): ?>
-                    <small style="color: #666; font-size: 12px; display: block; margin-top: 5px;">Ancien format (texte)
+                    <small class="form-hint">Ancien format (texte)
                         : <?php echo htmlspecialchars($couleurs_raw); ?> — remplacez par des couleurs via le sélecteur
                         ci-dessus.</small>
                     <?php else: ?>
-                    <small style="color: #666; font-size: 12px; display: block; margin-top: 5px;">Cliquez sur la
+                    <small class="form-hint">Cliquez sur la
                         pastille pour choisir une couleur, puis sur « Ajouter ». Vous pouvez ajouter plusieurs
                         couleurs.</small>
                     <?php endif; ?>
@@ -824,15 +407,26 @@ $categories = get_all_categories();
                         <input type="hidden" name="taille" id="taille-hidden"
                             value="<?php echo htmlspecialchars($taille_val); ?>">
                     </div>
-                    <small style="color: #666; font-size: 12px; display: block; margin-top: 5px;">Taille + montant
+                    <small class="form-hint">Taille + montant
                         optionnel (ex: L + 200). Laissez vide pour 0.</small>
                 </div> -->
             </div>
+                </div>
+            </section>
 
+            <section class="pm-card" aria-labelledby="pm-sec-media">
+                <div class="pm-card__head">
+                    <span class="pm-card__icon" aria-hidden="true"><i class="fas fa-images"></i></span>
+                    <div>
+                        <h2 id="pm-sec-media" class="pm-card__title">Galerie photos</h2>
+                        <p class="pm-card__hint">Image principale en premier — cliquez sur × pour retirer une photo</p>
+                    </div>
+                </div>
+                <div class="pm-card__body">
             <div class="form-group">
                 <label><i class="fas fa-image"></i> Images du produit</label>
-                <p style="font-size: 12px; color: #666; margin-bottom: 10px;">Images actuelles — cliquez sur &times;
-                    pour supprimer une image. La première est l'image principale.</p>
+                <p class="form-hint" style="margin-bottom: 10px;">Images actuelles — cliquez sur &times;
+                    pour supprimer une image. La première est l’image principale.</p>
                 <?php 
                 $images_produit = [];
                 if (!empty($produit['images'])) {
@@ -854,17 +448,26 @@ $categories = get_all_categories();
                     </div>
                     <?php endforeach; ?>
                 </div>
-                <label for="images_supplementaires"
-                    style="display: inline-block; margin-top: 10px; cursor: pointer; padding: 10px 16px; background: #f0f0f0; border-radius: 8px;">
-                    <i class="fas fa-plus"></i> Ajouter des images à la galerie
+                <label for="images_supplementaires" class="pm-upload-label">
+                    <i class="fas fa-plus" aria-hidden="true"></i> Ajouter des images à la galerie
                 </label>
                 <input type="file" id="images_supplementaires" name="images_supplementaires[]" accept="image/*" multiple
-                    style="display: none;" onchange="previewMultipleImages(this, 'preview-supplementaires')">
+                    class="pm-file-hidden" onchange="previewMultipleImages(this, 'preview-supplementaires')">
                 <div id="preview-supplementaires" class="image-preview-grid"></div>
-                <small style="color: #666; font-size: 12px; display: block; margin-top: 5px;">Formats: JPG, PNG, GIF,
-                    WEBP. Au moins une image doit rester.</small>
+                <small class="form-hint">Formats : JPG, PNG, GIF, WEBP. Au moins une image doit rester.</small>
             </div>
+                </div>
+            </section>
 
+            <section class="pm-card" aria-labelledby="pm-sec-statut">
+                <div class="pm-card__head">
+                    <span class="pm-card__icon" aria-hidden="true"><i class="fas fa-toggle-on"></i></span>
+                    <div>
+                        <h2 id="pm-sec-statut" class="pm-card__title">Visibilité</h2>
+                        <p class="pm-card__hint">Statut affiché dans le catalogue</p>
+                    </div>
+                </div>
+                <div class="pm-card__body">
             <div class="form-group">
                 <label for="statut">Statut</label>
                 <select id="statut" name="statut">
@@ -877,12 +480,23 @@ $categories = get_all_categories();
                     </option>
                 </select>
             </div>
+                </div>
+            </section>
 
-            <button type="submit" class="btn-primary">
-                <i class="fas fa-save"></i> Enregistrer les modifications
-            </button>
+        </div><!-- .pm-sections -->
+
+            <div class="pm-form-spacer" aria-hidden="true"></div>
         </form>
     </div>
+
+    <div class="pm-sticky-actions" role="contentinfo" aria-label="Enregistrement">
+        <div class="pm-sticky-inner">
+            <button type="submit" form="form-produit-modifier" class="pm-btn-primary btn-primary">
+                <i class="fas fa-save" aria-hidden="true"></i> Enregistrer les modifications
+            </button>
+        </div>
+    </div>
+    </div><!-- .contents-container.pm-page -->
 
     <script>
     (function() {
@@ -920,7 +534,7 @@ $categories = get_all_categories();
         if (inputSupp) inputSupp.addEventListener('change', function() {
             previewMultipleImages(this, 'preview-supplementaires');
         });
-        document.querySelector('form').addEventListener('submit', function(e) {
+        document.getElementById('form-produit-modifier').addEventListener('submit', function(e) {
             var kept = document.querySelectorAll('input[name="images_to_keep[]"]').length;
             var newFiles = inputSupp && inputSupp.files ? inputSupp.files.length : 0;
             if (kept === 0 && newFiles === 0) {

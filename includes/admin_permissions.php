@@ -68,10 +68,12 @@ if (!function_exists('admin_current_role')) {
     }
 
     /**
-     * Catalogue / produits (rôle admin sans accès — réservé à gestion_stock)
+     * Catalogue / produits (tableau de bord, aperçu du catalogue)
+     * — gestion des stocks (compte) et administrateur complet
      */
     function admin_can_gestion_boutique() {
-        return admin_current_role() === 'gestion_stock';
+        $r = admin_current_role();
+        return $r === 'gestion_stock' || $r === 'admin';
     }
 
     /**
