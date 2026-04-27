@@ -13,6 +13,7 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
 }
 
 require_once __DIR__ . '/includes/require_access.php';
+require_once __DIR__ . '/../includes/admin_permissions.php';
 
 require_once __DIR__ . '/../models/model_commandes_admin.php';
 require_once __DIR__ . '/../models/model_commandes_personnalisees.php';
@@ -21,10 +22,15 @@ require_once __DIR__ . '/../models/model_categories.php';
 
 $recherche = trim($_GET['recherche'] ?? '');
 $categorie_id = isset($_GET['categorie_id']) ? (int) $_GET['categorie_id'] : 0;
-$categories = get_all_categories();
-$produits = get_all_produits();
+$admin_show_catalogue = admin_can_gestion_boutique();
+$categories = [];
+$produits = [];
+if ($admin_show_catalogue) {
+    $categories = get_all_categories();
+    $produits = get_all_produits();
+}
 
-if (!empty($produits)) {
+if ($admin_show_catalogue && !empty($produits)) {
     $produits = array_values(array_filter($produits, function ($produit) use ($recherche, $categorie_id) {
         if ($categorie_id > 0 && (int) ($produit['categorie_id'] ?? 0) !== $categorie_id) {
             return false;
@@ -93,12 +99,16 @@ if (!empty($produits)) {
                 <!-- <a href="test-notification.php" class="btn-primary btn-secondary-style" title="Envoyer une notification de test sur cet ordinateur">
                     <i class="fas fa-paper-plane"></i> Test notification
                 </a> -->
+                <?php if (admin_can_zones_livraison()): ?>
                 <a href="zones-livraison/index.php" class="btn-primary btn-secondary-style">
                     <i class="fas fa-truck"></i> Zones de livraison
                 </a>
+                <?php endif; ?>
+                <?php if (admin_can_gestion_boutique()): ?>
                 <a href="produits/ajouter.php" class="btn-primary">
                     <i class="fas fa-plus"></i> Nouveau Produit
                 </a>
+                <?php endif; ?>
             </div>
         </div>
 
@@ -189,7 +199,8 @@ if (!empty($produits)) {
             </div>
         <?php endif; ?>
 
-        <!-- Section produits -->
+        <!-- Section produits (gestion des stocks) -->
+        <?php if ($admin_show_catalogue): ?>
         <section class="produits-section produits-section--dashboard" aria-labelledby="produits-heading">
             <div class="section-title section-title--dashboard">
                 <div>
@@ -290,6 +301,7 @@ if (!empty($produits)) {
                 </div>
             <?php endif; ?>
         </section>
+        <?php endif; ?>
     </div>
 
     <script src="https://www.gstatic.com/firebasejs/12.9.0/firebase-app-compat.js"></script>

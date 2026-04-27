@@ -230,6 +230,7 @@ function process_add_produit() {
     if (empty($errors)) {
         $etage = isset($_POST['etage']) ? trim($_POST['etage']) : '';
         $numero_rayon = isset($_POST['numero_rayon']) ? trim($_POST['numero_rayon']) : '';
+        $admin_session_id = isset($_SESSION['admin_id']) ? (int) $_SESSION['admin_id'] : 0;
         $data = [
             'nom' => $nom,
             'description' => $description,
@@ -247,7 +248,10 @@ function process_add_produit() {
             'etage' => $etage !== '' ? $etage : null,
             'numero_rayon' => $numero_rayon !== '' ? $numero_rayon : null
         ];
-        
+        if ($admin_session_id > 0) {
+            $data['admin_createur_id'] = $admin_session_id;
+        }
+
         $produit_id = create_produit($data);
         
         if ($produit_id) {
@@ -438,6 +442,7 @@ function process_update_produit($produit_id) {
     if (empty($errors)) {
         $etage = isset($_POST['etage']) ? trim($_POST['etage']) : '';
         $numero_rayon = isset($_POST['numero_rayon']) ? trim($_POST['numero_rayon']) : '';
+        $admin_session_id = isset($_SESSION['admin_id']) ? (int) $_SESSION['admin_id'] : 0;
         $data = [
             'nom' => $nom,
             'description' => $description,
@@ -456,6 +461,9 @@ function process_update_produit($produit_id) {
             'etage' => $etage !== '' ? $etage : null,
             'numero_rayon' => $numero_rayon !== '' ? $numero_rayon : null
         ];
+        if ($admin_session_id > 0) {
+            $data['admin_dernier_modificateur_id'] = $admin_session_id;
+        }
 
         if (update_produit($produit_id, $data)) {
             $success = true;
@@ -594,9 +602,13 @@ function process_ajuster_stock_produit($produit_id) {
         $statut = 'actif';
     }
     $data_update = array_merge($produit, ['stock' => $nouveau_stock, 'statut' => $statut]);
+    $ajust_admin = isset($_SESSION['admin_id']) ? (int) $_SESSION['admin_id'] : 0;
+    if ($ajust_admin > 0) {
+        $data_update['admin_dernier_modificateur_id'] = $ajust_admin;
+    }
     if (update_produit($produit_id, $data_update)) {
         $quantite_diff = $nouveau_stock - $quantite_avant;
-        create_stock_mouvement([
+        $mv = [
             'type' => 'inventaire',
             'stock_article_id' => null,
             'produit_id' => $produit_id,
@@ -607,7 +619,11 @@ function process_ajuster_stock_produit($produit_id) {
             'reference_id' => null,
             'reference_numero' => null,
             'notes' => 'Ajustement manuel : ' . ($quantite_diff >= 0 ? '+' : '') . $quantite_diff
-        ]);
+        ];
+        if ($ajust_admin > 0) {
+            $mv['admin_id'] = $ajust_admin;
+        }
+        create_stock_mouvement($mv);
         return ['success' => true, 'message' => 'Stock ajusté avec succès.'];
     }
 

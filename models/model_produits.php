@@ -829,6 +829,11 @@ function create_produit($data)
             $vals .= ", :numero_rayon";
             $params['numero_rayon'] = isset($data['numero_rayon']) && $data['numero_rayon'] !== '' ? trim($data['numero_rayon']) : null;
         }
+        if (produits_has_column('admin_createur_id') && !empty($data['admin_createur_id'])) {
+            $cols .= ", admin_createur_id";
+            $vals .= ", :admin_createur_id";
+            $params['admin_createur_id'] = (int) $data['admin_createur_id'];
+        }
         $with_extras = isset($data['couleurs']) || isset($data['taille']);
         if ($with_extras) {
             $cols .= ", couleurs, taille";
@@ -844,6 +849,10 @@ function create_produit($data)
                 $cols = "nom, description, prix, prix_promotion, stock, categorie_id, image_principale, images, poids, unite, date_creation, statut";
                 $vals = ":nom, :description, :prix, :prix_promotion, :stock, :categorie_id, :image_principale, :images, :poids, :unite, NOW(), :statut";
                 unset($params['couleurs'], $params['taille']);
+                if (produits_has_column('admin_createur_id') && !empty($params['admin_createur_id'])) {
+                    $cols .= ", admin_createur_id";
+                    $vals .= ", :admin_createur_id";
+                }
                 $stmt = $db->prepare("INSERT INTO produits ($cols) VALUES ($vals)");
                 $result = $stmt->execute($params);
             } else {
@@ -895,6 +904,10 @@ function update_produit($id, $data)
             $sets .= ", numero_rayon = :numero_rayon";
             $params['numero_rayon'] = isset($data['numero_rayon']) && $data['numero_rayon'] !== '' ? trim($data['numero_rayon']) : null;
         }
+        if (produits_has_column('admin_dernier_modificateur_id') && !empty($data['admin_dernier_modificateur_id'])) {
+            $sets .= ", admin_dernier_modificateur_id = :admin_dernier_modificateur_id";
+            $params['admin_dernier_modificateur_id'] = (int) $data['admin_dernier_modificateur_id'];
+        }
         $with_extras = isset($data['couleurs']) || isset($data['taille']);
         if ($with_extras) {
             $sets .= ", couleurs = :couleurs, taille = :taille";
@@ -908,6 +921,9 @@ function update_produit($id, $data)
             if ($with_extras && (strpos($e->getMessage(), 'couleurs') !== false || strpos($e->getMessage(), 'taille') !== false)) {
                 $sets = "nom = :nom, description = :description, prix = :prix, prix_promotion = :prix_promotion, stock = :stock, categorie_id = :categorie_id, image_principale = :image_principale, images = :images, poids = :poids, unite = :unite, statut = :statut, date_modification = NOW()";
                 unset($params['couleurs'], $params['taille']);
+                if (produits_has_column('admin_dernier_modificateur_id') && !empty($params['admin_dernier_modificateur_id'])) {
+                    $sets .= ", admin_dernier_modificateur_id = :admin_dernier_modificateur_id";
+                }
                 $stmt = $db->prepare("UPDATE produits SET $sets WHERE id = :id");
                 return $stmt->execute($params);
             }

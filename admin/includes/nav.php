@@ -88,11 +88,6 @@ if ($is_produits || $is_categories || $is_stock || $is_slider || $is_parametres 
                 <span class="menu-item-icon" aria-hidden="true"><i class="fas fa-calculator"></i></span>
                 <span class="menu-item-text">Comptabilité</span>
             </a>
-            <a href="<?php echo $base_path; ?>produits/index.php"
-                class="menu-item mi-produits<?php echo ($is_produits && $current_page == 'index.php') ? ' active' : ''; ?>">
-                <span class="menu-item-icon" aria-hidden="true"><i class="fas fa-box"></i></span>
-                <span class="menu-item-text">Produits</span>
-            </a>
             <a href="<?php echo $base_path; ?>stock/index.php"
                 class="menu-item mi-stock<?php echo ($is_stock) ? ' active' : ''; ?>">
                 <span class="menu-item-icon" aria-hidden="true"><i class="fas fa-boxes-stacked"></i></span>
@@ -102,21 +97,6 @@ if ($is_produits || $is_categories || $is_stock || $is_slider || $is_parametres 
                 class="menu-item mi-commandes<?php echo ($is_commandes && ($current_page == 'index.php' || $current_page == 'livrees.php' || $current_page == 'annulees.php' || $current_page == 'details.php' || $current_page == 'historique-ventes.php')) ? ' active' : ''; ?>">
                 <span class="menu-item-icon" aria-hidden="true"><i class="fas fa-shopping-cart"></i></span>
                 <span class="menu-item-text">Commandes</span>
-            </a>
-            <a href="<?php echo $base_path; ?>caisse/index.php"
-                class="menu-item mi-caisse<?php echo ($is_caisse && !$is_caisse_encaisser) ? ' active' : ''; ?>">
-                <span class="menu-item-icon" aria-hidden="true"><i class="fas fa-cash-register"></i></span>
-                <span class="menu-item-text">Caisse</span>
-            </a>
-            <a href="<?php echo $base_path; ?>caisse/encaisser-ticket.php"
-                class="menu-item mi-encaisse<?php echo $is_caisse_encaisser ? ' active' : ''; ?>">
-                <span class="menu-item-icon" aria-hidden="true"><i class="fas fa-money-bill-wave"></i></span>
-                <span class="menu-item-text">Encaissement tickets</span>
-            </a>
-            <a href="<?php echo $base_path; ?>caisse/historique-encaissements.php"
-                class="menu-item mi-hist-enc<?php echo $is_caisse_historique ? ' active' : ''; ?>">
-                <span class="menu-item-icon" aria-hidden="true"><i class="fas fa-history"></i></span>
-                <span class="menu-item-text">Historique encaissements</span>
             </a>
             <a href="<?php echo $base_path; ?>contacts/index.php"
                 class="menu-item mi-contacts<?php echo $is_contacts ? ' active' : ''; ?>">
@@ -132,11 +112,6 @@ if ($is_produits || $is_categories || $is_stock || $is_slider || $is_parametres 
                 class="menu-item mi-comptes<?php echo $is_comptes ? ' active' : ''; ?>">
                 <span class="menu-item-icon" aria-hidden="true"><i class="fas fa-user-shield"></i></span>
                 <span class="menu-item-text">Comptes d’accès</span>
-            </a>
-            <a href="<?php echo $base_path; ?>zones-livraison/index.php"
-                class="menu-item mi-zones<?php echo ($is_zones_livraison) ? ' active' : ''; ?>">
-                <span class="menu-item-icon" aria-hidden="true"><i class="fas fa-truck"></i></span>
-                <span class="menu-item-text">Zones de livraison</span>
             </a>
             <a href="<?php echo $base_path; ?>parametres.php"
                 class="menu-item mi-params<?php echo ($current_page == 'parametres.php' || strpos($current_dir, '/parametres') !== false) ? ' active' : ''; ?>">

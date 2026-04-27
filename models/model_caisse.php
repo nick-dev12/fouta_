@@ -633,7 +633,7 @@ function caisse_finaliser_vente_en_attente($vente_id, $caissier_admin_id, $mode_
             decrement_produit_stock($pid, $q);
             $quantite_apres = max(0, $quantite_avant - $q);
 
-            create_stock_mouvement([
+            $mv = [
                 'type' => 'sortie',
                 'produit_id' => $pid,
                 'quantite' => $q,
@@ -643,7 +643,11 @@ function caisse_finaliser_vente_en_attente($vente_id, $caissier_admin_id, $mode_
                 'reference_id' => $vente_id,
                 'reference_numero' => $numero,
                 'notes' => 'Vente caisse (encaissement)',
-            ]);
+            ];
+            if ($caissier_admin_id > 0) {
+                $mv['admin_id'] = $caissier_admin_id;
+            }
+            create_stock_mouvement($mv);
         }
 
         $db->commit();
@@ -785,7 +789,7 @@ function caisse_enregistrer_vente($admin_id, array $cart, $mode_paiement, array 
             decrement_produit_stock($pid, $q);
             $quantite_apres = max(0, $quantite_avant - $q);
 
-            create_stock_mouvement([
+            $mv = [
                 'type' => 'sortie',
                 'produit_id' => $pid,
                 'quantite' => $q,
@@ -795,7 +799,11 @@ function caisse_enregistrer_vente($admin_id, array $cart, $mode_paiement, array 
                 'reference_id' => $vente_id,
                 'reference_numero' => $numero_final,
                 'notes' => 'Vente caisse',
-            ]);
+            ];
+            if ($admin_id > 0) {
+                $mv['admin_id'] = $admin_id;
+            }
+            create_stock_mouvement($mv);
         }
 
         $db->commit();

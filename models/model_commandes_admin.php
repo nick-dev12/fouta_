@@ -214,7 +214,7 @@ function update_commande_statut($commande_id, $statut, $admin_traitant_id = null
                 decrement_produit_stock($produit_id, $quantite);
                 $quantite_apres = max(0, $quantite_avant - $quantite);
 
-                create_stock_mouvement([
+                $mv = [
                     'type' => 'sortie',
                     'stock_article_id' => null,
                     'produit_id' => $produit_id,
@@ -225,7 +225,11 @@ function update_commande_statut($commande_id, $statut, $admin_traitant_id = null
                     'reference_id' => $commande_id,
                     'reference_numero' => $numero_commande,
                     'notes' => 'Vente commande ' . $numero_commande . ' (statut payé)'
-                ]);
+                ];
+                if ($admin_traitant_id !== null && (int) $admin_traitant_id > 0) {
+                    $mv['admin_id'] = (int) $admin_traitant_id;
+                }
+                create_stock_mouvement($mv);
             }
 
             $stmt = $db->prepare("

@@ -212,8 +212,8 @@ if ($action === 'generer_ticket') {
 }
 
 if ($action === 'encaisser') {
-    if (admin_current_role() !== 'admin') {
-        $_SESSION['caisse_flash_error'] = 'L’encaissement depuis le bureau vendeur est réservé aux administrateurs. Les commerciaux génèrent un ticket ; le caissier l’encaisse.';
+    if (!admin_can_caisse_vendeur()) {
+        $_SESSION['caisse_flash_error'] = 'L’encaissement depuis le bureau vendeur est réservé aux commerciaux. Les commerciaux génèrent un ticket ; le caissier l’encaisse.';
         caisse_cart_save($cart);
         caisse_redirect_ok();
     }

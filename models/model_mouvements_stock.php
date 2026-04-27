@@ -7,8 +7,33 @@
 require_once __DIR__ . '/../conn/conn.php';
 
 /**
+ * Colonne présente sur stock_mouvements (cache SHOW COLUMNS)
+ */
+function stock_mouvements_has_column($name) {
+    static $cols = null;
+    global $db;
+    if ($cols === null) {
+        $cols = [];
+        if (!$db) {
+            return false;
+        }
+        try {
+            $stmt = $db->query('SHOW COLUMNS FROM stock_mouvements');
+            if ($stmt) {
+                while ($r = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                    $cols[$r['Field']] = true;
+                }
+            }
+        } catch (PDOException $e) {
+            $cols = [];
+        }
+    }
+    return isset($cols[$name]);
+}
+
+/**
  * Enregistre un mouvement de stock
- * @param array $data ['type', 'produit_id'?, 'quantite', 'quantite_avant'?, 'quantite_apres'?, 'reference_type'?, 'reference_id'?, 'reference_numero'?, 'notes'?]
+ * @param array $data ['type', 'produit_id'?, 'quantite', 'quantite_avant'?, 'quantite_apres'?, 'reference_type'?, 'reference_id'?, 'reference_numero'?, 'notes'?, 'admin_id'?]
  * @return int|false ID du mouvement ou False
  */
 function create_stock_mouvement($data)
@@ -16,16 +41,9 @@ function create_stock_mouvement($data)
     global $db;
 
     try {
-        $stmt = $db->prepare("
-            INSERT INTO stock_mouvements (
-                type, produit_id, quantite, quantite_avant, quantite_apres,
-                reference_type, reference_id, reference_numero, date_mouvement, notes
-            ) VALUES (
-                :type, :produit_id, :quantite, :quantite_avant, :quantite_apres,
-                :reference_type, :reference_id, :reference_numero, NOW(), :notes
-            )
-        ");
-        $stmt->execute([
+        $cols = 'type, produit_id, quantite, quantite_avant, quantite_apres, reference_type, reference_id, reference_numero, date_mouvement, notes';
+        $ph = ':type, :produit_id, :quantite, :quantite_avant, :quantite_apres, :reference_type, :reference_id, :reference_numero, NOW(), :notes';
+        $params = [
             'type' => $data['type'],
             'produit_id' => $data['produit_id'] ?? null,
             'quantite' => (int) $data['quantite'],
@@ -35,7 +53,14 @@ function create_stock_mouvement($data)
             'reference_id' => $data['reference_id'] ?? null,
             'reference_numero' => $data['reference_numero'] ?? null,
             'notes' => $data['notes'] ?? null
-        ]);
+        ];
+        if (stock_mouvements_has_column('admin_id') && !empty($data['admin_id'])) {
+            $cols = 'type, produit_id, quantite, quantite_avant, quantite_apres, reference_type, reference_id, reference_numero, date_mouvement, notes, admin_id';
+            $ph = ':type, :produit_id, :quantite, :quantite_avant, :quantite_apres, :reference_type, :reference_id, :reference_numero, NOW(), :notes, :admin_id';
+            $params['admin_id'] = (int) $data['admin_id'];
+        }
+        $stmt = $db->prepare("INSERT INTO stock_mouvements ($cols) VALUES ($ph)");
+        $stmt->execute($params);
         return $db->lastInsertId();
     } catch (PDOException $e) {
         return false;

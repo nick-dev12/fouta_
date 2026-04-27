@@ -21,6 +21,13 @@ if (!function_exists('admin_current_role')) {
         return admin_current_role() === 'admin';
     }
 
+    /**
+     * Zones de livraison : tous les rôles sauf le rôle « admin » (compte restreint)
+     */
+    function admin_can_zones_livraison() {
+        return admin_current_role() !== 'admin';
+    }
+
     function admin_can_commercial() {
         $r = admin_current_role();
         return $r === 'admin' || $r === 'commercial';
@@ -46,27 +53,25 @@ if (!function_exists('admin_current_role')) {
      */
     function admin_can_caisse() {
         $r = admin_current_role();
-        return in_array($r, ['admin', 'commercial', 'caissier'], true);
+        return in_array($r, ['commercial', 'caissier'], true);
     }
 
     /** Bureau vendeur : scan, panier, génération de ticket (pas l’encaissement caissier seul) */
     function admin_can_caisse_vendeur() {
         $r = admin_current_role();
-        return $r === 'admin' || $r === 'commercial';
+        return $r === 'commercial';
     }
 
-    /** Encaissement (validation paiement) : administrateur ou caissier */
+    /** Encaissement (validation paiement) : caissier */
     function admin_can_encaisser_ticket() {
-        $r = admin_current_role();
-        return $r === 'admin' || $r === 'caissier';
+        return admin_current_role() === 'caissier';
     }
 
     /**
-     * Catalogue / produits / stock (hors caisse)
+     * Catalogue / produits (rôle admin sans accès — réservé à gestion_stock)
      */
     function admin_can_gestion_boutique() {
-        $r = admin_current_role();
-        return in_array($r, ['admin', 'gestion_stock'], true);
+        return admin_current_role() === 'gestion_stock';
     }
 
     /**
@@ -74,7 +79,7 @@ if (!function_exists('admin_current_role')) {
      */
     function admin_require_roles($allowed_roles, $redirect = 'dashboard.php') {
         $r = admin_current_role();
-        if (in_array($r, $allowed_roles, true) || $r === 'admin') {
+        if (in_array($r, $allowed_roles, true)) {
             return;
         }
         header('Location: ' . $redirect);

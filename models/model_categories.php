@@ -8,6 +8,29 @@
 require_once __DIR__ . '/../conn/conn.php';
 
 /**
+ * Indique si une colonne existe sur la table categories (cache SHOW COLUMNS)
+ */
+function categories_has_column($name) {
+    static $cols = null;
+    global $db;
+    if ($cols === null) {
+        $cols = [];
+        if (!$db) {
+            return false;
+        }
+        try {
+            $stmt = $db->query('SHOW COLUMNS FROM categories');
+            while ($r = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                $cols[$r['Field']] = true;
+            }
+        } catch (PDOException $e) {
+            $cols = [];
+        }
+    }
+    return isset($cols[$name]);
+}
+
+/**
  * Récupère toutes les catégories actives
  * @return array|false Tableau des catégories ou False en cas d'erreur
  */
@@ -71,23 +94,29 @@ function get_categorie_by_nom($nom)
  * @param string $nom Le nom de la catégorie
  * @param string $description La description
  * @param string|null $image Le chemin de l'image
+ * @param int|null $admin_createur_id Admin ayant créé la catégorie (traçabilité)
  * @return int|false L'ID de la catégorie créée ou False en cas d'erreur
  */
-function create_categorie($nom, $description = null, $image = null)
+function create_categorie($nom, $description = null, $image = null, $admin_createur_id = null)
 {
     global $db;
 
     try {
-        $stmt = $db->prepare("
-            INSERT INTO categories (nom, description, image, date_creation) 
-            VALUES (:nom, :description, :image, NOW())
-        ");
-
-        $result = $stmt->execute([
+        $cols = 'nom, description, image, date_creation';
+        $vals = ':nom, :description, :image, NOW()';
+        $params = [
             'nom' => $nom,
             'description' => $description,
             'image' => $image
-        ]);
+        ];
+        if (categories_has_column('admin_createur_id') && $admin_createur_id !== null && (int) $admin_createur_id > 0) {
+            $cols = 'nom, description, image, date_creation, admin_createur_id';
+            $vals = ':nom, :description, :image, NOW(), :admin_createur_id';
+            $params['admin_createur_id'] = (int) $admin_createur_id;
+        }
+        $stmt = $db->prepare("INSERT INTO categories ($cols) VALUES ($vals)");
+
+        $result = $stmt->execute($params);
 
         if ($result) {
             return $db->lastInsertId();
@@ -105,27 +134,28 @@ function create_categorie($nom, $description = null, $image = null)
  * @param string $nom Le nom de la catégorie
  * @param string $description La description
  * @param string|null $image Le chemin de l'image
+ * @param int|null $admin_modificateur_id Admin ayant modifié la catégorie (traçabilité)
  * @return bool True en cas de succès, False sinon
  */
-function update_categorie($id, $nom, $description = null, $image = null)
+function update_categorie($id, $nom, $description = null, $image = null, $admin_modificateur_id = null)
 {
     global $db;
 
     try {
-        $stmt = $db->prepare("
-            UPDATE categories SET
-                nom = :nom,
-                description = :description,
-                image = :image
-            WHERE id = :id
-        ");
-
-        return $stmt->execute([
+        $sets = 'nom = :nom, description = :description, image = :image';
+        $params = [
             'id' => $id,
             'nom' => $nom,
             'description' => $description,
             'image' => $image
-        ]);
+        ];
+        if (categories_has_column('admin_dernier_modificateur_id') && $admin_modificateur_id !== null && (int) $admin_modificateur_id > 0) {
+            $sets .= ', admin_dernier_modificateur_id = :admin_dernier_modificateur_id';
+            $params['admin_dernier_modificateur_id'] = (int) $admin_modificateur_id;
+        }
+        $stmt = $db->prepare("UPDATE categories SET $sets WHERE id = :id");
+
+        return $stmt->execute($params);
     } catch (PDOException $e) {
         return false;
     }

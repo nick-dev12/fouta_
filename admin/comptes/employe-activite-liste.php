@@ -40,6 +40,12 @@ if (!$admin_cible) {
     exit;
 }
 
+$types_ok_role = admin_activite_types_pour_role($admin_cible['role'] ?? 'admin');
+if (!in_array($type, $types_ok_role, true)) {
+    header('Location: employe-activite.php?admin_id=' . (int) $admin_cible_id);
+    exit;
+}
+
 $lignes = get_liste_activite_par_admin($admin_cible_id, $type, 250);
 $titre_liste = $libelles[$type];
 $page_title = $titre_liste . ' — ' . htmlspecialchars($admin_cible['prenom'] . ' ' . $admin_cible['nom']);
@@ -87,7 +93,7 @@ $page_title = $titre_liste . ' — ' . htmlspecialchars($admin_cible['prenom'] .
         <?php if (empty($lignes)): ?>
             <div class="liste-vide">
                 <i class="fas fa-inbox" style="font-size: 2.5rem; opacity: .35; display: block; margin-bottom: 12px;"></i>
-                Aucun enregistrement pour ce type, ou la colonne de traçabilité n’est pas encore présente en base (exécutez la migration <code>add_admin_tracabilite_interactions.sql</code>).
+                Aucun enregistrement pour ce type, ou la colonne de traçabilité n’est pas encore présente en base (exécutez <code>php migrations/run_add_tracabilite_produits_categories_stock.php</code>).
             </div>
         <?php else: ?>
             <div class="liste-activite-table-wrap">
@@ -127,6 +133,31 @@ $page_title = $titre_liste . ' — ' . htmlspecialchars($admin_cible['prenom'] .
                             <th>Raison sociale</th>
                             <th>Téléphone</th>
                             <th>Date création</th>
+                            <th></th>
+                        <?php elseif ($type === 'caisse_encaissements' || $type === 'caisse_tickets_bureau'): ?>
+                            <th>Ticket</th>
+                            <th>Date</th>
+                            <th>Statut</th>
+                            <th>Montant</th>
+                            <th>Mode</th>
+                            <th></th>
+                        <?php elseif ($type === 'produits_crees' || $type === 'produits_modifies'): ?>
+                            <th>Produit</th>
+                            <th>Stock</th>
+                            <th>Statut</th>
+                            <th>Date</th>
+                            <th></th>
+                        <?php elseif ($type === 'categories_crees' || $type === 'categories_modifiees'): ?>
+                            <th>Catégorie</th>
+                            <th>Date création</th>
+                            <th></th>
+                        <?php elseif ($type === 'mouvements_stock'): ?>
+                            <th>Date</th>
+                            <th>Type</th>
+                            <th>Produit</th>
+                            <th>Qté</th>
+                            <th>Avant → Après</th>
+                            <th>Référence</th>
                             <th></th>
                         <?php endif; ?>
                         </tr>
@@ -168,6 +199,46 @@ $page_title = $titre_liste . ' — ' . htmlspecialchars($admin_cible['prenom'] .
                                 <td><?php echo htmlspecialchars($row['telephone'] ?? '—'); ?></td>
                                 <td><?php echo !empty($row['date_creation']) ? date('d/m/Y', strtotime($row['date_creation'])) : '—'; ?></td>
                                 <td><a href="../devis/bl_par_client.php?id=<?php echo (int) ($row['id'] ?? 0); ?>">Fiche client</a></td>
+                            <?php elseif ($type === 'caisse_encaissements' || $type === 'caisse_tickets_bureau'): ?>
+                                <td><?php echo htmlspecialchars($row['numero_ticket'] ?? ''); ?></td>
+                                <td><?php echo !empty($row['date_vente']) ? date('d/m/Y H:i', strtotime($row['date_vente'])) : '—'; ?></td>
+                                <td><?php echo htmlspecialchars($row['statut'] ?? ''); ?></td>
+                                <td><?php echo isset($row['montant_total']) ? number_format((float) $row['montant_total'], 0, ',', ' ') . ' FCFA' : '—'; ?></td>
+                                <td><?php echo htmlspecialchars($row['mode_paiement'] ?? '—'); ?></td>
+                                <td><a href="../caisse/index.php">Caisse</a></td>
+                            <?php elseif ($type === 'produits_crees' || $type === 'produits_modifies'): ?>
+                                <td><?php echo htmlspecialchars($row['nom'] ?? ''); ?></td>
+                                <td><?php echo isset($row['stock']) ? (int) $row['stock'] : '—'; ?></td>
+                                <td><?php echo htmlspecialchars($row['statut'] ?? ''); ?></td>
+                                <td><?php
+                                    $d = $type === 'produits_modifies' ? ($row['date_modification'] ?? '') : ($row['date_creation'] ?? '');
+                                    echo !empty($d) ? date('d/m/Y H:i', strtotime($d)) : '—';
+                                ?></td>
+                                <td><a href="../produits/modifier.php?id=<?php echo (int) ($row['id'] ?? 0); ?>">Fiche</a></td>
+                            <?php elseif ($type === 'categories_crees' || $type === 'categories_modifiees'): ?>
+                                <td><?php echo htmlspecialchars($row['nom'] ?? ''); ?></td>
+                                <td><?php echo !empty($row['date_creation']) ? date('d/m/Y H:i', strtotime($row['date_creation'])) : '—'; ?></td>
+                                <td><a href="../categories/modifier.php?id=<?php echo (int) ($row['id'] ?? 0); ?>">Fiche</a></td>
+                            <?php elseif ($type === 'mouvements_stock'): ?>
+                                <td><?php echo !empty($row['date_mouvement']) ? date('d/m/Y H:i', strtotime($row['date_mouvement'])) : '—'; ?></td>
+                                <td><?php echo htmlspecialchars($row['type'] ?? ''); ?></td>
+                                <td><?php echo htmlspecialchars($row['produit_nom'] ?? '—'); ?></td>
+                                <td><?php echo isset($row['quantite']) ? (int) $row['quantite'] : '—'; ?></td>
+                                <td><?php echo (int) ($row['quantite_avant'] ?? 0) . ' → ' . (int) ($row['quantite_apres'] ?? 0); ?></td>
+                                <td><?php
+                                    $ref_t = trim((string) ($row['reference_type'] ?? ''));
+                                    $ref_n = trim((string) ($row['reference_numero'] ?? ''));
+                                    $ref_show = $ref_t . ($ref_n !== '' ? ' ' . $ref_n : '');
+                                    echo $ref_show !== '' ? htmlspecialchars($ref_show) : '—';
+                                ?></td>
+                                <td><?php
+                                    $pid = (int) ($row['produit_id'] ?? 0);
+                                    if ($pid > 0) {
+                                        echo '<a href="../stock/mouvements.php?produit_id=' . (int) $pid . '">Mouvements</a>';
+                                    } else {
+                                        echo '—';
+                                    }
+                                ?></td>
                             <?php endif; ?>
                         </tr>
                         <?php endforeach; ?>

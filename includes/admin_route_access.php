@@ -54,11 +54,24 @@ if (!function_exists('admin_route_relative_path')) {
      */
     function admin_route_is_allowed($role, $relativePath) {
         $r = admin_normalize_role_for_route($role);
+        $p = $relativePath;
+
         if ($r === 'admin') {
+            if ($p === '' || $p === 'dashboard.php' || $p === 'login.php' || $p === 'logout.php') {
+                return true;
+            }
+            if ($p === 'profil.php' || $p === 'inscription-admin.php' || $p === 'parametres.php' || $p === 'test-notification.php') {
+                return true;
+            }
+            $interdits = ['produits/', 'caisse/', 'zones-livraison/'];
+            foreach ($interdits as $prefix) {
+                if (strpos($p, $prefix) === 0) {
+                    return false;
+                }
+            }
             return true;
         }
 
-        $p = $relativePath;
         if ($p === '') {
             return false;
         }
@@ -167,7 +180,7 @@ if (!function_exists('admin_route_relative_path')) {
         $role = admin_normalize_role_for_route($_SESSION['admin_role'] ?? 'admin');
         $_SESSION['admin_role'] = $role;
         $rel = admin_route_relative_path();
-        if ($role === 'admin' || admin_route_is_allowed($role, $rel)) {
+        if (admin_route_is_allowed($role, $rel)) {
             return;
         }
         header('Content-Type: application/json; charset=utf-8');

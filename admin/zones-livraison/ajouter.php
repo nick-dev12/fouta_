@@ -4,6 +4,7 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
     header('Location: ../login.php');
     exit;
 }
+require_once __DIR__ . '/../includes/require_access.php';
 require_once __DIR__ . '/../../controllers/controller_zones_livraison.php';
 $result = process_add_zone_livraison();
 if (isset($result['success']) && $result['success']) {

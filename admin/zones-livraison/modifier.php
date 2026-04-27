@@ -10,6 +10,7 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
     header('Location: ../login.php');
     exit;
 }
+require_once __DIR__ . '/../includes/require_access.php';
 
 $zone_id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 if ($zone_id <= 0) {

@@ -94,7 +94,8 @@ function process_add_categorie() {
     
     // Si aucune erreur, créer la catégorie
     if (empty($errors)) {
-        $categorie_id = create_categorie($nom, $description, $image);
+        $aid = isset($_SESSION['admin_id']) ? (int) $_SESSION['admin_id'] : 0;
+        $categorie_id = create_categorie($nom, $description, $image, $aid > 0 ? $aid : null);
         
         if ($categorie_id) {
             $success = true;
@@ -166,7 +167,8 @@ function process_update_categorie($categorie_id) {
     
     // Si aucune erreur, mettre à jour la catégorie
     if (empty($errors)) {
-        if (update_categorie($categorie_id, $nom, $description, $image)) {
+        $aid = isset($_SESSION['admin_id']) ? (int) $_SESSION['admin_id'] : 0;
+        if (update_categorie($categorie_id, $nom, $description, $image, $aid > 0 ? $aid : null)) {
             $success = true;
             $message = 'Catégorie modifiée avec succès !';
         } else {
