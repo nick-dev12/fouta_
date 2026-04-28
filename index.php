@@ -45,128 +45,8 @@ $seo_canonical = $base . '/';
     <link rel="stylesheet" href="/css/animate.min.css<?php echo asset_version_query(); ?>">
     <link rel="stylesheet" href="/css/a_style.css<?php echo asset_version_query(); ?>">
     <link rel="stylesheet" href="/css/product-cards.css<?php echo asset_version_query(); ?>">
+    <link rel="stylesheet" href="/css/vitrine-hero.css<?php echo asset_version_query(); ?>">
     <style>
-    /* Bannière vitrine - Design site vitrine professionnel */
-    .vitrine-hero {
-        position: relative;
-        padding: 60px 24px 50px;
-        overflow: hidden;
-    }
-
-    .vitrine-hero-bg {
-        position: absolute;
-        inset: 0;
-        background: linear-gradient(135deg, var(--blanc-casse) 0%, var(--blanc-neige) 50%, rgba(53, 100, 166, 0.04) 100%);
-        z-index: 0;
-    }
-
-    .vitrine-hero-bg::before {
-        content: '';
-        position: absolute;
-        inset: 0;
-        background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%233564a6' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-        opacity: 0.6;
-    }
-
-    .vitrine-hero-content {
-        position: relative;
-        z-index: 1;
-        max-width: 900px;
-        margin: 0 auto;
-        text-align: center;
-    }
-
-    .vitrine-hero-title {
-        font-size: clamp(24px, 4vw, 36px);
-        font-weight: 700;
-        color: var(--couleur-dominante);
-        letter-spacing: 2px;
-        text-transform: uppercase;
-        margin: 0 0 20px;
-        font-family: var(--font-titres);
-    }
-
-    .vitrine-hero-desc {
-        font-size: clamp(14px, 1.8vw, 16px);
-        line-height: 1.7;
-        color: var(--gris-fonce);
-        margin: 0 0 40px;
-        max-width: 700px;
-        margin-left: auto;
-        margin-right: auto;
-    }
-
-    .vitrine-services-grid {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 12px;
-        max-width: 900px;
-        margin: 0 auto;
-    }
-
-    .vitrine-service-block {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 14px;
-        padding: 28px 20px;
-        background: var(--couleur-dominante);
-        color: var(--texte-clair);
-        text-decoration: none;
-        border-radius: 8px;
-        transition: all 0.3s ease;
-        min-height: 140px;
-    }
-
-    .vitrine-service-block:hover {
-        background: var(--couleur-dominante-hover);
-        transform: translateY(-4px);
-        box-shadow: var(--ombre-gourmande);
-    }
-
-    .vitrine-service-icon {
-        font-size: 36px;
-        opacity: 0.95;
-    }
-
-    .vitrine-service-label {
-        font-size: 13px;
-        font-weight: 700;
-        letter-spacing: 1px;
-        text-transform: uppercase;
-    }
-
-    @media (max-width: 768px) {
-        .vitrine-hero {
-            padding: 40px 16px 36px;
-        }
-
-        .vitrine-services-grid {
-            grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
-        }
-
-        .vitrine-service-block {
-            padding: 24px 16px;
-            min-height: 120px;
-        }
-
-        .vitrine-service-icon {
-            font-size: 28px;
-        }
-
-        .vitrine-service-label {
-            font-size: 11px;
-        }
-    }
-
-    @media (max-width: 400px) {
-        .vitrine-services-grid {
-            grid-template-columns: 1fr;
-        }
-    }
-
     /* Nouveaux produits et Produits populaires : flex-wrap, Owl désactivé, 6 produits max */
     .carousel-produits-outer {
         position: relative;
@@ -413,31 +293,45 @@ $seo_canonical = $base . '/';
     </div>
     <?php endif; ?>
 
-    <!-- Bannière vitrine - Présentation des services FOUTA POIDS LOURDS -->
+    <!-- Bannière vitrine — glassmorphism -->
     <section class="vitrine-hero" data-aos="fade-up" data-aos-duration="800">
-        <div class="vitrine-hero-bg"></div>
+        <div class="vitrine-hero-bg" aria-hidden="true">
+            <div class="vitrine-hero-orbs">
+                <span class="vitrine-hero-orb vitrine-hero-orb--a"></span>
+                <span class="vitrine-hero-orb vitrine-hero-orb--b"></span>
+                <span class="vitrine-hero-orb vitrine-hero-orb--c"></span>
+            </div>
+            <div class="vitrine-hero-floats">
+                <span class="vitrine-hero-float vitrine-hero-float--1"><i class="fas fa-shield-halved" aria-hidden="true"></i></span>
+                <span class="vitrine-hero-float vitrine-hero-float--2"><i class="fas fa-gears" aria-hidden="true"></i></span>
+                <span class="vitrine-hero-float vitrine-hero-float--3"><i class="fas fa-medal" aria-hidden="true"></i></span>
+            </div>
+        </div>
         <div class="vitrine-hero-content">
-            <h1 class="vitrine-hero-title">CHEZ FOUTA POIDS LOURDS</h1>
-            <p class="vitrine-hero-desc">
-                Spécialisée dans la vente de pièces détachées pour véhicules poids lourds (camions, bus et remorques)
-                et l'approvisionnement des professionnels du transport et de la mécanique en pièces de qualité.
-            </p>
+            <div class="vitrine-hero-glass-head">
+                <p class="vitrine-hero-title-badge"><i class="fas fa-circle-check" aria-hidden="true"></i> Qualité professionnelle</p>
+                <h1 class="vitrine-hero-title">Chez FOUTA POIDS LOURDS</h1>
+                <p class="vitrine-hero-desc">
+                    Spécialisée dans la vente de pièces détachées pour véhicules poids lourds (camions, bus et remorques)
+                    et l&apos;approvisionnement des professionnels du transport et de la mécanique en pièces de qualité.
+                </p>
+            </div>
             <div class="vitrine-services-grid">
-                <a href="produits.php" class="vitrine-service-block">
-                    <i class="fas fa-bus vitrine-service-icon"></i>
-                    <span class="vitrine-service-label">BUS</span>
+                <a href="produits.php" class="vitrine-service-block vitrine-service-block--bus">
+                    <span class="vitrine-service-icon-wrap" aria-hidden="true"><i class="fas fa-bus vitrine-service-icon"></i></span>
+                    <span class="vitrine-service-label">Bus</span>
                 </a>
-                <a href="produits.php" class="vitrine-service-block">
-                    <i class="fas fa-tractor vitrine-service-icon"></i>
-                    <span class="vitrine-service-label">TRACTEUR</span>
+                <a href="produits.php" class="vitrine-service-block vitrine-service-block--tractor">
+                    <span class="vitrine-service-icon-wrap" aria-hidden="true"><i class="fas fa-tractor vitrine-service-icon"></i></span>
+                    <span class="vitrine-service-label">Tracteur</span>
                 </a>
-                <a href="produits.php" class="vitrine-service-block">
-                    <i class="fas fa-truck vitrine-service-icon"></i>
-                    <span class="vitrine-service-label">CAMION</span>
+                <a href="produits.php" class="vitrine-service-block vitrine-service-block--truck">
+                    <span class="vitrine-service-icon-wrap" aria-hidden="true"><i class="fas fa-truck vitrine-service-icon"></i></span>
+                    <span class="vitrine-service-label">Camion</span>
                 </a>
-                <a href="produits.php" class="vitrine-service-block">
-                    <i class="fas fa-trailer vitrine-service-icon"></i>
-                    <span class="vitrine-service-label">REMORQUE</span>
+                <a href="produits.php" class="vitrine-service-block vitrine-service-block--trailer">
+                    <span class="vitrine-service-icon-wrap" aria-hidden="true"><i class="fas fa-trailer vitrine-service-icon"></i></span>
+                    <span class="vitrine-service-label">Remorque</span>
                 </a>
             </div>
         </div>

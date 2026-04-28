@@ -1,0 +1,382 @@
+/**
+ * Section vitrine accueil — glassmorphism, orbes, cartes services
+ */
+@import url("./variables.css");
+
+.vitrine-hero {
+  position: relative;
+  padding: clamp(2.25rem, 5vw, 4rem) clamp(1rem, 3vw, 2rem) clamp(2.5rem, 4vw, 3.75rem);
+  overflow: hidden;
+  isolation: isolate;
+}
+
+/* Fond décoratif : dégradés, maille, halos type verre */
+.vitrine-hero-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: 0;
+  background:
+    radial-gradient(
+      ellipse 85% 55% at 12% 12%,
+      rgba(53, 100, 166, 0.18) 0%,
+      transparent 55%
+    ),
+    radial-gradient(
+      ellipse 70% 50% at 88% 18%,
+      rgba(255, 107, 53, 0.12) 0%,
+      transparent 52%
+    ),
+    radial-gradient(
+      ellipse 60% 45% at 50% 95%,
+      rgba(74, 122, 184, 0.14) 0%,
+      transparent 48%
+    ),
+    linear-gradient(
+      165deg,
+      rgba(247, 249, 253, 0.98) 0%,
+      rgba(243, 246, 251, 0.95) 35%,
+      rgba(232, 240, 249, 0.88) 100%
+    );
+}
+
+.vitrine-hero-bg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg width='72' height='72' viewBox='0 0 72 72' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none'%3E%3Cpath d='M36 42h-4v4h4v-4zm0-24h-4v4h4v-4zM18 36v4h4v-4h-4zm24 0v4h4v-4h-4z' fill='%233564a6' fill-opacity='0.045'/%3E%3C/g%3E%3C/svg%3E");
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+/* Bulles “verre” floues */
+.vitrine-hero-bg::after {
+  content: "";
+  position: absolute;
+  width: min(320px, 45vw);
+  height: min(320px, 45vw);
+  right: -8%;
+  top: -10%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 35% 35%,
+    rgba(255, 255, 255, 0.55) 0%,
+    rgba(53, 100, 166, 0.08) 45%,
+    transparent 70%
+  );
+  filter: blur(2px);
+  pointer-events: none;
+}
+
+.vitrine-hero-orbs {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.vitrine-hero-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(40px);
+  opacity: 0.65;
+}
+
+.vitrine-hero-orb--a {
+  width: clamp(140px, 28vw, 220px);
+  height: clamp(140px, 28vw, 220px);
+  left: -5%;
+  bottom: 5%;
+  background: rgba(53, 100, 166, 0.35);
+}
+
+.vitrine-hero-orb--b {
+  width: clamp(100px, 20vw, 160px);
+  height: clamp(100px, 20vw, 160px);
+  right: 15%;
+  top: 40%;
+  background: rgba(255, 107, 53, 0.22);
+}
+
+.vitrine-hero-orb--c {
+  width: clamp(80px, 16vw, 120px);
+  height: clamp(80px, 16vw, 120px);
+  left: 40%;
+  top: -5%;
+  background: rgba(74, 122, 184, 0.28);
+}
+
+/* Icônes décoratives flottantes (fond uniquement) */
+.vitrine-hero-floats {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.vitrine-hero-float {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(44px, 8vw, 56px);
+  height: clamp(44px, 8vw, 56px);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.38);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow:
+    0 8px 32px rgba(53, 100, 166, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  color: var(--couleur-dominante);
+  font-size: clamp(1.1rem, 2.2vw, 1.35rem);
+  animation: vitrine-float-y 7s ease-in-out infinite;
+}
+
+.vitrine-hero-float:nth-child(2) {
+  animation-delay: -2.3s;
+  color: var(--accent-promo);
+}
+
+.vitrine-hero-float:nth-child(3) {
+  animation-delay: -4.1s;
+  color: var(--bleu-clair);
+}
+
+.vitrine-hero-float--1 {
+  left: 6%;
+  top: 22%;
+}
+
+.vitrine-hero-float--2 {
+  right: 8%;
+  top: 18%;
+}
+
+.vitrine-hero-float--3 {
+  left: 18%;
+  bottom: 16%;
+}
+
+@keyframes vitrine-float-y {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+/* Contenu */
+.vitrine-hero-content {
+  position: relative;
+  z-index: 2;
+  max-width: 920px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.vitrine-hero-glass-head {
+  padding: clamp(1.35rem, 3.5vw, 2rem) clamp(1.1rem, 3vw, 2.25rem);
+  margin-bottom: clamp(1.5rem, 3vw, 2.25rem);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.42);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  box-shadow:
+    0 12px 40px rgba(53, 100, 166, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.vitrine-hero-title {
+  font-size: clamp(1.35rem, 3.8vw, 2.05rem);
+  font-weight: 800;
+  background: linear-gradient(
+    120deg,
+    var(--couleur-dominante) 0%,
+    var(--bleu-fonce) 40%,
+    var(--accent-promo) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin: 0 0 0.75rem;
+  font-family: var(--font-titres);
+  line-height: 1.2;
+}
+
+.vitrine-hero-title-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.65rem;
+  padding: 0.35rem 0.85rem;
+  font-size: clamp(0.65rem, 1.5vw, 0.72rem);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--couleur-dominante);
+  background: rgba(53, 100, 166, 0.12);
+  border: 1px solid rgba(53, 100, 166, 0.22);
+  border-radius: 999px;
+}
+
+.vitrine-hero-desc {
+  font-size: clamp(0.875rem, 1.65vw, 1.05rem);
+  line-height: 1.72;
+  color: var(--gris-fonce);
+  margin: 0;
+  max-width: 52rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Grille services — cartes verre + icônes colorées */
+.vitrine-services-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(0.65rem, 2vw, 1rem);
+  max-width: 920px;
+  margin: 0 auto;
+}
+
+.vitrine-service-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: clamp(1.1rem, 2.5vw, 1.5rem) clamp(0.75rem, 2vw, 1rem);
+  text-decoration: none;
+  border-radius: 18px;
+  min-height: clamp(128px, 22vw, 152px);
+  transition:
+    transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.35s ease,
+    border-color 0.25s ease,
+    background 0.35s ease;
+  background: rgba(255, 255, 255, 0.48);
+  border: 1px solid rgba(255, 255, 255, 0.62);
+  box-shadow:
+    0 10px 36px rgba(53, 100, 166, 0.09),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.vitrine-service-block:hover {
+  transform: translateY(-6px) scale(1.02);
+  box-shadow:
+    0 18px 46px rgba(53, 100, 166, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+.vitrine-service-block:focus-visible {
+  outline: 2px solid var(--couleur-dominante);
+  outline-offset: 3px;
+}
+
+.vitrine-service-icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(52px, 11vw, 64px);
+  height: clamp(52px, 11vw, 64px);
+  border-radius: 18px;
+  font-size: clamp(1.35rem, 3vw, 1.65rem);
+  color: var(--texte-clair);
+  box-shadow:
+    0 8px 22px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+
+.vitrine-service-block--bus .vitrine-service-icon-wrap {
+  background: linear-gradient(145deg, #5b7dc8 0%, var(--couleur-dominante) 55%, var(--bleu-fonce) 100%);
+}
+
+.vitrine-service-block--tractor .vitrine-service-icon-wrap {
+  background: linear-gradient(145deg, #34a894 0%, #208070 50%, #1a6558 100%);
+}
+
+.vitrine-service-block--truck .vitrine-service-icon-wrap {
+  background: linear-gradient(145deg, var(--bleu-clair) 0%, var(--couleur-dominante) 48%, var(--bleu-fonce) 100%);
+}
+
+.vitrine-service-block--trailer .vitrine-service-icon-wrap {
+  background: linear-gradient(145deg, var(--orange-clair) 0%, var(--accent-promo) 45%, var(--orange-fonce) 100%);
+}
+
+.vitrine-service-icon {
+  line-height: 1;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15));
+}
+
+.vitrine-service-label {
+  font-size: clamp(0.68rem, 1.35vw, 0.78rem);
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--titres);
+}
+
+@media (max-width: 900px) {
+  .vitrine-hero-float {
+    opacity: 0.65;
+    transform: scale(0.92);
+  }
+
+  .vitrine-hero-float--3 {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .vitrine-services-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem;
+  }
+
+  .vitrine-hero-float {
+    display: none;
+  }
+
+  .vitrine-hero-glass-head {
+    border-radius: 18px;
+  }
+}
+
+@media (max-width: 420px) {
+  .vitrine-services-grid {
+    grid-template-columns: 1fr;
+    max-width: 280px;
+  }
+
+  .vitrine-service-block {
+    flex-direction: row;
+    justify-content: flex-start;
+    text-align: left;
+    min-height: auto;
+    padding: 1rem 1.1rem;
+    gap: 1rem;
+  }
+
+  .vitrine-service-icon-wrap {
+    flex-shrink: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vitrine-hero-float {
+    animation: none;
+  }
+
+  .vitrine-service-block:hover {
+    transform: none;
+  }
+}

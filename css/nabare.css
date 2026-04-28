@@ -518,6 +518,27 @@ nav .containernav .users img {
   transform: translateY(-2px);
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
 }
+
+.section1 button.nav-action-btn {
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.section1 .nav-action-btn--filters {
+  color: var(--couleur-dominante);
+  border-color: rgba(53, 100, 166, 0.35);
+  background: var(--bleu-pale, rgba(53, 100, 166, 0.1));
+}
+
+.section1 .nav-action-btn--filters:hover {
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.section1 .nav-action-btn--filters.active {
+  background: var(--couleur-dominante);
+  color: var(--texte-clair);
+  border-color: var(--couleur-dominante);
+}
 .section1 .nav-btn-nouveautes {
   background: var(--couleur-dominante);
   color: var(--texte-clair);

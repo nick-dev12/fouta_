@@ -19,9 +19,16 @@ if (isset($_SESSION['user_id'])) {
         $panier_count = count_panier_items($_SESSION['user_id']);
     }
 }
+
+$categories_menu = [];
+if (file_exists(__DIR__ . '/models/model_categories.php')) {
+    require_once __DIR__ . '/models/model_categories.php';
+    $categories_menu = get_all_categories();
+}
 ?>
 <link rel="stylesheet" href="/css/variables.css<?php echo $asset_version ? '?v=' . $asset_version : ''; ?>">
 <link rel="stylesheet" href="/css/nabare.css<?php echo $asset_version ? '?v=' . $asset_version : ''; ?>">
+<link rel="stylesheet" href="/css/gtranslate-nav.css<?php echo $asset_version ? '?v=' . $asset_version : ''; ?>">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
     integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw=="
     crossorigin="anonymous" referrerpolicy="no-referrer" />
@@ -96,25 +103,17 @@ if (isset($_SESSION['user_id'])) {
         box-shadow: var(--ombre-douce);
     }
 
-    .nav-search-filters-btn {
+    /* Sélecteur de langue (GTranslate) — aligné sur la pilule compacte */
+    .nav-lang-wrap {
         margin-left: 8px;
-        padding: 12px 14px;
-        background: var(--bleu-pale);
-        border: 2px solid var(--border-input);
-        border-radius: 12px;
-        color: var(--couleur-dominante);
-        cursor: pointer;
-        transition: all 0.3s;
+        flex-shrink: 0;
         display: flex;
         align-items: center;
-        justify-content: center;
+        min-height: 36px;
     }
 
-    .nav-search-filters-btn:hover,
-    .nav-search-filters-btn.active {
-        background: var(--couleur-dominante);
-        color: var(--texte-clair);
-        border-color: var(--couleur-dominante);
+    .nav-lang-wrap .gtranslate-dropdown-mount {
+        min-width: 0;
     }
 
     .nav-search-filters-panel {
@@ -358,8 +357,8 @@ if (isset($_SESSION['user_id'])) {
             max-width: 320px;
         }
 
-        .nav-search-filters-btn {
-            padding: 10px 12px;
+        .nav-lang-wrap {
+            min-height: 34px;
         }
 
         .nav-search-input {
@@ -465,8 +464,7 @@ if (isset($_SESSION['user_id'])) {
             font-size: 14px;
         }
 
-        .nav-search-filters-btn {
-            padding: 10px 12px;
+        .nav-lang-wrap {
             flex-shrink: 0;
         }
 
@@ -514,8 +512,9 @@ if (isset($_SESSION['user_id'])) {
             font-size: 13px;
         }
 
-        .nav-search-filters-btn {
-            padding: 8px 10px;
+        .nav-lang-wrap {
+            min-height: 30px;
+            margin-left: 4px;
         }
     }
 </style>
@@ -576,10 +575,9 @@ if (isset($_SESSION['user_id'])) {
             <input type="hidden" name="tri" id="nav-tri"
                 value="<?php echo isset($_GET['tri']) ? htmlspecialchars($_GET['tri']) : ''; ?>">
         </form>
-        <button type="button" class="nav-search-filters-btn" id="nav-filters-toggle" aria-label="Filtres"
-            title="Filtres de recherche">
-            <i class="fa-solid fa-sliders"></i>
-        </button>
+        <div class="nav-lang-wrap" role="navigation" aria-label="Langue du site">
+            <div id="gtranslate_dropdown_nav" class="gtranslate-dropdown-mount"></div>
+        </div>
         <div class="nav-search-filters-panel" id="nav-filters-panel">
             <h4><i class="fa-solid fa-filter"></i> Filtres</h4>
             <div class="nav-search-filters-row">
@@ -633,21 +631,296 @@ if (isset($_SESSION['user_id'])) {
         </div>
     </div>
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            var toggle = document.getElementById('nav-filters-toggle');
-            var panel = document.getElementById('nav-filters-panel');
-            if (toggle && panel) {
-                toggle.addEventListener('click', function () {
-                    panel.classList.toggle('show');
-                    toggle.classList.toggle('active', panel.classList.contains('show'));
-                });
-                document.addEventListener('click', function (e) {
-                    if (!toggle.contains(e.target) && !panel.contains(e.target)) {
-                        panel.classList.remove('show');
-                        toggle.classList.remove('active');
+        window.gtranslateSettings = {
+            default_language: 'fr',
+            languages: ['fr', 'en', 'es'],
+            wrapper_selector: '#gtranslate_dropdown_nav',
+            native_language_names: false,
+            /* Français par défaut : ne pas passer sur la langue du navigateur */
+            detect_browser_language: false
+        };
+    </script>
+    <script src="https://cdn.gtranslate.net/widgets/latest/dropdown.js" defer></script>
+    <script>
+        /**
+         * Façade pilule : drapeau + code ISO (FR / EN / ES), chevron —
+         * sync avec le select GTranslate (toujours fonctionnel au clic).
+         */
+        (function () {
+            var LANG_FACE = {
+                fr: { code: 'FR', flag: 'https://flagcdn.com/w80/fr.png' },
+                en: { code: 'EN', flag: 'https://flagcdn.com/w80/gb.png' },
+                es: { code: 'ES', flag: 'https://flagcdn.com/w80/es.png' }
+            };
+
+            /**
+             * GTranslate pose souvent le cookie googtrans=/fr/en (traduction vers EN).
+             * Le <select> peut encore afficher « Select Language » après changement :
+             * on lit donc ce cookie comme source principale lorsqu’elle est présente.
+             */
+            function readGtCookieTargetLang() {
+                try {
+                    var mm = document.cookie.match(/(?:^|;)\s*googtrans=([^;]+)/i);
+                    if (!mm) {
+                        return null;
                     }
+                    var raw = decodeURIComponent(mm[1].trim().replace(/^["']+|["';]+$/g, ''));
+                    if (raw.indexOf('/') !== 0) {
+                        raw = '/' + String(raw).replace(/^\/+/, '');
+                    }
+                    var segments = raw.split(/\//).map(function (s) {
+                        return (s || '').trim().toLowerCase();
+                    }).filter(function (s) {
+                        return s && s !== 'auto';
+                    });
+                    if (segments.length === 0) {
+                        return null;
+                    }
+                    /* Ex. /fr/en → langue affichée = en ; /auto/en → en */
+                    var last = segments[segments.length - 1];
+                    if (LANG_FACE[last]) {
+                        return last;
+                    }
+                    for (var s = segments.length - 1; s >= 0; s--) {
+                        if (LANG_FACE[segments[s]]) {
+                            return segments[s];
+                        }
+                    }
+                } catch (e) {}
+                return null;
+            }
+
+            function decodeOptionLang(opt) {
+                if (!opt) {
+                    return null;
+                }
+                var val = String(opt.value || '').trim().toLowerCase();
+                if (val && LANG_FACE[val]) {
+                    return val;
+                }
+                var parts = val.split(/[|/]+/).map(function (s) {
+                    return s.trim();
+                }).filter(Boolean);
+                var p;
+                for (p = 0; p < parts.length; p++) {
+                    var seg = parts[p].toLowerCase();
+                    if (LANG_FACE[seg]) {
+                        return seg;
+                    }
+                }
+                var tx = (opt.textContent || '').toLowerCase();
+                if (tx.indexOf('french') !== -1 || tx.indexOf('français') !== -1) {
+                    return 'fr';
+                }
+                if (tx.indexOf('english') !== -1 || tx.indexOf('anglais') !== -1) {
+                    return 'en';
+                }
+                if (tx.indexOf('spanish') !== -1 || tx.indexOf('español') !== -1) {
+                    return 'es';
+                }
+                if (val.indexOf('fr') !== -1) {
+                    return 'fr';
+                }
+                if (val.indexOf('en') !== -1) {
+                    return 'en';
+                }
+                if (val.indexOf('es') !== -1) {
+                    return 'es';
+                }
+                return null;
+            }
+
+            function resolveLang(sel) {
+                var v = (sel.value || '').trim().toLowerCase();
+                if (v && LANG_FACE[v]) {
+                    return v;
+                }
+                /*
+                 * Cookie googtrans reflète la langue active après traduction (souvent avant que le select UI soit cohérent).
+                 */
+                var ck = readGtCookieTargetLang();
+                if (ck) {
+                    return ck;
+                }
+
+                var optSel = null;
+                var oi;
+                for (oi = 0; oi < sel.options.length; oi++) {
+                    if (sel.options[oi].selected) {
+                        optSel = sel.options[oi];
+                        break;
+                    }
+                }
+                var fromOpt = decodeOptionLang(optSel);
+                if (fromOpt) {
+                    return fromOpt;
+                }
+
+                if (sel.selectedIndex >= 0) {
+                    var alt = decodeOptionLang(sel.options[sel.selectedIndex]);
+                    if (alt) {
+                        return alt;
+                    }
+                }
+                return 'fr';
+            }
+
+            function setFace(sel, flagEl, codeEl, pillEl) {
+                var key = resolveLang(sel);
+                if (!LANG_FACE[key]) {
+                    key = 'fr';
+                }
+                var meta = LANG_FACE[key];
+                flagEl.src = meta.flag;
+                flagEl.dataset.langKey = key;
+                flagEl.alt = meta.code;
+                codeEl.textContent = meta.code;
+                codeEl.setAttribute('lang', key);
+                pillEl.setAttribute('data-lang', key);
+            }
+
+            function attachLangSync(sel, flagEl, codeEl, pillEl) {
+                function sync() {
+                    setFace(sel, flagEl, codeEl, pillEl);
+                }
+                function syncDelayed() {
+                    sync();
+                    [35, 100, 250, 600, 1200].forEach(function (ms) {
+                        window.setTimeout(sync, ms);
+                    });
+                }
+                sel.addEventListener('change', syncDelayed);
+                sel.addEventListener('input', sync);
+                sel.addEventListener('keyup', sync);
+                /* GTranslate peut mettre à jour options / attributs après coup */
+                var moTimer = null;
+                function moDebounced() {
+                    window.clearTimeout(moTimer);
+                    moTimer = window.setTimeout(syncDelayed, 80);
+                }
+                var mo = new MutationObserver(moDebounced);
+                mo.observe(sel, {
+                    attributes: true,
+                    childList: true,
+                    subtree: true,
+                    attributeFilter: ['value', 'class', 'data-gt-lang']
                 });
             }
+
+            function installPill(sel) {
+                var host = document.getElementById('gtranslate_dropdown_nav');
+                if (!host || !sel.parentNode || sel.dataset.navLangPill === '1') {
+                    return;
+                }
+
+                sel.classList.add('nav-lang-select-overlay', 'gt_selector');
+
+                var pill = document.createElement('div');
+                pill.className = 'nav-lang-custom-pill';
+                var face = document.createElement('div');
+                face.className = 'nav-lang-face';
+                face.setAttribute('aria-hidden', 'true');
+                var flag = document.createElement('img');
+                flag.className = 'nav-lang-flag-img';
+                flag.width = 20;
+                flag.height = 15;
+                flag.loading = 'lazy';
+                flag.decoding = 'async';
+                var code = document.createElement('span');
+                code.className = 'nav-lang-code';
+                var chevron = document.createElement('span');
+                chevron.className = 'nav-lang-chevron';
+                chevron.innerHTML = '<i class="fa-solid fa-chevron-down" aria-hidden="true"></i>';
+
+                pill.appendChild(face);
+                face.append(flag, code, chevron);
+                sel.parentNode.insertBefore(pill, sel);
+                pill.appendChild(sel);
+
+                sel.dataset.navLangPill = '1';
+
+                attachLangSync(sel, flag, code, pill);
+
+                sel.addEventListener('focus', function () {
+                    pill.classList.add('is-open');
+                });
+                sel.addEventListener('blur', function () {
+                    window.setTimeout(function () {
+                        pill.classList.remove('is-open');
+                        /* GTranslate peut mettre à jour après blur */
+                        setFace(sel, flag, code, pill);
+                    }, 220);
+                });
+
+                sel.setAttribute(
+                    'aria-label',
+                    sel.getAttribute('aria-label') || 'Choisir la langue du site'
+                );
+
+                setFace(sel, flag, code, pill);
+            }
+
+            function tryMount() {
+                var host = document.getElementById('gtranslate_dropdown_nav');
+                if (!host) {
+                    return;
+                }
+                var sel = host.querySelector('select.gt_selector');
+                if (sel && !host.querySelector('.nav-lang-custom-pill')) {
+                    installPill(sel);
+                }
+            }
+
+            document.addEventListener('DOMContentLoaded', function () {
+                tryMount();
+                var obs = new MutationObserver(function () {
+                    tryMount();
+                });
+                var host = document.getElementById('gtranslate_dropdown_nav');
+                if (host) {
+                    obs.observe(host, { childList: true, subtree: true });
+                }
+                var n = 0;
+                var t = window.setInterval(function () {
+                    tryMount();
+                    n += 1;
+                    if (n > 50) {
+                        window.clearInterval(t);
+                    }
+                }, 120);
+            });
+        })();
+
+        document.addEventListener('DOMContentLoaded', function () {
+            var panel = document.getElementById('nav-filters-panel');
+            var toggles = document.querySelectorAll('[data-nav-filters-toggle]');
+            if (!panel || toggles.length === 0) {
+                return;
+            }
+
+            toggles.forEach(function (toggle) {
+                toggle.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    var open = !panel.classList.contains('show');
+                    panel.classList.toggle('show', open);
+                    toggles.forEach(function (t) {
+                        t.classList.toggle('active', open);
+                        t.setAttribute('aria-expanded', open ? 'true' : 'false');
+                    });
+                });
+            });
+
+            document.addEventListener('click', function (e) {
+                if (!panel.classList.contains('show')) return;
+                var t = e.target;
+                if (t.closest('[data-nav-filters-toggle]') || t.closest('#nav-filters-panel')) return;
+                panel.classList.remove('show');
+                toggles.forEach(function (tg) {
+                    tg.classList.remove('active');
+                    tg.setAttribute('aria-expanded', 'false');
+                });
+            });
         });
 
         function appliquerFiltres() {
@@ -672,14 +945,6 @@ if (isset($_SESSION['user_id'])) {
         }
     </script>
 </nav>
-
-<?php
-$categories_menu = [];
-if (file_exists(__DIR__ . '/models/model_categories.php')) {
-    require_once __DIR__ . '/models/model_categories.php';
-    $categories_menu = get_all_categories();
-}
-?>
 
 <!-- Overlay et sidebar menu latéral (apparaît au clic sur MENU) -->
 <div class="nav-sidebar-overlay" id="navSidebarOverlay"></div>
@@ -740,6 +1005,12 @@ if (file_exists(__DIR__ . '/models/model_categories.php')) {
         </button>
     </div>
     <div class="section1-right">
+        <button type="button" class="nav-action-btn nav-action-btn--filters" data-nav-filters-toggle
+            aria-expanded="false" aria-controls="nav-filters-panel" aria-label="Filtres de recherche"
+            title="Filtrer par prix, catégorie, tri">
+            <i class="fa-solid fa-sliders"></i>
+            <span>Filtres</span>
+        </button>
         <a href="/nouveautes.php" class="nav-action-btn nav-btn-nouveautes">
             <i class="fa-solid fa-gift"></i>
             <span>NOUVEAUTÉS</span>

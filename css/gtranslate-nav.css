@@ -1,0 +1,174 @@
+/**
+ * Sélecteur de langue navbar — style pilule (drapeau + code ISO + chevron),
+ * façade visuelle avec select GTranslate superposé (transparent).
+ */
+@import url("./variables.css");
+
+.nav-lang-wrap {
+  position: relative;
+  z-index: 10000;
+}
+
+#gtranslate_dropdown_nav {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+}
+
+/* Conteneur pilule créé par JS — compact (desktop) */
+.nav-lang-custom-pill {
+  position: relative;
+  display: inline-flex;
+  align-items: stretch;
+  min-width: 108px;
+  max-width: 160px;
+  height: 36px;
+  vertical-align: middle;
+}
+
+.nav-lang-face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  padding: 0 8px 0 9px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
+  box-sizing: border-box;
+  pointer-events: none;
+  z-index: 1;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.nav-lang-flag-img {
+  flex-shrink: 0;
+  width: 20px;
+  height: 15px;
+  max-width: 20px;
+  max-height: 15px;
+  object-fit: cover;
+  border-radius: 3px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* Code langue (nom abrégé) — taille ≤ 13px */
+.nav-lang-code {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-corps), system-ui, sans-serif;
+  font-size: clamp(10px, 2.85vw, 13px);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #111111;
+  text-align: left;
+  line-height: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nav-lang-chevron {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  color: #6b7280;
+  font-size: 10px;
+  line-height: 1;
+  transition: transform 0.2s ease;
+}
+
+@media (max-width: 992px) {
+  #gtranslate_dropdown_nav {
+    min-height: 34px;
+  }
+
+  .nav-lang-custom-pill {
+    min-width: 100px;
+    max-width: 148px;
+    height: 34px;
+  }
+
+  .nav-lang-face {
+    gap: 5px;
+    padding: 0 7px 0 8px;
+  }
+
+  .nav-lang-flag-img {
+    width: 18px;
+    height: 13px;
+    max-width: 18px;
+    max-height: 13px;
+  }
+
+  .nav-lang-code {
+    font-size: 12px;
+    letter-spacing: 0.05em;
+  }
+}
+
+@media (max-width: 480px) {
+  #gtranslate_dropdown_nav {
+    min-height: 30px;
+  }
+
+  .nav-lang-custom-pill {
+    min-width: 84px;
+    max-width: 124px;
+    height: 30px;
+  }
+
+  .nav-lang-face {
+    gap: 4px;
+    padding: 0 6px;
+  }
+
+  .nav-lang-flag-img {
+    width: 16px;
+    height: 12px;
+    max-width: 16px;
+    max-height: 12px;
+    border-radius: 2px;
+  }
+
+  .nav-lang-code {
+    font-size: 11px;
+    max-width: 3.2rem;
+    letter-spacing: 0.04em;
+  }
+
+  .nav-lang-chevron {
+    width: 12px;
+    height: 12px;
+    font-size: 9px;
+  }
+}
+
+.nav-lang-custom-pill.is-open .nav-lang-chevron {
+  transform: rotate(180deg);
+}
+
+/* Zone clicable : même taille que la pilule, quasi invisible mais fonctionnel */
+#gtranslate_dropdown_nav select.nav-lang-select-overlay.gt_selector,
+#gtranslate_dropdown_nav select.gt_selector.nav-lang-select-overlay {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 999px !important;
+  opacity: 0 !important;
+  cursor: pointer !important;
+  z-index: 2 !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  background: transparent !important;
+}
+
