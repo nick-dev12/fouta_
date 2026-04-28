@@ -45,9 +45,10 @@ $seo_canonical = $base . '/';
     <link rel="stylesheet" href="/css/animate.min.css<?php echo asset_version_query(); ?>">
     <link rel="stylesheet" href="/css/a_style.css<?php echo asset_version_query(); ?>">
     <link rel="stylesheet" href="/css/product-cards.css<?php echo asset_version_query(); ?>">
+    <link rel="stylesheet" href="/css/section5-topcats.css<?php echo asset_version_query(); ?>">
     <link rel="stylesheet" href="/css/vitrine-hero.css<?php echo asset_version_query(); ?>">
     <style>
-    /* Nouveaux produits et Produits populaires : flex-wrap, Owl désactivé, 6 produits max */
+    /* Nouveaux produits et Produits populaires : flex-wrap, Owl désactivé, 8 produits affichés */
     .carousel-produits-outer {
         position: relative;
         width: 100%;
@@ -63,13 +64,13 @@ $seo_canonical = $base . '/';
     }
 
     .carousel-produits-outer .carousel1.carousel1-flex-mode .carousel {
-        width: 320px;
-        min-width: 170px;
-        max-width: 320px;
-        flex: 0 0 320px;
+        width: 270px;
+        min-width: 144px;
+        max-width: 270px;
+        flex: 0 0 270px;
     }
 
-    .carousel-produits-outer .carousel1.carousel1-flex-mode .carousel:nth-child(n+7) {
+    .carousel-produits-outer .carousel1.carousel1-flex-mode .carousel:nth-child(n+9) {
         display: none !important;
     }
 
@@ -425,15 +426,15 @@ $seo_canonical = $base . '/';
     <?php endif; ?>
 
     <?php
-    // Récupérer les 10 derniers produits publiés (nouveautés)
+    // Huit derniers produits publiés (nouveautés)
     $produits_nouveaux = [];
     if (file_exists(__DIR__ . '/models/model_produits.php')) {
         require_once __DIR__ . '/models/model_produits.php';
-        $produits_nouveaux = get_all_produits_paginated(0, 10);
+        $produits_nouveaux = get_all_produits_paginated(0, 8);
     }
     ?>
 
-    <section class="produit_vedete">
+    <section class="produit_vedete produit-vedete--nouveaux">
         <div class="box1">
             <span></span>
             <h1>NOUVEAUX PRODUITS</h1>
@@ -464,6 +465,7 @@ $seo_canonical = $base . '/';
                 <div class="carousel">
                     <a href="produit.php?id=<?php echo $produit['id']; ?>" class="product-card-link">
                         <div class="image-wrapper">
+                            <span class="produit-card-badge produit-card-badge--nouveau" aria-hidden="true">Nouveau</span>
                             <img src="/upload/<?php echo htmlspecialchars($produit['image_principale'] ?? 'produit1.jpg'); ?>"
                                 alt="<?php echo htmlspecialchars($produit['nom'] ?? 'Produit'); ?>"
                                 onerror="this.src='/image/produit1.jpg'">
@@ -623,11 +625,11 @@ $seo_canonical = $base . '/';
     $produits_populaires = [];
     if (file_exists(__DIR__ . '/models/model_visites.php')) {
         require_once __DIR__ . '/models/model_visites.php';
-        $produits_populaires = get_produits_plus_visites(10);
+        $produits_populaires = get_produits_plus_visites(8);
     }
     ?>
 
-    <section class="produit_vedete">
+    <section class="produit_vedete produit-vedete--populaires">
         <div class="box1">
             <span></span>
             <h1>PRODUITS POPULAIRES</h1>
@@ -702,44 +704,78 @@ $seo_canonical = $base . '/';
 
 
     <?php
-    // Récupérer les catégories les plus populaires (visites + commandes) - Maximum 2
+    // Catégories phares — au moins 2 affichées quand possible
     $top_categories = [];
     if (file_exists(__DIR__ . '/models/model_categories.php')) {
         require_once __DIR__ . '/models/model_categories.php';
-        $top_categories = get_top_categories(2);
+        $top_categories = get_top_categories(4);
+        $seen_ids = [];
+        foreach ($top_categories as $tc) {
+            $seen_ids[(int) ($tc['id'] ?? 0)] = true;
+        }
+        if (count($top_categories) < 2) {
+            $all_cats = get_all_categories();
+            if (is_array($all_cats)) {
+                foreach ($all_cats as $extra) {
+                    if (count($top_categories) >= 2) {
+                        break;
+                    }
+                    $eid = (int) ($extra['id'] ?? 0);
+                    if ($eid > 0 && empty($seen_ids[$eid])) {
+                        $top_categories[] = $extra;
+                        $seen_ids[$eid] = true;
+                    }
+                }
+            }
+        }
     }
     ?>
 
-    <section class="section5">
-        <h1>Top Categorie</h1>
-        <div class="container">
+    <section class="section5 section5--topcategories" aria-labelledby="section5-categories-heading">
+        <div class="section5-shell">
+            <header class="section5-head">
+                <p class="section5-kicker">Explorer</p>
+                <h2 id="section5-categories-heading" class="section5-heading">Catégories phares</h2>
+                <p class="section5-desc">Accédez rapidement aux rayons les plus consultés sur FOUTA POIDS LOURDS.</p>
+            </header>
             <?php if (empty($top_categories)): ?>
-            <!-- Message si aucune catégorie -->
-            <div class="message-vide" style="text-align: center; padding: 40px; color: var(--texte-fonce);">
+            <div class="section5--empty message-vide">
                 <p>Aucune catégorie disponible pour le moment.</p>
             </div>
             <?php else: ?>
-            <?php foreach ($top_categories as $categorie): ?>
-            <?php
-                    // Déterminer le chemin de l'image
-                    $categorie_image_path = '/image/produit1.jpg'; // Par défaut
+            <div class="section5-cards">
+                <?php foreach ($top_categories as $categorie): ?>
+                <?php
+                    $categorie_image_path = '/image/produit1.jpg';
                     if (!empty($categorie['image'])) {
-                        $upload_path = '/upload/' . htmlspecialchars($categorie['image']);
+                        $upload_path = '/upload/' . htmlspecialchars((string) $categorie['image'], ENT_QUOTES, 'UTF-8');
                         $file_path = __DIR__ . '/upload/' . $categorie['image'];
                         if (file_exists($file_path)) {
                             $categorie_image_path = $upload_path;
                         }
                     }
-                    ?>
-            <div class="slider">
-                <img src="<?php echo $categorie_image_path; ?>" alt="<?php echo htmlspecialchars($categorie['nom']); ?>"
-                    onerror="this.src='/image/produit1.jpg'">
-                <div class="box">
-                    <h4><?php echo htmlspecialchars(strtoupper($categorie['nom'])); ?></h4>
-                    <a href="categorie.php?id=<?php echo $categorie['id']; ?>">Voir cette categorie ></a>
-                </div>
+                    $nom_cat = isset($categorie['nom']) ? (string) $categorie['nom'] : '';
+                    $nom_cat_titre = function_exists('mb_strtoupper')
+                        ? mb_strtoupper($nom_cat, 'UTF-8')
+                        : strtoupper($nom_cat);
+                ?>
+                <article class="section5-card">
+                    <a class="section5-card-link" href="categorie.php?id=<?php echo (int) $categorie['id']; ?>">
+                        <div class="section5-card-media">
+                            <span class="section5-card-shine" aria-hidden="true"></span>
+                            <img src="<?php echo htmlspecialchars($categorie_image_path, ENT_QUOTES, 'UTF-8'); ?>"
+                                alt="<?php echo htmlspecialchars($nom_cat, ENT_QUOTES, 'UTF-8'); ?>"
+                                loading="lazy"
+                                onerror="this.src='/image/produit1.jpg'">
+                        </div>
+                        <div class="section5-card-body">
+                            <h3 class="section5-card-title"><?php echo htmlspecialchars($nom_cat_titre, ENT_QUOTES, 'UTF-8'); ?></h3>
+                            <span class="section5-card-cta">Voir les produits <i class="fas fa-arrow-right" aria-hidden="true"></i></span>
+                        </div>
+                    </a>
+                </article>
+                <?php endforeach; ?>
             </div>
-            <?php endforeach; ?>
             <?php endif; ?>
         </div>
     </section>

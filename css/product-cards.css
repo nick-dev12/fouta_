@@ -1,7 +1,17 @@
 /**
  * Styles pour les cartes de produits - Design moderne et professionnel
  * Basé sur le design de l'image fournie
+ *
+ * Grille commune (index, nouveautés, promo, catégorie, produits, etc.)
+ * Largeur carte max ~270px + contenus internes assortis.
  */
+:root {
+  --product-card-max-w: 270px;
+  --product-card-min-w-sm: 144px;
+  --product-card-gap: 10px;
+  --product-card-img-h: 180px;
+  --product-card-radius: 14px;
+}
 
 /* Container : flex + space-around + wrap pour disposition automatique */
 .produits-container,
@@ -14,21 +24,21 @@
   align-items: flex-start !important;
   width: 100%;
   box-sizing: border-box;
-  gap: 10px;
+  gap: var(--product-card-gap);
 }
 
-/* Carte de produit - 320px par défaut */
+/* Carte de produit — max 270px */
 .produit_vedete .articles .carousel,
 .produit_vedetes .articles .carousel,
 .carousel11 .carousel {
   background: #ffffff;
   border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 16px;
+  border-radius: var(--product-card-radius);
   overflow: hidden;
-  width: 300px !important;
-  min-width: 160px !important;
-  max-width: 300px !important;
-  flex: 0 0 300px !important;
+  width: var(--product-card-max-w) !important;
+  min-width: var(--product-card-min-w-sm) !important;
+  max-width: var(--product-card-max-w) !important;
+  flex: 0 0 var(--product-card-max-w) !important;
   transition: all 0.3s ease;
   box-shadow: var(--ombre-douce);
   position: relative;
@@ -43,20 +53,21 @@
   .produit_vedete .articles .carousel,
   .produit_vedetes .articles .carousel,
   .carousel11 .carousel {
-    width: 190px !important;
-    max-width: 190px !important;
-    flex: 0 0 190px !important;
+    width: 171px !important;
+    max-width: 171px !important;
+    flex: 0 0 171px !important;
   }
 }
 
-/* À partir de 500px : cartes passent à 170px (définitif) */
+/* À partir de 500px : cartes plus compactes */
 @media (max-width: 499px) {
   .carousel1-flex-mode .carousel,
   .produit_vedete .articles .carousel,
   .produit_vedetes .articles .carousel,
   .carousel11 .carousel {
-    width: 160px !important;
-    max-width: 160px !important;
+    width: 145px !important;
+    max-width: 145px !important;
+    flex-basis: 145px !important;
   }
 }
 
@@ -85,7 +96,7 @@
 .carousel11 .carousel .image-wrapper {
   position: relative;
   width: 100%;
-  height: 200px !important;
+  height: var(--product-card-img-h) !important;
   overflow: hidden;
   background: #f8f8f8;
 }
@@ -102,13 +113,13 @@
 /* Badge statut (ACTIF) - en haut à droite */
 .produit-card-badge {
   position: absolute;
-  top: 12px;
-  right: 12px;
+  top: 10px;
+  right: 10px;
   background-color: var(--couleur-dominante);
   color: var(--texte-clair);
-  padding: 6px 14px;
-  border-radius: 20px;
-  font-size: 11px;
+  padding: 5px 11px;
+  border-radius: 18px;
+  font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -116,22 +127,35 @@
   box-shadow: var(--ombre-douce);
 }
 
+/* Nouveautés : badge « Nouveau » (section d’accueil) */
+.produit-vedete--nouveaux .produit-card-badge--nouveau {
+  top: 8px;
+  right: 8px;
+  padding: 4px 9px;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  z-index: 4;
+  background: linear-gradient(135deg, var(--accent-promo) 0%, var(--orange-fonce) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  pointer-events: none;
+}
+
 /* Corps de la carte */
 .produit_vedete .articles .carousel .produit-content,
 .produit_vedetes .articles .carousel .produit-content,
 .carousel11 .carousel .produit-content {
-  padding: 18px;
+  padding: 13px;
   display: flex;
   flex-direction: column;
   flex-grow: 1;
-  gap: 10px;
+  gap: 7px;
 }
 
 /* Nom du produit */
 .produit_vedete .articles .carousel #nom,
 .produit_vedetes .articles .carousel #nom,
 .carousel11 .carousel #nom {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--titres);
   margin: 0;
@@ -145,7 +169,7 @@
 .produit_vedete .articles .carousel #ville,
 .produit_vedetes .articles .carousel #ville,
 .carousel11 .carousel #ville {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--couleur-dominante);
   margin: 0;
   padding: 0;
@@ -157,21 +181,21 @@
 .produit_vedete .articles .carousel .prix,
 .produit_vedetes .articles .carousel .prix,
 .carousel11 .carousel .prix {
-  font-size: 14px;
+  font-size: 12.5px;
   font-weight: 700;
   color: var(--titres);
   margin: 0;
   padding: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
 }
 
 .produit_vedete .articles .carousel .prix .span1,
 .produit_vedetes .articles .carousel .prix .span1,
 .carousel11 .carousel .prix .span1 {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--texte-fonce);
   font-weight: 400;
 }
@@ -180,7 +204,7 @@
 .produit_vedete .articles .carousel .prix .span2,
 .produit_vedetes .articles .carousel .prix .span2,
 .carousel11 .carousel .prix .span2 {
-  font-size: 14px;
+  font-size: 12.5px;
   color: var(--texte-fonce);
   text-decoration: line-through;
   font-weight: 400;
@@ -190,7 +214,7 @@
 .produit_vedete .articles .carousel .prix .prix-promo,
 .produit_vedetes .articles .carousel .prix .prix-promo,
 .carousel11 .carousel .prix .prix-promo {
-  font-size: 14px;
+  font-size: 12.5px;
   color: var(--accent-promo);
   font-weight: 700;
 }
@@ -199,17 +223,17 @@
 .produit_vedete .articles .carousel .prix .span3,
 .produit_vedetes .articles .carousel .prix .span3,
 .carousel11 .carousel .prix .span3 {
-  font-size: 12px;
+  font-size: 11px;
   background-color: var(--accent-promo);
   color: #ffffff;
-  padding: 3px 8px;
+  padding: 2px 6px;
   border-radius: 4px;
   font-weight: 600;
 }
 
 /* Informations stock */
 .produit-card-stock-info {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--texte-fonce);
   margin: 0;
   padding: 0;
@@ -253,8 +277,8 @@
 .produit_vedetes .articles .carousel .add-to-cart-form,
 .carousel11 .carousel .add-to-cart-form,
 .produits-visites-grid .carousel .add-to-cart-form {
-  width: calc(100% - 36px);
-  margin: 0 18px 18px 18px;
+  width: calc(100% - 28px);
+  margin: 0 14px 14px 14px;
 }
 
 .produit_vedete .articles .carousel .btn-add-cart,
@@ -262,19 +286,19 @@
 .carousel11 .carousel .btn-add-cart,
 .produits-visites-grid .carousel .btn-add-cart {
   width: 100%;
-  padding: 10px 14px;
+  padding: 8px 11px;
   background: var(--couleur-dominante);
   border: 1px solid var(--couleur-dominante);
   color: var(--texte-clair);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
-  border-radius: 25px;
+  border-radius: 22px;
   text-align: center;
   transition: all 0.3s ease;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
   cursor: pointer;
   box-shadow: var(--ombre-douce);
   font-family: inherit;
@@ -294,7 +318,7 @@
 .produit_vedetes .articles .carousel .btn-add-cart i,
 .carousel11 .carousel .btn-add-cart i,
 .produits-visites-grid .carousel .btn-add-cart i {
-  font-size: 14px;
+  font-size: 12px;
 }
 
 /* Responsive Design */
@@ -407,7 +431,7 @@
   .produit_vedete .articles .carousel .image-wrapper,
   .produit_vedetes .articles .carousel .image-wrapper,
   .carousel11 .carousel .image-wrapper {
-    height: 150px !important;
+    height: 135px !important;
   }
 }
 
@@ -437,7 +461,7 @@
   .produit_vedete .articles .carousel .image-wrapper,
   .produit_vedetes .articles .carousel .image-wrapper,
   .carousel11 .carousel .image-wrapper {
-    height: 130px !important;
+    height: 118px !important;
   }
 }
 

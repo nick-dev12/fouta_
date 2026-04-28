@@ -66,9 +66,9 @@ $seo_canonical = $base . '/categorie.php?id=' . (int)$categorie_id;
     <link rel="stylesheet" href="/css/animate.css<?php echo asset_version_query(); ?>">
     <link rel="stylesheet" href="/css/animate.min.css<?php echo asset_version_query(); ?>">
     <link rel="stylesheet" href="/css/variables.css<?php echo asset_version_query(); ?>">
-    <link rel="stylesheet" href="/css/product-cards.css<?php echo asset_version_query(); ?>">
     <link rel="stylesheet" href="/css/style.css<?php echo asset_version_query(); ?>">
     <link rel="stylesheet" href="/css/a_style.css<?php echo asset_version_query(); ?>">
+    <link rel="stylesheet" href="/css/product-cards.css<?php echo asset_version_query(); ?>">
     <style>
         /* Styles personnalisés pour les cartes produits */
     </style>
