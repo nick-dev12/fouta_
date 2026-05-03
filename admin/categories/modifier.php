@@ -87,6 +87,13 @@ if (isset($result['success']) && $result['success']) {
             font-family: inherit;
         }
 
+        .form-group input[type="color"] {
+            max-width: 120px;
+            height: 48px;
+            padding: 4px;
+            cursor: pointer;
+        }
+
         .form-group input:focus,
         .form-group textarea:focus {
             outline: none;
@@ -161,6 +168,24 @@ if (isset($result['success']) && $result['success']) {
             <div class="form-group">
                 <label for="description">Description</label>
                 <textarea id="description" name="description"><?php echo htmlspecialchars($categorie['description'] ?? ''); ?></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="couleur_etiquette">Couleur étiquette stock FPL</label>
+                <?php
+                $ce_def = htmlspecialchars(preg_match('/^#[0-9A-Fa-f]{6}$/i', (string) ($categorie['couleur_etiquette'] ?? ''))
+                    ? (string) $categorie['couleur_etiquette']
+                    : '#1e3a5f');
+                if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['couleur_etiquette'])
+                    && preg_match('/^#[0-9A-Fa-f]{6}$/i', trim($_POST['couleur_etiquette']))) {
+                    $ce_def = htmlspecialchars(strtoupper(trim($_POST['couleur_etiquette'])));
+                }
+                ?>
+                <input type="color" id="couleur_etiquette" name="couleur_etiquette" value="<?php echo $ce_def; ?>">
+                <small style="color: #666; font-size: 12px; display: block; margin-top: 5px;">
+                    Étiquettes FPL (Ajuster le stock) : bandeau vertical, bande du haut, écusson, pied de page et pastilles véhicules.
+                    Si vous laissez le bleu foncé par défaut (#1e3a5f), une couleur est calculée automatiquement pour cette catégorie (règles par nom si connues — ex. amortisseur / air compresseur — sinon palette stable par catégorie). Choisissez une autre couleur ci-dessus pour imposer définitivement une teinte.
+                </small>
             </div>
 
             <div class="form-group">

@@ -1,0 +1,252 @@
+/**
+ * « Legacy » ISO ID-1 (.er-carte-rh--cr80) — carte_imprimer.php utilise désormais le même rendu que la fiche (admin-employes-rh.css).
+ */
+@page {
+  size: 85.60mm 53.98mm;
+  margin: 0;
+}
+
+html {
+  margin: 0;
+  padding: 0;
+}
+
+@media screen {
+  body.page-carte-cr80-print {
+    margin: 0;
+    padding: 24px;
+    font-family: var(--font-corps), system-ui, sans-serif;
+    background: var(--blanc-neige, #eee);
+    min-height: 100vh;
+    box-sizing: border-box;
+  }
+
+  body.page-carte-cr80-print * {
+    box-sizing: border-box;
+  }
+
+  .cr80-no-print-actions {
+    max-width: 540px;
+    margin: 0 auto 18px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    color: var(--gris-fonce, #333);
+  }
+
+  .cr80-no-print-actions .btn-print {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: 12px;
+    border: none;
+    cursor: pointer;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--couleur-dominante, #3564a6), var(--bleu-clair, #4a7ab8));
+    color: #fff;
+    text-decoration: none;
+    box-shadow: 0 6px 20px rgba(53, 100, 166, 0.35);
+  }
+
+  .cr80-no-print-actions .btn-print:hover {
+    filter: brightness(1.06);
+  }
+
+  .cr80-link-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: 12px;
+    font-weight: 700;
+    text-decoration: none;
+    border: 2px solid var(--couleur-dominante, #3564a6);
+    background: transparent;
+    color: var(--couleur-dominante, #3564a6);
+    box-shadow: none;
+  }
+
+  .cr80-link-back:hover {
+    background: var(--bleu-pale);
+  }
+
+  .cr80-host {
+    max-width: 540px;
+    margin: 0 auto;
+    padding: 12px;
+    background: var(--glass-bg, #fff);
+    border-radius: 16px;
+    border: 1px solid rgba(53, 100, 166, 0.12);
+    box-shadow: var(--glass-shadow, 0 8px 32px rgba(0, 0, 0, 0.08));
+  }
+}
+
+@media print {
+  body.page-carte-cr80-print {
+    margin: 0;
+    padding: 0;
+    background: #fff;
+  }
+
+  .cr80-no-print-actions {
+    display: none !important;
+  }
+
+  .cr80-host {
+    margin: 0;
+    padding: 0;
+    border: none;
+    box-shadow: none;
+    background: transparent;
+    max-width: none;
+    width: auto;
+    height: auto;
+  }
+}
+
+.cr80-host {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+/* ─── Carte à l’échelle exacte ─── */
+
+.er-carte-rh--cr80 {
+  --cr-br: #74a8dc;
+  max-width: none !important;
+  width: 85.60mm !important;
+  height: 53.98mm !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 1.05mm solid var(--cr-br) !important;
+  border-radius: 2mm !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+  font-size: 2.05mm !important;
+  line-height: 1.2 !important;
+  box-shadow: none !important;
+  transform: none !important;
+  background: #fff !important;
+}
+
+.er-carte-rh--cr80 .er-carte-rh__head {
+  padding: 1.35mm 1.8mm 1mm !important;
+  gap: 1.35mm !important;
+  grid-template-columns: 6.5mm 1fr 6.5mm !important;
+  border-bottom-width: 0.4mm !important;
+}
+
+.er-carte-rh--cr80 .er-carte-rh__mark {
+  width: 6.2mm !important;
+  height: 6.2mm !important;
+  border-radius: 1.1mm !important;
+  font-size: 3mm !important;
+}
+
+.er-carte-rh--cr80 .er-carte-rh__mark img {
+  padding: 0.25mm !important;
+}
+
+.er-carte-rh--cr80 .er-carte-rh__l1,
+.er-carte-rh--cr80 .er-carte-rh__l2 {
+  font-size: 1.65mm !important;
+  letter-spacing: 0.08em !important;
+  margin: 0 !important;
+}
+
+.er-carte-rh--cr80 .er-carte-rh__l2 {
+  margin-top: 0.2mm !important;
+}
+
+.er-carte-rh--cr80 .er-carte-rh__brand {
+  margin: 0.6mm 0 0 !important;
+  font-size: 3.05mm !important;
+}
+
+.er-carte-rh--cr80 .er-carte-rh__tagline {
+  margin: 0.25mm 0 0 !important;
+  font-family:
+    'Kunstler Script',
+    'Segoe Script',
+    'Brush Script MT',
+    cursive !important;
+  font-size: 1.35mm !important;
+  font-weight: 400 !important;
+  font-style: normal !important;
+  letter-spacing: 0.06em !important;
+  line-height: 1 !important;
+  transform: skewX(-18deg) !important;
+  transform-origin: center center !important;
+  text-shadow:
+    0 0.1mm 0.25mm rgba(255, 255, 255, 0.4),
+    0 0.15mm 0.35mm rgba(53, 100, 166, 0.2) !important;
+}
+
+.er-carte-rh--cr80 .er-carte-rh__type {
+  margin: 0.25mm 0 0 !important;
+  font-size: 2.05mm !important;
+}
+
+.er-carte-rh--cr80 .er-carte-rh__body {
+  grid-template-columns: 16.5mm 1fr 16.8mm !important;
+  gap: 2mm !important;
+  padding: 1.6mm 2mm !important;
+  align-items: center !important;
+}
+
+.er-carte-rh--cr80 .er-carte-rh__photo-box {
+  width: 14.5mm !important;
+  height: 14.5mm !important;
+  border-radius: 1.4mm !important;
+  border-width: 0.35mm !important;
+}
+
+.er-carte-rh--cr80 .er-carte-rh__photo-placeholder {
+  font-size: 6mm !important;
+}
+
+.er-carte-rh--cr80 .er-carte-rh__fields {
+  gap: 0.55mm !important;
+}
+
+.er-carte-rh--cr80 .er-carte-rh__row {
+  font-size: 1.8mm !important;
+  gap: 0 1mm !important;
+}
+
+.er-carte-rh--cr80 .er-carte-rh__k {
+  flex-basis: 11mm !important;
+  letter-spacing: 0.03em !important;
+}
+
+.er-carte-rh--cr80 .er-carte-rh__qr-box {
+  min-height: auto !important;
+  padding: 0.85mm !important;
+  border-radius: 1.2mm !important;
+}
+
+.er-carte-rh--cr80 .er-carte-rh__qr-img {
+  width: 13.5mm !important;
+  height: auto !important;
+  display: block !important;
+}
+
+.er-carte-rh--cr80 .er-carte-rh__qr-miss {
+  font-size: 1.65mm !important;
+  gap: 0.3mm !important;
+}
+
+.er-carte-rh--cr80 .er-carte-rh__qr-miss i {
+  font-size: 4mm !important;
+}
+
+.er-carte-rh--cr80 .er-carte-rh__foot {
+  padding: 0.75mm 1.8mm 0.9mm !important;
+  font-size: 1.55mm !important;
+  gap: 2mm !important;
+}

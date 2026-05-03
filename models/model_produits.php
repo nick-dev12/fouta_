@@ -867,6 +867,18 @@ function create_produit($data)
             $vals .= ", :numero_rayon";
             $params['numero_rayon'] = isset($data['numero_rayon']) && $data['numero_rayon'] !== '' ? trim($data['numero_rayon']) : null;
         }
+        if (produits_has_column('fournisseur_id')) {
+            $cols .= ", fournisseur_id";
+            $vals .= ", :fournisseur_id";
+            $fid = $data['fournisseur_id'] ?? null;
+            $params['fournisseur_id'] = ($fid !== null && (int) $fid > 0) ? (int) $fid : null;
+        }
+        if (produits_has_column('nom_fournisseur')) {
+            $cols .= ", nom_fournisseur";
+            $vals .= ", :nom_fournisseur";
+            $nf = $data['nom_fournisseur'] ?? null;
+            $params['nom_fournisseur'] = ($nf !== null && $nf !== '' && trim((string) $nf) !== '') ? trim((string) $nf) : null;
+        }
         if (produits_has_column('admin_createur_id') && !empty($data['admin_createur_id'])) {
             $cols .= ", admin_createur_id";
             $vals .= ", :admin_createur_id";
@@ -941,6 +953,16 @@ function update_produit($id, $data)
         if (produits_has_column('numero_rayon')) {
             $sets .= ", numero_rayon = :numero_rayon";
             $params['numero_rayon'] = isset($data['numero_rayon']) && $data['numero_rayon'] !== '' ? trim($data['numero_rayon']) : null;
+        }
+        if (produits_has_column('fournisseur_id')) {
+            $sets .= ", fournisseur_id = :fournisseur_id";
+            $fid = $data['fournisseur_id'] ?? null;
+            $params['fournisseur_id'] = ($fid !== null && (int) $fid > 0) ? (int) $fid : null;
+        }
+        if (produits_has_column('nom_fournisseur')) {
+            $sets .= ", nom_fournisseur = :nom_fournisseur";
+            $nf = $data['nom_fournisseur'] ?? null;
+            $params['nom_fournisseur'] = ($nf !== null && $nf !== '' && trim((string) $nf) !== '') ? trim((string) $nf) : null;
         }
         if (produits_has_column('admin_dernier_modificateur_id') && !empty($data['admin_dernier_modificateur_id'])) {
             $sets .= ", admin_dernier_modificateur_id = :admin_dernier_modificateur_id";
@@ -1073,12 +1095,30 @@ function decrement_produit_stock($produit_id, $quantite)
     global $db;
 
     try {
-        $stmt = $db->prepare("UPDATE produits SET stock = GREATEST(0, stock - :qty), date_modification = NOW() WHERE id = :id");
-        $stmt->execute(['id' => (int) $produit_id, 'qty' => (int) $quantite]);
-        $stmt = $db->prepare("SELECT stock FROM produits WHERE id = :id");
-        $stmt->execute(['id' => (int) $produit_id]);
+        $produit_id = (int) $produit_id;
+        $qty = (int) $quantite;
+        if ($qty <= 0) {
+            return false;
+        }
+        $stmt = $db->prepare('SELECT stock FROM produits WHERE id = :id LIMIT 1');
+        $stmt->execute(['id' => $produit_id]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        return $row ? (int) $row['stock'] : false;
+        if (!$row) {
+            return false;
+        }
+        $avant = (int) $row['stock'];
+
+        $stmt = $db->prepare("UPDATE produits SET stock = GREATEST(0, stock - :qty), date_modification = NOW() WHERE id = :id");
+        $stmt->execute(['id' => $produit_id, 'qty' => $qty]);
+        $stmt = $db->prepare("SELECT stock FROM produits WHERE id = :id");
+        $stmt->execute(['id' => $produit_id]);
+        $row2 = $stmt->fetch(PDO::FETCH_ASSOC);
+        $apres = $row2 ? (int) $row2['stock'] : false;
+        if ($apres !== false) {
+            require_once __DIR__ . '/../includes/stock_alertes_notifications.php';
+            stock_alertes_notifier_baisse_stock($produit_id, $avant, $apres);
+        }
+        return $apres;
     } catch (PDOException $e) {
         return false;
     }

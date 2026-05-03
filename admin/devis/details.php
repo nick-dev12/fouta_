@@ -35,6 +35,12 @@ if (!$devis) {
 }
 
 $client_nom = trim($devis['client_prenom'] . ' ' . $devis['client_nom']);
+$num_devis = htmlspecialchars($devis['numero_devis']);
+$date_creation_txt = date('d/m/Y à H:i', strtotime($devis['date_creation']));
+$st = htmlspecialchars($devis['statut']);
+$st_uc = ucfirst($devis['statut']);
+$sous_total = array_sum(array_column($produits, 'prix_total'));
+$frais = isset($devis['frais_livraison']) ? (float) $devis['frais_livraison'] : 0;
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -42,129 +48,150 @@ $client_nom = trim($devis['client_prenom'] . ' ' . $devis['client_nom']);
     <?php include __DIR__ . '/../../includes/favicon.php'; ?>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Devis #<?php echo htmlspecialchars($devis['numero_devis']); ?> - Administration</title>
+    <title>Devis #<?php echo $num_devis; ?> - Administration</title>
     <?php require_once __DIR__ . '/../../includes/asset_version.php'; ?>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/css/admin-dashboard.css<?php echo asset_version_query(); ?>">
+    <link rel="stylesheet" href="/css/admin-devis-detail.css<?php echo asset_version_query(); ?>">
 </head>
-<body>
+<body class="devis-detail-page">
     <?php include '../includes/nav.php'; ?>
 
-    <div class="content-header">
-        <h1>
-            <i class="fas fa-file-invoice"></i> Devis #<?php echo htmlspecialchars($devis['numero_devis']); ?>
-        </h1>
+    <div class="devis-detail-wrap">
+    <div class="content-header devis-detail-header">
+        <div class="devis-detail-header__lead">
+            <span class="devis-detail-ic devis-detail-ic--doc" aria-hidden="true"><i class="fas fa-file-invoice"></i></span>
+            <div class="devis-detail-header__text">
+                <p class="devis-detail-header__eyebrow">Devis commercial</p>
+                <h1>Devis #<?php echo $num_devis; ?></h1>
+                <p class="devis-detail-header__meta">
+                    <span class="devis-detail-header__meta-item"><i class="fas fa-calendar-day" aria-hidden="true"></i> <?php echo htmlspecialchars($date_creation_txt); ?></span>
+                    <span class="devis-detail-header__meta-item"><span class="commande-statut statut-<?php echo $st; ?>"><?php echo htmlspecialchars($st_uc); ?></span></span>
+                </p>
+            </div>
+        </div>
         <div class="header-actions">
             <?php if ($facture): ?>
-                <a href="facture.php?id=<?php echo (int) $facture['id']; ?>" class="btn-primary" target="_blank">
-                    <i class="fas fa-file-invoice"></i> Voir la facture
+                <a href="facture.php?id=<?php echo (int) $facture['id']; ?>" class="btn-primary" target="_blank" rel="noopener">
+                    <i class="fas fa-file-invoice" aria-hidden="true"></i> Voir la facture
                 </a>
             <?php else: ?>
                 <a href="generer_facture.php?id=<?php echo $devis_id; ?>" class="btn-primary">
-                    <i class="fas fa-file-invoice"></i> Générer une facture
+                    <i class="fas fa-file-signature" aria-hidden="true"></i> Générer une facture
                 </a>
             <?php endif; ?>
             <a href="index.php" class="btn-back">
-                <i class="fas fa-arrow-left"></i> Retour
+                <i class="fas fa-arrow-left" aria-hidden="true"></i> Retour à la liste
             </a>
         </div>
     </div>
 
     <?php if (isset($_SESSION['success_message'])): ?>
         <div class="message success">
-            <i class="fas fa-check-circle"></i>
+            <i class="fas fa-check-circle" aria-hidden="true"></i>
             <span><?php echo htmlspecialchars($_SESSION['success_message']);
             unset($_SESSION['success_message']); ?></span>
         </div>
     <?php endif; ?>
 
-    <div class="commande-details-grid">
-        <div class="detail-box">
-            <h3><i class="fas fa-user"></i> Informations Client</h3>
-            <div class="detail-item">
-                <label>Nom complet</label>
-                <div class="value"><?php echo htmlspecialchars($client_nom); ?></div>
-            </div>
-            <div class="detail-item">
-                <label>Email</label>
-                <div class="value"><?php echo htmlspecialchars($devis['client_email'] ?? '—'); ?></div>
-            </div>
-            <div class="detail-item">
-                <label>Téléphone</label>
-                <div class="value"><?php echo htmlspecialchars($devis['client_telephone']); ?></div>
-            </div>
-        </div>
+    <div class="commande-details-grid devis-detail-grid">
+        <article class="detail-box devis-detail-card">
+            <h3 class="devis-detail-card__head">
+                <span class="devis-detail-ic devis-detail-ic--user devis-detail-ic--sm" aria-hidden="true"><i class="fas fa-user"></i></span>
+                Informations client
+            </h3>
+            <dl class="devis-detail-dl">
+                <div class="devis-detail-dl__row">
+                    <dt>Nom complet</dt>
+                    <dd><?php echo htmlspecialchars($client_nom); ?></dd>
+                </div>
+                <div class="devis-detail-dl__row">
+                    <dt>Email</dt>
+                    <dd><?php echo htmlspecialchars($devis['client_email'] ?? '—'); ?></dd>
+                </div>
+                <div class="devis-detail-dl__row">
+                    <dt>Téléphone</dt>
+                    <dd><?php echo htmlspecialchars($devis['client_telephone']); ?></dd>
+                </div>
+            </dl>
+        </article>
 
-        <div class="detail-box">
-            <h3><i class="fas fa-map-marker-alt"></i> Livraison</h3>
-            <div class="detail-item">
-                <label>Adresse</label>
-                <div class="value"><?php echo nl2br(htmlspecialchars($devis['adresse_livraison'])); ?></div>
-            </div>
-            <?php if (!empty($devis['frais_livraison'])): ?>
-                <div class="detail-item">
-                    <label>Frais de livraison</label>
-                    <div class="value"><?php echo number_format($devis['frais_livraison'], 0, ',', ' '); ?> FCFA</div>
+        <article class="detail-box devis-detail-card">
+            <h3 class="devis-detail-card__head">
+                <span class="devis-detail-ic devis-detail-ic--ship devis-detail-ic--sm" aria-hidden="true"><i class="fas fa-truck"></i></span>
+                Livraison
+            </h3>
+            <dl class="devis-detail-dl">
+                <div class="devis-detail-dl__row devis-detail-dl__row--full">
+                    <dt>Adresse</dt>
+                    <dd><?php echo nl2br(htmlspecialchars($devis['adresse_livraison'])); ?></dd>
                 </div>
-            <?php endif; ?>
-            <div class="detail-item">
-                <label>Date création</label>
-                <div class="value"><?php echo date('d/m/Y à H:i', strtotime($devis['date_creation'])); ?></div>
-            </div>
-            <div class="detail-item">
-                <label>Statut</label>
-                <div class="value">
-                    <span class="commande-statut statut-<?php echo $devis['statut']; ?>"><?php echo ucfirst($devis['statut']); ?></span>
+                <?php if (!empty($devis['frais_livraison'])): ?>
+                <div class="devis-detail-dl__row">
+                    <dt>Frais de livraison</dt>
+                    <dd><?php echo number_format($devis['frais_livraison'], 0, ',', ' '); ?> FCFA</dd>
                 </div>
-            </div>
-        </div>
+                <?php endif; ?>
+            </dl>
+        </article>
     </div>
 
-    <section class="content-section">
-        <div class="section-title">
-            <h2><i class="fas fa-box"></i> Produits du devis</h2>
-        </div>
+    <section class="content-section devis-detail-section">
+        <header class="devis-detail-section-head">
+            <span class="devis-detail-ic devis-detail-ic--box" aria-hidden="true"><i class="fas fa-box-open"></i></span>
+            <h2>Produits du devis</h2>
+        </header>
 
-        <div class="produits-list">
-            <?php foreach ($produits as $produit): ?>
-                <div class="produit-item">
-                    <div class="produit-info">
-                        <h4><?php echo htmlspecialchars($produit['produit_nom'] ?? $produit['nom_produit'] ?? ''); ?></h4>
-                        <div class="produit-info-lignes">
-                            <div class="info-ligne">Quantité: <?php echo $produit['quantite']; ?></div>
-                            <div class="info-ligne">Prix unitaire: <?php echo number_format($produit['prix_unitaire'], 0, ',', ' '); ?> FCFA</div>
+        <div class="produits-list devis-detail-produits">
+            <?php if (empty($produits)): ?>
+                <div class="devis-detail-produits-empty" role="status">
+                    <div><i class="fas fa-inbox" aria-hidden="true"></i></div>
+                    <p>Aucune ligne produit sur ce devis.</p>
+                </div>
+            <?php else: ?>
+                <?php $idx = 0; ?>
+                <?php foreach ($produits as $produit): ?>
+                    <?php $idx++; ?>
+                <div class="produit-item devis-detail-ligne-produit">
+                    <div class="devis-detail-ligne-produit__main">
+                        <span class="devis-detail-ligne-index" aria-hidden="true"><?php echo $idx; ?></span>
+                        <div class="devis-detail-ligne-body">
+                            <h4><?php echo htmlspecialchars($produit['produit_nom'] ?? $produit['nom_produit'] ?? ''); ?></h4>
+                            <div class="devis-detail-ligne-stats">
+                                <span class="devis-detail-chip"><i class="fas fa-cubes" aria-hidden="true"></i> Qté <?php echo (int) $produit['quantite']; ?></span>
+                                <span class="devis-detail-chip devis-detail-chip--muted"><i class="fas fa-tag" aria-hidden="true"></i> <?php echo number_format($produit['prix_unitaire'], 0, ',', ' '); ?> FCFA / u.</span>
+                            </div>
                         </div>
                     </div>
-                    <div class="produit-total">
-                        <?php echo number_format($produit['prix_total'], 0, ',', ' '); ?> FCFA
-                    </div>
+                    <div class="produit-total devis-detail-ligne-price"><?php echo number_format($produit['prix_total'], 0, ',', ' '); ?> FCFA</div>
                 </div>
-            <?php endforeach; ?>
+                <?php endforeach; ?>
 
-            <div class="produits-list-total">
-                <?php
-                $sous_total = array_sum(array_column($produits, 'prix_total'));
-                $frais = isset($devis['frais_livraison']) ? (float) $devis['frais_livraison'] : 0;
-                ?>
-                <?php if ($frais > 0): ?>
-                    <p style="margin-bottom: 8px;">Sous-total produits: <?php echo number_format($sous_total, 0, ',', ' '); ?> FCFA</p>
-                    <p style="margin-bottom: 8px;">Frais de livraison: <?php echo number_format($frais, 0, ',', ' '); ?> FCFA</p>
-                <?php endif; ?>
-                <h3>Total: <span class="total-value"><?php echo number_format($devis['montant_total'], 0, ',', ' '); ?> FCFA</span></h3>
-            </div>
+                <div class="produits-list-total devis-detail-total">
+                    <div class="devis-detail-total-lines">
+                        <?php if ($frais > 0): ?>
+                        <span><span class="devis-detail-total-label">Sous-total produits</span><span class="devis-detail-total-amount"><?php echo number_format($sous_total, 0, ',', ' '); ?> FCFA</span></span>
+                        <span><span class="devis-detail-total-label">Frais de livraison</span><span class="devis-detail-total-amount"><?php echo number_format($frais, 0, ',', ' '); ?> FCFA</span></span>
+                        <?php endif; ?>
+                    </div>
+                    <h3>Total : <span class="total-value"><?php echo number_format($devis['montant_total'], 0, ',', ' '); ?> FCFA</span></h3>
+                </div>
+            <?php endif; ?>
         </div>
     </section>
 
     <?php if (!empty($devis['notes'])): ?>
-    <section class="content-section">
-        <div class="section-title">
-            <h2><i class="fas fa-sticky-note"></i> Notes</h2>
-        </div>
-        <div class="detail-box">
+    <section class="content-section devis-detail-section devis-detail-section--notes">
+        <header class="devis-detail-section-head">
+            <span class="devis-detail-ic devis-detail-ic--note devis-detail-ic--sm" aria-hidden="true"><i class="fas fa-sticky-note"></i></span>
+            <h2>Notes</h2>
+        </header>
+        <div class="detail-box devis-detail-notes">
             <p><?php echo nl2br(htmlspecialchars($devis['notes'])); ?></p>
         </div>
     </section>
     <?php endif; ?>
+    </div>
 
     <?php include '../includes/footer.php'; ?>
 </body>

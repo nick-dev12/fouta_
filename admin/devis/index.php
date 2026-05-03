@@ -20,6 +20,7 @@ if (!admin_can_devis_bl()) {
 require_once __DIR__ . '/../../models/model_devis.php';
 require_once __DIR__ . '/../../models/model_zones_livraison.php';
 require_once __DIR__ . '/../../models/model_bl.php';
+require_once __DIR__ . '/../../models/model_bons_retour.php';
 
 if (empty($_SESSION['admin_csrf'])) {
     $_SESSION['admin_csrf'] = bin2hex(random_bytes(32));
@@ -29,6 +30,8 @@ $devis_list = get_all_devis();
 $zones_livraison = get_all_zones_livraison('actif');
 $bl_tables_ok = bl_tables_available();
 $bl_clients_list = $bl_tables_ok ? get_clients_b2b_avec_bl() : [];
+$br_tables_ok = br_retour_tables_available();
+$br_clients_list = $br_tables_ok ? get_clients_b2b_avec_bons_retour() : [];
 
 $error_devis = $_SESSION['error_devis'] ?? null;
 if (isset($_SESSION['error_devis'])) {
@@ -41,7 +44,9 @@ if (isset($_SESSION['bl_erreur'])) {
 
 $show_modal_devis = isset($_GET['modal']) && $_GET['modal'] === 'devis';
 $show_modal_bl = isset($_GET['modal']) && $_GET['modal'] === 'bl';
-$active_tab = (isset($_GET['tab']) && $_GET['tab'] === 'bl') ? 'bl' : 'devis';
+$tab_param = isset($_GET['tab']) ? (string) $_GET['tab'] : '';
+$tab_allowed = ['devis', 'bl', 'br'];
+$active_tab = in_array($tab_param, $tab_allowed, true) ? $tab_param : 'devis';
 
 $devis_erreur = $_SESSION['devis_erreur'] ?? null;
 $devis_post = $_SESSION['devis_post'] ?? null;
@@ -119,10 +124,11 @@ $devis_page_has_alert = isset($_SESSION['success_message']) || !empty($error_dev
     <?php
     $tab_devis_active = $active_tab === 'devis';
     $tab_bl_active = $active_tab === 'bl';
+    $tab_br_active = $active_tab === 'br';
     ?>
     <section class="content-section page-devis-section" aria-label="Contenu devis et BL">
         <div class="section-header section-header--tabs page-devis-tabs-wrap">
-            <div class="admin-devis-bl-tabs" role="tablist" aria-label="Devis ou bons de livraison">
+            <div class="admin-devis-bl-tabs" role="tablist" aria-label="Devis, bons de livraison ou bons de retour">
                 <button type="button" class="admin-tab admin-tab--devis <?php echo $tab_devis_active ? 'is-active' : ''; ?>" id="tab-btn-devis" role="tab" aria-selected="<?php echo $tab_devis_active ? 'true' : 'false'; ?>" aria-controls="panel-devis" data-tab="devis">
                     <span class="admin-tab__ic" aria-hidden="true"><i class="fas fa-file-invoice"></i></span>
                     <span class="admin-tab__txt">Devis (<?php echo count($devis_list); ?>)</span>
@@ -130,6 +136,10 @@ $devis_page_has_alert = isset($_SESSION['success_message']) || !empty($error_dev
                 <button type="button" class="admin-tab admin-tab--bl <?php echo $tab_bl_active ? 'is-active' : ''; ?>" id="tab-btn-bl" role="tab" aria-selected="<?php echo $tab_bl_active ? 'true' : 'false'; ?>" aria-controls="panel-bl" data-tab="bl" <?php echo !$bl_tables_ok ? 'disabled title="Migration B2B requise"' : ''; ?>>
                     <span class="admin-tab__ic" aria-hidden="true"><i class="fas fa-truck-loading"></i></span>
                     <span class="admin-tab__txt">Bons de livraison (<?php echo $bl_tables_ok ? count($bl_clients_list) : 0; ?>)</span>
+                </button>
+                <button type="button" class="admin-tab admin-tab--br <?php echo $tab_br_active ? 'is-active' : ''; ?>" id="tab-btn-br" role="tab" aria-selected="<?php echo $tab_br_active ? 'true' : 'false'; ?>" aria-controls="panel-br" data-tab="br" <?php echo !$br_tables_ok ? 'disabled title="Exécutez migrations/run_create_bons_retour_tables.php"' : ''; ?>>
+                    <span class="admin-tab__ic" aria-hidden="true"><i class="fas fa-undo"></i></span>
+                    <span class="admin-tab__txt">Bons de retour (<?php echo $br_tables_ok ? count($br_clients_list) : 0; ?>)</span>
                 </button>
             </div>
         </div>
@@ -323,6 +333,122 @@ $devis_page_has_alert = isset($_SESSION['success_message']) || !empty($error_dev
                 </div>
             </div>
         <?php endif; ?>
+        <?php endif; ?>
+        </div>
+
+        <div id="panel-br" class="tab-panel-devis-bl <?php echo $tab_br_active ? 'is-active' : ''; ?>" role="tabpanel" aria-labelledby="tab-btn-br" <?php echo $tab_br_active ? '' : 'hidden'; ?>>
+        <?php if (!$br_tables_ok): ?>
+            <p class="message error page-devis-message page-devis-b2b-migration"><i class="fas fa-database" aria-hidden="true"></i> Tables absentes : exécutez en ligne de commande <code>php migrations/run_create_bons_retour_tables.php</code> (prérequis : BL déjà migrés).</p>
+        <?php elseif (empty($br_clients_list)): ?>
+            <div class="empty-state page-devis-empty">
+                <div class="page-devis-empty__ic" aria-hidden="true"><i class="fas fa-undo"></i></div>
+                <h3>Aucun bon de retour</h3>
+                <p>Depuis un bon de livraison ouvert, utilisez le bouton « Bon de retour » pour enregistrer une sortie de marchandise.</p>
+            </div>
+        <?php else: ?>
+            <?php
+            $br_nb_contacts = count($br_clients_list);
+            ?>
+            <div class="bl-tab-surface">
+                <header class="bl-contacts-hero">
+                    <div class="bl-contacts-hero__icon-wrap" aria-hidden="true">
+                        <i class="fas fa-undo"></i>
+                    </div>
+                    <div class="bl-contacts-hero__copy">
+                        <h2 class="bl-contacts-hero__title">Contacts &amp; bons de retour B2B</h2>
+                        <p class="bl-contacts-hero__lead">Clients professionnels ayant au moins un bon de retour. Consultez l’historique complet par entreprise.</p>
+                    </div>
+                    <div class="bl-contacts-hero__stat" title="Nombre de contacts listés">
+                        <span class="bl-contacts-hero__stat-num"><?php echo (int) $br_nb_contacts; ?></span>
+                        <span class="bl-contacts-hero__stat-label">contact<?php echo $br_nb_contacts > 1 ? 's' : ''; ?></span>
+                    </div>
+                </header>
+
+                <div class="bl-contacts-grid" role="list">
+                <?php foreach ($br_clients_list as $cl): ?>
+                    <?php
+                    $cid = (int) $cl['id'];
+                    $nb_br = (int) ($cl['nb_br'] ?? 0);
+                    $contact_nom = trim(($cl['nom_contact'] ?? '') . ' ' . ($cl['prenom_contact'] ?? ''));
+                    $rs = trim($cl['raison_sociale'] ?? '');
+                    $initials = '?';
+                    if ($rs !== '') {
+                        $words = preg_split('/\s+/u', $rs, -1, PREG_SPLIT_NO_EMPTY);
+                        if (count($words) >= 2) {
+                            $initials = mb_strtoupper(
+                                mb_substr($words[0], 0, 1) . mb_substr($words[1], 0, 1),
+                                'UTF-8'
+                            );
+                        } else {
+                            $initials = mb_strtoupper(mb_substr($rs, 0, min(2, mb_strlen($rs, 'UTF-8')), 'UTF-8'), 'UTF-8');
+                        }
+                    }
+                    $adr_short = '';
+                    if (!empty($cl['adresse'])) {
+                        $adr_short = mb_substr($cl['adresse'], 0, 110);
+                        if (mb_strlen($cl['adresse'], 'UTF-8') > 110) {
+                            $adr_short .= '…';
+                        }
+                    }
+                    $last_br = !empty($cl['dernier_br_date'])
+                        ? date('d/m/Y · H:i', strtotime($cl['dernier_br_date']))
+                        : '—';
+                    ?>
+                    <article class="bl-contact-card" role="listitem">
+                        <div class="bl-contact-card__inner">
+                            <div class="bl-contact-card__head">
+                                <div class="bl-contact-card__avatar" aria-hidden="true"><?php echo htmlspecialchars($initials); ?></div>
+                                <div class="bl-contact-card__head-text">
+                                    <h3 class="bl-contact-card__company"><?php echo htmlspecialchars($rs ?: '—'); ?></h3>
+                                    <?php if ($contact_nom !== ''): ?>
+                                        <p class="bl-contact-card__person">
+                                            <i class="fas fa-user-tie" aria-hidden="true"></i>
+                                            <?php echo htmlspecialchars($contact_nom); ?>
+                                        </p>
+                                    <?php endif; ?>
+                                </div>
+                                <span class="bl-contact-card__pill bl-contact-card__pill--br">
+                                    <i class="fas fa-undo" aria-hidden="true"></i>
+                                    <?php echo $nb_br; ?> BR
+                                </span>
+                            </div>
+
+                            <ul class="bl-contact-card__meta">
+                                <li class="bl-contact-card__meta-row">
+                                    <span class="bl-contact-card__meta-ic" aria-hidden="true"><i class="fas fa-phone"></i></span>
+                                    <span class="bl-contact-card__meta-val"><?php echo htmlspecialchars($cl['telephone'] ?? '—'); ?></span>
+                                </li>
+                                <li class="bl-contact-card__meta-row">
+                                    <span class="bl-contact-card__meta-ic" aria-hidden="true"><i class="fas fa-envelope"></i></span>
+                                    <span class="bl-contact-card__meta-val"><?php echo !empty($cl['email']) ? htmlspecialchars($cl['email']) : '—'; ?></span>
+                                </li>
+                                <?php if ($adr_short !== ''): ?>
+                                <li class="bl-contact-card__meta-row bl-contact-card__meta-row--address">
+                                    <span class="bl-contact-card__meta-ic" aria-hidden="true"><i class="fas fa-location-dot"></i></span>
+                                    <span class="bl-contact-card__meta-val"><?php echo htmlspecialchars($adr_short); ?></span>
+                                </li>
+                                <?php endif; ?>
+                            </ul>
+
+                            <div class="bl-contact-card__foot">
+                                <div class="bl-contact-card__last">
+                                    <span class="bl-contact-card__last-label">Dernier BR</span>
+                                    <?php if (!empty($cl['dernier_br_date'])): ?>
+                                        <time class="bl-contact-card__last-date" datetime="<?php echo htmlspecialchars(date('c', strtotime($cl['dernier_br_date']))); ?>"><?php echo htmlspecialchars($last_br); ?></time>
+                                    <?php else: ?>
+                                        <span class="bl-contact-card__last-date">—</span>
+                                    <?php endif; ?>
+                                </div>
+                                <a href="br_par_client.php?id=<?php echo $cid; ?>" class="bl-contact-card__cta">
+                                    <span>Voir les bons de retour</span>
+                                    <i class="fas fa-arrow-right" aria-hidden="true"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </article>
+                <?php endforeach; ?>
+                </div>
+            </div>
         <?php endif; ?>
         </div>
     </section>
@@ -577,6 +703,14 @@ $devis_page_has_alert = isset($_SESSION['success_message']) || !empty($error_dev
                                     <input type="email" id="client_email_bl" name="client_email"
                                         value="<?php echo htmlspecialchars($bp['client_email'] ?? ''); ?>">
                                 </div>
+                                <div class="form-group bl-client-type-hint-row">
+                                    <label>Type client</label>
+                                    <p class="form-hint bl-client-type-affich">
+                                        <i class="fas fa-tag"></i>
+                                        Affiché selon la fiche Contacts ou le compte : <strong id="client_type_bl_display">Standard</strong>
+                                        <span id="client_type_bl_qualif"> — valeur par défaut si saisie manuelle uniquement ; choisissez un résultat de recherche pour afficher VIP/Standard du carnet.</span>
+                                    </p>
+                                </div>
                                 <div class="form-group">
                                     <label for="zone_livraison_id_bl"><i class="fas fa-map-marker-alt"></i> Adresse de livraison <span class="required">*</span></label>
                                     <select id="zone_livraison_id_bl" name="zone_livraison_id">
@@ -651,6 +785,8 @@ $devis_page_has_alert = isset($_SESSION['success_message']) || !empty($error_dev
         </div>
     </div>
     <?php endif; ?>
+
+    <?php include __DIR__ . '/../../includes/admin_stock_alerte_popup.php'; ?>
 
     <?php include '../includes/footer.php'; ?>
 
@@ -969,42 +1105,53 @@ $devis_page_has_alert = isset($_SESSION['success_message']) || !empty($error_dev
     (function() {
         var tabDevis = document.getElementById('tab-btn-devis');
         var tabBl = document.getElementById('tab-btn-bl');
+        var tabBr = document.getElementById('tab-btn-br');
         var panelDevis = document.getElementById('panel-devis');
         var panelBl = document.getElementById('panel-bl');
+        var panelBr = document.getElementById('panel-br');
 
         function showTab(which) {
-            if (!panelDevis || !panelBl) return;
-            if (which === 'bl') {
-                panelDevis.setAttribute('hidden', 'hidden');
-                panelDevis.classList.remove('is-active');
-                panelBl.removeAttribute('hidden');
-                panelBl.classList.add('is-active');
-                if (tabDevis) {
-                    tabDevis.classList.remove('is-active');
-                    tabDevis.setAttribute('aria-selected', 'false');
+            if (which === 'bl' && tabBl && tabBl.disabled) {
+                return;
+            }
+            if (which === 'br' && tabBr && tabBr.disabled) {
+                return;
+            }
+            var map = [
+                ['devis', tabDevis, panelDevis],
+                ['bl', tabBl, panelBl],
+                ['br', tabBr, panelBr],
+            ];
+            for (var i = 0; i < map.length; i++) {
+                var id = map[i][0];
+                var btn = map[i][1];
+                var panel = map[i][2];
+                if (!panel) {
+                    continue;
                 }
-                if (tabBl) {
-                    tabBl.classList.add('is-active');
-                    tabBl.setAttribute('aria-selected', 'true');
+                var on = id === which;
+                if (on) {
+                    panel.removeAttribute('hidden');
+                    panel.classList.add('is-active');
+                } else {
+                    panel.setAttribute('hidden', 'hidden');
+                    panel.classList.remove('is-active');
                 }
-            } else {
-                panelBl.setAttribute('hidden', 'hidden');
-                panelBl.classList.remove('is-active');
-                panelDevis.removeAttribute('hidden');
-                panelDevis.classList.add('is-active');
-                if (tabBl) {
-                    tabBl.classList.remove('is-active');
-                    tabBl.setAttribute('aria-selected', 'false');
-                }
-                if (tabDevis) {
-                    tabDevis.classList.add('is-active');
-                    tabDevis.setAttribute('aria-selected', 'true');
+                if (btn && !btn.disabled) {
+                    if (on) {
+                        btn.classList.add('is-active');
+                        btn.setAttribute('aria-selected', 'true');
+                    } else {
+                        btn.classList.remove('is-active');
+                        btn.setAttribute('aria-selected', 'false');
+                    }
                 }
             }
         }
 
         if (tabDevis) tabDevis.addEventListener('click', function() { showTab('devis'); });
         if (tabBl) tabBl.addEventListener('click', function() { if (!tabBl.disabled) showTab('bl'); });
+        if (tabBr) tabBr.addEventListener('click', function() { if (!tabBr.disabled) showTab('br'); });
 
         var modalBl = document.getElementById('modal-bl');
         var btnOpenBl = document.getElementById('btn-nouveau-bl');
@@ -1276,8 +1423,19 @@ $devis_page_has_alert = isset($_SESSION['success_message']) || !empty($error_dev
         var clientPrenomInputBl = document.getElementById('client_prenom_bl');
         var clientTelInputBl = document.getElementById('client_telephone_bl');
         var clientEmailInputBl = document.getElementById('client_email_bl');
+        var clientTypeStrongBl = document.getElementById('client_type_bl_display');
+        var clientTypeQualifBl = document.getElementById('client_type_bl_qualif');
         var userIdInputBl = document.getElementById('user_id_bl');
         var clientSearchTimeoutBl;
+        function setAffichTypeClientBL(label, depuisRecherche) {
+            var lib = label || 'Standard';
+            if (clientTypeStrongBl) clientTypeStrongBl.textContent = lib;
+            if (clientTypeQualifBl) {
+                clientTypeQualifBl.textContent = depuisRecherche
+                    ? (' — défini depuis le résultat de recherche (« ' + lib + ' »). Les comptes boutique sont traités comme Standard.')
+                    : ' — valeur par défaut si saisie manuelle uniquement ; choisissez un résultat de recherche pour afficher VIP/Standard du carnet.';
+            }
+        }
         if (searchClientInputBl && searchClientResultsBl && clientNomInputBl && clientPrenomInputBl && clientTelInputBl) {
             function doClientSearchBl(q) {
                 if (q.length < 1) {
@@ -1306,6 +1464,7 @@ $devis_page_has_alert = isset($_SESSION['success_message']) || !empty($error_dev
                                     clientTelInputBl.value = c.telephone || '';
                                     if (clientEmailInputBl) clientEmailInputBl.value = c.email || '';
                                     if (userIdInputBl) userIdInputBl.value = (c.source === 'user') ? c.id : '';
+                                    setAffichTypeClientBL(c.type_libelle || 'Standard', true);
                                     searchClientInputBl.value = '';
                                     searchClientResultsBl.innerHTML = '';
                                     searchClientResultsBl.setAttribute('aria-hidden', 'true');

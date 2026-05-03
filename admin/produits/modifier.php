@@ -46,7 +46,29 @@ if (isset($result['success']) && $result['success']) {
 
 // Récupérer les catégories (stock géré via produits.stock)
 require_once __DIR__ . '/../../models/model_categories.php';
+require_once __DIR__ . '/../../models/model_fournisseurs.php';
 $categories = get_all_categories();
+
+$has_ff_col = produits_has_column('fournisseur_id');
+$fournisseurs_catalogue = $has_ff_col ? get_all_fournisseurs_ordered_by_nom() : [];
+
+$fournisseur_id_form_val = '';
+if (!empty($produit['fournisseur_id'])) {
+    $fournisseur_id_form_val = (string) (int) $produit['fournisseur_id'];
+}
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && array_key_exists('fournisseur_id', $_POST)) {
+    $v = trim((string) $_POST['fournisseur_id']);
+    $fournisseur_id_form_val = $v === '' ? '' : (string) (int) $v;
+}
+
+$statut_form_val = in_array($produit['statut'] ?? '', ['actif', 'inactif', 'rupture_stock'], true)
+    ? $produit['statut']
+    : 'actif';
+if ($_SERVER['REQUEST_METHOD'] === 'POST'
+    && isset($_POST['statut'])
+    && in_array((string) $_POST['statut'], ['actif', 'inactif', 'rupture_stock'], true)) {
+    $statut_form_val = (string) $_POST['statut'];
+}
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -111,6 +133,25 @@ $categories = get_all_categories();
                 <label for="description">Description *</label>
                 <textarea id="description" name="description"
                     required><?php echo htmlspecialchars($produit['description']); ?></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="fournisseur_id">Fournisseur</label>
+                <?php if ($has_ff_col): ?>
+                <select id="fournisseur_id" name="fournisseur_id">
+                    <option value="">— Aucun —</option>
+                    <?php foreach ($fournisseurs_catalogue as $ff): ?>
+                    <option value="<?php echo (int) $ff['id']; ?>" <?php echo ((string) $fournisseur_id_form_val !== '' && (string) $fournisseur_id_form_val === (string) $ff['id']) ? 'selected' : ''; ?>>
+                        <?php echo htmlspecialchars($ff['nom']); ?>
+                    </option>
+                    <?php endforeach; ?>
+                </select>
+                <small class="form-hint">Liste gérée dans <a href="../parametres/logos.php?tab=fournisseurs">Paramètres → Logos &amp; fournisseurs</a>.</small>
+                <?php else: ?>
+                <p class="form-hint form-hint--warning">
+                    Migration requise : exécutez <code>migrations/run_create_fournisseurs.php</code>.
+                </p>
+                <?php endif; ?>
             </div>
                 </div>
             </section>
@@ -212,7 +253,7 @@ $categories = get_all_categories();
                 </div>
             </section>
 
-            <section class="pm-card" aria-labelledby="pm-sec-var">
+            <section class="pm-card admin-ajouter-produit-masquer" aria-labelledby="pm-sec-var" aria-hidden="true">
                 <div class="pm-card__head">
                     <span class="pm-card__icon" aria-hidden="true"><i class="fas fa-layer-group"></i></span>
                     <div>
@@ -283,7 +324,7 @@ $categories = get_all_categories();
                 </div>
             </section>
 
-            <section class="pm-card" aria-labelledby="pm-sec-opts">
+            <section class="pm-card admin-ajouter-produit-masquer" aria-labelledby="pm-sec-opts" aria-hidden="true">
                 <div class="pm-card__head">
                     <span class="pm-card__icon" aria-hidden="true"><i class="fas fa-sliders"></i></span>
                     <div>
@@ -459,29 +500,7 @@ $categories = get_all_categories();
                 </div>
             </section>
 
-            <section class="pm-card" aria-labelledby="pm-sec-statut">
-                <div class="pm-card__head">
-                    <span class="pm-card__icon" aria-hidden="true"><i class="fas fa-toggle-on"></i></span>
-                    <div>
-                        <h2 id="pm-sec-statut" class="pm-card__title">Visibilité</h2>
-                        <p class="pm-card__hint">Statut affiché dans le catalogue</p>
-                    </div>
-                </div>
-                <div class="pm-card__body">
-            <div class="form-group">
-                <label for="statut">Statut</label>
-                <select id="statut" name="statut">
-                    <option value="actif" <?php echo ($produit['statut'] == 'actif') ? 'selected' : ''; ?>>Actif
-                    </option>
-                    <option value="inactif" <?php echo ($produit['statut'] == 'inactif') ? 'selected' : ''; ?>>Inactif
-                    </option>
-                    <option value="rupture_stock"
-                        <?php echo ($produit['statut'] == 'rupture_stock') ? 'selected' : ''; ?>>Rupture de stock
-                    </option>
-                </select>
-            </div>
-                </div>
-            </section>
+            <input type="hidden" name="statut" value="<?php echo htmlspecialchars($statut_form_val, ENT_QUOTES, 'UTF-8'); ?>">
 
         </div><!-- .pm-sections -->
 
@@ -551,6 +570,9 @@ $categories = get_all_categories();
         var btnAdd = document.getElementById('btn-add-couleur');
         var list = document.getElementById('couleurs-list');
         var hidden = document.getElementById('couleurs-hidden');
+        if (!couleurInput || !list || !hidden) {
+            return;
+        }
         var couleurs = [];
         try {
             if (hidden && hidden.value && hidden.value !== '[]') {
@@ -697,9 +719,13 @@ $categories = get_all_categories();
             }
             render();
         }
-        initOptionsWithSurcharge('poids-input', 'poids-surcharge', 'poids-list', 'poids-hidden', 'btn-add-poids');
-        initOptionsWithSurcharge('taille-input', 'taille-surcharge', 'taille-list', 'taille-hidden',
-            'btn-add-taille');
+        if (document.getElementById('poids-input')) {
+            initOptionsWithSurcharge('poids-input', 'poids-surcharge', 'poids-list', 'poids-hidden', 'btn-add-poids');
+        }
+        if (document.getElementById('taille-input')) {
+            initOptionsWithSurcharge('taille-input', 'taille-surcharge', 'taille-list', 'taille-hidden',
+                'btn-add-taille');
+        }
     })();
     (function() {
         var container = document.getElementById('variantes-container');

@@ -116,7 +116,7 @@ if ($is_produits || $is_categories || $is_stock || $is_slider || $is_parametres 
             <a href="<?php echo $base_path; ?>comptes/index.php"
                 class="menu-item mi-comptes<?php echo $is_comptes ? ' active' : ''; ?>">
                 <span class="menu-item-icon" aria-hidden="true"><i class="fas fa-user-shield"></i></span>
-                <span class="menu-item-text">Comptes d’accès</span>
+                <span class="menu-item-text">Employés</span>
             </a>
             <a href="<?php echo $base_path; ?>parametres.php"
                 class="menu-item mi-params<?php echo ($current_page == 'parametres.php' || strpos($current_dir, '/parametres') !== false) ? ' active' : ''; ?>">
@@ -175,7 +175,7 @@ if ($is_produits || $is_categories || $is_stock || $is_slider || $is_parametres 
             <a href="<?php echo $base_path; ?>comptes/index.php"
                 class="menu-item mi-comptes<?php echo $is_comptes ? ' active' : ''; ?>">
                 <span class="menu-item-icon" aria-hidden="true"><i class="fas fa-user-shield"></i></span>
-                <span class="menu-item-text">Comptes d’accès</span>
+                <span class="menu-item-text">Employés</span>
             </a>
             <?php elseif ($admin_role === 'gestion_stock'): ?>
             <a href="<?php echo $base_path; ?>stock/index.php"

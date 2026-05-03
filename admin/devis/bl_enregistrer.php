@@ -90,6 +90,7 @@ if ($erreur) {
 require_once __DIR__ . '/../../models/model_contacts.php';
 require_once __DIR__ . '/../../models/model_clients_b2b.php';
 require_once __DIR__ . '/../../models/model_bl.php';
+require_once __DIR__ . '/../../models/model_parametres_types_client.php';
 
 if (!bl_tables_available()) {
     $_SESSION['bl_erreur'] = 'Tables BL non installées.';
@@ -98,13 +99,16 @@ if (!bl_tables_available()) {
     exit;
 }
 
-/** Carnet « Contacts » : si ce numéro n'existe pas dans `contacts`, création automatique (nom, prénom, téléphone, email) */
+/** Carnet « Contacts » : si ce numéro n'existe pas dans `contacts`, création automatique (nom, prénom, téléphone, email) — type Standard par défaut en base */
 ensure_contact_from_bl(
     $client_nom,
     $client_prenom,
     $client_telephone,
     $client_email !== '' ? $client_email : null
 );
+
+$contact_row = get_contact_by_telephone($client_telephone);
+$type_depuis_contact = $contact_row ? contacts_normalize_type_bl($contact_row['type_client_bl'] ?? 'standard') : 'standard';
 
 $client = find_client_b2b_by_telephone($client_telephone);
 if (!$client) {
@@ -118,6 +122,7 @@ if (!$client) {
         'adresse' => $adresse_livraison,
         'notes' => 'Créé depuis formulaire BL (identique devis)',
         'statut' => 'actif',
+        'type_client_bl' => $type_depuis_contact,
         'admin_createur_id' => (int) ($_SESSION['admin_id'] ?? 0),
     ]);
     if (!$cid) {
@@ -127,6 +132,9 @@ if (!$client) {
         exit;
     }
     $client = get_client_b2b_by_id($cid);
+} else {
+    sync_client_b2b_type_bl_depuis_contact($client_telephone);
+    $client = find_client_b2b_by_telephone($client_telephone) ?: $client;
 }
 
 $lignes = [];
@@ -150,6 +158,16 @@ if ($frais_livraison > 0) {
         'quantite' => 1,
         'prix_unitaire_ht' => $frais_livraison,
     ];
+}
+
+$total_bl_ht = bl_totaux_ht_lignes_manuel($lignes);
+$code_type_client = (($client['type_client_bl'] ?? '') === 'vip') ? 'vip' : 'standard';
+$verif_plafond = pct_verifier_bl_montant_autorise((int) $client['id'], $code_type_client, $total_bl_ht);
+if (empty($verif_plafond['ok'])) {
+    $_SESSION['bl_erreur'] = $verif_plafond['message'] ?? 'Plafond BL dépassé.';
+    $_SESSION['bl_post'] = $_POST;
+    header('Location: index.php?modal=bl&tab=bl');
+    exit;
 }
 
 $res = create_bl_manuel((int) $client['id'], $date_bl, $notes !== '' ? $notes : null, $lignes, (int) $_SESSION['admin_id'], $statut);

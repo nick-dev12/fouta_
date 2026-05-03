@@ -195,11 +195,15 @@ $page_title = 'Activité — ' . htmlspecialchars($admin_cible['prenom'] . ' ' .
         </div>
     </header>
 
-    <section class="ea-identity" aria-labelledby="ea-titre">
-        <div class="ea-identity__avatar" aria-hidden="true"><?php echo htmlspecialchars($initiale); ?></div>
-        <div class="ea-identity__body">
-            <p class="ea-identity__eyebrow">Compte d’accès</p>
-            <h2 class="ea-identity__title" id="ea-titre"><?php echo htmlspecialchars($admin_cible['prenom'] . ' ' . $admin_cible['nom']); ?></h2>
+    <section class="ea-identity ea-identity-card" aria-labelledby="ea-titre">
+        <div class="ea-identity-card__splash">
+            <div class="ea-identity__avatar" aria-hidden="true"><?php echo htmlspecialchars($initiale); ?></div>
+            <div class="ea-identity-card__splash-text">
+                <p class="ea-identity__eyebrow">Compte d’accès</p>
+                <h2 class="ea-identity__title" id="ea-titre"><?php echo htmlspecialchars($admin_cible['prenom'] . ' ' . $admin_cible['nom']); ?></h2>
+            </div>
+        </div>
+        <div class="ea-identity-card__panel">
             <p class="ea-identity__email">
                 <i class="fas fa-envelope" aria-hidden="true"></i>
                 <span><?php echo htmlspecialchars($admin_cible['email']); ?></span>

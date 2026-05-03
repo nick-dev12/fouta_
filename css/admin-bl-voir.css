@@ -1,0 +1,261 @@
+/**
+ * Détail bon de livraison — pastilles type sidebar, mise en page lisible, tableau centré.
+ */
+
+/* Pastilles icônes (même esprit que admin-br-creation / sidebar) */
+.bl-voir-ic {
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+  border-radius: 11px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.05rem;
+  line-height: 1;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.bl-voir-ic--sm {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  font-size: 0.95rem;
+  border-radius: 10px;
+}
+
+.bl-voir-ic--hero {
+  background: rgba(0, 131, 143, 0.14);
+  color: #006978;
+}
+
+.bl-voir-ic--client {
+  background: rgba(255, 107, 53, 0.16);
+  color: #c2410c;
+}
+
+.bl-voir-ic--blinfo {
+  background: rgba(53, 100, 166, 0.14);
+  color: #3564a6;
+}
+
+.bl-voir-ic--lines {
+  background: rgba(106, 27, 154, 0.12);
+  color: #6a1b9a;
+}
+
+.bl-voir-ic--total {
+  background: rgba(46, 125, 50, 0.12);
+  color: #2e7d32;
+}
+
+.bl-voir-ic--statut-pill {
+  background: rgba(53, 100, 166, 0.12);
+  color: #3564a6;
+}
+
+.bl-voir-admin-page .bl-page-header__lead h1 {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px 14px;
+}
+
+.bl-voir-admin-page .bl-page-header__lead h1 > span:last-child {
+  min-width: 0;
+}
+
+.bl-voir-header-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 18px;
+  font-size: 0.93rem;
+  color: var(--gris-fonce, #4a4a4a);
+}
+
+.bl-voir-header-meta:last-child {
+  margin-right: 0;
+}
+
+.bl-voir-header-meta i {
+  color: var(--couleur-dominante, #3564a6);
+  font-size: 0.9em;
+  opacity: 0.92;
+}
+
+.bl-voir-admin-page .bl-page-header__sub {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 0;
+}
+
+/* Messages flash alignés sur la colonne de contenu */
+.bl-voir-messages {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 0 12px 16px;
+  box-sizing: border-box;
+}
+
+.bl-voir-messages .message {
+  margin-bottom: 12px;
+}
+
+.bl-voir-messages .message:last-child {
+  margin-bottom: 0;
+}
+
+.bl-voir-page .bl-voir-hero__main.bl-voir-hero__block {
+  flex: 1;
+  min-width: 0;
+}
+
+.bl-detail-page.bl-voir-page {
+  max-width: 980px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 0 12px 40px;
+  box-sizing: border-box;
+}
+
+/* Bandeau montant / statut */
+.bl-voir-page .bl-voir-hero {
+  gap: 22px;
+}
+
+.bl-voir-hero__block {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  min-width: 0;
+}
+
+.bl-voir-hero__block .bl-voir-ic {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.bl-voir-hero__block-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.bl-voir-page .bl-voir-hero__side {
+  align-items: flex-start;
+}
+
+.bl-voir-page .bl-voir-hero__side .bl-voir-hero__block {
+  align-items: center;
+}
+
+.bl-voir-page .bl-voir-hero__side .bl-voir-ic {
+  margin-top: 0;
+}
+
+/* Panneaux infos */
+.bl-voir-page .bl-info-panel {
+  border-radius: 14px;
+  box-shadow: 0 2px 12px rgba(53, 100, 166, 0.06);
+}
+
+.bl-voir-page .bl-info-panel__title {
+  border-bottom: 1px solid var(--glass-border, rgba(0, 0, 0, 0.08));
+  padding-bottom: 12px;
+  margin-bottom: 14px;
+  gap: 14px;
+}
+
+.bl-voir-page .bl-info-panel__title .bl-voir-ic {
+  flex-shrink: 0;
+}
+
+.bl-voir-page .bl-lines-section {
+  margin-top: 4px;
+}
+
+.bl-voir-page .bl-lines-section__title {
+  margin-bottom: 16px;
+  gap: 12px;
+}
+
+.bl-voir-page .bl-lines-table-wrap {
+  border-radius: 14px;
+}
+
+/* Tableau : en-têtes, cellules et pied centrés */
+.bl-voir-lines-table.admin-table.bl-lines-table thead th,
+.bl-voir-lines-table.admin-table.bl-lines-table tbody td,
+.bl-voir-lines-table.admin-table.bl-lines-table tfoot th,
+.bl-voir-lines-table.admin-table.bl-lines-table tfoot td {
+  text-align: center;
+  vertical-align: middle;
+}
+
+.bl-voir-lines-table .bl-lines-table__num {
+  text-align: center;
+}
+
+.bl-voir-lines-table tbody tr:hover td {
+  background: rgba(53, 100, 166, 0.05);
+}
+
+.bl-voir-lines-table .bl-lines-table__empty {
+  padding: 32px 16px !important;
+}
+
+/* Actions */
+.bl-voir-page .bl-voir-actions {
+  justify-content: center;
+  gap: 14px 18px;
+}
+
+.bl-voir-page .bl-voir-actions .btn-primary,
+.bl-voir-page .bl-voir-actions .btn-secondary {
+  min-width: 160px;
+  justify-content: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border-radius: 12px;
+}
+
+@media (max-width: 768px) {
+  .bl-voir-admin-page .bl-page-header__sub {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .bl-voir-header-meta {
+    margin-right: 0;
+  }
+
+  .bl-voir-page .bl-voir-hero {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .bl-voir-page .bl-voir-hero__side {
+    align-items: stretch;
+    padding-top: 12px;
+    border-top: 1px solid var(--glass-border, rgba(0, 0, 0, 0.08));
+  }
+
+  .bl-voir-lines-table.admin-table.bl-lines-table {
+    min-width: 480px;
+  }
+}
+
+@media (max-width: 480px) {
+  .bl-detail-page.bl-voir-page,
+  .bl-voir-messages {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  .bl-voir-page .bl-voir-hero {
+    padding: 18px 16px;
+  }
+}

@@ -77,6 +77,14 @@ if (!function_exists('admin_current_role')) {
     }
 
     /**
+     * Popup alertes stock : admin, gestion des stocks, commercial
+     */
+    function admin_can_receive_stock_alerte_popup() {
+        $r = admin_current_role();
+        return in_array($r, ['admin', 'gestion_stock', 'commercial'], true);
+    }
+
+    /**
      * Redirige si le rôle n'est pas autorisé
      */
     function admin_require_roles($allowed_roles, $redirect = 'dashboard.php') {

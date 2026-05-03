@@ -1,7 +1,7 @@
 <?php
 /**
  * Page d'ajustement du stock d'un produit
- * Affiche: stock total, quantité vendue, stock restant (total - vendu), comptabilité, formulaire d'ajustement, historique
+ * Affiche: stock total, quantité vendue, stock restant, comptabilité, ajout cumulatif au stock, étiquettes FPL, historique.
  */
 
 session_start();
@@ -62,6 +62,16 @@ $valeur_ventes = $quantite_vendue * $prix_produit;
 
 $mouvements = get_stock_mouvements(null, $produit_id, null, null, 50);
 
+$quantite_ajout_form_value = '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST'
+    && isset($_POST['ajuster_stock'])
+    && array_key_exists('quantite_ajout', $_POST)) {
+    $quantite_ajout_form_value = (string) (int) $_POST['quantite_ajout'];
+    if ($quantite_ajout_form_value === '0') {
+        $quantite_ajout_form_value = '';
+    }
+}
+
 // QR code : utiliser le fichier sauvegardé ou générer à la volée
 $qr_code_data_uri = '';
 $stock_info_url = '';
@@ -95,6 +105,46 @@ if (file_exists($qr_file)) {
     }
 }
 
+require_once __DIR__ . '/../../models/model_categories.php';
+require_once __DIR__ . '/../../includes/etiquette_fpl.php';
+
+$categorie_etiq = [];
+$categorie_nom_etiq = '—';
+$categorie_id_etiq = isset($produit['categorie_id']) ? (int) $produit['categorie_id'] : 0;
+if ($categorie_id_etiq > 0) {
+    $tmp_cat = get_categorie_by_id($categorie_id_etiq);
+    if ($tmp_cat) {
+        $categorie_etiq = $tmp_cat;
+        $categorie_nom_etiq = (string) ($tmp_cat['nom'] ?? '—');
+    }
+}
+$fpl_couleur_hex = fpl_etiquette_couleur_pour_categorie(!empty($categorie_etiq) ? $categorie_etiq : [], $categorie_id_etiq);
+$fpl_dark_hex = fpl_etiquette_hex_adjust_rgb($fpl_couleur_hex, -34);
+$fpl_mini_qr_ref = !empty($produit['identifiant_interne'])
+    ? fpl_etiquette_mini_ref_qr($produit['identifiant_interne'])
+    : '';
+$footer_fpl = fpl_etiquette_footer_textes_par_defaut();
+$site_base_et = get_site_base_url();
+$origin_et = get_request_origin_base_url();
+
+$fpl_shield_logo_file = 'logo fpl_stock.png';
+$fpl_shield_logo_fs = __DIR__ . '/../../image/' . $fpl_shield_logo_file;
+$fpl_shield_logo_url = $origin_et . '/image/' . rawurlencode($fpl_shield_logo_file);
+$fpl_shield_logo_ver = is_file($fpl_shield_logo_fs) ? (int) filemtime($fpl_shield_logo_fs) : 1;
+
+$etiquette_fpl_ready = ($barcode_url !== '' && !empty($produit['identifiant_interne']));
+$fpl_css_path_fs = __DIR__ . '/../../css/fpl-etiquette.css';
+$fpl_etiq_css_abs = $site_base_et . '/css/fpl-etiquette.css?v=' . (is_file($fpl_css_path_fs) ? (int) filemtime($fpl_css_path_fs) : time());
+
+if ($etiquette_fpl_ready) {
+    $barcode_fs_et = __DIR__ . '/../../upload/barcodes/produit_' . $produit_id . '.png';
+    $barcode_ver_et = is_file($barcode_fs_et) ? (int) filemtime($barcode_fs_et) : 1;
+} else {
+    $barcode_ver_et = 1;
+}
+$barcode_abs_et = ($barcode_url !== '' && strpos($barcode_url, 'http') === 0)
+    ? $barcode_url
+    : ($origin_et . (strpos((string) $barcode_url, '/') === 0 ? $barcode_url : '/' . ltrim((string) $barcode_url, '/')));
 $success_message = '';
 if (isset($_SESSION['success_message'])) {
     $success_message = $_SESSION['success_message'];
@@ -113,6 +163,7 @@ if (isset($_SESSION['success_message'])) {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/css/admin-dashboard.css<?php echo asset_version_query(); ?>">
     <link rel="stylesheet" href="/css/admin-ajuster-stock.css<?php echo asset_version_query(); ?>">
+    <link rel="stylesheet" href="/css/fpl-etiquette.css<?php echo asset_version_query(); ?>">
 </head>
 
 <body class="page-ajuster-stock-body">
@@ -200,7 +251,6 @@ if (isset($_SESSION['success_message'])) {
     <div class="ajuster-stock-layout page-ajuster-stock-layout">
         <div class="ajuster-stock-card page-ajuster-stock-card page-ajuster-stock-card--etat">
             <h2 class="page-ajuster-stock-card__title"><i class="fas fa-chart-bar" aria-hidden="true"></i> État du stock</h2>
-            <p class="page-ajuster-stock-card__hint">Le <strong>total</strong> = stock actuel + quantités déjà vendues (historique). Le <strong>restant</strong> correspond au stock saisi en base.</p>
             <div class="stock-stats-grid page-ajuster-stock-stats" role="list">
                 <div class="stock-stat-card stock-total page-ajuster-stock-stat" role="listitem">
                     <h4 class="page-ajuster-stock-stat__label">Nombre total</h4>
@@ -236,60 +286,149 @@ if (isset($_SESSION['success_message'])) {
         <div class="page-ajuster-stock-side">
             <div class="stock-form-block page-ajuster-stock-form">
                 <h3 class="page-ajuster-stock-form__title"><i class="fas fa-edit" aria-hidden="true"></i> Mettre à jour le stock</h3>
-                <p class="page-ajuster-stock-form__intro">Saisissez la <strong>quantité réelle</strong> disponible. Les ventes enregistrées ne sont pas modifiées.</p>
                 <form method="POST" action="?id=<?php echo $produit_id; ?>" class="page-ajuster-stock-form__form">
                     <input type="hidden" name="ajuster_stock" value="1">
                     <div class="form-group page-ajuster-stock-form__field">
-                        <label for="nouveau_stock">Nouvelle quantité de stock</label>
-                        <input type="number" id="nouveau_stock" name="nouveau_stock" min="0" required
-                            value="<?php echo (int) $stock_actuel; ?>" placeholder="0" inputmode="numeric" autocomplete="off">
+                        <label for="quantite_ajout">Quantité à ajouter au stock actuel</label>
+                        <input type="number" id="quantite_ajout" name="quantite_ajout" min="1" step="1" required
+                            value="<?php echo htmlspecialchars($quantite_ajout_form_value, ENT_QUOTES, 'UTF-8'); ?>"
+                            placeholder="Nombre d’unités reçues / à ajouter" inputmode="numeric" autocomplete="off"
+                            aria-describedby="quantite_ajout_aide">
                     </div>
+                    <p class="page-ajuster-stock-form__field-hint" id="quantite_ajout_aide">
+                        Stock actuel&nbsp;: <strong><?php echo (int) $stock_actuel; ?></strong>.
+                        Ce nombre s’<strong>ajoute</strong> aux unités déjà disponibles (ce n’est pas le stock total cible).
+                        Pour fixer ou diminuer le stock différemment, utilisez <em>Modifier le produit</em>.
+                    </p>
                     <button type="submit" class="btn-primary page-ajuster-stock-form__submit">
                         <i class="fas fa-check" aria-hidden="true"></i> Enregistrer le stock
                     </button>
                 </form>
             </div>
 
-            <?php if (!empty($barcode_url) && !empty($produit['identifiant_interne'])): ?>
-            <div class="stock-form-block barcode-fpl-block page-ajuster-stock-aux" id="barcode-fpl-print-area"
-                data-barcode-src="<?php echo htmlspecialchars($barcode_url); ?>"
-                data-code="<?php echo htmlspecialchars($produit['identifiant_interne']); ?>"
-                data-nom="<?php echo htmlspecialchars($produit['nom']); ?>">
-                <h3 class="page-ajuster-stock-aux__title"><i class="fas fa-barcode" aria-hidden="true"></i> Code-barres (réf. FPL)</h3>
-                <p class="barcode-fpl-desc page-ajuster-stock-aux__desc">Code <strong>Code 128</strong> : même référence que sur l’étiquette produit. Utilisable avec un scanner ou l’API <code>/api/produit_par_code_fpl.php</code>.</p>
-                <div class="barcode-fpl-wrap page-ajuster-stock-barcode-wrap">
-                    <?php
-                    $barcode_fs = __DIR__ . '/../../upload/barcodes/produit_' . $produit_id . '.png';
-                    $barcode_ver = is_file($barcode_fs) ? (int) filemtime($barcode_fs) : 1;
-                    ?>
-                    <img src="<?php echo htmlspecialchars($barcode_url); ?>?v=<?php echo $barcode_ver; ?>" alt="Code-barres <?php echo htmlspecialchars($produit['identifiant_interne']); ?>" class="barcode-fpl-img page-ajuster-stock-barcode-img" width="280" height="100">
-                    <div class="barcode-fpl-code"><?php echo htmlspecialchars($produit['identifiant_interne']); ?></div>
+            <?php if (!$etiquette_fpl_ready): ?>
+                <?php if (!empty($barcode_url) && !empty($produit['identifiant_interne'])): ?>
+                <div class="stock-form-block barcode-fpl-block page-ajuster-stock-aux" id="barcode-fpl-print-area"
+                    data-barcode-src="<?php echo htmlspecialchars($barcode_url); ?>"
+                    data-code="<?php echo htmlspecialchars($produit['identifiant_interne']); ?>"
+                    data-nom="<?php echo htmlspecialchars($produit['nom']); ?>">
+                    <h3 class="page-ajuster-stock-aux__title"><i class="fas fa-barcode" aria-hidden="true"></i> Code-barres (réf. FPL)</h3>
+                    <p class="barcode-fpl-desc page-ajuster-stock-aux__desc">Code <strong>Code 128</strong> : même référence que sur l’étiquette produit. Utilisable avec un scanner ou l’API <code>/api/produit_par_code_fpl.php</code>.</p>
+                    <div class="barcode-fpl-wrap page-ajuster-stock-barcode-wrap">
+                        <?php
+                        $barcode_fs = __DIR__ . '/../../upload/barcodes/produit_' . $produit_id . '.png';
+                        $barcode_ver = is_file($barcode_fs) ? (int) filemtime($barcode_fs) : 1;
+                        ?>
+                        <img src="<?php echo htmlspecialchars($barcode_url); ?>?v=<?php echo $barcode_ver; ?>" alt="Code-barres <?php echo htmlspecialchars($produit['identifiant_interne']); ?>" class="barcode-fpl-img page-ajuster-stock-barcode-img" width="280" height="100">
+                        <div class="barcode-fpl-code"><?php echo htmlspecialchars($produit['identifiant_interne']); ?></div>
+                    </div>
+                    <div class="barcode-fpl-actions page-ajuster-stock-aux__actions">
+                        <button type="button" class="btn-primary btn-print-barcode page-ajuster-stock-print-btn" onclick="imprimerCodeBarresFPL()">
+                            <i class="fas fa-print" aria-hidden="true"></i> Imprimer le code-barres
+                        </button>
+                    </div>
                 </div>
-                <div class="barcode-fpl-actions page-ajuster-stock-aux__actions">
-                    <button type="button" class="btn-primary btn-print-barcode page-ajuster-stock-print-btn" onclick="imprimerCodeBarresFPL()">
-                        <i class="fas fa-print" aria-hidden="true"></i> Imprimer le code-barres
-                    </button>
+                <?php endif; ?>
+                <?php if (!empty($qr_code_data_uri)): ?>
+                <div class="stock-form-block qr-code-block page-ajuster-stock-aux" id="qr-code-print-area" data-qr="<?php echo htmlspecialchars($qr_code_data_uri); ?>" data-nom="<?php echo htmlspecialchars($produit['nom']); ?>">
+                    <h3 class="page-ajuster-stock-aux__title"><i class="fas fa-qrcode" aria-hidden="true"></i> QR code du produit</h3>
+                    <p class="qr-code-desc page-ajuster-stock-aux__desc">Scannez ce QR code pour afficher les détails du stock sur mobile.</p>
+                    <div class="qr-code-wrap page-ajuster-stock-qr-wrap">
+                        <img src="<?php echo htmlspecialchars($qr_code_data_uri); ?>" alt="QR Code - <?php echo htmlspecialchars($produit['nom']); ?>" class="qr-code-img" width="180" height="180">
+                    </div>
+                    <p class="qr-code-produit"><?php echo htmlspecialchars($produit['nom']); ?></p>
+                    <div class="qr-code-actions page-ajuster-stock-aux__actions">
+                        <button type="button" class="btn-primary btn-print-qr page-ajuster-stock-print-btn" onclick="imprimerQRCode()">
+                            <i class="fas fa-print" aria-hidden="true"></i> Imprimer le QR code
+                        </button>
+                    </div>
                 </div>
-            </div>
-            <?php endif; ?>
-
-            <?php if (!empty($qr_code_data_uri)): ?>
-            <div class="stock-form-block qr-code-block page-ajuster-stock-aux" id="qr-code-print-area" data-qr="<?php echo htmlspecialchars($qr_code_data_uri); ?>" data-nom="<?php echo htmlspecialchars($produit['nom']); ?>">
-                <h3 class="page-ajuster-stock-aux__title"><i class="fas fa-qrcode" aria-hidden="true"></i> QR code du produit</h3>
-                <p class="qr-code-desc page-ajuster-stock-aux__desc">Scannez ce QR code pour afficher les détails du stock sur mobile.</p>
-                <div class="qr-code-wrap page-ajuster-stock-qr-wrap">
-                    <img src="<?php echo htmlspecialchars($qr_code_data_uri); ?>" alt="QR Code - <?php echo htmlspecialchars($produit['nom']); ?>" class="qr-code-img" width="180" height="180">
-                </div>
-                <p class="qr-code-produit"><?php echo htmlspecialchars($produit['nom']); ?></p>
-                <div class="qr-code-actions page-ajuster-stock-aux__actions">
-                    <button type="button" class="btn-primary btn-print-qr page-ajuster-stock-print-btn" onclick="imprimerQRCode()">
-                        <i class="fas fa-print" aria-hidden="true"></i> Imprimer le QR code
-                    </button>
-                </div>
-            </div>
+                <?php endif; ?>
             <?php endif; ?>
         </div>
     </div>
+
+    <?php if ($etiquette_fpl_ready): ?>
+    <div class="fpl-etiquette-fixed-scroll">
+        <div class="stock-form-block page-ajuster-stock-aux fpl-etiquette-sheet-wrap fpl-etiquette-sheet-wrap--fullwidth" id="fpl-etiquette-print-root"
+            data-css-url="<?php echo htmlspecialchars($fpl_etiq_css_abs, ENT_QUOTES, 'UTF-8'); ?>">
+            <h3 class="page-ajuster-stock-aux__title"><i class="fas fa-tags" aria-hidden="true"></i> Étiquette FPL (QR + code-barres)</h3>
+
+            <article class="fpl-etiq fpl-etiq--fixed"
+                style="--fpl-accent: <?php echo htmlspecialchars($fpl_couleur_hex, ENT_QUOTES, 'UTF-8'); ?>; --fpl-accent-dark: <?php echo htmlspecialchars($fpl_dark_hex, ENT_QUOTES, 'UTF-8'); ?>;">
+                <div class="fpl-etiq__header-zone">
+                    <div class="fpl-etiq__band-top" aria-hidden="true"></div>
+                    <div class="fpl-etiq__shield">
+                        <img src="<?php echo htmlspecialchars($fpl_shield_logo_url, ENT_QUOTES, 'UTF-8'); ?>?v=<?php echo (int) $fpl_shield_logo_ver; ?>"
+                            width="74"
+                            height="44"
+                            alt="FPL — Fouta Poids Lourds"
+                            class="fpl-etiq__shield-logo">
+                        <span class="fpl-etiq__shield-line">FOUTA POIDS LOURDS</span>
+                        <span class="fpl-etiq__shield-line fpl-etiq__shield-line--small">The Solution Suarl</span>
+                    </div>
+                </div>
+                <div class="fpl-etiq__sheet">
+                    <div class="fpl-etiq__body">
+                        <div class="fpl-etiq__col-left">
+                            <div class="fpl-etiq__col-left-meta">
+                                <div class="fpl-etiq__ref-big"><?php echo htmlspecialchars((string) $produit['identifiant_interne'], ENT_QUOTES, 'UTF-8'); ?></div>
+                                <div class="fpl-etiq__nom-main"><?php echo htmlspecialchars((string) $produit['nom'], ENT_QUOTES, 'UTF-8'); ?></div>
+                                <div class="fpl-etiq__cat-muted"><?php echo htmlspecialchars($categorie_nom_etiq, ENT_QUOTES, 'UTF-8'); ?></div>
+                            </div>
+                            <div class="fpl-etiq__qr-block">
+                                <div class="fpl-etiq__qr-mini"><?php echo htmlspecialchars($fpl_mini_qr_ref !== '' ? $fpl_mini_qr_ref : '—', ENT_QUOTES, 'UTF-8'); ?></div>
+                                <?php if (!empty($qr_code_data_uri)): ?>
+                                <div class="fpl-etiq__qr-box">
+                                    <img src="<?php echo htmlspecialchars($qr_code_data_uri, ENT_QUOTES, 'UTF-8'); ?>" width="130" height="130" alt="QR Code stock" class="fpl-etiq__qr-img">
+                                </div>
+                                <?php else: ?>
+                                <div class="fpl-etiq__qr-fallback" role="img" aria-label="QR indisponible">QR indisponible</div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <div class="fpl-etiq__divider" aria-hidden="true"></div>
+                        <div class="fpl-etiq__col-right">
+                            <div class="fpl-etiq__photo-box">
+                                <div class="fpl-etiq__photo-strip fpl-etiq__photo-strip--icons-only" role="list" aria-label="Pictogrammes poids lourds">
+                                    <?php for ($__etiq_vi = 0; $__etiq_vi < 4; $__etiq_vi++):
+                                        $__badge = fpl_etiquette_thumb_vehicle_badge($__etiq_vi, 28);
+                                        ?>
+                                    <div class="fpl-etiq__thumb fpl-etiq__thumb--icon-only" role="listitem">
+                                        <span class="fpl-etiq__thumb-ico fpl-etiq__thumb-ico--solo" title="<?php echo htmlspecialchars($__badge['title'], ENT_QUOTES, 'UTF-8'); ?>">
+                                            <?php echo $__badge['svg']; ?>
+                                        </span>
+                                    </div>
+                                    <?php endfor; ?>
+                                </div>
+                            </div>
+                            <div class="fpl-etiq__barcode-line">
+                                <img src="<?php echo htmlspecialchars($barcode_abs_et, ENT_QUOTES, 'UTF-8'); ?>?v=<?php echo (int) $barcode_ver_et; ?>"
+                                    width="210" height="64" alt="Code-barres <?php echo htmlspecialchars((string) $produit['identifiant_interne'], ENT_QUOTES, 'UTF-8'); ?>" class="fpl-etiq__barcode-img">
+                            </div>
+                        </div>
+                    </div>
+                    <footer class="fpl-etiq__footer">
+                        <div class="fpl-etiq__footer-row1">
+                            <span class="fpl-etiq__footer-ico" aria-hidden="true">📍</span>
+                            <span><?php echo htmlspecialchars($footer_fpl['adr'], ENT_QUOTES, 'UTF-8'); ?></span>
+                        </div>
+                        <div class="fpl-etiq__footer-row2">
+                            <span><span class="fpl-etiq__footer-ico" aria-hidden="true">☎</span> <?php echo htmlspecialchars($footer_fpl['tels'], ENT_QUOTES, 'UTF-8'); ?></span>
+                            <span><span class="fpl-etiq__footer-ico" aria-hidden="true">🌐</span> <?php echo htmlspecialchars($footer_fpl['web'], ENT_QUOTES, 'UTF-8'); ?></span>
+                            <span><span class="fpl-etiq__footer-ico" aria-hidden="true">✉</span> <?php echo htmlspecialchars($footer_fpl['mail'], ENT_QUOTES, 'UTF-8'); ?></span>
+                        </div>
+                    </footer>
+                </div>
+            </article>
+            <div class="fpl-etiquette-print-actions">
+                <button type="button" class="btn-primary page-ajuster-stock-print-btn" onclick="window.imprimerEtiquetteFPLStock && window.imprimerEtiquetteFPLStock();">
+                    <i class="fas fa-print" aria-hidden="true"></i> Imprimer l’étiquette
+                </button>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
 
     <section class="mouvements-section page-ajuster-stock-mouvements" aria-labelledby="page-ajuster-stock-mouv-heading">
         <h2 id="page-ajuster-stock-mouv-heading" class="page-ajuster-stock-mouv__head"><i class="fas fa-history" aria-hidden="true"></i> Historique des mouvements <span class="page-ajuster-stock-mouv__count">(<?php echo count($mouvements); ?>)</span></h2>
@@ -398,6 +537,24 @@ if (isset($_SESSION['success_message'])) {
         w.focus();
         setTimeout(function() { w.print(); w.close(); }, 300);
     }
+    window.imprimerEtiquetteFPLStock = function() {
+        var root = document.getElementById('fpl-etiquette-print-root');
+        if (!root) return;
+        var cssHref = <?php echo json_encode($fpl_etiq_css_abs, JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP); ?>;
+        var node = root.querySelector('.fpl-etiq');
+        if (!node || !cssHref) return;
+        var w = window.open('', '_blank', 'width=540,height=920');
+        w.document.open();
+        w.document.write('<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>Étiquette FPL</title>'
+            + '<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>'
+            + '<link rel="stylesheet" href="' + cssHref + '"/></head><body>' + node.outerHTML + '</body></html>');
+        w.document.close();
+        w.focus();
+        setTimeout(function() {
+            try { w.print(); } catch (e) {}
+            w.close();
+        }, 450);
+    };
     </script>
 </body>
 

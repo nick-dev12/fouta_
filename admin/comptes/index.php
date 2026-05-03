@@ -80,6 +80,12 @@ $admins_actifs = count(array_filter($admins, function ($a) { return $a['statut']
             <p class="comptes-lead">Comptes internes pour l’espace admin (rôles, activité, activation). Les <strong>clients du site e-commerce</strong> sont gérés séparément.</p>
         </div>
         <div class="comptes-header-actions page-comptes-hero__actions">
+            <a href="absences.php" class="btn-open-emp-modal page-comptes-cta page-comptes-cta--secondary">
+                <i class="fas fa-calendar-xmark" aria-hidden="true"></i> Gestion des absences
+            </a>
+            <a href="employes/index.php" class="btn-open-emp-modal page-comptes-cta page-comptes-cta--employes">
+                <i class="fas fa-id-card-clip" aria-hidden="true"></i> Employés
+            </a>
             <a href="../inscription-admin.php" class="btn-open-emp-modal btn-inscription-admin-link page-comptes-cta">
                 <i class="fas fa-user-plus" aria-hidden="true"></i> Ajouter un compte
             </a>

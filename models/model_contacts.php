@@ -107,19 +107,25 @@ function get_contact_by_id($id) {
     }
 }
 
+function contacts_normalize_type_bl($code)
+{
+    return (($code ?? '') === 'vip') ? 'vip' : 'standard';
+}
+
 /**
  * Met à jour un contact
  */
-function update_contact($id, $nom, $prenom, $telephone, $email = null) {
+function update_contact($id, $nom, $prenom, $telephone, $email = null, $type_client_bl = 'standard') {
     global $db;
     try {
-        $stmt = $db->prepare("UPDATE contacts SET nom = :nom, prenom = :prenom, telephone = :telephone, email = :email WHERE id = :id");
+        $stmt = $db->prepare('UPDATE contacts SET nom = :nom, prenom = :prenom, telephone = :telephone, email = :email, type_client_bl = :tb WHERE id = :id');
         return $stmt->execute([
             'id' => (int) $id,
             'nom' => trim($nom),
             'prenom' => trim($prenom),
             'telephone' => trim($telephone),
-            'email' => $email && trim($email) !== '' ? trim($email) : null
+            'email' => $email && trim($email) !== '' ? trim($email) : null,
+            'tb' => contacts_normalize_type_bl($type_client_bl),
         ]);
     } catch (PDOException $e) {
         return false;
@@ -129,15 +135,16 @@ function update_contact($id, $nom, $prenom, $telephone, $email = null) {
 /**
  * Crée un contact
  */
-function create_contact($nom, $prenom, $telephone, $email = null) {
+function create_contact($nom, $prenom, $telephone, $email = null, $type_client_bl = 'standard') {
     global $db;
     try {
-        $stmt = $db->prepare("INSERT INTO contacts (nom, prenom, telephone, email) VALUES (:nom, :prenom, :telephone, :email)");
+        $stmt = $db->prepare('INSERT INTO contacts (nom, prenom, telephone, email, type_client_bl) VALUES (:nom, :prenom, :telephone, :email, :tb)');
         $stmt->execute([
             'nom' => trim($nom),
             'prenom' => trim($prenom),
             'telephone' => trim($telephone),
-            'email' => $email && trim($email) !== '' ? trim($email) : null
+            'email' => $email && trim($email) !== '' ? trim($email) : null,
+            'tb' => contacts_normalize_type_bl($type_client_bl),
         ]);
         return $db->lastInsertId();
     } catch (PDOException $e) {
@@ -154,9 +161,10 @@ function search_clients_for_commande($recherche, $limit = 20) {
     if (strlen(trim($recherche)) < 1) return [];
     try {
         $stmt = $db->prepare("
-            (SELECT id, nom, prenom, telephone, email, 'user' as source FROM users WHERE statut = 'actif' AND (nom LIKE :t1 OR prenom LIKE :t2 OR email LIKE :t3 OR telephone LIKE :t4))
+            (SELECT id, nom, prenom, telephone, email, 'user' AS source, 'standard' AS type_client_bl FROM users WHERE statut = 'actif' AND (nom LIKE :t1 OR prenom LIKE :t2 OR email LIKE :t3 OR telephone LIKE :t4))
             UNION ALL
-            (SELECT id, nom, prenom, telephone, email, 'contact' as source FROM contacts WHERE nom LIKE :t5 OR prenom LIKE :t6 OR email LIKE :t7 OR telephone LIKE :t8)
+            (SELECT id, nom, prenom, telephone, email, 'contact' AS source,
+                COALESCE(type_client_bl, 'standard') AS type_client_bl FROM contacts WHERE nom LIKE :t5 OR prenom LIKE :t6 OR email LIKE :t7 OR telephone LIKE :t8)
             LIMIT :limit
         ");
         $stmt->bindValue('t1', $term, PDO::PARAM_STR);

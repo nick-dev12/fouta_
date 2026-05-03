@@ -268,17 +268,6 @@
   border-top: 1px solid var(--glass-border);
 }
 
-.page-ajuster-stock-card__hint {
-  font-size: 0.9rem;
-  line-height: 1.55;
-  color: var(--gris-fonce);
-  margin: 0 0 20px;
-  padding: 12px 14px;
-  background: var(--bleu-pale);
-  border-radius: 10px;
-  border: 1px solid rgba(53, 100, 166, 0.12);
-}
-
 /* Stats */
 .page-ajuster-stock-stats {
   display: grid;
@@ -370,13 +359,6 @@
 }
 
 /* Formulaire */
-.page-ajuster-stock-form__intro {
-  font-size: 0.92rem;
-  line-height: 1.5;
-  color: var(--gris-fonce);
-  margin: 0 0 20px;
-}
-
 .page-ajuster-stock-form__field {
   margin-bottom: 20px;
 }
@@ -409,6 +391,19 @@
   outline: none;
   border-color: var(--border-input-focus);
   box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.page-ajuster-stock-form__field-hint {
+  margin: 6px 0 18px;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--gris-moyen);
+  max-width: 42ch;
+}
+
+.page-ajuster-stock-form__field-hint strong,
+.page-ajuster-stock-form__field-hint em {
+  color: var(--gris-fonce);
 }
 
 .page-ajuster-stock .page-ajuster-stock-form__submit,
@@ -725,6 +720,28 @@
   }
 }
 
+/* Étiquette FPL : bloc pleine ligne ; défilement horizontal si l’écran est étroit — la carte garde 500px */
+.fpl-etiquette-fixed-scroll {
+  overflow-x: auto;
+  overflow-y: visible;
+  width: 100%;
+  margin: 20px 0 28px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.page-ajuster-stock .fpl-etiquette-sheet-wrap--fullwidth {
+  max-width: none;
+  width: max-content;
+}
+
+.page-ajuster-stock .fpl-etiquette-sheet-wrap--fullwidth.stock-form-block {
+  width: max-content;
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  box-sizing: border-box;
+}
+
 @media (max-width: 768px) {
   .mouvements-produit-table-wrap {
     display: none !important;
@@ -762,6 +779,16 @@
   .qr-code-actions,
   .barcode-fpl-actions,
   .page-ajuster-stock-aux__actions {
+    display: none !important;
+  }
+
+  .fpl-etiquette-fixed-scroll {
+    overflow: visible !important;
+    margin: 0 !important;
+  }
+
+  .fpl-etiquette-sheet-wrap--fullwidth .page-ajuster-stock-aux__title,
+  .fpl-etiquette-print-actions {
     display: none !important;
   }
 

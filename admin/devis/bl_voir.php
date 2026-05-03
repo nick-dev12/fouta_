@@ -17,6 +17,7 @@ if (empty($_SESSION['admin_csrf'])) {
 }
 
 require_once __DIR__ . '/../../models/model_bl.php';
+require_once __DIR__ . '/../../models/model_bons_retour.php';
 
 $bl_id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 if ($bl_id <= 0 || !bl_tables_available()) {
@@ -47,17 +48,21 @@ $total_ht = (float) ($bl['total_ht'] ?? 0);
     <?php require_once __DIR__ . '/../../includes/asset_version.php'; ?>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/css/admin-dashboard.css<?php echo asset_version_query(); ?>">
+    <link rel="stylesheet" href="/css/admin-bl-voir.css<?php echo asset_version_query(); ?>">
 </head>
-<body>
+<body class="bl-voir-admin-page">
     <?php include '../includes/nav.php'; ?>
 
     <div class="content-header bl-page-header">
         <div class="bl-page-header__lead">
-            <h1><i class="fas fa-file-invoice" aria-hidden="true"></i> <?php echo htmlspecialchars($bl['numero_bl']); ?></h1>
+            <h1>
+                <span class="bl-voir-ic bl-voir-ic--hero" aria-hidden="true"><i class="fas fa-file-invoice"></i></span>
+                <span><?php echo htmlspecialchars($bl['numero_bl']); ?></span>
+            </h1>
             <p class="bl-page-header__sub">
-                <?php echo htmlspecialchars($bl['raison_sociale'] ?? ''); ?>
+                <span class="bl-voir-header-meta"><i class="fas fa-building" aria-hidden="true"></i> <?php echo htmlspecialchars($bl['raison_sociale'] ?? ''); ?></span>
                 <?php if (!empty($bl['date_bl'])): ?>
-                    · <?php echo htmlspecialchars($bl['date_bl']); ?>
+                    <span class="bl-voir-header-meta"><i class="fas fa-calendar-day" aria-hidden="true"></i> <?php echo htmlspecialchars($bl['date_bl']); ?></span>
                 <?php endif; ?>
             </p>
         </div>
@@ -69,37 +74,55 @@ $total_ht = (float) ($bl['total_ht'] ?? 0);
             <?php if (!bl_est_statut_verrouille($st)): ?>
             <a href="bl_modifier.php?id=<?php echo (int) $bl_id; ?>" class="btn-secondary"><i class="fas fa-edit" aria-hidden="true"></i> Réajuster</a>
             <?php endif; ?>
+            <?php if (br_retour_tables_available() && !empty($lignes)): ?>
+            <a href="br_creation.php?bl_id=<?php echo (int) $bl_id; ?>" class="btn-secondary"><i class="fas fa-undo" aria-hidden="true"></i> Bon de retour</a>
+            <?php endif; ?>
         </div>
     </div>
 
-    <?php if (isset($_SESSION['success_message'])): ?>
-        <div class="message success">
-            <i class="fas fa-check-circle"></i>
-            <span><?php echo htmlspecialchars($_SESSION['success_message']); unset($_SESSION['success_message']); ?></span>
-        </div>
-    <?php endif; ?>
-    <?php if (!empty($_SESSION['bl_erreur'])): ?>
-        <div class="message error">
-            <i class="fas fa-exclamation-circle"></i>
-            <span><?php echo htmlspecialchars($_SESSION['bl_erreur']); unset($_SESSION['bl_erreur']); ?></span>
-        </div>
+    <?php if (isset($_SESSION['success_message']) || !empty($_SESSION['bl_erreur'])): ?>
+    <div class="bl-voir-messages">
+        <?php if (isset($_SESSION['success_message'])): ?>
+            <div class="message success">
+                <i class="fas fa-check-circle"></i>
+                <span><?php echo htmlspecialchars($_SESSION['success_message']); unset($_SESSION['success_message']); ?></span>
+            </div>
+        <?php endif; ?>
+        <?php if (!empty($_SESSION['bl_erreur'])): ?>
+            <div class="message error">
+                <i class="fas fa-exclamation-circle"></i>
+                <span><?php echo htmlspecialchars($_SESSION['bl_erreur']); unset($_SESSION['bl_erreur']); ?></span>
+            </div>
+        <?php endif; ?>
+    </div>
     <?php endif; ?>
 
-    <section class="content-section bl-detail-page">
+    <section class="content-section bl-detail-page bl-voir-page">
         <div class="bl-voir-hero">
-            <div class="bl-voir-hero__main">
-                <span class="bl-voir-hero__label">Total HT</span>
-                <p class="bl-voir-hero__total"><?php echo number_format($total_ht, 0, ',', ' '); ?> <span class="bl-voir-hero__currency">FCFA</span></p>
+            <div class="bl-voir-hero__main bl-voir-hero__block">
+                <span class="bl-voir-ic bl-voir-ic--total bl-voir-ic--sm" aria-hidden="true"><i class="fas fa-coins"></i></span>
+                <div class="bl-voir-hero__block-body">
+                    <span class="bl-voir-hero__label">Total HT</span>
+                    <p class="bl-voir-hero__total"><?php echo number_format($total_ht, 0, ',', ' '); ?> <span class="bl-voir-hero__currency">FCFA</span></p>
+                </div>
             </div>
             <div class="bl-voir-hero__side">
-                <span class="bl-voir-hero__label">Statut</span>
-                <span class="commande-statut statut-<?php echo htmlspecialchars($st); ?> bl-voir-hero__stat bl-statut-badge"><?php echo htmlspecialchars($lib_statut); ?></span>
+                <div class="bl-voir-hero__block">
+                    <span class="bl-voir-ic bl-voir-ic--statut-pill bl-voir-ic--sm" aria-hidden="true"><i class="fas fa-flag-checkered"></i></span>
+                    <div class="bl-voir-hero__block-body">
+                        <span class="bl-voir-hero__label">Statut</span>
+                        <span class="commande-statut statut-<?php echo htmlspecialchars($st); ?> bl-voir-hero__stat bl-statut-badge"><?php echo htmlspecialchars($lib_statut); ?></span>
+                    </div>
+                </div>
             </div>
         </div>
 
         <div class="bl-voir-panels">
             <div class="bl-info-panel">
-                <h2 class="bl-info-panel__title"><i class="fas fa-building" aria-hidden="true"></i> Client</h2>
+                <h2 class="bl-info-panel__title">
+                    <span class="bl-voir-ic bl-voir-ic--client" aria-hidden="true"><i class="fas fa-building"></i></span>
+                    <span>Client</span>
+                </h2>
                 <dl class="bl-dl">
                     <div class="bl-dl__row">
                         <dt>Raison sociale</dt>
@@ -120,7 +143,10 @@ $total_ht = (float) ($bl['total_ht'] ?? 0);
                 </dl>
             </div>
             <div class="bl-info-panel">
-                <h2 class="bl-info-panel__title"><i class="fas fa-info-circle" aria-hidden="true"></i> Bon de livraison</h2>
+                <h2 class="bl-info-panel__title">
+                    <span class="bl-voir-ic bl-voir-ic--blinfo" aria-hidden="true"><i class="fas fa-circle-info"></i></span>
+                    <span>Bon de livraison</span>
+                </h2>
                 <dl class="bl-dl">
                     <div class="bl-dl__row">
                         <dt>Date</dt>
@@ -147,9 +173,12 @@ $total_ht = (float) ($bl['total_ht'] ?? 0);
         </div>
 
         <div class="bl-lines-section">
-            <h2 class="bl-lines-section__title"><i class="fas fa-list" aria-hidden="true"></i> Lignes du bon</h2>
+            <h2 class="bl-lines-section__title">
+                <span class="bl-voir-ic bl-voir-ic--lines" aria-hidden="true"><i class="fas fa-boxes-stacked"></i></span>
+                <span>Lignes du bon</span>
+            </h2>
             <div class="bl-lines-table-wrap">
-                <table class="admin-table bl-lines-table">
+                <table class="admin-table bl-lines-table bl-voir-lines-table">
                     <thead>
                         <tr>
                             <th scope="col">Désignation</th>

@@ -124,9 +124,62 @@ function update_employe($id, $data) {
 
 function delete_employe($id) {
     global $db;
+    $id = (int) $id;
+    if ($id <= 0) {
+        return false;
+    }
     try {
+        $glob_dir = realpath(__DIR__ . '/../upload/employes_photos/');
+        if ($glob_dir && is_dir($glob_dir)) {
+            foreach (glob($glob_dir . DIRECTORY_SEPARATOR . 'employe_' . $id . '_*') ?: [] as $g) {
+                if (is_file($g)) {
+                    @unlink($g);
+                }
+            }
+        }
         $stmt = $db->prepare('DELETE FROM employes WHERE id = :id');
-        return $stmt->execute(['id' => (int) $id]);
+        return $stmt->execute(['id' => $id]);
+    } catch (PDOException $e) {
+        return false;
+    }
+}
+
+/**
+ * Photo portrait (RH) — chemin relatif sous upload/.
+ */
+function employe_set_photo_chemin($employe_id, $chemin_relatif) {
+    global $db;
+    $employe_id = (int) $employe_id;
+    if ($employe_id <= 0) {
+        return false;
+    }
+    try {
+        $stmt = $db->prepare('UPDATE employes SET photo_chemin = :p, date_modification = NOW() WHERE id = :id');
+        return $stmt->execute([
+            'id' => $employe_id,
+            'p' => ($chemin_relatif !== null && trim((string) $chemin_relatif) !== '') ? trim($chemin_relatif) : null,
+        ]);
+    } catch (PDOException $e) {
+        return false;
+    }
+}
+
+/**
+ * Met à jour le chemin relatif du fichier QR et le dernier payload écrit.
+ */
+function employe_update_qr_fields($employe_id, $chemin_relatif, $payload) {
+    global $db;
+    $employe_id = (int) $employe_id;
+    if ($employe_id <= 0) {
+        return false;
+    }
+    try {
+        $stmt = $db->prepare('UPDATE employes SET qr_chemin = :p, qr_payload = :pl, date_modification = NOW() WHERE id = :id');
+        return $stmt->execute([
+            'id' => $employe_id,
+            'p' => $chemin_relatif !== '' ? $chemin_relatif : null,
+            'pl' => $payload !== '' ? mb_substr($payload, 0, 2040) : null,
+        ]);
     } catch (PDOException $e) {
         return false;
     }

@@ -1,0 +1,432 @@
+/**
+ * Étiquette FPL — gabarit FIXE (500px), pas de responsive sur la carte.
+ * Couleurs : --fpl-accent, --fpl-accent-dark (inline sur .fpl-etiq--fixed)
+ */
+
+/* Aucune règle @media ne modifie les dimensions de .fpl-etiq--fixed */
+
+.fpl-etiquette-sheet-wrap {
+  margin-top: 0.75rem;
+}
+
+.fpl-etiquette-sheet-wrap--fullwidth {
+  max-width: none;
+}
+
+/* Carte : largeur figée, pas de max-width:100% ni % internes */
+.fpl-etiq.fpl-etiq--fixed {
+  --fpl-accent: #1e3a5f;
+  --fpl-accent-dark: #152a46;
+  position: relative;
+  width: 500px;
+  min-width: 500px;
+  max-width: 500px;
+  box-sizing: border-box;
+  margin: 0;
+  font-family: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+  border: 1px solid #c8c8c8;
+  border-radius: 0;
+  overflow: visible;
+  background: #d9d9d9;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.12);
+}
+
+/* Empêche tout style global admin (ex. img { max-width:100% }) de comprimer QR / code-barres / photo */
+.fpl-etiq.fpl-etiq--fixed img {
+  max-width: none;
+}
+
+.fpl-etiq__header-zone {
+  position: relative;
+  height: 40px;
+  width: 500px;
+}
+
+.fpl-etiq__band-top {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 40px;
+  background: var(--fpl-accent);
+}
+
+.fpl-etiq__shield {
+  position: absolute;
+  left: 50%;
+  top: 6px;
+  transform: translateX(-50%);
+  margin: 0 -6px;
+  z-index: 4;
+  width: 100px;
+  min-height: 118px;
+  padding: 8px 6px 10px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: #fff;
+  isolation: isolate;
+  clip-path: polygon(10% 0, 90% 0, 100% 12%, 100% 72%, 50% 100%, 0 72%, 0 12%);
+  background: var(--fpl-accent);
+  border: 2px solid rgba(255, 255, 255, 0.22);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.28);
+}
+
+/* Logo FPL (fichier image) : fond noir du PNG est atténué sur l’écusson coloré */
+.fpl-etiq__shield-logo {
+  display: block;
+  width: 74px;
+  max-width: 100%;
+  height: auto;
+  max-height: 42px;
+  margin: 0 auto 2px;
+  object-fit: contain;
+  flex-shrink: 0;
+  mix-blend-mode: screen;
+}
+
+.fpl-etiq__shield-line {
+  margin-top: 5px;
+  font-size: 7px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.fpl-etiq__shield-line--small {
+  font-size: 6.5px;
+  text-transform: none;
+  margin-top: 3px;
+}
+
+/* Zone centrale : grille diagonale fine (comme maquette) */
+.fpl-etiq__sheet {
+  width: 500px;
+  box-sizing: border-box;
+  background-color: #e4e4e4;
+  background-image:
+    repeating-linear-gradient(
+      135deg,
+      transparent,
+      transparent 7px,
+      rgba(0, 0, 0, 0.04) 7px,
+      rgba(0, 0, 0, 0.04) 8px
+    );
+}
+
+.fpl-etiq__body {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  width: 500px;
+  min-height: 268px;
+  box-sizing: border-box;
+  padding: 50px 10px 12px 10px;
+}
+
+.fpl-etiq__col-left {
+  flex: 0 0 232px;
+  width: 232px;
+  box-sizing: border-box;
+  padding: 6px 6px 10px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: transparent;
+}
+
+/* Réf. + nom + catégorie : centré verticalement dans l’espace au-dessus du QR (comme maquette) */
+.fpl-etiq__col-left-meta {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  width: 100%;
+  min-height: 0;
+  padding: 4px 2px 8px;
+}
+
+.fpl-etiq__divider {
+  flex: 0 0 4px;
+  width: 4px;
+  min-width: 4px;
+  background: var(--fpl-accent);
+  align-self: stretch;
+  margin-top: 0;
+}
+
+.fpl-etiq__col-right {
+  flex: 0 0 244px;
+  width: 244px;
+  box-sizing: border-box;
+  padding: 6px 6px 10px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: transparent;
+  border-left: none;
+  min-height: 248px;
+  text-align: center;
+}
+
+.fpl-etiq__ref-big {
+  font-size: 20px;
+  font-weight: 800;
+  color: #0a0a0a;
+  letter-spacing: 0.04em;
+  line-height: 1.12;
+  word-break: break-word;
+}
+
+.fpl-etiq__nom-main {
+  font-size: 25px;
+  font-weight: 800;
+  color: #111;
+  margin-top: 6px;
+  line-height: 1.35;
+}
+
+.fpl-etiq__cat-muted {
+  font-size: 14px;
+  color: #5c5c5c;
+  margin-top: 4px;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.fpl-etiq__qr-block {
+  flex-shrink: 0;
+  margin-top: 0;
+  padding-top: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.fpl-etiq__qr-mini {
+  font-size: 11px;
+  color: #222;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 4px;
+}
+
+.fpl-etiq__qr-box {
+  line-height: 0;
+}
+
+.fpl-etiq__qr-img {
+  display: block;
+  width: 130px;
+  height: 130px;
+  image-rendering: auto;
+  object-fit: contain;
+}
+
+.fpl-etiq__qr-fallback {
+  width: 96px;
+  height: 96px;
+  border: 2px dashed #999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: #666;
+  text-align: center;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.75);
+  box-sizing: border-box;
+}
+
+.fpl-etiq__photo-box {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 64px;
+  margin: 60px 0 12px;
+  padding: 1px 6px;
+  background: rgba(255, 255, 255, 0);
+  border: 2px solid transparent;
+  border-image: none;
+  box-sizing: border-box;
+}
+
+.fpl-etiq__photo-strip {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.fpl-etiq__photo-strip--icons-only {
+  gap: 6px;
+}
+
+.fpl-etiq__thumb {
+  position: relative;
+  flex: 0 0 auto;
+  width: 64px;
+  height: 64px;
+  border: 1px solid #d0d0d0;
+  border-radius: 4px;
+  background: #fff;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* Rangée bus / camion / tracteur / remorque — sans photo produit */
+.fpl-etiq__thumb--icon-only {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+.fpl-etiq__thumb-ico {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  color: #fff;
+  background: var(--fpl-accent);
+  border-radius: 3px;
+  pointer-events: none;
+  line-height: 0;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.fpl-etiq__thumb-ico--solo {
+  position: static;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  pointer-events: auto;
+  color: var(--fpl-accent);
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.fpl-etiq__thumb-ico--solo svg {
+  width: 28px;
+  height: 28px;
+  display: block;
+}
+
+.fpl-etiq__thumb-ico--solo .fpl-etiq__thumb-fa {
+  display: block;
+  line-height: 1;
+  width: 1em;
+  height: 1em;
+  text-align: center;
+}
+
+.fpl-etiq__barcode-line {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  flex: 0 0 auto;
+  height: 110px;
+  box-sizing: border-box;
+  padding: 0;
+  text-align: center;
+}
+
+.fpl-etiq__barcode-img {
+  display: block;
+  margin: 0 auto;
+  width: 210px;
+  max-width: 100%;
+  height: auto;
+  max-height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.fpl-etiq__footer {
+  width: 500px;
+  box-sizing: border-box;
+  background: var(--fpl-accent);
+  color: #fff;
+  padding: 8px 10px 10px;
+  font-size: 8px;
+  line-height: 1.45;
+  font-weight: 600;
+}
+
+.fpl-etiq__footer-row1 {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  align-items: flex-start;
+  margin-bottom: 6px;
+}
+
+.fpl-etiq__footer-row2 {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 20px;
+  align-items: center;
+}
+
+.fpl-etiq__footer-ico {
+  flex-shrink: 0;
+  opacity: 0.95;
+}
+
+.fpl-etiquette-print-actions {
+  margin-top: 14px;
+  display: flex;
+  justify-content: flex-start;
+}
+
+@media print {
+  @page {
+    margin: 8mm;
+  }
+
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+    background: #fff !important;
+  }
+
+  .fpl-etiq.fpl-etiq--fixed {
+    break-inside: avoid;
+    border: none;
+    box-shadow: none;
+  }
+
+  .fpl-etiquette-print-actions,
+  .page-ajuster-stock-aux__title {
+    display: none !important;
+  }
+}

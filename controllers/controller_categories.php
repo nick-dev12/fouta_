@@ -95,7 +95,8 @@ function process_add_categorie() {
     // Si aucune erreur, créer la catégorie
     if (empty($errors)) {
         $aid = isset($_SESSION['admin_id']) ? (int) $_SESSION['admin_id'] : 0;
-        $categorie_id = create_categorie($nom, $description, $image, $aid > 0 ? $aid : null);
+        $couleur = categories_normaliser_couleur_etiquette($_POST['couleur_etiquette'] ?? null);
+        $categorie_id = create_categorie($nom, $description, $image, $aid > 0 ? $aid : null, $couleur);
         
         if ($categorie_id) {
             $success = true;
@@ -168,7 +169,8 @@ function process_update_categorie($categorie_id) {
     // Si aucune erreur, mettre à jour la catégorie
     if (empty($errors)) {
         $aid = isset($_SESSION['admin_id']) ? (int) $_SESSION['admin_id'] : 0;
-        if (update_categorie($categorie_id, $nom, $description, $image, $aid > 0 ? $aid : null)) {
+        $couleur = categories_normaliser_couleur_etiquette($_POST['couleur_etiquette'] ?? null);
+        if (update_categorie($categorie_id, $nom, $description, $image, $aid > 0 ? $aid : null, $couleur)) {
             $success = true;
             $message = 'Catégorie modifiée avec succès !';
         } else {

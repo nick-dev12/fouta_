@@ -1,0 +1,485 @@
+/**
+ * Page détail devis (admin/devis/details.php)
+ * Pastilles/icônes, cartes infos, lignes produits, total — responsive.
+ */
+
+.devis-detail-page .devis-detail-wrap {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 16px 48px;
+  box-sizing: border-box;
+}
+
+/* ——— Pastilles (même esprit sidebar / BR-BL) ——— */
+.devis-detail-page .devis-detail-ic {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.08rem;
+  line-height: 1;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.devis-detail-page .devis-detail-ic--doc {
+  background: rgba(0, 131, 143, 0.14);
+  color: #006978;
+}
+
+.devis-detail-page .devis-detail-ic--user {
+  background: rgba(255, 107, 53, 0.16);
+  color: #c2410c;
+}
+
+.devis-detail-page .devis-detail-ic--ship {
+  background: rgba(53, 100, 166, 0.14);
+  color: #3564a6;
+}
+
+.devis-detail-page .devis-detail-ic--box {
+  background: rgba(106, 27, 154, 0.12);
+  color: #6a1b9a;
+}
+
+.devis-detail-page .devis-detail-ic--note {
+  background: rgba(194, 102, 56, 0.14);
+  color: #9a3412;
+}
+
+.devis-detail-page .devis-detail-ic--sm {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  font-size: 0.95rem;
+  border-radius: 10px;
+}
+
+/* ——— En-tête ——— */
+.devis-detail-page .devis-detail-header.content-header {
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px 24px;
+  padding: 22px 24px;
+  border-radius: 16px;
+  margin-bottom: 24px;
+  background: linear-gradient(
+    135deg,
+    var(--blanc, #fff) 0%,
+    var(--bleu-pale, rgba(53, 100, 166, 0.12)) 100%
+  );
+  border: 1px solid var(--glass-border, rgba(0, 0, 0, 0.08));
+  box-shadow: 0 4px 24px rgba(53, 100, 166, 0.08);
+}
+
+.devis-detail-page .devis-detail-header__lead {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  min-width: 0;
+  flex: 1;
+}
+
+.devis-detail-page .devis-detail-header__text {
+  min-width: 0;
+}
+
+.devis-detail-page .devis-detail-header__eyebrow {
+  margin: 0 0 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--couleur-dominante, #3564a6);
+}
+
+.devis-detail-page .devis-detail-header h1 {
+  margin: 0 0 8px;
+  font-size: clamp(1.35rem, 3.2vw, 1.75rem);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--titres, #0d0d0d);
+}
+
+.devis-detail-page .devis-detail-header__meta {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  font-size: 0.9rem;
+  color: var(--gris-fonce, #4a4a4a);
+}
+
+.devis-detail-page .devis-detail-header__meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.devis-detail-page .devis-detail-header__meta-item i {
+  color: var(--couleur-dominante, #3564a6);
+  font-size: 0.88em;
+  opacity: 0.9;
+}
+
+.devis-detail-page .devis-detail-header .header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px 12px;
+}
+
+.devis-detail-page .devis-detail-header .btn-primary,
+.devis-detail-page .devis-detail-header .btn-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 18px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  min-height: 44px;
+}
+
+.devis-detail-page .devis-detail-header .btn-back {
+  border: 1px solid var(--border-input, rgba(53, 100, 166, 0.25));
+  background: var(--blanc, #fff);
+}
+
+/* ——— Grille infos ——— */
+.devis-detail-page .commande-details-grid.devis-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  gap: 20px;
+  margin-bottom: 28px;
+}
+
+.devis-detail-page .devis-detail-card.detail-box {
+  padding: 0;
+  overflow: hidden;
+  border-radius: 14px;
+  box-shadow: 0 2px 16px rgba(53, 100, 166, 0.07);
+}
+
+.devis-detail-page .devis-detail-card .devis-detail-card__head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 20px;
+  margin: 0;
+  border-bottom: 1px solid var(--glass-border, rgba(0, 0, 0, 0.08));
+  background: rgba(255, 255, 255, 0.6);
+  font-family: var(--font-titres, inherit);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--titres, #0d0d0d);
+}
+
+.devis-detail-page .devis-detail-card .devis-detail-card__head i {
+  display: none;
+}
+
+.devis-detail-page .devis-detail-dl {
+  margin: 0;
+  padding: 16px 20px 20px;
+}
+
+.devis-detail-page .devis-detail-dl__row {
+  display: grid;
+  grid-template-columns: minmax(120px, 36%) 1fr;
+  gap: 8px 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  align-items: start;
+}
+
+.devis-detail-page .devis-detail-dl__row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.devis-detail-page .devis-detail-dl__row dt {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--gris-moyen, #737373);
+}
+
+.devis-detail-page .devis-detail-dl__row dd {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--titres, #0d0d0d);
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.devis-detail-page .devis-detail-dl__row--full {
+  grid-template-columns: 1fr;
+  gap: 6px;
+}
+
+/* ——— Section produits ——— */
+.devis-detail-page .devis-detail-section {
+  margin-top: 0;
+  padding-top: 0;
+  margin-bottom: 32px;
+}
+
+.devis-detail-page .devis-detail-section--notes {
+  margin-bottom: 0;
+}
+
+.devis-detail-page .devis-detail-section-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.devis-detail-page .devis-detail-section-head h2 {
+  margin: 0;
+  font-family: var(--font-titres, inherit);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--titres, #0d0d0d);
+}
+
+.devis-detail-page .devis-detail-section-head i {
+  display: none;
+}
+
+.devis-detail-page .produits-list.devis-detail-produits {
+  padding: 0;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.devis-detail-page .devis-detail-ligne-produit.produit-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 16px 20px;
+  align-items: center;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--glass-border, rgba(0, 0, 0, 0.08));
+  transition: background 0.2s ease;
+}
+
+.devis-detail-page .devis-detail-ligne-produit.produit-item:hover {
+  background: rgba(53, 100, 166, 0.04);
+}
+
+.devis-detail-page .devis-detail-ligne-produit.produit-item:last-of-type {
+  border-bottom: 1px solid var(--glass-border, rgba(0, 0, 0, 0.06));
+}
+
+.devis-detail-page .devis-detail-ligne-produit__main {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  min-width: 0;
+}
+
+.devis-detail-page .devis-detail-ligne-index {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--couleur-dominante, #3564a6);
+  background: var(--bleu-pale, rgba(53, 100, 166, 0.12));
+  border: 1px solid rgba(53, 100, 166, 0.15);
+}
+
+.devis-detail-page .devis-detail-ligne-body {
+  min-width: 0;
+}
+
+.devis-detail-page .devis-detail-ligne-body h4 {
+  margin: 0 0 10px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--titres, #0d0d0d);
+}
+
+.devis-detail-page .devis-detail-ligne-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.devis-detail-page .devis-detail-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  background: rgba(255, 107, 53, 0.1);
+  color: #9a3412;
+  border: 1px solid rgba(255, 107, 53, 0.2);
+}
+
+.devis-detail-page .devis-detail-chip--muted {
+  background: rgba(53, 100, 166, 0.08);
+  color: var(--bleu-fonce, #2e4f7c);
+  border-color: rgba(53, 100, 166, 0.18);
+}
+
+.devis-detail-page .devis-detail-ligne-price.produit-total {
+  font-size: 1.05rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--couleur-dominante, #3564a6);
+  text-align: right;
+  align-self: center;
+}
+
+.devis-detail-page .produits-list-total.devis-detail-total {
+  margin: 0;
+  padding: 20px 22px 22px;
+  border-top: 2px solid rgba(53, 100, 166, 0.12);
+  background: linear-gradient(
+    180deg,
+    rgba(53, 100, 166, 0.04) 0%,
+    rgba(53, 100, 166, 0.02) 100%
+  );
+  text-align: right;
+}
+
+.devis-detail-page .devis-detail-total-lines {
+  margin: 0 0 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  font-size: 0.92rem;
+  color: var(--gris-fonce, #4a4a4a);
+}
+
+.devis-detail-page .devis-detail-total-lines span {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  width: 100%;
+  max-width: 280px;
+  margin-left: auto;
+}
+
+.devis-detail-page .devis-detail-total-lines .devis-detail-total-label {
+  color: var(--gris-moyen, #737373);
+  font-weight: 500;
+}
+
+.devis-detail-page .devis-detail-total-lines .devis-detail-total-amount {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--titres, #0d0d0d);
+}
+
+.devis-detail-page .devis-detail-total h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.devis-detail-page .devis-detail-total .total-value {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--couleur-dominante, #3564a6);
+}
+
+/* Notes */
+.devis-detail-page .devis-detail-notes.detail-box {
+  padding: 20px 22px;
+  border-radius: 14px;
+  line-height: 1.55;
+}
+
+.devis-detail-page .devis-detail-notes p {
+  margin: 0;
+  color: var(--texte-fonce, #333);
+}
+
+/* Message flash */
+.devis-detail-page .devis-detail-wrap > .message {
+  margin-bottom: 20px;
+  border-radius: 12px;
+}
+
+/* Vide produits */
+.devis-detail-page .devis-detail-produits-empty {
+  padding: 40px 24px;
+  text-align: center;
+  color: var(--gris-moyen, #737373);
+}
+
+.devis-detail-page .devis-detail-produits-empty i {
+  font-size: 2rem;
+  margin-bottom: 12px;
+  opacity: 0.5;
+  color: var(--couleur-dominante, #3564a6);
+}
+
+@media (max-width: 768px) {
+  .devis-detail-page .devis-detail-header .header-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .devis-detail-page .devis-detail-header .btn-primary,
+  .devis-detail-page .devis-detail-header .btn-back {
+    flex: 1;
+    min-width: min(100%, 200px);
+  }
+
+  .devis-detail-page .devis-detail-dl__row {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+}
+
+@media (max-width: 600px) {
+  .devis-detail-page .devis-detail-wrap {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .devis-detail-page .devis-detail-ligne-produit.produit-item {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .devis-detail-page .devis-detail-ligne-price.produit-total {
+    text-align: left;
+    border-top: 1px dashed rgba(53, 100, 166, 0.15);
+    margin-top: 4px;
+    padding-top: 12px;
+  }
+
+  .devis-detail-page .devis-detail-total {
+    text-align: left;
+  }
+
+  .devis-detail-page .devis-detail-total-lines {
+    align-items: stretch;
+  }
+
+  .devis-detail-page .devis-detail-total-lines span {
+    max-width: none;
+    justify-content: space-between;
+  }
+}

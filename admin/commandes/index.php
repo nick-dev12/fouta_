@@ -17,6 +17,17 @@ require_once __DIR__ . '/../includes/require_access.php';
 // Récupérer toutes les commandes
 require_once __DIR__ . '/../../models/model_commandes_admin.php';
 require_once __DIR__ . '/../../models/model_zones_livraison.php';
+require_once __DIR__ . '/../../models/model_commandes_retours.php';
+
+if (empty($_SESSION['admin_csrf'])) {
+    $_SESSION['admin_csrf'] = bin2hex(random_bytes(32));
+}
+
+$active_tab = (isset($_GET['tab']) && $_GET['tab'] === 'retours') ? 'retours' : 'traitement';
+$crc_tables_ok = crc_retour_tables_available();
+$nb_retours_boutique = $crc_tables_ok ? crc_count_retours_admin() : 0;
+$liste_retours_boutique = ($active_tab === 'retours' && $crc_tables_ok) ? crc_liste_admin() : [];
+
 $toutes_commandes = get_all_commandes();
 $zones_livraison = get_all_zones_livraison('actif');
 
@@ -50,7 +61,7 @@ $montant_total_a_traiter = array_sum(array_column($commandes, 'montant_total'));
     <?php include __DIR__ . '/../../includes/favicon.php'; ?>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Commandes Non Traitées - Administration</title>
+    <title><?php echo $active_tab === 'retours' ? 'Commandes retournées' : 'Commandes non traitées'; ?> - Administration</title>
     <?php require_once __DIR__ . '/../../includes/asset_version.php'; ?>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/css/admin-dashboard.css<?php echo asset_version_query(); ?>">
@@ -63,11 +74,17 @@ $montant_total_a_traiter = array_sum(array_column($commandes, 'montant_total'));
     <div class="page-commandes-index">
         <div class="content-header dashboard-hero page-commandes-hero">
             <div class="dashboard-hero-text">
+                <?php if ($active_tab === 'retours'): ?>
+                <p class="dashboard-eyebrow">Suivi des retours</p>
+                <h1 id="page-commandes-title"><i class="fas fa-undo" aria-hidden="true"></i> Commandes retournées</h1>
+                <p class="dashboard-subtitle">Retours marchandises enregistrés sur des commandes boutique <strong>livrées</strong> ou <strong>payées</strong> (e-commerce).</p>
+                <?php else: ?>
                 <p class="dashboard-eyebrow">File d’attente boutique</p>
                 <h1 id="page-commandes-title"><i class="fas fa-shopping-bag" aria-hidden="true"></i> Commandes non traitées</h1>
                 <p class="dashboard-subtitle">Suivez les commandes en cours (hors livrées, payées et annulées), le montant à encaisser et ouvrez une fiche pour agir.</p>
+                <?php endif; ?>
                 <div class="page-commandes-hero__actions">
-                    <?php if (($_SESSION['admin_role'] ?? '') === 'admin'): ?>
+                    <?php if (($_SESSION['admin_role'] ?? '') === 'admin' && $active_tab === 'traitement'): ?>
                     <a href="historique-ventes.php" class="btn-primary page-commandes-hero__btn">
                         <i class="fas fa-chart-line" aria-hidden="true"></i> Historique &amp; comptabilité
                     </a>
@@ -76,13 +93,38 @@ $montant_total_a_traiter = array_sum(array_column($commandes, 'montant_total'));
             </div>
         </div>
 
+        <nav class="page-commandes-tabs" role="tablist" aria-label="Sections commandes boutique">
+            <a href="index.php" class="page-commandes-tab<?php echo $active_tab === 'traitement' ? ' is-active' : ''; ?>" role="tab" aria-selected="<?php echo $active_tab === 'traitement' ? 'true' : 'false'; ?>">
+                <span class="page-commandes-tab__ic" aria-hidden="true"><i class="fas fa-list-check"></i></span>
+                <span>À traiter</span>
+            </a>
+            <?php if ($crc_tables_ok): ?>
+            <a href="index.php?tab=retours" class="page-commandes-tab<?php echo $active_tab === 'retours' ? ' is-active' : ''; ?>" role="tab" aria-selected="<?php echo $active_tab === 'retours' ? 'true' : 'false'; ?>">
+                <span class="page-commandes-tab__ic" aria-hidden="true"><i class="fas fa-undo"></i></span>
+                <span>Commandes retournées <span class="page-commandes-tab__count">(<?php echo (int) $nb_retours_boutique; ?>)</span></span>
+            </a>
+            <?php else: ?>
+            <span class="page-commandes-tab page-commandes-tab--disabled" title="Exécutez : php migrations/run_create_commandes_retours_tables.php" role="tab" aria-disabled="true">
+                <span class="page-commandes-tab__ic" aria-hidden="true"><i class="fas fa-database"></i></span>
+                <span>Commandes retournées</span>
+            </span>
+            <?php endif; ?>
+        </nav>
+
     <?php if (isset($_SESSION['success_message'])): ?>
     <div class="message success page-commandes-flash" role="status">
         <i class="fas fa-check-circle" aria-hidden="true"></i>
         <span><?php echo htmlspecialchars($_SESSION['success_message']); unset($_SESSION['success_message']); ?></span>
     </div>
     <?php endif; ?>
+    <?php if (isset($_SESSION['error_message'])): ?>
+    <div class="message error page-commandes-flash" role="alert">
+        <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
+        <span><?php echo htmlspecialchars($_SESSION['error_message']); unset($_SESSION['error_message']); ?></span>
+    </div>
+    <?php endif; ?>
 
+    <?php if ($active_tab === 'traitement'): ?>
     <div class="commandes-stats page-commandes-kpis" aria-label="Statistiques des commandes">
         <div class="stat-box page-commandes-kpi page-commandes-kpi--total">
             <span class="page-commandes-kpi__ic" aria-hidden="true"><i class="fas fa-layer-group"></i></span>
@@ -211,6 +253,77 @@ $montant_total_a_traiter = array_sum(array_column($commandes, 'montant_total'));
         </ul>
         <?php endif; ?>
     </section>
+
+    <?php elseif ($active_tab === 'retours' && $crc_tables_ok): ?>
+    <div class="comptabilite-box page-commandes-montant page-commandes-retours-montant">
+        <div class="comptabilite-label page-commandes-montant__label">
+            <i class="fas fa-coins" aria-hidden="true"></i>
+            <span>Montant cumulé des retours <strong>(liste ci-dessous)</strong></span>
+        </div>
+        <div class="comptabilite-value page-commandes-montant__value"><?php
+        $sum_ret = 0;
+        foreach ($liste_retours_boutique as $___r) {
+            $sum_ret += (float) ($___r['montant_total_retour'] ?? 0);
+        }
+        echo number_format($sum_ret, 0, ',', ' ');
+        ?> <span class="page-commandes-montant__cur">FCFA</span></div>
+    </div>
+
+    <section class="content-section page-commandes-section" aria-labelledby="page-commandes-retours-heading">
+        <div class="section-header page-commandes-section__head">
+            <div class="section-title page-commandes-section__title-wrap">
+                <h2 id="page-commandes-retours-heading"><i class="fas fa-undo" aria-hidden="true"></i> Retours enregistrés <span class="page-commandes-count">(<?php echo count($liste_retours_boutique); ?>)</span></h2>
+            </div>
+            <div class="form-actions page-commandes-toolbar">
+                <a href="livrees.php" class="btn-link page-commandes-toolbar__link">
+                    <i class="fas fa-check-circle" aria-hidden="true"></i> Commandes livrées
+                </a>
+                <a href="index.php" class="btn-link page-commandes-toolbar__link">
+                    <i class="fas fa-list-check" aria-hidden="true"></i> À traiter
+                </a>
+            </div>
+        </div>
+        <?php if (empty($liste_retours_boutique)): ?>
+        <div class="empty-state page-commandes-empty">
+            <div class="page-commandes-empty__icon" aria-hidden="true"><i class="fas fa-undo"></i></div>
+            <h3>Aucun retour</h3>
+            <p>Les retours se créent depuis une commande <strong>livrée</strong> ou <strong>payée</strong> (liste des livrées ou fiche commande).</p>
+        </div>
+        <?php else: ?>
+        <div class="bl-lines-table-wrap page-commandes-retours-table-wrap">
+            <table class="admin-table bl-lines-table">
+                <thead>
+                    <tr>
+                        <th scope="col">N° retour</th>
+                        <th scope="col">Date retour</th>
+                        <th scope="col">Commande</th>
+                        <th scope="col">Client</th>
+                        <th scope="col">Statut commande</th>
+                        <th scope="col" class="bl-lines-table__num">Montant retour</th>
+                        <th scope="col"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($liste_retours_boutique as $row): ?>
+                    <tr>
+                        <td><strong><?php echo htmlspecialchars($row['numero_retour'] ?? ''); ?></strong></td>
+                        <td><?php echo !empty($row['date_retour']) ? htmlspecialchars(date('d/m/Y à H:i', strtotime($row['date_retour']))) : '—'; ?></td>
+                        <td><a href="details.php?id=<?php echo (int) ($row['commande_id'] ?? 0); ?>" class="bl-dl__link"><?php echo htmlspecialchars($row['numero_commande'] ?? ''); ?></a></td>
+                        <td><?php echo htmlspecialchars(trim($row['client_nom_complet'] ?? '')); ?><br><span style="color:var(--gris-moyen);font-size:0.85em;"><?php echo htmlspecialchars($row['client_email'] ?? '—'); ?></span></td>
+                        <td><span class="commande-statut statut-<?php echo htmlspecialchars($row['commande_statut'] ?? ''); ?>"><?php echo ucfirst(str_replace('_', ' ', (string) ($row['commande_statut'] ?? ''))); ?></span></td>
+                        <td class="bl-lines-table__num"><?php echo number_format((float) ($row['montant_total_retour'] ?? 0), 0, ',', ' '); ?> FCFA</td>
+                        <td><a href="retour_voir.php?id=<?php echo (int) ($row['id'] ?? 0); ?>" class="btn-secondary page-commandes-retours-open"><i class="fas fa-eye" aria-hidden="true"></i> Ouvrir</a></td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+        <?php endif; ?>
+    </section>
+
+    <?php elseif ($active_tab === 'retours'): ?>
+    <p class="message error page-commandes-flash" role="alert"><i class="fas fa-database" aria-hidden="true"></i> Tables retours absentes. Exécutez : <code>php migrations/run_create_commandes_retours_tables.php</code></p>
+    <?php endif; ?>
 
     </div><!-- .page-commandes-index -->
 

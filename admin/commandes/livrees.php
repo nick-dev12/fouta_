@@ -14,6 +14,8 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
 
 // Récupérer uniquement les commandes avec le statut "livree"
 require_once __DIR__ . '/../../models/model_commandes_admin.php';
+require_once __DIR__ . '/../../models/model_commandes_retours.php';
+$crc_tables_ok = crc_retour_tables_available();
 $toutes_commandes = get_all_commandes();
 
 // Filtrer pour ne garder que les commandes avec le statut "livree" ou "paye"
@@ -105,6 +107,11 @@ $montant_total_livrees = get_montant_total_commandes('livree') + get_montant_tot
                 <a href="index.php" class="btn-link">
                     <i class="fas fa-shopping-bag"></i> Voir les commandes à traiter
                 </a>
+                <?php if ($crc_tables_ok): ?>
+                <a href="index.php?tab=retours" class="btn-link">
+                    <i class="fas fa-undo"></i> Commandes retournées
+                </a>
+                <?php endif; ?>
                 <a href="annulees.php" class="btn-link btn-danger">
                     <i class="fas fa-ban"></i> Voir les commandes annulées
                 </a>
@@ -162,9 +169,16 @@ $montant_total_livrees = get_montant_total_commandes('livree') + get_montant_tot
                             <?php endif; ?>
                         </div>
 
-                        <a href="details.php?id=<?php echo $commande['id']; ?>" class="btn-view">
-                            <i class="fas fa-eye"></i> Voir les détails
-                        </a>
+                        <div class="commande-actions-devis" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:12px;">
+                            <a href="details.php?id=<?php echo (int) $commande['id']; ?>" class="btn-view" style="flex:1;min-width:140px;text-align:center;justify-content:center;">
+                                <i class="fas fa-eye"></i> Voir les détails
+                            </a>
+                            <?php if ($crc_tables_ok && crc_commande_est_eligible_retour($commande)): ?>
+                            <a href="retour_creation.php?id=<?php echo (int) $commande['id']; ?>" class="btn-secondary" style="flex:1;min-width:160px;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;">
+                                <i class="fas fa-undo"></i> Enregistrer un retour
+                            </a>
+                            <?php endif; ?>
+                        </div>
                     </div>
                 <?php endforeach; ?>
             </div>

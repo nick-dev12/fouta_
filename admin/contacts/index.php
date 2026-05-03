@@ -12,6 +12,7 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
 require_once __DIR__ . '/../includes/require_access.php';
 
 require_once __DIR__ . '/../../models/model_contacts.php';
+require_once __DIR__ . '/../../models/model_clients_b2b.php';
 
 $recherche = trim($_GET['recherche'] ?? '');
 
@@ -25,10 +26,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_contact'])) {
     $prenom = trim($_POST['prenom'] ?? '');
     $telephone = trim($_POST['telephone'] ?? '');
     $email = trim($_POST['email'] ?? '') ?: null;
+    $type_bl = ($_POST['type_client_bl'] ?? '') === 'vip' ? 'vip' : 'standard';
 
     if (empty($nom) || empty($telephone)) {
         $error_message = 'Le nom et le téléphone sont obligatoires.';
-    } elseif (create_contact($nom, $prenom, $telephone, $email)) {
+    } elseif (create_contact($nom, $prenom, $telephone, $email, $type_bl)) {
+        update_client_b2b_type_client_bl_by_telephone($telephone, $type_bl);
         $_SESSION['contacts_success'] = 'Contact ajouté avec succès.';
         header('Location: index.php' . ($recherche ? '?recherche=' . urlencode($recherche) : ''));
         exit;
@@ -44,10 +47,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_contact'])) {
     $prenom = trim($_POST['prenom'] ?? '');
     $telephone = trim($_POST['telephone'] ?? '');
     $email = trim($_POST['email'] ?? '') ?: null;
+    $type_bl = ($_POST['type_client_bl'] ?? '') === 'vip' ? 'vip' : 'standard';
 
     if ($id <= 0 || empty($nom) || empty($telephone)) {
         $error_message = 'Données invalides.';
-    } elseif (update_contact($id, $nom, $prenom, $telephone, $email)) {
+    } elseif (update_contact($id, $nom, $prenom, $telephone, $email, $type_bl)) {
+        update_client_b2b_type_client_bl_by_telephone($telephone, $type_bl);
         $_SESSION['contacts_success'] = 'Contact modifié avec succès.';
         header('Location: index.php' . ($recherche ? '?recherche=' . urlencode($recherche) : ''));
         exit;
@@ -108,7 +113,8 @@ $contacts = get_all_contacts($recherche);
         .modal-close-btn { width: 36px; height: 36px; border: none; background: #f5f5f5; border-radius: 8px; cursor: pointer; font-size: 18px; }
         .form-group { margin-bottom: 20px; }
         .form-group label { display: block; margin-bottom: 8px; font-weight: 600; }
-        .form-group input { width: 100%; padding: 12px 14px; border: 1px solid #d9d9d9; border-radius: 8px; }
+        .form-group input,
+        .form-group select { width: 100%; padding: 12px 14px; border: 1px solid #d9d9d9; border-radius: 8px; }
         .admin-filters-bar { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; padding: 16px; background: #fff; border: 1px solid #ececec; border-radius: 12px; margin-bottom: 20px; }
         .admin-filter-field { flex: 1 1 220px; }
         .admin-filter-field label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600; }
@@ -174,7 +180,8 @@ $contacts = get_all_contacts($recherche);
                                 data-nom="<?php echo htmlspecialchars($c['nom']); ?>"
                                 data-prenom="<?php echo htmlspecialchars($c['prenom'] ?? ''); ?>"
                                 data-telephone="<?php echo htmlspecialchars($c['telephone']); ?>"
-                                data-email="<?php echo htmlspecialchars($c['email'] ?? ''); ?>">
+                                data-email="<?php echo htmlspecialchars($c['email'] ?? ''); ?>"
+                                data-type-bl="<?php echo htmlspecialchars(($c['type_client_bl'] ?? 'standard')); ?>">
                                 <i class="fas fa-edit"></i> Modifier
                             </button>
                         </div>
@@ -209,6 +216,14 @@ $contacts = get_all_contacts($recherche);
                     <div class="form-group">
                         <label>Email <span style="color:#888; font-weight:400;">(optionnel)</span></label>
                         <input type="email" name="email" placeholder="email@exemple.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Type client (plafonds BL)</label>
+                        <select name="type_client_bl">
+                            <option value="standard">Standard</option>
+                            <option value="vip">VIP</option>
+                        </select>
+                        <p class="form-hint" style="margin-top:8px;font-size:12px;color:#666;"><i class="fas fa-info-circle"></i> Utilisé pour les plafonds cumulés des bons de livraison.</p>
                     </div>
                     <div class="modal-actions">
                         <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Enregistrer</button>
@@ -246,6 +261,13 @@ $contacts = get_all_contacts($recherche);
                         <label>Email <span style="color:#888; font-weight:400;">(optionnel)</span></label>
                         <input type="email" name="email" id="edit_email" placeholder="email@exemple.com">
                     </div>
+                    <div class="form-group">
+                        <label>Type client (plafonds BL)</label>
+                        <select name="type_client_bl" id="edit_type_client_bl">
+                            <option value="standard">Standard</option>
+                            <option value="vip">VIP</option>
+                        </select>
+                    </div>
                     <div class="modal-actions">
                         <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Enregistrer</button>
                         <button type="button" class="btn-cancel" id="modal-edit-cancel">Annuler</button>
@@ -280,12 +302,14 @@ $contacts = get_all_contacts($recherche);
         var modalEdit = document.getElementById('modal-edit-contact');
         var btnEditClose = document.getElementById('modal-edit-close');
         var btnEditCancel = document.getElementById('modal-edit-cancel');
-        function openModalEdit(id, nom, prenom, telephone, email) {
+        function openModalEdit(id, nom, prenom, telephone, email, typeBl) {
             document.getElementById('edit_contact_id').value = id;
             document.getElementById('edit_nom').value = nom || '';
             document.getElementById('edit_prenom').value = prenom || '';
             document.getElementById('edit_telephone').value = telephone || '';
             document.getElementById('edit_email').value = email || '';
+            var sel = document.getElementById('edit_type_client_bl');
+            if (sel) sel.value = (typeBl === 'vip') ? 'vip' : 'standard';
             if (modalEdit) modalEdit.classList.add('show');
             document.body.style.overflow = 'hidden';
         }
@@ -295,7 +319,7 @@ $contacts = get_all_contacts($recherche);
         }
         document.querySelectorAll('.btn-edit-contact').forEach(function(btn) {
             btn.addEventListener('click', function() {
-                openModalEdit(btn.dataset.id, btn.dataset.nom, btn.dataset.prenom, btn.dataset.telephone, btn.dataset.email);
+                openModalEdit(btn.dataset.id, btn.dataset.nom, btn.dataset.prenom, btn.dataset.telephone, btn.dataset.email, btn.dataset.typeBl);
             });
         });
         if (btnEditClose) btnEditClose.addEventListener('click', closeModalEdit);

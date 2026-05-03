@@ -425,6 +425,26 @@ function create_bl_from_devis($devis_id, $admin_id) {
 }
 
 /**
+ * Total HT prévisionnel pour les lignes d'un BL manuel (même critères que create_bl_manuel).
+ *
+ * @param array $lignes [['designation'=>, 'quantite'=>, 'prix_unitaire_ht'=>], ...]
+ */
+function bl_totaux_ht_lignes_manuel($lignes)
+{
+    $total_ht = 0;
+    foreach ($lignes as $l) {
+        $des = trim($l['designation'] ?? '');
+        $q = (float) ($l['quantite'] ?? 0);
+        $pu = (float) ($l['prix_unitaire_ht'] ?? 0);
+        if ($des === '' || $q <= 0 || $pu < 0) {
+            continue;
+        }
+        $total_ht += round($q * $pu, 2);
+    }
+    return round($total_ht, 2);
+}
+
+/**
  * Création manuelle d'un BL avec lignes
  * @param array $lignes [['produit_id'=>, 'designation'=>, 'quantite'=>, 'prix_unitaire_ht'=>], ...]
  */

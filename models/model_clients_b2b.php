@@ -56,6 +56,49 @@ function find_client_b2b_by_telephone($telephone) {
     }
 }
 
+function clients_b2b_normalize_type_bl($code)
+{
+    return (($code ?? '') === 'vip') ? 'vip' : 'standard';
+}
+
+function update_client_b2b_type_client_bl_by_id($client_b2b_id, $code_type)
+{
+    global $db;
+    $client_b2b_id = (int) $client_b2b_id;
+    if ($client_b2b_id <= 0) {
+        return false;
+    }
+    $t = clients_b2b_normalize_type_bl($code_type);
+    try {
+        $stmt = $db->prepare('UPDATE clients_b2b SET type_client_bl = :t WHERE id = :id');
+        return $stmt->execute(['t' => $t, 'id' => $client_b2b_id]);
+    } catch (PDOException $e) {
+        return false;
+    }
+}
+
+function update_client_b2b_type_client_bl_by_telephone($telephone, $code_type)
+{
+    $row = find_client_b2b_by_telephone($telephone);
+    if (!$row || empty($row['id'])) {
+        return false;
+    }
+    return update_client_b2b_type_client_bl_by_id((int) $row['id'], $code_type);
+}
+
+/**
+ * Aligner la fiche B2B sur le carnet contacts (même numéro normalisé).
+ */
+function sync_client_b2b_type_bl_depuis_contact($telephone)
+{
+    require_once __DIR__ . '/model_contacts.php';
+    $c = get_contact_by_telephone($telephone);
+    if (!$c) {
+        return;
+    }
+    update_client_b2b_type_client_bl_by_telephone($telephone, $c['type_client_bl'] ?? 'standard');
+}
+
 function create_client_b2b($data) {
     global $db;
     try {
@@ -67,8 +110,8 @@ function create_client_b2b($data) {
 
         if ($has_admin) {
             $stmt = $db->prepare('
-                INSERT INTO clients_b2b (raison_sociale, nom_contact, prenom_contact, email, telephone, adresse, notes, statut, admin_createur_id, date_creation)
-                VALUES (:raison_sociale, :nom_contact, :prenom_contact, :email, :telephone, :adresse, :notes, :statut, :admin_createur_id, NOW())
+                INSERT INTO clients_b2b (raison_sociale, nom_contact, prenom_contact, email, telephone, adresse, notes, statut, type_client_bl, admin_createur_id, date_creation)
+                VALUES (:raison_sociale, :nom_contact, :prenom_contact, :email, :telephone, :adresse, :notes, :statut, :type_client_bl, :admin_createur_id, NOW())
             ');
             $ok = $stmt->execute([
                 'raison_sociale' => trim($data['raison_sociale'] ?? ''),
@@ -79,12 +122,13 @@ function create_client_b2b($data) {
                 'adresse' => $data['adresse'] !== '' ? trim($data['adresse']) : null,
                 'notes' => $data['notes'] !== '' ? trim($data['notes']) : null,
                 'statut' => ($data['statut'] ?? 'actif') === 'inactif' ? 'inactif' : 'actif',
+                'type_client_bl' => clients_b2b_normalize_type_bl($data['type_client_bl'] ?? 'standard'),
                 'admin_createur_id' => $aid,
             ]);
         } else {
             $stmt = $db->prepare('
-                INSERT INTO clients_b2b (raison_sociale, nom_contact, prenom_contact, email, telephone, adresse, notes, statut, date_creation)
-                VALUES (:raison_sociale, :nom_contact, :prenom_contact, :email, :telephone, :adresse, :notes, :statut, NOW())
+                INSERT INTO clients_b2b (raison_sociale, nom_contact, prenom_contact, email, telephone, adresse, notes, statut, type_client_bl, date_creation)
+                VALUES (:raison_sociale, :nom_contact, :prenom_contact, :email, :telephone, :adresse, :notes, :statut, :type_client_bl, NOW())
             ');
             $ok = $stmt->execute([
                 'raison_sociale' => trim($data['raison_sociale'] ?? ''),
@@ -95,6 +139,7 @@ function create_client_b2b($data) {
                 'adresse' => $data['adresse'] !== '' ? trim($data['adresse']) : null,
                 'notes' => $data['notes'] !== '' ? trim($data['notes']) : null,
                 'statut' => ($data['statut'] ?? 'actif') === 'inactif' ? 'inactif' : 'actif',
+                'type_client_bl' => clients_b2b_normalize_type_bl($data['type_client_bl'] ?? 'standard'),
             ]);
         }
         return $ok ? (int) $db->lastInsertId() : false;

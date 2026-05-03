@@ -315,6 +315,28 @@ function get_all_admin_emails()
 }
 
 /**
+ * Destinataires des alertes stock : administrateurs + gestion des stocks + commerciaux (comptes actifs).
+ *
+ * @return list<string>
+ */
+function get_admin_emails_alerte_stock()
+{
+    global $db;
+
+    try {
+        $stmt = $db->prepare(
+            "SELECT DISTINCT email FROM admin WHERE statut = 'actif' AND email IS NOT NULL
+             AND TRIM(email) != '' AND COALESCE(role, 'admin') IN ('admin','gestion_stock','commercial')"
+        );
+        $stmt->execute();
+        $cols = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        return $cols ? array_values(array_filter(array_map('trim', $cols))) : [];
+    } catch (PDOException $e) {
+        return [];
+    }
+}
+
+/**
  * Récupère tous les comptes administrateurs
  * @return array Liste des admins
  */
@@ -332,6 +354,31 @@ function get_all_admins()
         $stmt->execute();
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         return $rows ? $rows : [];
+    } catch (PDOException $e) {
+        return [];
+    }
+}
+
+/**
+ * Comptes admin éligibles pour la saisie d’absences : actifs, rôle différent de « admin ».
+ * (Les comptes au rôle administrateur technique ne sont pas listés comme « absents ».)
+ *
+ * @return array<int,array<string,mixed>>
+ */
+function get_admins_eligibles_absences()
+{
+    global $db;
+
+    try {
+        $stmt = $db->prepare("
+            SELECT id, nom, prenom, email, statut, COALESCE(role, 'admin') AS role
+            FROM admin
+            WHERE statut = 'actif'
+              AND (role IS NULL OR role != 'admin')
+            ORDER BY nom ASC, prenom ASC
+        ");
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     } catch (PDOException $e) {
         return [];
     }

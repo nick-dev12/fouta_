@@ -41,6 +41,7 @@ function generer_qrcode_produit($produit_id) {
 require_once __DIR__ . '/../models/model_categories.php';
 require_once __DIR__ . '/../models/model_variantes.php';
 require_once __DIR__ . '/../models/model_mouvements_stock.php';
+require_once __DIR__ . '/../includes/stock_alertes_notifications.php';
 
 /**
  * Upload une image de produit
@@ -113,6 +114,48 @@ function upload_produit_images_multiples($files, $field_name = 'images_supplemen
 }
 
 /**
+ * Nom du fournisseur depuis POST — optionnel, tronqué à 255 caractères UTF-8 (ancien champ texte).
+ *
+ * @return string|null Valeur conservée ou null si vide après trim.
+ */
+function produits_normalize_nom_fournisseur_from_post(array $post) {
+    $s = isset($post['nom_fournisseur']) ? trim((string) $post['nom_fournisseur']) : '';
+    if ($s === '') {
+        return null;
+    }
+    if (function_exists('mb_strlen')) {
+        if (mb_strlen($s, 'UTF-8') > 255) {
+            $s = mb_substr($s, 0, 255, 'UTF-8');
+        }
+    } elseif (strlen($s) > 255) {
+        $s = substr($s, 0, 255);
+    }
+    return $s;
+}
+
+/**
+ * Résout fournisseur_id + nom dénormalisé depuis le formulaire (liste déroulante).
+ *
+ * @return array{fournisseur_id: int|null, nom_fournisseur: string|null}
+ */
+function produits_resolve_fournisseur_from_post(array $post) {
+    if (!function_exists('produits_has_column') || !produits_has_column('fournisseur_id')) {
+        $nom = produits_normalize_nom_fournisseur_from_post($post);
+        return ['fournisseur_id' => null, 'nom_fournisseur' => $nom];
+    }
+    require_once __DIR__ . '/../models/model_fournisseurs.php';
+    if (!isset($post['fournisseur_id']) || $post['fournisseur_id'] === '' || (int) $post['fournisseur_id'] <= 0) {
+        return ['fournisseur_id' => null, 'nom_fournisseur' => null];
+    }
+    $fid = (int) $post['fournisseur_id'];
+    $f = get_fournisseur_by_id($fid);
+    if (!$f) {
+        return ['fournisseur_id' => null, 'nom_fournisseur' => null];
+    }
+    return ['fournisseur_id' => $fid, 'nom_fournisseur' => trim((string) $f['nom'])];
+}
+
+/**
  * Traite l'ajout d'un nouveau produit
  * @return array Tableau avec 'success' (bool) et 'message' (string)
  */
@@ -128,11 +171,15 @@ function process_add_produit() {
     // Récupération et validation des données (stock géré via produits.stock)
     $nom = isset($_POST['nom']) ? trim($_POST['nom']) : '';
     $description = isset($_POST['description']) ? trim($_POST['description']) : '';
+    $fournisseur_res = produits_resolve_fournisseur_from_post($_POST);
     $prix = isset($_POST['prix']) ? trim($_POST['prix']) : '';
     $prix_promotion = isset($_POST['prix_promotion']) && !empty($_POST['prix_promotion']) ? trim($_POST['prix_promotion']) : null;
     $stock = isset($_POST['stock']) ? intval($_POST['stock']) : 0;
     $categorie_id = isset($_POST['categorie_id']) ? intval($_POST['categorie_id']) : 0;
-    $statut = isset($_POST['statut']) ? $_POST['statut'] : 'actif';
+    $statut = 'actif';
+    if (isset($_POST['statut']) && in_array((string) $_POST['statut'], ['actif', 'inactif', 'rupture_stock'], true)) {
+        $statut = (string) $_POST['statut'];
+    }
     $unite = isset($_POST['unite']) ? trim($_POST['unite']) : 'unité';
     $couleurs = null;
     if (isset($_POST['couleurs']) && trim($_POST['couleurs']) !== '') {
@@ -203,6 +250,14 @@ function process_add_produit() {
     if ($categorie_id > 0 && !get_categorie_by_id($categorie_id)) {
         $errors[] = 'La catégorie sélectionnée n\'existe pas.';
     }
+
+    $fid_sent = isset($_POST['fournisseur_id']) ? trim((string) $_POST['fournisseur_id']) : '';
+    if ($fid_sent !== ''
+        && (int) $fid_sent > 0
+        && produits_has_column('fournisseur_id')
+        && $fournisseur_res['fournisseur_id'] === null) {
+        $errors[] = 'Le fournisseur sélectionné est invalide.';
+    }
     
     // Upload des images : images_produit[] (1ère = principale, reste = galerie)
     // Si lié à un article en stock, on utilise son image si pas d'upload
@@ -234,6 +289,8 @@ function process_add_produit() {
         $data = [
             'nom' => $nom,
             'description' => $description,
+            'fournisseur_id' => $fournisseur_res['fournisseur_id'],
+            'nom_fournisseur' => $fournisseur_res['nom_fournisseur'],
             'prix' => $prix,
             'prix_promotion' => $prix_promotion,
             'stock' => $stock,
@@ -294,6 +351,7 @@ function process_add_produit() {
                     ]);
                 }
             }
+            stock_alertes_notifier_baisse_stock((int) $produit_id, PHP_INT_MAX, (int) $stock);
         } else {
             $errors[] = 'Une erreur est survenue lors de l\'ajout du produit.';
         }
@@ -330,12 +388,16 @@ function process_update_produit($produit_id) {
     // Récupération et validation des données (stock géré via produits.stock)
     $nom = isset($_POST['nom']) ? trim($_POST['nom']) : '';
     $description = isset($_POST['description']) ? trim($_POST['description']) : '';
+    $fournisseur_res = produits_resolve_fournisseur_from_post($_POST);
     $prix = isset($_POST['prix']) ? trim($_POST['prix']) : '';
     $prix_promotion = isset($_POST['prix_promotion']) && !empty($_POST['prix_promotion']) ? trim($_POST['prix_promotion']) : null;
     $stock = isset($_POST['stock']) ? intval($_POST['stock']) : 0;
     $categorie_id = isset($_POST['categorie_id']) ? intval($_POST['categorie_id']) : 0;
     $unite = isset($_POST['unite']) ? trim($_POST['unite']) : 'unité';
-    $statut = isset($_POST['statut']) ? $_POST['statut'] : 'actif';
+    $statut = 'actif';
+    if (isset($_POST['statut']) && in_array((string) $_POST['statut'], ['actif', 'inactif', 'rupture_stock'], true)) {
+        $statut = (string) $_POST['statut'];
+    }
     $couleurs = null;
     if (isset($_POST['couleurs']) && trim($_POST['couleurs']) !== '') {
         $raw = trim($_POST['couleurs']);
@@ -400,7 +462,15 @@ function process_update_produit($produit_id) {
     if ($categorie_id <= 0) {
         $errors[] = 'Veuillez sélectionner une catégorie.';
     }
-    
+
+    $fid_sent_upd = isset($_POST['fournisseur_id']) ? trim((string) $_POST['fournisseur_id']) : '';
+    if ($fid_sent_upd !== ''
+        && (int) $fid_sent_upd > 0
+        && produits_has_column('fournisseur_id')
+        && $fournisseur_res['fournisseur_id'] === null) {
+        $errors[] = 'Le fournisseur sélectionné est invalide.';
+    }
+
     // Récupérer les images existantes
     $all_images = [];
     if (!empty($produit['images'])) {
@@ -446,6 +516,8 @@ function process_update_produit($produit_id) {
         $data = [
             'nom' => $nom,
             'description' => $description,
+            'fournisseur_id' => $fournisseur_res['fournisseur_id'],
+            'nom_fournisseur' => $fournisseur_res['nom_fournisseur'],
             'prix' => $prix,
             'prix_promotion' => $prix_promotion,
             'stock' => $stock,
@@ -468,6 +540,9 @@ function process_update_produit($produit_id) {
         if (update_produit($produit_id, $data)) {
             $success = true;
             $message = 'Produit modifié avec succès !';
+            $stock_old = (int) ($produit['stock'] ?? 0);
+            $stock_new = (int) $stock;
+            stock_alertes_notifier_baisse_stock($produit_id, $stock_old, $stock_new);
             // Supprimer du disque les images retirées par l'utilisateur
             foreach ($removed_images as $old_path) {
                 $full_path = __DIR__ . '/../upload/' . $old_path;
@@ -571,7 +646,9 @@ function process_delete_produit($produit_id) {
 }
 
 /**
- * Traite l'ajustement du stock d'un produit
+ * Traite l'ajustement du stock d'un produit (ajout cumulatif : stock après = stock actuel + quantité saisie).
+ * Pour fixer une quantité absolue ou diminuer le stock sans ajout positif : modifier la fiche produit.
+ *
  * @param int $produit_id ID du produit
  * @return array ['success' => bool, 'message' => string]
  */
@@ -585,14 +662,15 @@ function process_ajuster_stock_produit($produit_id) {
         return ['success' => false, 'message' => 'Produit introuvable.'];
     }
 
-    $nouveau_stock = isset($_POST['nouveau_stock']) ? (int) $_POST['nouveau_stock'] : -1;
-    if ($nouveau_stock < 0) {
-        return ['success' => false, 'message' => 'La quantité doit être un nombre positif ou zéro.'];
+    $quantite_avant = (int) ($produit['stock'] ?? 0);
+    $ajout = isset($_POST['quantite_ajout']) ? (int) $_POST['quantite_ajout'] : -1;
+    if ($ajout < 1) {
+        return ['success' => false, 'message' => 'Indiquez un nombre strictement positif : quantité à ajouter au stock actuel.'];
     }
 
-    $quantite_avant = (int) ($produit['stock'] ?? 0);
-    if ($nouveau_stock === $quantite_avant) {
-        return ['success' => false, 'message' => 'La nouvelle quantité est identique au stock actuel.'];
+    $nouveau_stock = $quantite_avant + $ajout;
+    if ($nouveau_stock > 2147483647) {
+        return ['success' => false, 'message' => 'Quantité trop élevée.'];
     }
 
     $statut = $produit['statut'];
@@ -607,24 +685,24 @@ function process_ajuster_stock_produit($produit_id) {
         $data_update['admin_dernier_modificateur_id'] = $ajust_admin;
     }
     if (update_produit($produit_id, $data_update)) {
-        $quantite_diff = $nouveau_stock - $quantite_avant;
         $mv = [
             'type' => 'inventaire',
             'stock_article_id' => null,
             'produit_id' => $produit_id,
-            'quantite' => abs($quantite_diff),
+            'quantite' => $ajout,
             'quantite_avant' => $quantite_avant,
             'quantite_apres' => $nouveau_stock,
             'reference_type' => 'ajustement',
             'reference_id' => null,
             'reference_numero' => null,
-            'notes' => 'Ajustement manuel : ' . ($quantite_diff >= 0 ? '+' : '') . $quantite_diff
+            'notes' => 'Ajout au stock +' . $ajout . ' (' . $quantite_avant . ' → ' . $nouveau_stock . ')',
         ];
         if ($ajust_admin > 0) {
             $mv['admin_id'] = $ajust_admin;
         }
         create_stock_mouvement($mv);
-        return ['success' => true, 'message' => 'Stock ajusté avec succès.'];
+        stock_alertes_notifier_baisse_stock($produit_id, $quantite_avant, $nouveau_stock);
+        return ['success' => true, 'message' => 'Stock mis à jour : +' . $ajout . ' unité(s). Nouveau stock : ' . $nouveau_stock . '.'];
     }
 
     return ['success' => false, 'message' => 'Erreur lors de la mise à jour du stock.'];

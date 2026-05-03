@@ -10,6 +10,11 @@
   --pm-font-size-input: 15px;
 }
 
+/* Masquage aligné sur la page « Ajouter un produit » : variantes, options poids/couleurs ; statut via champ hidden */
+.page-produit-modifier .admin-ajouter-produit-masquer {
+  display: none !important;
+}
+
 .page-produit-modifier .pm-page {
   max-width: 1060px;
   margin: 0 auto;
@@ -412,6 +417,67 @@
   border: 1px solid var(--glass-border);
 }
 
+/* Aperçu cumulatif — page ajout produit (même gabarit que la galerie) */
+.page-produit-modifier .image-preview-accumulator {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.page-produit-modifier .image-preview-accumulator .preview-item {
+  position: relative;
+}
+
+.page-produit-modifier .image-preview-accumulator .preview-item img {
+  width: 88px;
+  height: 88px;
+  object-fit: cover;
+  border-radius: var(--pm-radius-sm);
+  border: 1px solid var(--glass-border);
+  display: block;
+}
+
+.page-produit-modifier .image-preview-accumulator .preview-badge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  background: var(--couleur-dominante);
+  color: var(--blanc);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  z-index: 1;
+}
+
+.page-produit-modifier .image-preview-accumulator .preview-remove {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: rgba(0, 0, 0, 0.55);
+  color: var(--blanc);
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 1;
+  z-index: 1;
+  transition: background 0.2s;
+}
+
+.page-produit-modifier .image-preview-accumulator .preview-remove:hover {
+  background: #b00000;
+}
+
 /* ---------- Couleurs & options ---------- */
 .page-produit-modifier .couleurs-picker-block,
 .page-produit-modifier .options-add-block {
@@ -746,6 +812,11 @@
   flex-wrap: wrap;
 }
 
+.page-produit-modifier .pm-sticky-inner--split {
+  justify-content: space-between;
+  align-items: center;
+}
+
 .page-produit-modifier .pm-btn-primary,
 .page-produit-modifier .form-container .btn-primary {
   display: inline-flex;
@@ -860,6 +931,17 @@
 
   .page-produit-modifier .pm-sticky-inner {
     justify-content: stretch;
+  }
+
+  .page-produit-modifier .pm-sticky-inner--split {
+    flex-direction: column-reverse;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .page-produit-modifier .pm-sticky-inner--split .pm-btn-back {
+    justify-content: center;
+    width: 100%;
   }
 
   .page-produit-modifier .pm-btn-primary,

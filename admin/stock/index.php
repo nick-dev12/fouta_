@@ -470,6 +470,8 @@ $nb_cat = count($categories);
         </section>
     </div>
 
+    <?php include __DIR__ . '/../../includes/admin_stock_alerte_popup.php'; ?>
+
     <?php include '../includes/footer.php'; ?>
 </body>
 

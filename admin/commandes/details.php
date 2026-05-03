@@ -25,6 +25,8 @@ require_once __DIR__ . '/../../models/model_commandes_admin.php';
 require_once __DIR__ . '/../../models/model_produits.php';
 require_once __DIR__ . '/../../models/model_factures.php';
 require_once __DIR__ . '/../../includes/format_commande_options.php';
+require_once __DIR__ . '/../../models/model_commandes_retours.php';
+
 $commande = get_commande_by_id($commande_id);
 $produits = get_produits_by_commande($commande_id);
 $produits = is_array($produits) ? $produits : [];
@@ -34,6 +36,9 @@ if (!$commande) {
     header('Location: index.php');
     exit;
 }
+
+$crc_tables_ok = crc_retour_tables_available();
+$retours_commande_liste = $crc_tables_ok ? crc_get_retours_par_commande($commande_id) : [];
 
 // Vérifier si la commande est annulée ou livrée (pas de modification possible)
 $is_annulee = $commande['statut'] === 'annulee';
@@ -134,6 +139,11 @@ $cmd_detail_has_alert = isset($_SESSION['success_message']) || isset($_SESSION['
             <a href="index.php" class="btn-back page-cmd-detail-back">
                 <i class="fas fa-arrow-left" aria-hidden="true"></i> Retour à la liste
             </a>
+            <?php if ($crc_tables_ok && crc_commande_est_eligible_retour($commande)): ?>
+            <a href="retour_creation.php?id=<?php echo (int) $commande_id; ?>" class="btn-secondary page-cmd-detail-actions__retour">
+                <i class="fas fa-undo" aria-hidden="true"></i> Enregistrer un retour
+            </a>
+            <?php endif; ?>
             </div>
         </div>
     </div>
@@ -207,6 +217,26 @@ $cmd_detail_has_alert = isset($_SESSION['success_message']) || isset($_SESSION['
             <?php endif; ?>
         </div>
     </div>
+
+    <?php if ($crc_tables_ok && !empty($retours_commande_liste)): ?>
+    <div class="commande-details-grid page-cmd-detail-grid" style="margin-top: 8px;">
+        <div class="detail-box" style="grid-column: 1 / -1;">
+            <h3><i class="fas fa-undo"></i> Retours boutique enregistrés</h3>
+            <ul style="list-style:none;margin:0;padding:0;">
+                <?php foreach ($retours_commande_liste as $rr): ?>
+                <li style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid rgba(0,0,0,0.06);">
+                    <div>
+                        <strong><?php echo htmlspecialchars($rr['numero_retour'] ?? ''); ?></strong>
+                        · <?php echo !empty($rr['date_retour']) ? htmlspecialchars(date('d/m/Y à H:i', strtotime($rr['date_retour']))) : '—'; ?>
+                        · <?php echo number_format((float) ($rr['montant_total_retour'] ?? 0), 0, ',', ' '); ?> FCFA
+                    </div>
+                    <a href="retour_voir.php?id=<?php echo (int) ($rr['id'] ?? 0); ?>" class="btn-secondary" style="display:inline-flex;align-items:center;gap:6px;text-decoration:none;"><i class="fas fa-eye"></i> Ouvrir</a>
+                </li>
+                <?php endforeach; ?>
+            </ul>
+        </div>
+    </div>
+    <?php endif; ?>
 
     <!-- Produits de la commande -->
     <section class="content-section page-cmd-detail-section" aria-labelledby="cmd-produits-title">

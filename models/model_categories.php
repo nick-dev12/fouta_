@@ -89,15 +89,31 @@ function get_categorie_by_nom($nom)
     }
 }
 
+function categories_normaliser_couleur_etiquette($valeur)
+{
+    if ($valeur === null || $valeur === '') {
+        return '#1e3a5f';
+    }
+    $v = strtoupper(trim((string) $valeur));
+    if (preg_match('/^#([0-9A-F]{6})$/', $v)) {
+        return '#' . substr($v, -6);
+    }
+    if (preg_match('/^([0-9A-F]{6})$/', $v)) {
+        return '#' . $v;
+    }
+    return '#1e3a5f';
+}
+
 /**
  * Crée une nouvelle catégorie
  * @param string $nom Le nom de la catégorie
  * @param string $description La description
  * @param string|null $image Le chemin de l'image
  * @param int|null $admin_createur_id Admin ayant créé la catégorie (traçabilité)
+ * @param string|null $couleur_etiquette Hex #RRGGBB (bandeaux étiquette stock)
  * @return int|false L'ID de la catégorie créée ou False en cas d'erreur
  */
-function create_categorie($nom, $description = null, $image = null, $admin_createur_id = null)
+function create_categorie($nom, $description = null, $image = null, $admin_createur_id = null, $couleur_etiquette = null)
 {
     global $db;
 
@@ -109,9 +125,14 @@ function create_categorie($nom, $description = null, $image = null, $admin_creat
             'description' => $description,
             'image' => $image
         ];
+        if (categories_has_column('couleur_etiquette')) {
+            $cols .= ', couleur_etiquette';
+            $vals .= ', :couleur_etiquette';
+            $params['couleur_etiquette'] = categories_normaliser_couleur_etiquette($couleur_etiquette);
+        }
         if (categories_has_column('admin_createur_id') && $admin_createur_id !== null && (int) $admin_createur_id > 0) {
-            $cols = 'nom, description, image, date_creation, admin_createur_id';
-            $vals = ':nom, :description, :image, NOW(), :admin_createur_id';
+            $cols .= ', admin_createur_id';
+            $vals .= ', :admin_createur_id';
             $params['admin_createur_id'] = (int) $admin_createur_id;
         }
         $stmt = $db->prepare("INSERT INTO categories ($cols) VALUES ($vals)");
@@ -135,9 +156,10 @@ function create_categorie($nom, $description = null, $image = null, $admin_creat
  * @param string $description La description
  * @param string|null $image Le chemin de l'image
  * @param int|null $admin_modificateur_id Admin ayant modifié la catégorie (traçabilité)
+ * @param string|null $couleur_etiquette Hex #RRGGBB
  * @return bool True en cas de succès, False sinon
  */
-function update_categorie($id, $nom, $description = null, $image = null, $admin_modificateur_id = null)
+function update_categorie($id, $nom, $description = null, $image = null, $admin_modificateur_id = null, $couleur_etiquette = null)
 {
     global $db;
 
@@ -149,6 +171,10 @@ function update_categorie($id, $nom, $description = null, $image = null, $admin_
             'description' => $description,
             'image' => $image
         ];
+        if (categories_has_column('couleur_etiquette')) {
+            $sets .= ', couleur_etiquette = :couleur_etiquette';
+            $params['couleur_etiquette'] = categories_normaliser_couleur_etiquette($couleur_etiquette);
+        }
         if (categories_has_column('admin_dernier_modificateur_id') && $admin_modificateur_id !== null && (int) $admin_modificateur_id > 0) {
             $sets .= ', admin_dernier_modificateur_id = :admin_dernier_modificateur_id';
             $params['admin_dernier_modificateur_id'] = (int) $admin_modificateur_id;

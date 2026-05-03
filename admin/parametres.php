@@ -101,6 +101,32 @@ if (isset($_SESSION['success_message'])) {
                     </a>
                 </div>
             </article>
+
+            <article class="parametre-card parametre-card--types-bl" role="listitem">
+                <div class="parametre-card__body">
+                    <div class="parametre-card__head">
+                        <div class="parametre-icon" aria-hidden="true"><i class="fas fa-truck-loading"></i></div>
+                        <h3 class="parametre-title">Types clients &amp; plafonds BL</h3>
+                    </div>
+                    <a href="parametres/types_client_bl.php" class="parametre-link">
+                        <span class="parametre-link__txt"><i class="fas fa-sliders-h" aria-hidden="true"></i> Configurer Standard / VIP</span>
+                        <i class="fas fa-chevron-right parametre-link__chev" aria-hidden="true"></i>
+                    </a>
+                </div>
+            </article>
+
+            <article class="parametre-card parametre-card--alertes-stock" role="listitem">
+                <div class="parametre-card__body">
+                    <div class="parametre-card__head">
+                        <div class="parametre-icon" aria-hidden="true"><i class="fas fa-bell"></i></div>
+                        <h3 class="parametre-title">Alertes de stock</h3>
+                    </div>
+                    <a href="parametres/alertes-stock.php" class="parametre-link">
+                        <span class="parametre-link__txt"><i class="fas fa-sliders-h" aria-hidden="true"></i> Seuils standard / moyen / haut</span>
+                        <i class="fas fa-chevron-right parametre-link__chev" aria-hidden="true"></i>
+                    </a>
+                </div>
+            </article>
         </div>
     </section>
 

@@ -457,4 +457,5 @@ if ($admin_show_catalogue && !empty($produits)) {
             }
         });
     </script>
+    <?php include __DIR__ . '/../includes/admin_stock_alerte_popup.php'; ?>
     <?php include 'includes/footer.php'; ?>
