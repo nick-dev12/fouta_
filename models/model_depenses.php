@@ -212,7 +212,17 @@ function get_depenses_filtrees($filtres) {
         $params['q'] = '%' . $q . '%';
     }
 
-    $sql .= ' ORDER BY d.date_depense DESC, d.id DESC LIMIT 500';
+    $sql .= ' ORDER BY d.date_depense DESC, d.id DESC';
+    $limit_export = isset($filtres['limit']) ? $filtres['limit'] : 500;
+    if ($limit_export === null) {
+        $limit_export = 500;
+    }
+    if ($limit_export === 'all' || $limit_export === -1) {
+        // export CSV : pas de plafond (plancher de sécurité côté reprise)
+    } else {
+        $lim = max(1, min(50000, (int) $limit_export));
+        $sql .= ' LIMIT ' . $lim;
+    }
 
     try {
         $stmt = $db->prepare($sql);

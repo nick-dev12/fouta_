@@ -9,7 +9,8 @@ if (admin_exists()) {
         header('Location: login.php');
         exit;
     }
-    if (($_SESSION['admin_role'] ?? '') !== 'admin') {
+    $ar = $_SESSION['admin_role'] ?? '';
+    if ($ar !== 'admin' && $ar !== 'informaticien') {
         header('Location: dashboard.php');
         exit;
     }

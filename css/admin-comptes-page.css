@@ -743,9 +743,15 @@
   color: #fff;
 }
 
-.comptes-acces-card__head .role-badge.role-commercial {
+.comptes-acces-card__head .role-badge.role-commercial,
+.comptes-acces-card__head .role-badge.role-commercial_general {
   background: rgba(255, 220, 150, 0.5);
   color: #1a1208;
+}
+
+.comptes-acces-card__head .role-badge.role-informaticien {
+  background: rgba(53, 100, 166, 0.35);
+  color: #0d1f33;
 }
 
 .comptes-acces-card__head .role-badge.role-comptabilite {

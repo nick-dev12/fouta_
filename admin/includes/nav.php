@@ -72,7 +72,7 @@ if ($is_produits || $is_categories || $is_stock || $is_slider || $is_parametres 
         </div>
         <nav class="sidebar-menu" aria-label="Navigation principale">
             <div class="sidebar-menu__main">
-            <?php if ($admin_role === 'admin'): ?>
+            <?php if ($admin_role === 'admin' || $admin_role === 'informaticien'): ?>
             <a href="<?php echo $base_path; ?>dashboard.php"
                 class="menu-item mi-dashboard<?php echo $current_page == 'dashboard.php' ? ' active' : ''; ?>">
                 <span class="menu-item-icon" aria-hidden="true"><i class="fas fa-home"></i></span>
@@ -123,12 +123,45 @@ if ($is_produits || $is_categories || $is_stock || $is_slider || $is_parametres 
                 <span class="menu-item-icon" aria-hidden="true"><i class="fas fa-cog"></i></span>
                 <span class="menu-item-text">Paramètres</span>
             </a>
-            <?php elseif ($admin_role === 'commercial'): ?>
+            <?php if ($admin_role === 'informaticien'): ?>
+            <a href="<?php echo $base_path; ?>caisse/index.php"
+                class="menu-item mi-caisse<?php echo ($is_caisse && $current_page === 'index.php') ? ' active' : ''; ?>">
+                <span class="menu-item-icon" aria-hidden="true"><i class="fas fa-cash-register"></i></span>
+                <span class="menu-item-text">Caisse magasin</span>
+            </a>
+            <a href="<?php echo $base_path; ?>caisse/encaisser-ticket.php"
+                class="menu-item mi-encaisse<?php echo $is_caisse_encaisser ? ' active' : ''; ?>">
+                <span class="menu-item-icon" aria-hidden="true"><i class="fas fa-money-bill-wave"></i></span>
+                <span class="menu-item-text">Encaissement tickets</span>
+            </a>
+            <a href="<?php echo $base_path; ?>caisse/historique-encaissements.php"
+                class="menu-item mi-hist-enc<?php echo $is_caisse_historique ? ' active' : ''; ?>">
+                <span class="menu-item-icon" aria-hidden="true"><i class="fas fa-history"></i></span>
+                <span class="menu-item-text">Historique encaissements</span>
+            </a>
+            <a href="<?php echo $base_path; ?>zones-livraison/index.php"
+                class="menu-item mi-zones<?php echo $is_zones_livraison ? ' active' : ''; ?>">
+                <span class="menu-item-icon" aria-hidden="true"><i class="fas fa-map-location-dot"></i></span>
+                <span class="menu-item-text">Zones de livraison</span>
+            </a>
+            <?php endif; ?>
+            <?php elseif ($admin_role === 'commercial_general'): ?>
             <a href="<?php echo $base_path; ?>devis/index.php"
                 class="menu-item mi-devis<?php echo ($is_devis || $is_commercial_hub) ? ' active' : ''; ?>">
                 <span class="menu-item-icon" aria-hidden="true"><i class="fas fa-handshake"></i></span>
                 <span class="menu-item-text">Devis &amp; BL</span>
             </a>
+            <a href="<?php echo $base_path; ?>commandes/index.php"
+                class="menu-item mi-commandes<?php echo ($is_commandes && ($current_page == 'index.php' || $current_page == 'livrees.php' || $current_page == 'annulees.php' || $current_page == 'details.php' || $current_page == 'historique-ventes.php')) ? ' active' : ''; ?>">
+                <span class="menu-item-icon" aria-hidden="true"><i class="fas fa-shopping-cart"></i></span>
+                <span class="menu-item-text">Commandes</span>
+            </a>
+            <a href="<?php echo $base_path; ?>caisse/index.php"
+                class="menu-item mi-caisse<?php echo ($is_caisse && !$is_caisse_encaisser) ? ' active' : ''; ?>">
+                <span class="menu-item-icon" aria-hidden="true"><i class="fas fa-cash-register"></i></span>
+                <span class="menu-item-text">Caisse</span>
+            </a>
+            <?php elseif ($admin_role === 'commercial'): ?>
             <a href="<?php echo $base_path; ?>commandes/index.php"
                 class="menu-item mi-commandes<?php echo ($is_commandes && ($current_page == 'index.php' || $current_page == 'livrees.php' || $current_page == 'annulees.php' || $current_page == 'details.php' || $current_page == 'historique-ventes.php')) ? ' active' : ''; ?>">
                 <span class="menu-item-icon" aria-hidden="true"><i class="fas fa-shopping-cart"></i></span>

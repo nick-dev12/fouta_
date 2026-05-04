@@ -212,7 +212,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['depense_ajout'])) {
     $active_tab = 'depenses';
 }
 
-$is_admin_role = (($_SESSION['admin_role'] ?? '') === 'admin');
+$is_admin_role = in_array(($_SESSION['admin_role'] ?? ''), ['admin', 'informaticien'], true);
 
 /* Filtre période — onglet Ventes (commandes vendues = livrée ou payée, selon date de commande) */
 $v_periode = isset($_GET['v_periode']) ? trim((string) $_GET['v_periode']) : 'jour';
@@ -328,6 +328,7 @@ $tab_caisse_active = $active_tab === 'caisse';
     <link rel="stylesheet" href="/css/compta-depenses.css<?php echo asset_version_query(); ?>">
     <link rel="stylesheet" href="/css/compta-bl.css<?php echo asset_version_query(); ?>">
     <link rel="stylesheet" href="/css/compta-caisse.css<?php echo asset_version_query(); ?>">
+    <link rel="stylesheet" href="/css/compta-bilan.css<?php echo asset_version_query(); ?>">
     <link rel="stylesheet" href="/css/admin-devis-compta-pages.css<?php echo asset_version_query(); ?>">
 </head>
 <body<?php echo !empty($open_depense_modal) ? ' class="compta-dep-modal-open"' : ''; ?>>
@@ -339,6 +340,9 @@ $tab_caisse_active = $active_tab === 'caisse';
             <p class="dashboard-eyebrow">Finance &amp; suivi</p>
             <h1><i class="fas fa-calculator" aria-hidden="true"></i> Comptabilité</h1>
             <p class="dashboard-subtitle">Centralisez les ventes boutique, les dépenses et le suivi des bons de livraison HT (B2B).</p>
+        </div>
+        <div class="compta-hub-bilan-cta">
+            <a href="bilan.php" class="compta-btn compta-btn--bilan"><i class="fas fa-scale-balanced" aria-hidden="true"></i> Bilan comptable &amp; export CSV</a>
         </div>
     </div>
 

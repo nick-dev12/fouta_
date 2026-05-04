@@ -15,8 +15,8 @@ $role = $_SESSION['admin_role'] ?? '';
 if ($role === 'utilisateur') {
     $role = 'gestion_stock';
 }
-if (!in_array($role, ['admin', 'rh'], true)) {
-    $_SESSION['error_message'] = 'Accès réservé aux administrateurs ou aux RH.';
+if (!in_array($role, ['admin', 'rh', 'informaticien'], true)) {
+    $_SESSION['error_message'] = 'Accès réservé aux administrateurs, aux RH ou aux informaticiens.';
     header('Location: ../dashboard.php');
     exit;
 }

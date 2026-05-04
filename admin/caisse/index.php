@@ -69,7 +69,7 @@ $ticket_data = ($ticket_id > 0) ? caisse_get_vente_by_id($ticket_id) : null;
 $ticket_introuvable = ($ticket_id > 0 && !$ticket_data);
 $ticket_dec = $ticket_data ? caisse_decomposer_ttc($ticket_data['montant_total'] ?? 0) : null;
 $ticket_statut = $ticket_data ? caisse_vente_statut($ticket_data) : null;
-$masquer_zone_paiement_commercial = (admin_current_role() === 'commercial');
+$masquer_zone_paiement_commercial = in_array(admin_current_role(), ['commercial', 'commercial_general'], true);
 $ticket_barcode_src = ($ticket_data && $ticket_dec) ? caisse_ticket_get_barcode_web_path($ticket_data) : '';
 $ticket_barcode_payload = ($ticket_data && $ticket_dec) ? caisse_ticket_valeur_code_barres($ticket_data) : '';
 

@@ -34,8 +34,14 @@ if (!function_exists('admin_route_relative_path')) {
     function admin_role_default_redirect_path($role) {
         $r = admin_normalize_role_for_route($role);
         switch ($r) {
-            case 'commercial':
+            case 'admin':
+                return 'dashboard.php';
+            case 'informaticien':
+                return 'dashboard.php';
+            case 'commercial_general':
                 return 'devis/index.php';
+            case 'commercial':
+                return 'commandes/index.php';
             case 'caissier':
                 return 'caisse/encaisser-ticket.php';
             case 'comptabilite':
@@ -56,20 +62,22 @@ if (!function_exists('admin_route_relative_path')) {
         $r = admin_normalize_role_for_route($role);
         $p = $relativePath;
 
-        if ($r === 'admin') {
+        if ($r === 'admin' || $r === 'informaticien') {
             if ($p === '' || $p === 'dashboard.php' || $p === 'login.php' || $p === 'logout.php') {
                 return true;
             }
             if ($p === 'profil.php' || $p === 'inscription-admin.php' || $p === 'parametres.php' || $p === 'test-notification.php') {
                 return true;
             }
-            $interdits = ['caisse/', 'zones-livraison/'];
-            foreach ($interdits as $prefix) {
-                if (strpos($p, $prefix) === 0) {
-                    return false;
+            if ($r === 'admin') {
+                $interdits = ['caisse/', 'zones-livraison/'];
+                foreach ($interdits as $prefix) {
+                    if (strpos($p, $prefix) === 0) {
+                        return false;
+                    }
                 }
             }
-            // Produits / catégories (catalogue) : accès autorisé pour supervision et édition
+            // Informaticien : accès complet y compris caisse et zones de livraison
             return true;
         }
 
@@ -87,9 +95,14 @@ if (!function_exists('admin_route_relative_path')) {
         };
 
         switch ($r) {
-            case 'commercial':
+            case 'commercial_general':
                 return $starts('devis/')
                     || $starts('commandes/')
+                    || $starts('caisse/')
+                    || $starts('commercial/');
+
+            case 'commercial':
+                return $starts('commandes/')
                     || $starts('caisse/')
                     || $starts('commercial/');
 

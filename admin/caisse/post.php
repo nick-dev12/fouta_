@@ -147,7 +147,7 @@ if ($action === 'qty_step') {
 }
 
 if ($action === 'preview_monnaie') {
-    if (admin_current_role() === 'commercial') {
+    if (in_array(admin_current_role(), ['commercial', 'commercial_general'], true)) {
         caisse_redirect_ok();
     }
     $mr_raw = isset($_POST['montant_recu']) ? trim((string) $_POST['montant_recu']) : '';

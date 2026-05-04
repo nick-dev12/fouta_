@@ -18,7 +18,8 @@ if (!function_exists('admin_current_role')) {
     }
 
     function admin_is_full_admin() {
-        return admin_current_role() === 'admin';
+        $r = admin_current_role();
+        return $r === 'admin' || $r === 'informaticien';
     }
 
     /**
@@ -30,22 +31,23 @@ if (!function_exists('admin_current_role')) {
 
     function admin_can_commercial() {
         $r = admin_current_role();
-        return $r === 'admin' || $r === 'commercial';
+        return in_array($r, ['admin', 'commercial', 'commercial_general', 'informaticien'], true);
     }
 
-    /** Devis, BL, conversion — même périmètre que l'espace commercial */
+    /** Devis, BL, conversion — admin, commercial général, informaticien (pas le rôle « Commercial » restreint). */
     function admin_can_devis_bl() {
-        return admin_can_commercial();
+        $r = admin_current_role();
+        return in_array($r, ['admin', 'commercial_general', 'informaticien'], true);
     }
 
     function admin_can_comptabilite() {
         $r = admin_current_role();
-        return $r === 'admin' || $r === 'comptabilite';
+        return $r === 'admin' || $r === 'comptabilite' || $r === 'informaticien';
     }
 
     function admin_can_rh() {
         $r = admin_current_role();
-        return $r === 'admin' || $r === 'rh';
+        return $r === 'admin' || $r === 'rh' || $r === 'informaticien';
     }
 
     /**
@@ -53,18 +55,19 @@ if (!function_exists('admin_current_role')) {
      */
     function admin_can_caisse() {
         $r = admin_current_role();
-        return in_array($r, ['commercial', 'caissier'], true);
+        return in_array($r, ['commercial', 'commercial_general', 'caissier', 'informaticien'], true);
     }
 
-    /** Bureau vendeur : scan, panier, génération de ticket (pas l’encaissement caissier seul) */
+    /** Bureau vendeur : scan, panier, génération de ticket (commercial / commercial général / informaticien). */
     function admin_can_caisse_vendeur() {
         $r = admin_current_role();
-        return $r === 'commercial';
+        return $r === 'commercial' || $r === 'commercial_general' || $r === 'informaticien';
     }
 
-    /** Encaissement (validation paiement) : caissier */
+    /** Encaissement caissier (zone encaissement, historique, validation paiement ticket). */
     function admin_can_encaisser_ticket() {
-        return admin_current_role() === 'caissier';
+        $r = admin_current_role();
+        return $r === 'caissier' || $r === 'informaticien';
     }
 
     /**
@@ -73,15 +76,15 @@ if (!function_exists('admin_current_role')) {
      */
     function admin_can_gestion_boutique() {
         $r = admin_current_role();
-        return $r === 'gestion_stock' || $r === 'admin';
+        return $r === 'gestion_stock' || $r === 'admin' || $r === 'informaticien';
     }
 
     /**
-     * Popup alertes stock : admin, gestion des stocks, commercial
+     * Popup alertes stock : admin, gestion des stocks, commercial, commercial général, informaticien
      */
     function admin_can_receive_stock_alerte_popup() {
         $r = admin_current_role();
-        return in_array($r, ['admin', 'gestion_stock', 'commercial'], true);
+        return in_array($r, ['admin', 'gestion_stock', 'commercial', 'commercial_general', 'informaticien'], true);
     }
 
     /**

@@ -807,3 +807,93 @@ function get_stats_bl_compta_mois($annee, $mois) {
         return $empty;
     }
 }
+
+/**
+ * Statistiques BL (date_bl) sur une plage de dates — validés / payés uniquement
+ *
+ * @return array{nb_bl:int,nb_clients:int,somme_bl_ht:float}
+ */
+function get_stats_bl_compta_periode($date_debut, $date_fin) {
+    global $db;
+    $empty = ['nb_bl' => 0, 'nb_clients' => 0, 'somme_bl_ht' => 0.0];
+    if (!bl_tables_available()) {
+        return $empty;
+    }
+    $d1 = trim((string) $date_debut);
+    $d2 = trim((string) $date_fin);
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $d1) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $d2)) {
+        return $empty;
+    }
+    if (strcmp($d1, $d2) > 0) {
+        $t = $d1;
+        $d1 = $d2;
+        $d2 = $t;
+    }
+    try {
+        $stmt = $db->prepare('
+            SELECT
+                COUNT(*) AS nb_bl,
+                COUNT(DISTINCT client_b2b_id) AS nb_clients,
+                COALESCE(SUM(total_ht), 0) AS somme_bl_ht
+            FROM bons_livraison
+            WHERE DATE(date_bl) BETWEEN :d1 AND :d2
+              AND statut IN (\'valide\', \'paye\')
+        ');
+        $stmt->execute(['d1' => $d1, 'd2' => $d2]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) {
+            return $empty;
+        }
+        return [
+            'nb_bl' => (int) ($row['nb_bl'] ?? 0),
+            'nb_clients' => (int) ($row['nb_clients'] ?? 0),
+            'somme_bl_ht' => (float) ($row['somme_bl_ht'] ?? 0),
+        ];
+    } catch (PDOException $e) {
+        error_log('[get_stats_bl_compta_periode] ' . $e->getMessage());
+        return $empty;
+    }
+}
+
+/**
+ * BL comptabilisés sur une plage (date_bl), détail pour export
+ *
+ * @return array<int, array<string, mixed>>
+ */
+function get_bl_compta_entre_dates($date_debut, $date_fin, $limit = 2000) {
+    global $db;
+    if (!bl_tables_available()) {
+        return [];
+    }
+    $d1 = trim((string) $date_debut);
+    $d2 = trim((string) $date_fin);
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $d1) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $d2)) {
+        return [];
+    }
+    if (strcmp($d1, $d2) > 0) {
+        $t = $d1;
+        $d1 = $d2;
+        $d2 = $t;
+    }
+    $limit = max(1, min(10000, (int) $limit));
+    try {
+        $stmt = $db->prepare('
+            SELECT b.*, c.raison_sociale
+            FROM bons_livraison b
+            INNER JOIN clients_b2b c ON c.id = b.client_b2b_id
+            WHERE DATE(b.date_bl) BETWEEN :d1 AND :d2
+              AND b.statut IN (\'valide\', \'paye\')
+            ORDER BY b.date_bl DESC, b.id DESC
+            LIMIT ' . $limit
+        );
+        $stmt->execute(['d1' => $d1, 'd2' => $d2]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        foreach ($rows as $i => $r) {
+            $rows[$i] = bl_row_apply_statut_bl($r);
+        }
+        return $rows;
+    } catch (PDOException $e) {
+        error_log('[get_bl_compta_entre_dates] ' . $e->getMessage());
+        return [];
+    }
+}

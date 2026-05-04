@@ -34,6 +34,7 @@ function admin_activite_types_pour_role($role) {
                 'clients_b2b',
             ];
         case 'commercial':
+        case 'commercial_general':
             return [
                 'commandes_creees',
                 'commandes_traitees',
@@ -44,6 +45,18 @@ function admin_activite_types_pour_role($role) {
                 'clients_b2b',
                 'caisse_tickets_bureau',
             ];
+        case 'informaticien':
+            return [
+                'commandes_creees',
+                'commandes_traitees',
+                'devis',
+                'factures_devis',
+                'bl',
+                'factures_mensuelles',
+                'clients_b2b',
+                'caisse_tickets_bureau',
+                'caisse_encaissements',
+            ];
         case 'comptabilite':
             return [
                 'devis',
@@ -52,7 +65,6 @@ function admin_activite_types_pour_role($role) {
                 'factures_mensuelles',
                 'commandes_traitees',
             ];
-        case 'caissier':
             return ['caisse_encaissements'];
         case 'gestion_stock':
             return [

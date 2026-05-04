@@ -205,9 +205,15 @@
   color: var(--bleu-fonce);
 }
 
-.page-employe-activite .ea-identity-card .role-badge.role-commercial {
+.page-employe-activite .ea-identity-card .role-badge.role-commercial,
+.page-employe-activite .ea-identity-card .role-badge.role-commercial_general {
   background: rgba(255, 193, 7, 0.18);
   color: #7a5400;
+}
+
+.page-employe-activite .ea-identity-card .role-badge.role-informaticien {
+  background: rgba(53, 100, 166, 0.22);
+  color: #0d2744;
 }
 
 .page-employe-activite .ea-identity-card .role-badge.role-comptabilite {

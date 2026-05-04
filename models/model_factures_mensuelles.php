@@ -465,3 +465,82 @@ function get_somme_et_nb_factures_mensuelles_mois($annee, $mois) {
         return ['somme_ht' => 0.0, 'nb_factures' => 0];
     }
 }
+
+/**
+ * Factures mensuelles dont le mois de facturation chevauche [date_debut, date_fin]
+ * (période = premier jour du mois (annee, mois) … dernier jour du même mois).
+ *
+ * @return array<int, array<string, mixed>>
+ */
+function get_factures_mensuelles_chevauchant_periode($date_debut, $date_fin, $limit = 500) {
+    global $db;
+    if (!factures_mensuelles_table_ok()) {
+        return [];
+    }
+    $d1 = trim((string) $date_debut);
+    $d2 = trim((string) $date_fin);
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $d1) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $d2)) {
+        return [];
+    }
+    if (strcmp($d1, $d2) > 0) {
+        $t = $d1;
+        $d1 = $d2;
+        $d2 = $t;
+    }
+    $limit = max(1, min(5000, (int) $limit));
+    try {
+        $stmt = $db->prepare('
+            SELECT f.*, c.raison_sociale
+            FROM factures_mensuelles f
+            INNER JOIN clients_b2b c ON c.id = f.client_b2b_id
+            WHERE LAST_DAY(STR_TO_DATE(CONCAT(f.annee, \'-\', LPAD(f.mois, 2, \'0\'), \'-01\'), \'%Y-%m-%d\')) >= :d1
+              AND STR_TO_DATE(CONCAT(f.annee, \'-\', LPAD(f.mois, 2, \'0\'), \'-01\'), \'%Y-%m-%d\') <= :d2
+            ORDER BY f.annee DESC, f.mois DESC, f.id DESC
+            LIMIT ' . $limit
+        );
+        $stmt->execute(['d1' => $d1, 'd2' => $d2]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (PDOException $e) {
+        error_log('[get_factures_mensuelles_chevauchant_periode] ' . $e->getMessage());
+        return [];
+    }
+}
+
+/**
+ * Somme HT et nombre de factures mensuelles sur une plage (même règle de chevauchement)
+ *
+ * @return array{somme_ht:float,nb_factures:int}
+ */
+function get_somme_et_nb_factures_mensuelles_periode($date_debut, $date_fin) {
+    global $db;
+    if (!factures_mensuelles_table_ok()) {
+        return ['somme_ht' => 0.0, 'nb_factures' => 0];
+    }
+    $d1 = trim((string) $date_debut);
+    $d2 = trim((string) $date_fin);
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $d1) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $d2)) {
+        return ['somme_ht' => 0.0, 'nb_factures' => 0];
+    }
+    if (strcmp($d1, $d2) > 0) {
+        $t = $d1;
+        $d1 = $d2;
+        $d2 = $t;
+    }
+    try {
+        $stmt = $db->prepare('
+            SELECT COALESCE(SUM(total_ht), 0) AS s, COUNT(*) AS n
+            FROM factures_mensuelles f
+            WHERE LAST_DAY(STR_TO_DATE(CONCAT(f.annee, \'-\', LPAD(f.mois, 2, \'0\'), \'-01\'), \'%Y-%m-%d\')) >= :d1
+              AND STR_TO_DATE(CONCAT(f.annee, \'-\', LPAD(f.mois, 2, \'0\'), \'-01\'), \'%Y-%m-%d\') <= :d2
+        ');
+        $stmt->execute(['d1' => $d1, 'd2' => $d2]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return [
+            'somme_ht' => (float) ($row['s'] ?? 0),
+            'nb_factures' => (int) ($row['n'] ?? 0),
+        ];
+    } catch (PDOException $e) {
+        error_log('[get_somme_et_nb_factures_mensuelles_periode] ' . $e->getMessage());
+        return ['somme_ht' => 0.0, 'nb_factures' => 0];
+    }
+}
