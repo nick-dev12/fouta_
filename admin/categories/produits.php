@@ -14,6 +14,12 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
 
 require_once __DIR__ . '/../includes/require_access.php';
 
+$success_message = '';
+if (!empty($_SESSION['success_message'])) {
+    $success_message = (string) $_SESSION['success_message'];
+    unset($_SESSION['success_message']);
+}
+
 // Récupérer l'ID de la catégorie
 $categorie_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
 
@@ -42,7 +48,7 @@ $produits = get_produits_by_categorie($categorie_id);
     <?php include __DIR__ . '/../../includes/favicon.php'; ?>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Produits de <?php echo htmlspecialchars($categorie['nom']); ?> - Administration</title>
+    <title>Produits de <?php echo htmlspecialchars((string) ($categorie['nom'] ?? ''), ENT_QUOTES, 'UTF-8'); ?> - Administration</title>
     <?php require_once __DIR__ . '/../../includes/asset_version.php'; ?>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../../css/admin-dashboard.css<?php echo asset_version_query(); ?>">
@@ -57,7 +63,7 @@ $produits = get_produits_by_categorie($categorie_id);
                 <p class="dashboard-eyebrow">Catégorie</p>
                 <h1>
                     <i class="fas fa-box" aria-hidden="true"></i>
-                    <?php echo htmlspecialchars($categorie['nom']); ?>
+                    <?php echo htmlspecialchars((string) ($categorie['nom'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>
                 </h1>
                 <p class="dashboard-subtitle">
                     <?php echo count($produits); ?> produit<?php echo count($produits) > 1 ? 's' : ''; ?>
@@ -81,75 +87,97 @@ $produits = get_produits_by_categorie($categorie_id);
                         <i class="fas fa-list" aria-hidden="true"></i>
                         Produits
                     </h2>
-                    <p class="section-title-hint">Catalogue filtré sur « <?php echo htmlspecialchars($categorie['nom']); ?> »</p>
+                    <p class="section-title-hint">Catalogue filtré sur «
+                        <?php echo htmlspecialchars((string) ($categorie['nom'] ?? ''), ENT_QUOTES, 'UTF-8'); ?> »</p>
                 </div>
             </div>
 
             <?php if (empty($produits)): ?>
-            <div class="empty-state page-categorie-produits-empty">
-                <i class="fas fa-box-open" aria-hidden="true"></i>
-                <p>Aucun produit dans cette catégorie pour le moment.</p>
-                <a href="../produits/ajouter.php?categorie_id=<?php echo (int) $categorie_id; ?>" class="btn-primary">
-                    <i class="fas fa-plus"></i> Ajouter un produit à cette catégorie
-                </a>
-            </div>
+                <div class="empty-state page-categorie-produits-empty">
+                    <i class="fas fa-box-open" aria-hidden="true"></i>
+                    <p>Aucun produit dans cette catégorie pour le moment.</p>
+                    <a href="../produits/ajouter.php?categorie_id=<?php echo (int) $categorie_id; ?>" class="btn-primary">
+                        <i class="fas fa-plus"></i> Ajouter un produit à cette catégorie
+                    </a>
+                </div>
             <?php else: ?>
-            <div class="produits-grid">
-                <?php foreach ($produits as $produit): ?>
-                    <?php
-                    $statut_class = 'statut-actif';
-                    if ($produit['statut'] == 'inactif') {
-                        $statut_class = 'statut-inactif';
-                    } elseif ($produit['statut'] == 'rupture_stock') {
-                        $statut_class = 'statut-rupture';
-                    }
-                    $statut_label = ucfirst(str_replace('_', ' ', $produit['statut']));
-                    ?>
-                    <div class="produit-card produit-card--dashboard">
-                        <span class="statut-badge <?php echo $statut_class; ?>"><?php echo $statut_label; ?></span>
-                        <div class="produit-card-media">
-                            <img src="../../upload/<?php echo htmlspecialchars($produit['image_principale']); ?>"
-                                alt="<?php echo htmlspecialchars($produit['nom']); ?>"
-                                class="produit-card-image"
-                                onerror="this.src='../../image/produit1.jpg'">
-                        </div>
-                        <div class="produit-card-body">
-                            <h3 class="produit-card-nom"><?php echo htmlspecialchars($produit['nom']); ?></h3>
-                            <p class="produit-card-categorie">
-                                <i class="fas fa-tag" aria-hidden="true"></i>
-                                <?php echo htmlspecialchars($categorie['nom']); ?>
-                            </p>
-                            <p class="produit-card-prix">
-                                <span class="prix-montant"><?php echo number_format($produit['prix'], 0, ',', ' '); ?></span>
-                                <span class="prix-unite">FCFA</span>
-                                <?php if ($produit['prix_promotion']): ?>
-                                <span class="prix-promo-inline">Promo <?php echo number_format($produit['prix_promotion'], 0, ',', ' '); ?> FCFA</span>
+                <div class="produits-grid">
+                    <?php foreach ($produits as $produit): ?>
+                        <?php
+                        $statut_class = 'statut-actif';
+                        if ($produit['statut'] == 'inactif') {
+                            $statut_class = 'statut-inactif';
+                        } elseif ($produit['statut'] == 'rupture_stock') {
+                            $statut_class = 'statut-rupture';
+                        }
+                        $statut_label = ucfirst(str_replace('_', ' ', (string) ($produit['statut'] ?? '')));
+                        ?>
+                        <div class="produit-card produit-card--dashboard">
+                            <span class="statut-badge <?php echo $statut_class; ?>"><?php echo htmlspecialchars((string) $statut_label, ENT_QUOTES, 'UTF-8'); ?></span>
+                            <div class="produit-card-media">
+                                <?php
+                                $img_principale = '';
+                                if (!empty($produit['image_principale'])) {
+                                    $img_principale = trim((string) $produit['image_principale']);
+                                }
+                                if ($img_principale !== ''):
+                                ?>
+                                <img src="../../upload/<?php echo htmlspecialchars($img_principale, ENT_QUOTES, 'UTF-8'); ?>"
+                                    alt="<?php echo htmlspecialchars((string) ($produit['nom'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                                    class="produit-card-image"
+                                    onerror="this.onerror=null;var w=document.createElement('div');w.className='produit-card-media-placeholder';w.setAttribute('role','img');w.setAttribute('aria-label','Sans image');w.innerHTML='<i class=\'fas fa-truck\' aria-hidden=\'true\'></i>';this.replaceWith(w);">
+                                <?php else: ?>
+                                <div class="produit-card-media-placeholder" role="img" aria-label="Pas d'image">
+                                    <i class="fas fa-truck" aria-hidden="true"></i>
+                                </div>
                                 <?php endif; ?>
-                            </p>
-                            <p class="produit-card-stock">
-                                <i class="fas fa-cubes" aria-hidden="true"></i>
-                                Stock <span class="stock-value"><?php echo (int) $produit['stock']; ?></span>
-                            </p>
-                            <div class="produit-card-actions produit-card-actions--triple">
-                                <a href="../produits/ajuster-stock.php?id=<?php echo (int) $produit['id']; ?>"
-                                    class="btn-card btn-stock" title="Ajuster le stock">
-                                    <i class="fas fa-boxes-stacked"></i> Stock
-                                </a>
-                                <a href="../produits/modifier.php?id=<?php echo (int) $produit['id']; ?>" class="btn-card btn-edit">
-                                    <i class="fas fa-edit"></i> Modifier
-                                </a>
-                                <a href="../produits/supprimer.php?id=<?php echo (int) $produit['id']; ?>"
-                                    class="btn-card btn-delete"
-                                    onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce produit ?');">
-                                    <i class="fas fa-trash"></i> Supprimer
-                                </a>
+                            </div>
+                            <div class="produit-card-body">
+                                <h3 class="produit-card-nom"><?php echo htmlspecialchars((string) ($produit['nom'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></h3>
+                                <p class="produit-card-categorie">
+                                    <i class="fas fa-tag" aria-hidden="true"></i>
+                                    <?php echo htmlspecialchars((string) $categorie['nom'], ENT_QUOTES, 'UTF-8'); ?>
+                                </p>
+                                <p class="produit-card-prix">
+                                    <span
+                                        class="prix-montant"><?php echo number_format((float) ($produit['prix'] ?? 0), 0, ',', ' '); ?></span>
+                                    <span class="prix-unite">FCFA</span>
+                                    <?php if (!empty($produit['prix_promotion'])): ?>
+                                        <span class="prix-promo-inline">Promo
+                                            <?php echo number_format((float) $produit['prix_promotion'], 0, ',', ' '); ?> FCFA</span>
+                                    <?php endif; ?>
+                                </p>
+                                <p class="produit-card-stock">
+                                    <i class="fas fa-cubes" aria-hidden="true"></i>
+                                    Stock <span class="stock-value"><?php echo (int) $produit['stock']; ?></span>
+                                </p>
+                                <div class="produit-card-actions produit-card-actions--triple">
+                                    <a href="../produits/ajuster-stock.php?id=<?php echo (int) $produit['id']; ?>"
+                                        class="btn-card btn-stock" title="Ajuster le stock">
+                                        <i class="fas fa-boxes-stacked"></i> Stock
+                                    </a>
+                                    <a href="../produits/modifier.php?id=<?php echo (int) $produit['id']; ?>"
+                                        class="btn-card btn-edit">
+                                        <i class="fas fa-edit"></i> Modifier
+                                    </a>
+                                    <a href="../produits/supprimer.php?id=<?php echo (int) $produit['id']; ?>"
+                                        class="btn-card btn-delete"
+                                        onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce produit ?');">
+                                        <i class="fas fa-trash"></i> Supprimer
+                                    </a>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                <?php endforeach; ?>
-            </div>
+                    <?php endforeach; ?>
+                </div>
             <?php endif; ?>
         </section>
     </div>
 
+    <?php
+    if ($success_message !== '') {
+        $flash_success_message = $success_message;
+        include __DIR__ . '/../includes/flash_success_popup.php';
+    }
+    ?>
     <?php include '../includes/footer.php'; ?>

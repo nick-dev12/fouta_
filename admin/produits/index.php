@@ -164,26 +164,40 @@ if (!empty($produits)) {
                         } elseif ($produit['statut'] == 'rupture_stock') {
                             $statut_class = 'statut-rupture';
                         }
-                        $statut_label = ucfirst(str_replace('_', ' ', $produit['statut']));
+                        $statut_label = ucfirst(str_replace('_', ' ', (string) ($produit['statut'] ?? '')));
                         ?>
-                        <span class="statut-badge produit-card__statut <?php echo $statut_class; ?>"><?php echo htmlspecialchars($statut_label); ?></span>
+                        <span class="statut-badge produit-card__statut <?php echo $statut_class; ?>"><?php echo htmlspecialchars($statut_label, ENT_QUOTES, 'UTF-8'); ?></span>
                         <div class="produit-card-media">
-                            <img src="/upload/<?php echo htmlspecialchars($produit['image_principale']); ?>"
-                                alt="<?php echo htmlspecialchars($produit['nom']); ?>" class="produit-card-image"
-                                onerror="this.src='/image/produit1.jpg'" width="300" height="300" loading="lazy" decoding="async">
+                            <?php
+                            $img_principale = '';
+                            if (!empty($produit['image_principale'])) {
+                                $img_principale = trim((string) $produit['image_principale']);
+                            }
+                            if ($img_principale !== ''):
+                            ?>
+                            <img src="/upload/<?php echo htmlspecialchars($img_principale, ENT_QUOTES, 'UTF-8'); ?>"
+                                alt="<?php echo htmlspecialchars((string) ($produit['nom'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                                class="produit-card-image"
+                                onerror="this.onerror=null;var w=document.createElement('div');w.className='produit-card-media-placeholder';w.setAttribute('role','img');w.setAttribute('aria-label','Sans image');w.innerHTML='<i class=\'fas fa-truck\' aria-hidden=\'true\'></i>';this.replaceWith(w);"
+                                width="300" height="300" loading="lazy" decoding="async">
+                            <?php else: ?>
+                            <div class="produit-card-media-placeholder" role="img" aria-label="Pas d'image">
+                                <i class="fas fa-truck" aria-hidden="true"></i>
+                            </div>
+                            <?php endif; ?>
                         </div>
                         <div class="produit-card-body">
-                            <h3 class="produit-card-nom"><?php echo htmlspecialchars($produit['nom']); ?></h3>
+                            <h3 class="produit-card-nom"><?php echo htmlspecialchars((string) ($produit['nom'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></h3>
                             <p class="produit-card-categorie">
                                 <i class="fas fa-tag" aria-hidden="true"></i>
-                                <?php echo htmlspecialchars($produit['categorie_nom'] ?? 'Sans catégorie'); ?>
+                                <?php echo htmlspecialchars((string) ($produit['categorie_nom'] ?? 'Sans catégorie'), ENT_QUOTES, 'UTF-8'); ?>
                             </p>
                             <p class="produit-card-prix">
-                                <?php echo number_format($produit['prix'], 0, ',', ' '); ?>
+                                <?php echo number_format((float) ($produit['prix'] ?? 0), 0, ',', ' '); ?>
                                 <span class="prix-unite">FCFA</span>
-                                <?php if ($produit['prix_promotion']): ?>
+                                <?php if (!empty($produit['prix_promotion'])): ?>
                                     <span class="prix-promo">
-                                        (Promo: <?php echo number_format($produit['prix_promotion'], 0, ',', ' '); ?> FCFA)
+                                        (Promo: <?php echo number_format((float) $produit['prix_promotion'], 0, ',', ' '); ?> FCFA)
                                     </span>
                                 <?php endif; ?>
                             </p>

@@ -133,14 +133,16 @@ $seo_canonical = $base . '/nouveautes.php';
     </div>
 
     <?php if (isset($_GET['added']) && $_GET['added'] == '1'): ?>
-    <div style="max-width: 600px; margin: 20px auto; padding: 15px 25px; background: var(--success-bg); border-left: 4px solid var(--bleu); border-radius: 8px; color: var(--titres);">
-        <i class="fas fa-check-circle"></i> Produit ajouté au panier avec succès.
-    </div>
+        <div
+            style="max-width: 600px; margin: 20px auto; padding: 15px 25px; background: var(--success-bg); border-left: 4px solid var(--bleu); border-radius: 8px; color: var(--titres);">
+            <i class="fas fa-check-circle"></i> Produit ajouté au panier avec succès.
+        </div>
     <?php endif; ?>
     <?php if (isset($_GET['error'])): ?>
-    <div style="max-width: 600px; margin: 20px auto; padding: 15px 25px; background: var(--error-bg); border-left: 4px solid var(--error-border); border-radius: 8px; color: var(--titres);">
-        <i class="fas fa-exclamation-circle"></i> <?php echo htmlspecialchars($_GET['error']); ?>
-    </div>
+        <div
+            style="max-width: 600px; margin: 20px auto; padding: 15px 25px; background: var(--error-bg); border-left: 4px solid var(--error-border); border-radius: 8px; color: var(--titres);">
+            <i class="fas fa-exclamation-circle"></i> <?php echo htmlspecialchars($_GET['error']); ?>
+        </div>
     <?php endif; ?>
     <div class="produits-container-wrapper">
         <section class="section00">
@@ -183,7 +185,8 @@ $seo_canonical = $base . '/nouveautes.php';
                                             <?php endif; ?>
                                         </p>
                                         <?php if (!empty($produit['stock'])): ?>
-                                            <p class="produit-card-stock-info"><strong>Stock:</strong> <?php echo $produit['stock']; ?>
+                                            <p class="produit-card-stock-info"><strong>Stock:</strong>
+                                                <?php echo $produit['stock']; ?>
                                             </p>
                                         <?php endif; ?>
                                     </div>
@@ -191,7 +194,8 @@ $seo_canonical = $base . '/nouveautes.php';
                                 <form method="POST" action="/add-to-panier.php" class="add-to-cart-form">
                                     <input type="hidden" name="produit_id" value="<?php echo $produit['id']; ?>">
                                     <input type="hidden" name="quantite" value="1">
-                                    <input type="hidden" name="return_url" value="<?php echo htmlspecialchars($_SERVER['REQUEST_URI'] ?? '/nouveautes.php'); ?>">
+                                    <input type="hidden" name="return_url"
+                                        value="<?php echo htmlspecialchars($_SERVER['REQUEST_URI'] ?? '/nouveautes.php'); ?>">
                                     <button type="submit" class="btn-add-cart">
                                         <i class="fa-solid fa-cart-shopping"></i> Ajouter au panier
                                     </button>

@@ -87,20 +87,22 @@ $produits_visites = get_produits_visites_by_user($_SESSION['user_id'], 50);
 
     <div class="produits-visites-page">
         <div class="produits-visites-header">
-             <h1><i class="fas fa-eye"></i> Produits Visités</h1>
+            <h1><i class="fas fa-eye"></i> Produits Visités</h1>
             <p>Historique de vos consultations (<?php echo count($produits_visites); ?>
                 produit<?php echo count($produits_visites) > 1 ? 's' : ''; ?>)</p>
         </div>
 
         <?php if (isset($_GET['added']) && $_GET['added'] == '1'): ?>
-        <div style="max-width: 600px; margin: 20px auto; padding: 15px 25px; background: rgba(32, 197, 199, 0.15); border-left: 4px solid var(--turquoise); border-radius: 8px; color: var(--titres);">
-            <i class="fas fa-check-circle"></i> Produit ajouté au panier avec succès.
-        </div>
+            <div
+                style="max-width: 600px; margin: 20px auto; padding: 15px 25px; background: rgba(32, 197, 199, 0.15); border-left: 4px solid var(--turquoise); border-radius: 8px; color: var(--titres);">
+                <i class="fas fa-check-circle"></i> Produit ajouté au panier avec succès.
+            </div>
         <?php endif; ?>
         <?php if (isset($_GET['error'])): ?>
-        <div style="max-width: 600px; margin: 20px auto; padding: 15px 25px; background: rgba(229, 72, 138, 0.15); border-left: 4px solid var(--couleur-dominante); border-radius: 8px; color: var(--titres);">
-            <i class="fas fa-exclamation-circle"></i> <?php echo htmlspecialchars($_GET['error']); ?>
-        </div>
+            <div
+                style="max-width: 600px; margin: 20px auto; padding: 15px 25px; background: rgba(229, 72, 138, 0.15); border-left: 4px solid var(--couleur-dominante); border-radius: 8px; color: var(--titres);">
+                <i class="fas fa-exclamation-circle"></i> <?php echo htmlspecialchars($_GET['error']); ?>
+            </div>
         <?php endif; ?>
         <section class="content-section produits-visites">
             <?php if (empty($produits_visites)): ?>
@@ -163,7 +165,8 @@ $produits_visites = get_produits_visites_by_user($_SESSION['user_id'], 50);
                                 <form method="POST" action="/add-to-panier.php" class="add-to-cart-form">
                                     <input type="hidden" name="produit_id" value="<?php echo $produit['id']; ?>">
                                     <input type="hidden" name="quantite" value="1">
-                                    <input type="hidden" name="return_url" value="<?php echo htmlspecialchars($_SERVER['REQUEST_URI'] ?? '/user/produits-visites.php'); ?>">
+                                    <input type="hidden" name="return_url"
+                                        value="<?php echo htmlspecialchars($_SERVER['REQUEST_URI'] ?? '/user/produits-visites.php'); ?>">
                                     <button type="submit" class="btn-add-cart">
                                         <i class="fa-solid fa-cart-shopping"></i> Ajouter au panier
                                     </button>

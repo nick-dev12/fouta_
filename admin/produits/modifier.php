@@ -130,9 +130,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
             </div>
 
             <div class="form-group">
-                <label for="description">Description *</label>
+                <label for="description">Description</label>
                 <textarea id="description" name="description"
-                    required><?php echo htmlspecialchars($produit['description']); ?></textarea>
+                    placeholder="Facultatif"><?php echo htmlspecialchars((string) ($produit['description'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
+                <small class="form-hint">Facultatif.</small>
             </div>
 
             <div class="form-group">
@@ -167,9 +168,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
                 <div class="pm-card__body">
             <div class="form-row">
                 <div class="form-group">
-                    <label for="prix">Prix (FCFA) *</label>
-                    <input type="number" id="prix" name="prix" step="0.01" min="0" required
-                        value="<?php echo $produit['prix']; ?>">
+                    <label for="prix">Prix (FCFA)</label>
+                    <input type="number" id="prix" name="prix" step="0.01" min="0"
+                        value="<?php echo htmlspecialchars((string) $produit['prix'], ENT_QUOTES, 'UTF-8'); ?>">
+                    <small class="form-hint">Facultatif — vide = 0&nbsp;FCFA.</small>
                 </div>
 
                 <div class="form-group">
@@ -495,7 +497,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
                 <input type="file" id="images_supplementaires" name="images_supplementaires[]" accept="image/*" multiple
                     class="pm-file-hidden" onchange="previewMultipleImages(this, 'preview-supplementaires')">
                 <div id="preview-supplementaires" class="image-preview-grid"></div>
-                <small class="form-hint">Formats : JPG, PNG, GIF, WEBP. Au moins une image doit rester.</small>
+                <small class="form-hint">Formats : JPG, PNG, GIF, WEBP. Vous pouvez retirer toutes les images si besoin.</small>
             </div>
                 </div>
             </section>
@@ -552,17 +554,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
         }
         if (inputSupp) inputSupp.addEventListener('change', function() {
             previewMultipleImages(this, 'preview-supplementaires');
-        });
-        document.getElementById('form-produit-modifier').addEventListener('submit', function(e) {
-            var kept = document.querySelectorAll('input[name="images_to_keep[]"]').length;
-            var newFiles = inputSupp && inputSupp.files ? inputSupp.files.length : 0;
-            if (kept === 0 && newFiles === 0) {
-                e.preventDefault();
-                alert(
-                    'Au moins une image est obligatoire. Veuillez conserver ou ajouter au moins une image.'
-                );
-                return false;
-            }
         });
     })();
     (function() {

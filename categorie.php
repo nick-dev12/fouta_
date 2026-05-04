@@ -43,7 +43,7 @@ $base = get_site_base_url();
 $seo_title = $categorie_nom . ' - FOUTA POIDS LOURDS';
 $desc_cat = !empty($categorie['description']) ? strip_tags($categorie['description']) : 'Pièces de véhicules ' . $categorie_nom . ' : camions, bus, tracteurs, remorques. FOUTA POIDS LOURDS - Pièces détachées poids lourds.';
 $seo_description = mb_substr($desc_cat, 0, 160);
-$seo_canonical = $base . '/categorie.php?id=' . (int)$categorie_id;
+$seo_canonical = $base . '/categorie.php?id=' . (int) $categorie_id;
 ?>
 
 <!DOCTYPE html>
@@ -79,14 +79,16 @@ $seo_canonical = $base . '/categorie.php?id=' . (int)$categorie_id;
     <?php include('nav_bar.php') ?>
 
     <?php if (isset($_GET['added']) && $_GET['added'] == '1'): ?>
-    <div style="max-width: 600px; margin: 20px auto; padding: 15px 25px; background: var(--success-bg); border-left: 4px solid var(--bleu); border-radius: 8px; color: var(--titres);">
-        <i class="fas fa-check-circle"></i> Produit ajouté au panier avec succès.
-    </div>
+        <div
+            style="max-width: 600px; margin: 20px auto; padding: 15px 25px; background: var(--success-bg); border-left: 4px solid var(--bleu); border-radius: 8px; color: var(--titres);">
+            <i class="fas fa-check-circle"></i> Produit ajouté au panier avec succès.
+        </div>
     <?php endif; ?>
     <?php if (isset($_GET['error'])): ?>
-    <div style="max-width: 600px; margin: 20px auto; padding: 15px 25px; background: var(--error-bg); border-left: 4px solid var(--error-border); border-radius: 8px; color: var(--titres);">
-        <i class="fas fa-exclamation-circle"></i> <?php echo htmlspecialchars($_GET['error']); ?>
-    </div>
+        <div
+            style="max-width: 600px; margin: 20px auto; padding: 15px 25px; background: var(--error-bg); border-left: 4px solid var(--error-border); border-radius: 8px; color: var(--titres);">
+            <i class="fas fa-exclamation-circle"></i> <?php echo htmlspecialchars($_GET['error']); ?>
+        </div>
     <?php endif; ?>
     <section class="section00">
         <section class="produit_vedetes">
@@ -148,7 +150,8 @@ $seo_canonical = $base . '/categorie.php?id=' . (int)$categorie_id;
                             <form method="POST" action="/add-to-panier.php" class="add-to-cart-form">
                                 <input type="hidden" name="produit_id" value="<?php echo $produit['id']; ?>">
                                 <input type="hidden" name="quantite" value="1">
-                                <input type="hidden" name="return_url" value="<?php echo htmlspecialchars($_SERVER['REQUEST_URI'] ?? '/categorie.php'); ?>">
+                                <input type="hidden" name="return_url"
+                                    value="<?php echo htmlspecialchars($_SERVER['REQUEST_URI'] ?? '/categorie.php'); ?>">
                                 <button type="submit" class="btn-add-cart">
                                     <i class="fa-solid fa-cart-shopping"></i> Ajouter au panier
                                 </button>

@@ -172,8 +172,11 @@ function process_add_produit() {
     $nom = isset($_POST['nom']) ? trim($_POST['nom']) : '';
     $description = isset($_POST['description']) ? trim($_POST['description']) : '';
     $fournisseur_res = produits_resolve_fournisseur_from_post($_POST);
-    $prix = isset($_POST['prix']) ? trim($_POST['prix']) : '';
-    $prix_promotion = isset($_POST['prix_promotion']) && !empty($_POST['prix_promotion']) ? trim($_POST['prix_promotion']) : null;
+    $prix_raw = isset($_POST['prix']) ? trim((string) $_POST['prix']) : '';
+    $prix_promotion = null;
+    if (isset($_POST['prix_promotion']) && trim((string) ($_POST['prix_promotion'] ?? '')) !== '') {
+        $prix_promotion = trim((string) $_POST['prix_promotion']);
+    }
     $stock = isset($_POST['stock']) ? intval($_POST['stock']) : 0;
     $categorie_id = isset($_POST['categorie_id']) ? intval($_POST['categorie_id']) : 0;
     $statut = 'actif';
@@ -226,18 +229,28 @@ function process_add_produit() {
         $errors[] = 'Le nom du produit est obligatoire.';
     }
     
-    if (empty($description)) {
-        $errors[] = 'La description est obligatoire.';
+    if ($prix_raw === '') {
+        $prix = 0.0;
+    } elseif (!is_numeric($prix_raw)) {
+        $errors[] = 'Le prix doit être un nombre valide (0 ou plus).';
+    } elseif ((float) $prix_raw < 0) {
+        $errors[] = 'Le prix ne peut pas être négatif.';
+    } else {
+        $prix = (float) $prix_raw;
     }
-    
-    if (empty($prix) || !is_numeric($prix) || $prix <= 0) {
-        $errors[] = 'Le prix doit être un nombre positif.';
+
+    if ($prix_promotion !== null) {
+        if (!is_numeric($prix_promotion)) {
+            $errors[] = 'Le prix promotionnel doit être un nombre valide.';
+        } elseif ((float) $prix_promotion <= 0) {
+            $errors[] = 'Le prix promotionnel doit être strictement positif.';
+        } elseif ((float) $prix <= 0) {
+            $errors[] = 'Un prix promotionnel nécessite un prix normal strictement positif.';
+        } elseif ((float) $prix_promotion >= (float) $prix) {
+            $errors[] = 'Le prix promotionnel doit être inférieur au prix normal.';
+        }
     }
-    
-    if ($prix_promotion !== null && (!is_numeric($prix_promotion) || $prix_promotion <= 0 || $prix_promotion >= $prix)) {
-        $errors[] = 'Le prix promotionnel doit être inférieur au prix normal.';
-    }
-    
+
     if ($stock < 0) {
         $errors[] = 'Le stock ne peut pas être négatif.';
     }
@@ -269,9 +282,6 @@ function process_add_produit() {
             $image_principale = $uploaded[0];
             $images_supp = array_slice($uploaded, 1);
         }
-    }
-    if (!$image_principale) {
-        $errors[] = 'Au moins une image est obligatoire.';
     }
     
     // Construire le tableau images (principale + supplémentaires) en JSON
@@ -389,8 +399,11 @@ function process_update_produit($produit_id) {
     $nom = isset($_POST['nom']) ? trim($_POST['nom']) : '';
     $description = isset($_POST['description']) ? trim($_POST['description']) : '';
     $fournisseur_res = produits_resolve_fournisseur_from_post($_POST);
-    $prix = isset($_POST['prix']) ? trim($_POST['prix']) : '';
-    $prix_promotion = isset($_POST['prix_promotion']) && !empty($_POST['prix_promotion']) ? trim($_POST['prix_promotion']) : null;
+    $prix_raw = isset($_POST['prix']) ? trim((string) $_POST['prix']) : '';
+    $prix_promotion = null;
+    if (isset($_POST['prix_promotion']) && trim((string) ($_POST['prix_promotion'] ?? '')) !== '') {
+        $prix_promotion = trim((string) $_POST['prix_promotion']);
+    }
     $stock = isset($_POST['stock']) ? intval($_POST['stock']) : 0;
     $categorie_id = isset($_POST['categorie_id']) ? intval($_POST['categorie_id']) : 0;
     $unite = isset($_POST['unite']) ? trim($_POST['unite']) : 'unité';
@@ -443,24 +456,38 @@ function process_update_produit($produit_id) {
         $errors[] = 'Le nom du produit est obligatoire.';
     }
     
-    if (empty($description)) {
-        $errors[] = 'La description est obligatoire.';
+    if ($prix_raw === '') {
+        $prix = 0.0;
+    } elseif (!is_numeric($prix_raw)) {
+        $errors[] = 'Le prix doit être un nombre valide (0 ou plus).';
+    } elseif ((float) $prix_raw < 0) {
+        $errors[] = 'Le prix ne peut pas être négatif.';
+    } else {
+        $prix = (float) $prix_raw;
     }
-    
-    if (empty($prix) || !is_numeric($prix) || $prix <= 0) {
-        $errors[] = 'Le prix doit être un nombre positif.';
+
+    if ($prix_promotion !== null) {
+        if (!is_numeric($prix_promotion)) {
+            $errors[] = 'Le prix promotionnel doit être un nombre valide.';
+        } elseif ((float) $prix_promotion <= 0) {
+            $errors[] = 'Le prix promotionnel doit être strictement positif.';
+        } elseif ((float) $prix <= 0) {
+            $errors[] = 'Un prix promotionnel nécessite un prix normal strictement positif.';
+        } elseif ((float) $prix_promotion >= (float) $prix) {
+            $errors[] = 'Le prix promotionnel doit être inférieur au prix normal.';
+        }
     }
-    
-    if ($prix_promotion !== null && (!is_numeric($prix_promotion) || $prix_promotion <= 0 || $prix_promotion >= $prix)) {
-        $errors[] = 'Le prix promotionnel doit être inférieur au prix normal.';
-    }
-    
+
     if ($stock < 0) {
         $errors[] = 'Le stock ne peut pas être négatif.';
     }
     
     if ($categorie_id <= 0) {
         $errors[] = 'Veuillez sélectionner une catégorie.';
+    }
+
+    if ($categorie_id > 0 && !get_categorie_by_id($categorie_id)) {
+        $errors[] = 'La catégorie sélectionnée n\'existe pas.';
     }
 
     $fid_sent_upd = isset($_POST['fournisseur_id']) ? trim((string) $_POST['fournisseur_id']) : '';
@@ -499,12 +526,7 @@ function process_update_produit($produit_id) {
     $final_images = array_merge($images_to_keep, $images_supp);
     $final_images = array_values(array_unique($final_images));
     
-    // Validation : au moins une image obligatoire
-    if (empty($final_images)) {
-        $errors[] = 'Au moins une image est obligatoire. Veuillez conserver ou ajouter au moins une image.';
-    }
-    
-    $image_principale = !empty($final_images) ? $final_images[0] : $produit['image_principale'];
+    $image_principale = !empty($final_images) ? $final_images[0] : null;
     $images_json = !empty($final_images) ? json_encode($final_images) : null;
     $removed_images = array_diff($all_images, $images_to_keep);
     

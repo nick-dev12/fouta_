@@ -43,15 +43,22 @@ if (file_exists(__DIR__ . '/includes/asset_version.php')) {
 ?>
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
     <?php include __DIR__ . '/includes/favicon.php'; ?>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stock - <?php echo htmlspecialchars($produit['nom']); ?> - FOUTA POIDS LOURDS</title>
-    <link rel="stylesheet" href="/css/variables.css<?php echo function_exists('asset_version_query') ? asset_version_query() : ''; ?>">
+    <link rel="stylesheet"
+        href="/css/variables.css<?php echo function_exists('asset_version_query') ? asset_version_query() : ''; ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
         body {
             font-family: var(--font-corps);
             background: transparent;
@@ -59,18 +66,21 @@ if (file_exists(__DIR__ . '/includes/asset_version.php')) {
             padding: 24px;
             color: var(--texte-fonce);
         }
+
         .container {
             max-width: 480px;
             margin: 0 auto;
         }
+
         .card {
             background: #fff;
             border-radius: 16px;
             padding: 24px;
             margin-bottom: 16px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
             border: 1px solid #e5e7eb;
         }
+
         .card-header {
             display: flex;
             align-items: center;
@@ -79,6 +89,7 @@ if (file_exists(__DIR__ . '/includes/asset_version.php')) {
             padding-bottom: 20px;
             border-bottom: 2px solid #3564a6;
         }
+
         .card-header img {
             width: 72px;
             height: 72px;
@@ -86,16 +97,19 @@ if (file_exists(__DIR__ . '/includes/asset_version.php')) {
             border-radius: 12px;
             border: 2px solid #e5e7eb;
         }
+
         .card-header h1 {
             font-size: 18px;
             color: #1f2937;
             flex: 1;
         }
+
         .stock-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
             gap: 12px;
         }
+
         .stock-item {
             background: #f8fafc;
             border-radius: 12px;
@@ -103,9 +117,11 @@ if (file_exists(__DIR__ . '/includes/asset_version.php')) {
             text-align: center;
             border: 1px solid #e2e8f0;
         }
+
         .stock-item.full {
             grid-column: 1 / -1;
         }
+
         .stock-item .label {
             font-size: 11px;
             color: #64748b;
@@ -113,18 +129,30 @@ if (file_exists(__DIR__ . '/includes/asset_version.php')) {
             letter-spacing: 0.5px;
             margin-bottom: 6px;
         }
+
         .stock-item .value {
             font-size: 24px;
             font-weight: 700;
         }
-        .stock-item.total .value { color: #1e40af; }
-        .stock-item.vendu .value { color: #c2410c; }
-        .stock-item.restant .value { color: #15803d; }
+
+        .stock-item.total .value {
+            color: #1e40af;
+        }
+
+        .stock-item.vendu .value {
+            color: #c2410c;
+        }
+
+        .stock-item.restant .value {
+            color: #15803d;
+        }
+
         .stock-item .detail {
             font-size: 11px;
             color: #94a3b8;
             margin-top: 4px;
         }
+
         .brand {
             text-align: center;
             margin-top: 24px;
@@ -132,15 +160,20 @@ if (file_exists(__DIR__ . '/includes/asset_version.php')) {
             color: #64748b;
             font-weight: 600;
         }
-        .brand a { color: #3564a6; text-decoration: none; }
+
+        .brand a {
+            color: #3564a6;
+            text-decoration: none;
+        }
     </style>
 </head>
+
 <body>
     <div class="container">
         <div class="card">
             <div class="card-header">
-                <img src="/upload/<?php echo htmlspecialchars($produit['image_principale'] ?? ''); ?>" 
-                     alt="" onerror="this.src='/image/produit1.jpg'">
+                <img src="/upload/<?php echo htmlspecialchars($produit['image_principale'] ?? ''); ?>" alt=""
+                    onerror="this.src='/image/produit1.jpg'">
                 <h1><?php echo htmlspecialchars($produit['nom']); ?></h1>
             </div>
 
@@ -165,12 +198,15 @@ if (file_exists(__DIR__ . '/includes/asset_version.php')) {
         <div class="card">
             <div class="stock-item total" style="margin-bottom: 12px;">
                 <div class="label">Valeur du stock actuel</div>
-                <div class="value" style="font-size: 20px;"><?php echo number_format($valeur_stock_actuel, 0, ',', ' '); ?> FCFA</div>
-                <div class="detail"><?php echo $stock_actuel; ?> × <?php echo number_format($prix_produit, 0, ',', ' '); ?> FCFA</div>
+                <div class="value" style="font-size: 20px;">
+                    <?php echo number_format($valeur_stock_actuel, 0, ',', ' '); ?> FCFA</div>
+                <div class="detail"><?php echo $stock_actuel; ?> ×
+                    <?php echo number_format($prix_produit, 0, ',', ' '); ?> FCFA</div>
             </div>
             <div class="stock-item vendu">
                 <div class="label">Chiffre d'affaires (ventes)</div>
-                <div class="value" style="font-size: 20px;"><?php echo number_format($valeur_ventes, 0, ',', ' '); ?> FCFA</div>
+                <div class="value" style="font-size: 20px;"><?php echo number_format($valeur_ventes, 0, ',', ' '); ?>
+                    FCFA</div>
                 <div class="detail"><?php echo $quantite_vendue; ?> vendu(s)</div>
             </div>
         </div>
@@ -178,4 +214,5 @@ if (file_exists(__DIR__ . '/includes/asset_version.php')) {
         <p class="brand">FOUTA POIDS LOURDS — Pièces poids lourds</p>
     </div>
 </body>
+
 </html>

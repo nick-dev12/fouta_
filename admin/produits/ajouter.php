@@ -101,8 +101,9 @@ $fournisseurs_catalogue = $has_ff_col ? get_all_fournisseurs_ordered_by_nom() : 
                                     value="<?php echo isset($_POST['nom']) ? htmlspecialchars($_POST['nom']) : ''; ?>">
                             </div>
                             <div class="form-group">
-                                <label for="description">Description *</label>
-                                <textarea id="description" name="description" required placeholder="Décrivez le produit…"><?php echo isset($_POST['description']) ? htmlspecialchars($_POST['description']) : ''; ?></textarea>
+                                <label for="description">Description</label>
+                                <textarea id="description" name="description" placeholder="Décrivez le produit… (facultatif)"><?php echo isset($_POST['description']) ? htmlspecialchars($_POST['description']) : ''; ?></textarea>
+                                <small class="form-hint">Facultatif.</small>
                             </div>
                             <div class="form-group">
                                 <label for="fournisseur_id">Fournisseur</label>
@@ -136,9 +137,10 @@ $fournisseurs_catalogue = $has_ff_col ? get_all_fournisseurs_ordered_by_nom() : 
                         <div class="pm-card__body">
                             <div class="form-row">
                                 <div class="form-group">
-                                    <label for="prix">Prix (FCFA) *</label>
-                                    <input type="number" id="prix" name="prix" step="0.01" min="0" required
+                                    <label for="prix">Prix (FCFA)</label>
+                                    <input type="number" id="prix" name="prix" step="0.01" min="0"
                                         value="<?php echo isset($_POST['prix']) ? htmlspecialchars($_POST['prix']) : ''; ?>">
+                                    <small class="form-hint">Facultatif — vide = 0&nbsp;FCFA en base.</small>
                                 </div>
                                 <div class="form-group">
                                     <label for="prix_promotion">Prix promotionnel (FCFA)</label>
@@ -291,7 +293,7 @@ $fournisseurs_catalogue = $has_ff_col ? get_all_fournisseurs_ordered_by_nom() : 
                         </div>
                         <div class="pm-card__body">
                             <div class="form-group">
-                                <label><i class="fas fa-image"></i> Images du produit *</label>
+                                <label><i class="fas fa-image"></i> Images du produit</label>
                                 <p class="form-hint" style="margin-bottom: 10px;">Ajoutez une ou plusieurs images (cumul possible). Cliquez sur × sur un aperçu pour le retirer avant envoi.</p>
                                 <label for="images_produit" class="pm-upload-label">
                                     <i class="fas fa-cloud-upload-alt" aria-hidden="true"></i>
@@ -300,7 +302,7 @@ $fournisseurs_catalogue = $has_ff_col ? get_all_fournisseurs_ordered_by_nom() : 
                                 <input type="file" id="images_produit" name="images_produit[]" accept="image/*" multiple
                                     class="pm-file-hidden">
                                 <div id="preview-images" class="image-preview-accumulator"></div>
-                                <small class="form-hint">Formats : JPG, PNG, GIF, WEBP. Au moins une image requise.</small>
+                                <small class="form-hint">Formats : JPG, PNG, GIF, WEBP. Facultatif — vous pouvez ajouter des photos plus tard.</small>
                             </div>
                         </div>
                     </section>
@@ -400,16 +402,6 @@ $fournisseurs_catalogue = $has_ff_col ? get_all_fournisseurs_ordered_by_nom() : 
                 });
             }
 
-            var ajForm = document.getElementById('form-produit-ajouter');
-            if (ajForm) {
-                ajForm.addEventListener('submit', function (e) {
-                    if (accumulatedFiles.length === 0) {
-                        e.preventDefault();
-                        alert('Veuillez ajouter au moins une image.');
-                        return false;
-                    }
-                });
-            }
         })();
         (function () {
             var couleurInput = document.getElementById('couleur-input');

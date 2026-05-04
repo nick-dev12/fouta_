@@ -9,6 +9,8 @@ use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\SMTP;
 use PHPMailer\PHPMailer\Exception;
 
+if (!function_exists('mail_get_config')) {
+
 /**
  * Charge la configuration email
  * @return array|null Configuration ou null si absente
@@ -163,3 +165,5 @@ function mail_send_reset_link($email, $reset_link, $type = 'user') {
 
     return mail_send($email, $sujet, $body, true);
 }
+
+} // !function_exists mail_get_config (évite redeclare si mail.php chargé puis autoload Composer)

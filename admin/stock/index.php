@@ -406,12 +406,13 @@ $nb_cat = count($categories);
             </div>
         </header>
 
-        <?php if (!empty($success_message)): ?>
-        <div class="stock-banner-ok" role="status">
-            <i class="fas fa-check-circle" aria-hidden="true"></i>
-            <span><?php echo htmlspecialchars($success_message); ?></span>
-        </div>
-        <?php endif; ?>
+        <?php
+        if (!empty($success_message)) {
+            $flash_success_message = $success_message;
+            include __DIR__ . '/../includes/flash_success_popup.php';
+            $success_message = '';
+        }
+        ?>
 
         <section class="stock-section" aria-labelledby="stock-cat-heading">
             <div class="stock-section__head">
