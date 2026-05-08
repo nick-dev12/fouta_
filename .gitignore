@@ -45,3 +45,6 @@ desktop.ini
 # Dossier local nommé « git » (hors dépôt)
 git/
 
+# Clé web pour tools/empty_database.php (ne jamais committer)
+tools/empty_database_web_key.php
+
