@@ -42,4 +42,6 @@ temp/
 Thumbs.db
 desktop.ini
 
+# Dossier local nommé « git » (hors dépôt)
+git/
 
