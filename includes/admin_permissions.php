@@ -70,6 +70,12 @@ if (!function_exists('admin_current_role')) {
         return $r === 'caissier' || $r === 'informaticien';
     }
 
+    /** Saisie des dépenses / charges (caissier ou informaticien). */
+    function admin_can_saisir_depenses_caisse() {
+        $r = admin_current_role();
+        return $r === 'caissier' || $r === 'informaticien';
+    }
+
     /**
      * Catalogue / produits (tableau de bord, aperçu du catalogue)
      * — gestion des stocks (compte) et administrateur complet

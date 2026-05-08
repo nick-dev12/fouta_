@@ -156,7 +156,7 @@ function employe_absence_get_by_id($id) {
  * Absence pour un utilisateur avec compte admin (non rôle « admin », vérifié amont).
  * @return int|false id créé
  */
-function employe_absence_creer_pour_staff_admin($subject_admin_id, $date_absence, $motif, $created_by_admin_id) {
+function employe_absence_creer_pour_staff_admin($subject_admin_id, $date_absence, $motif, $created_by_admin_id, $penalite_montant = 0.0) {
     global $db;
     $subject_admin_id = (int) $subject_admin_id;
     if ($subject_admin_id <= 0 || $date_absence === '' || trim($motif) === '') {
@@ -166,15 +166,17 @@ function employe_absence_creer_pour_staff_admin($subject_admin_id, $date_absence
         return false;
     }
     $admin_id = $created_by_admin_id ? (int) $created_by_admin_id : null;
+    $pen = round(max(0, (float) $penalite_montant), 2);
     try {
         $stmt = $db->prepare('
-            INSERT INTO employe_absences (employe_id, subject_admin_id, date_absence, motif, created_by_admin_id)
-            VALUES (NULL, :sid, :d, :m, :aid)
+            INSERT INTO employe_absences (employe_id, subject_admin_id, date_absence, motif, penalite_montant, created_by_admin_id)
+            VALUES (NULL, :sid, :d, :m, :pen, :aid)
         ');
         $stmt->execute([
             'sid' => $subject_admin_id,
             'd' => $date_absence,
             'm' => trim($motif),
+            'pen' => $pen,
             'aid' => $admin_id ?: null,
         ]);
         return (int) $db->lastInsertId();
@@ -187,7 +189,7 @@ function employe_absence_creer_pour_staff_admin($subject_admin_id, $date_absence
  * Absence pour une ligne de la table employes (sans compte obligatoire)
  * @return int|false
  */
-function employe_absence_creer_pour_fiche_employe($employe_id, $date_absence, $motif, $created_by_admin_id) {
+function employe_absence_creer_pour_fiche_employe($employe_id, $date_absence, $motif, $created_by_admin_id, $penalite_montant = 0.0) {
     global $db;
     $employe_id = (int) $employe_id;
     if ($employe_id <= 0 || $date_absence === '' || trim($motif) === '') {
@@ -197,15 +199,17 @@ function employe_absence_creer_pour_fiche_employe($employe_id, $date_absence, $m
         return false;
     }
     $creator = $created_by_admin_id ? (int) $created_by_admin_id : null;
+    $pen = round(max(0, (float) $penalite_montant), 2);
     try {
         $stmt = $db->prepare('
-            INSERT INTO employe_absences (employe_id, subject_admin_id, date_absence, motif, created_by_admin_id)
-            VALUES (:eid, NULL, :d, :m, :aid)
+            INSERT INTO employe_absences (employe_id, subject_admin_id, date_absence, motif, penalite_montant, created_by_admin_id)
+            VALUES (:eid, NULL, :d, :m, :pen, :aid)
         ');
         $stmt->execute([
             'eid' => $employe_id,
             'd' => $date_absence,
             'm' => trim($motif),
+            'pen' => $pen,
             'aid' => $creator ?: null,
         ]);
         return (int) $db->lastInsertId();
@@ -276,6 +280,9 @@ function employe_absences_detail_pour_fiche_employe($employe_id) {
                 a.id AS absence_id,
                 a.date_absence,
                 a.motif,
+                a.penalite_montant,
+                a.penalite_retenir_salaire,
+                a.penalite_deduite_bulletin_id,
                 a.date_creation AS absence_creation,
                 j.id AS justif_id,
                 j.texte AS justif_texte,
@@ -292,5 +299,111 @@ function employe_absences_detail_pour_fiche_employe($employe_id) {
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     } catch (PDOException $e) {
         return [];
+    }
+}
+
+/**
+ * Active la déduction de la pénalité au prochain bulletin (fiche employé uniquement).
+ */
+function employe_absence_marquer_retenir_penalite($absence_id, $employe_id) {
+    global $db;
+    $absence_id = (int) $absence_id;
+    $employe_id = (int) $employe_id;
+    if ($absence_id <= 0 || $employe_id <= 0) {
+        return false;
+    }
+    try {
+        $stmt = $db->prepare('
+            UPDATE employe_absences
+            SET penalite_retenir_salaire = 1
+            WHERE id = :aid
+              AND employe_id = :eid
+              AND (subject_admin_id IS NULL OR subject_admin_id = 0)
+              AND penalite_deduite_bulletin_id IS NULL
+        ');
+        $stmt->execute(['aid' => $absence_id, 'eid' => $employe_id]);
+        return $stmt->rowCount() > 0;
+    } catch (PDOException $e) {
+        return false;
+    }
+}
+
+/**
+ * Pénalités marquées à retenir et pas encore appliquées à un bulletin.
+ *
+ * @param string|null $mois_ym Mois de paie (AAAA-MM) : ne retient que les absences dont `date_absence` tombe dans ce mois.
+ * @return array{ids: list<int>, total: float, nb_jours: int, lignes: list<array{id:int, penalite_montant:float}>}
+ */
+function employe_absences_penalites_en_attente_pour_employe($employe_id, $mois_ym = null) {
+    global $db;
+    $employe_id = (int) $employe_id;
+    $empty = ['ids' => [], 'total' => 0.0, 'nb_jours' => 0, 'lignes' => []];
+    if ($employe_id <= 0) {
+        return $empty;
+    }
+    $sql = '
+            SELECT id, penalite_montant
+            FROM employe_absences
+            WHERE employe_id = :eid
+              AND (subject_admin_id IS NULL OR subject_admin_id = 0)
+              AND penalite_retenir_salaire = 1
+              AND penalite_deduite_bulletin_id IS NULL
+    ';
+    $bind = ['eid' => $employe_id];
+    if ($mois_ym !== null && $mois_ym !== '' && preg_match('/^\d{4}-\d{2}$/', (string) $mois_ym)) {
+        $d0 = $mois_ym . '-01';
+        $ts = strtotime($d0);
+        $d1 = $ts !== false ? date('Y-m-t', $ts) : $d0;
+        $sql .= ' AND date_absence >= :d0 AND date_absence <= :d1';
+        $bind['d0'] = $d0;
+        $bind['d1'] = $d1;
+    }
+    $sql .= ' ORDER BY date_absence ASC, id ASC';
+    try {
+        $stmt = $db->prepare($sql);
+        $stmt->execute($bind);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        $ids = [];
+        $total = 0.0;
+        $lignes = [];
+        foreach ($rows as $row) {
+            $i = (int) ($row['id'] ?? 0);
+            if ($i <= 0) {
+                continue;
+            }
+            $p = round((float) ($row['penalite_montant'] ?? 0), 2);
+            $ids[] = $i;
+            if ($p > 0) {
+                $total += $p;
+            }
+            $lignes[] = ['id' => $i, 'penalite_montant' => $p];
+        }
+        return [
+            'ids' => $ids,
+            'total' => round($total, 2),
+            'nb_jours' => count($ids),
+            'lignes' => $lignes,
+        ];
+    } catch (PDOException $e) {
+        return $empty;
+    }
+}
+
+/**
+ * @param list<int> $absence_ids
+ */
+function employe_absences_marquer_penalites_deduites(array $absence_ids, $bulletin_id) {
+    global $db;
+    $bulletin_id = (int) $bulletin_id;
+    $ids = array_values(array_unique(array_filter(array_map('intval', $absence_ids))));
+    if ($bulletin_id <= 0 || $ids === []) {
+        return;
+    }
+    try {
+        $ph = implode(',', array_fill(0, count($ids), '?'));
+        $sql = 'UPDATE employe_absences SET penalite_deduite_bulletin_id = ? WHERE id IN (' . $ph . ')';
+        $stmt = $db->prepare($sql);
+        $stmt->execute(array_merge([$bulletin_id], $ids));
+    } catch (PDOException $e) {
     }
 }

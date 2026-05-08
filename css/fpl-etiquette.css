@@ -1,6 +1,6 @@
 /**
  * Étiquette FPL — gabarit FIXE (500px), pas de responsive sur la carte.
- * Couleurs : --fpl-accent, --fpl-accent-dark (inline sur .fpl-etiq--fixed)
+ * Couleurs : --fpl-accent, --fpl-accent-dark (inline sur .fpl-etiq--fixed ; accent marque #19377d)
  */
 
 /* Aucune règle @media ne modifie les dimensions de .fpl-etiq--fixed */
@@ -15,8 +15,8 @@
 
 /* Carte : largeur figée, pas de max-width:100% ni % internes */
 .fpl-etiq.fpl-etiq--fixed {
-  --fpl-accent: #1e3a5f;
-  --fpl-accent-dark: #152a46;
+  --fpl-accent: #19377d;
+  --fpl-accent-dark: #00155b;
   position: relative;
   width: 500px;
   min-width: 500px;
@@ -276,6 +276,23 @@
 
 .fpl-etiq__photo-strip--icons-only {
   gap: 6px;
+}
+
+.fpl-etiq__photo-strip--image {
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  padding: 2px 0;
+}
+
+.fpl-etiq__photo-produit {
+  display: block;
+  max-width: 100%;
+  width: auto;
+  height: auto;
+  max-height: 86px;
+  object-fit: contain;
+  object-position: center;
 }
 
 .fpl-etiq__thumb {

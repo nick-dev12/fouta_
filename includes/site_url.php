@@ -73,6 +73,20 @@ function get_site_logo_relative_filename(): string {
 }
 
 /**
+ * Segment d’URI du logo sous la racine web (ex. /image/logo-fpl.png), segments encodés.
+ * Pour manifest PWA, href d’icônes, etc. Chaîne vide si aucun fichier.
+ */
+function get_site_logo_uri_path_relative_to_webroot(): string {
+    $name = get_site_logo_relative_filename();
+    if ($name === '') {
+        return '';
+    }
+    $encoded = implode('/', array_map('rawurlencode', explode('/', str_replace('\\', '/', $name))));
+
+    return '/image/' . $encoded;
+}
+
+/**
  * URL absolue du logo pour img (requête HTTP en cours — admin local / sous-dossier WAMP OK).
  *
  * @return string URL vide si aucun fichier logo trouvé

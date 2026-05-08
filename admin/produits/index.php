@@ -40,7 +40,7 @@ if (!empty($produits)) {
         }
 
         // Code interne FPLxxxxxx (exact, insensible à la casse)
-        if (preg_match('/^FPL\d{6}$/i', $recherche)) {
+        if (preg_match('/^FPL(\d{6}|\d{9})$/i', $recherche)) {
             $code = strtoupper($recherche);
             $ident = strtoupper(trim((string) ($produit['identifiant_interne'] ?? '')));
             return $ident !== '' && $ident === $code;

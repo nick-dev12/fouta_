@@ -87,8 +87,55 @@
 
 /* ========== Chips modes de paiement ========== */
 
+#compta-panel-caisse .compta-caisse-subtabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  margin: 0 0 16px;
+}
+#compta-panel-caisse .compta-caisse-subtab {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border-input);
+  background: var(--fond-principal);
+  color: var(--texte-fonce);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+  line-height: 1.25;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+#compta-panel-caisse .compta-caisse-subtab:hover {
+  border-color: var(--border-input-focus);
+  box-shadow: var(--ombre-douce);
+}
+#compta-panel-caisse .compta-caisse-subtab.is-active {
+  border-color: var(--couleur-dominante);
+  background: var(--bleu-pale);
+  box-shadow: var(--ombre-douce);
+}
+#compta-panel-caisse .compta-caisse-subtab__name {
+  font-weight: 700;
+}
+#compta-panel-caisse .compta-caisse-subtab__sum {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--texte-mute);
+  margin-top: 2px;
+}
+#compta-panel-caisse .compta-caisse-subtab.is-active .compta-caisse-subtab__sum {
+  color: var(--couleur-dominante);
+}
+
 #compta-panel-caisse .compta-caisse-modes {
   margin-bottom: 20px;
+}
+
+#compta-panel-caisse .compta-caisse-modes--canal {
+  margin-top: -6px;
 }
 
 #compta-panel-caisse .compta-caisse-mode-chip {
@@ -101,47 +148,94 @@
   border-color: var(--border-input-focus);
 }
 
-/* ========== Carte filtres (réutilise compta-dep-card) ========== */
+/* ========== Filtres caisse (compact, type hub synthèse) ========== */
 
-#compta-panel-caisse .compta-caisse-filters-card {
-  transition: box-shadow 0.22s, border-color 0.2s, transform 0.2s;
-  border-radius: 16px;
-}
-
-#compta-panel-caisse .compta-caisse-filters-card:hover {
-  box-shadow: var(--ombre-gourmande);
-  border-color: var(--border-input);
-  transform: translateY(-1px);
-}
-
-#compta-panel-caisse .compta-caisse-filters .compta-dep-filters__field input:focus,
-#compta-panel-caisse .compta-caisse-filters .compta-dep-filters__field select:focus {
-  outline: none;
-  border-color: var(--border-input-focus);
-  box-shadow: 0 0 0 3px var(--focus-ring);
-  background: var(--fond-principal);
-}
-
-#compta-panel-caisse .compta-caisse-filters .compta-dep-filters__reset {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 40px;
-  padding: 10px 18px;
-  border-radius: 10px;
+.page-compta-admin .compta-caisse-filter-hub {
+  margin: 0 0 18px;
+  padding: 14px 16px 16px;
+  background: var(--fond-secondaire);
   border: 1px solid var(--border-input);
-  background: var(--fond-principal);
-  color: var(--titres);
-  text-decoration: none;
-  font-weight: 600;
-  transition: background 0.2s, border-color 0.2s, color 0.2s;
+  border-radius: 14px;
+  box-shadow: var(--glass-shadow);
 }
 
-#compta-panel-caisse .compta-caisse-filters .compta-dep-filters__reset:hover {
-  text-decoration: none;
-  background: var(--bleu-pale);
-  border-color: var(--couleur-dominante);
-  color: var(--couleur-dominante);
+.page-compta-admin .compta-caisse-filter-hub .compta-caisse-compact-filter {
+  margin-bottom: 0;
+  padding: 0;
+  border: none;
+  box-shadow: none;
+  background: transparent;
+}
+
+#compta-panel-caisse .compta-caisse-filter__row-top.compta-ventes-filter__row {
+  margin-bottom: 10px;
+}
+
+#compta-panel-caisse .compta-caisse-filter__date-panel.compta-ventes-filter__fields {
+  margin-bottom: 10px;
+}
+
+#compta-panel-caisse .compta-caisse-filter__date-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px 14px;
+}
+
+#compta-panel-caisse .compta-caisse-filter__date-line-label {
+  margin-bottom: 0;
+  flex-shrink: 0;
+  align-self: center;
+}
+
+#compta-panel-caisse .compta-caisse-jma-inline {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+}
+
+#compta-panel-caisse .compta-caisse-jma-sep {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--gris-moyen);
+  user-select: none;
+  line-height: 1;
+}
+
+#compta-panel-caisse .compta-caisse-jma-sel.compta-ventes-filter__select--sm {
+  min-width: 3.25rem;
+  padding: 8px 8px;
+  font-size: 0.88rem;
+}
+
+#compta-panel-caisse .compta-caisse-jma-sel--mois.compta-ventes-filter__select--sm {
+  min-width: 3.5rem;
+}
+
+#compta-panel-caisse .compta-caisse-jma-sel--y.compta-ventes-filter__select--sm {
+  min-width: 4.25rem;
+}
+
+#compta-panel-caisse .compta-caisse-filter__row-extra {
+  margin-bottom: 0;
+  margin-top: 4px;
+  gap: 12px 16px;
+  align-items: flex-end;
+}
+
+#compta-panel-caisse .compta-caisse-filter__row-extra .compta-ventes-filter__sublabel {
+  margin-bottom: 4px;
+}
+
+#compta-panel-caisse .compta-caisse-filter__field-q {
+  flex: 1 1 180px;
+  min-width: min(100%, 200px);
+}
+
+#compta-panel-caisse .compta-caisse-filter__q-input {
+  width: 100%;
+  min-width: 0;
 }
 
 /* ========== Titre section tickets ========== */

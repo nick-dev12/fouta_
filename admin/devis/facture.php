@@ -10,6 +10,9 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
 }
 require_once __DIR__ . '/../includes/require_access.php';
 
+if (empty($_SESSION['admin_csrf'])) {
+    $_SESSION['admin_csrf'] = bin2hex(random_bytes(32));
+}
 
 $facture_id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 if ($facture_id <= 0) {
@@ -19,6 +22,23 @@ if ($facture_id <= 0) {
 
 require_once __DIR__ . '/../../models/model_factures_devis.php';
 require_once __DIR__ . '/../../models/model_devis.php';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['marquer_facture_payee'])) {
+    $tok = (string) ($_POST['csrf_token'] ?? '');
+    if ($tok === '' || !hash_equals((string) ($_SESSION['admin_csrf'] ?? ''), $tok)) {
+        $_SESSION['flash_facture_error'] = 'Session expirée. Réessayez.';
+    } else {
+        $r = marquer_facture_devis_payee($facture_id);
+        if (!empty($r['ok'])) {
+            $_SESSION['success_message'] = 'Facture marquée comme payée. Référence : ' . ($r['numero_reference_fpl'] ?? '');
+        } else {
+            $_SESSION['flash_facture_error'] = $r['error'] ?? 'Action impossible.';
+        }
+    }
+    header('Location: facture.php?id=' . $facture_id);
+    exit;
+}
+
 require_once __DIR__ . '/../../includes/site_url.php';
 
 $facture = get_facture_devis_by_id($facture_id);
@@ -78,8 +98,11 @@ foreach ($produits as $p) {
     $qte = (int) ($p['quantite'] ?? 0);
     $lignes_produits[] = '- ' . $nom . ' x' . $qte;
 }
+$wa_numero_facture = (!empty($facture['payee']) && !empty($facture['numero_reference_fpl']))
+    ? (string) $facture['numero_reference_fpl']
+    : (string) ($facture['numero_facture'] ?? '');
 $msg_whatsapp = "Bonjour " . $client_nom . ",\n\n"
-    . "Votre facture n°" . $facture['numero_facture'] . " pour le devis #" . ($devis['numero_devis'] ?? '') . " est prête.\n\n"
+    . "Votre facture n°" . $wa_numero_facture . " pour le devis #" . ($devis['numero_devis'] ?? '') . " est prête.\n\n"
     . "Produits :\n" . implode("\n", $lignes_produits) . "\n\n"
     . "Adresse de livraison : " . str_replace(["\r", "\n"], ' ', $adresse_livraison) . "\n\n"
     . "Montant total : " . number_format($facture['montant_total'], 0, ',', ' ') . " CFA\n"
@@ -100,4 +123,54 @@ $entreprise_email = 'info@foutapoidslourds.com';
 $is_public = false;
 $facture_back_url = 'details.php?id=' . $devis['id'];
 $facture_back_label = 'Retour au devis';
+
+$facture_page_flash_success = '';
+if (!empty($_SESSION['success_message'])) {
+    $facture_page_flash_success = (string) $_SESSION['success_message'];
+    unset($_SESSION['success_message']);
+}
+$facture_page_flash_error = '';
+if (!empty($_SESSION['flash_facture_error'])) {
+    $facture_page_flash_error = (string) $_SESSION['flash_facture_error'];
+    unset($_SESSION['flash_facture_error']);
+}
+
+$facture_est_payee = !empty($facture['payee']);
+$facture_numero_affichage = ($facture_est_payee && !empty($facture['numero_reference_fpl']))
+    ? (string) $facture['numero_reference_fpl']
+    : (string) ($facture['numero_facture'] ?? '');
+$facture_afficher_marquer_payee = function_exists('factures_devis_col_payee_ok') && factures_devis_col_payee_ok() && !$facture_est_payee;
+$facture_csrf_token = (string) ($_SESSION['admin_csrf'] ?? '');
+
+require_once __DIR__ . '/../../includes/fiscal_tva.php';
+
+$facture_tva_incluse = array_key_exists('tva_incluse', $facture)
+    ? !empty($facture['tva_incluse'])
+    : (devis_tva_columns_ok() && !empty($devis['tva_incluse']));
+$facture_fiscal_ht = null;
+$facture_fiscal_tva = null;
+$facture_fiscal_taux = null;
+if ($facture_tva_incluse) {
+    if (factures_devis_fiscal_columns_ok()
+        && isset($facture['montant_ht'])
+        && $facture['montant_ht'] !== null
+        && $facture['montant_ht'] !== '') {
+        $facture_fiscal_ht = (float) $facture['montant_ht'];
+        $facture_fiscal_tva = isset($facture['montant_tva']) ? (float) $facture['montant_tva'] : 0.0;
+        $facture_fiscal_taux = (isset($facture['taux_tva_pourcent']) && (float) $facture['taux_tva_pourcent'] > 0)
+            ? (float) $facture['taux_tva_pourcent']
+            : fiscal_taux_tva_pourcent();
+    }
+    if ($facture_fiscal_ht === null) {
+        $net = devis_calcul_net_ht((int) $facture['devis_id']);
+        $ttp = (isset($devis['taux_tva_pourcent']) && (float) $devis['taux_tva_pourcent'] > 0)
+            ? (float) $devis['taux_tva_pourcent']
+            : null;
+        $f = fiscal_decomposer_net_ht($net, true, $ttp);
+        $facture_fiscal_ht = $f['montant_ht'];
+        $facture_fiscal_tva = $f['montant_tva'];
+        $facture_fiscal_taux = $ttp ?? fiscal_taux_tva_pourcent();
+    }
+}
+
 require __DIR__ . '/../../includes/facture_content.php';

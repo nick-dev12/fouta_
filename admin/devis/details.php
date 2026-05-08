@@ -72,7 +72,7 @@ $frais = isset($devis['frais_livraison']) ? (float) $devis['frais_livraison'] : 
         </div>
         <div class="header-actions">
             <?php if ($facture): ?>
-                <a href="facture.php?id=<?php echo (int) $facture['id']; ?>" class="btn-primary" target="_blank" rel="noopener">
+                <a href="facture.php?id=<?php echo (int) $facture['id']; ?>" class="btn-primary">
                     <i class="fas fa-file-invoice" aria-hidden="true"></i> Voir la facture
                 </a>
             <?php else: ?>
@@ -124,7 +124,7 @@ $frais = isset($devis['frais_livraison']) ? (float) $devis['frais_livraison'] : 
             <dl class="devis-detail-dl">
                 <div class="devis-detail-dl__row devis-detail-dl__row--full">
                     <dt>Adresse</dt>
-                    <dd><?php echo nl2br(htmlspecialchars($devis['adresse_livraison'])); ?></dd>
+                    <dd><?php echo trim((string) ($devis['adresse_livraison'] ?? '')) !== '' ? nl2br(htmlspecialchars($devis['adresse_livraison'])) : '—'; ?></dd>
                 </div>
                 <?php if (!empty($devis['frais_livraison'])): ?>
                 <div class="devis-detail-dl__row">

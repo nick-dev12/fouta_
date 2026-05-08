@@ -174,43 +174,15 @@ function fpl_etiquette_hex_adjust_rgb(string $hex6, float $amt)
 }
 
 /**
- * Couleur d’accent pour l’étiquette FPL (bandeau, séparateur, icônes, pied de page).
+ * Couleur d'accent pour l'étiquette FPL (bandeau, écusson, séparateur vertical, pied de page, pictogrammes).
+ * Valeur unique pour tous les produits et toutes les catégories.
  *
- * - Si l’admin a choisi une couleur autre que le défaut BDD (#1E3A5F), celle-ci s’applique.
- * - Sinon : synonyme sur le nom de catégorie (ex. amortisseur → bleu, air compresseur → rouge),
- *   puis couleur stable issue d’une grande palette (nouvelles catégories sans réglage manuel).
- *
- * @param array|null $categorie ligne categories ou []
- * @return string #RRGGBB pour bandeaux étiquette
+ * @param array|null $categorie Paramètres ignorés (compatibilité des appels existants)
+ * @return string #RRGGBB
  */
 function fpl_etiquette_couleur_pour_categorie($categorie, $categorie_id = null)
 {
-    $cat = is_array($categorie) ? $categorie : [];
-    $cid = (int) ($cat['id'] ?? $categorie_id ?? 0);
-    $raw = isset($cat['couleur_etiquette']) ? trim((string) $cat['couleur_etiquette']) : '';
-    $def = strtoupper(fpl_etiquette_couleur_bdd_defaut());
-
-    $has_col = function_exists('categories_has_column') && categories_has_column('couleur_etiquette');
-    $stored = $has_col ? fpl_etiquette_sanitize_hex_couleur($raw) : '';
-
-    $est_auto = !$has_col || $stored === '' || strcasecmp($stored, $def) === 0;
-
-    if (!$est_auto) {
-        return strtoupper($stored);
-    }
-
-    $nom_norm = fpl_etiquette_nom_normalise_synonyme(isset($cat['nom']) ? (string) $cat['nom'] : '');
-    $par_syn = fpl_etiquette_couleur_par_synonyme($nom_norm);
-    if ($par_syn !== '') {
-        return strtoupper($par_syn);
-    }
-
-    if ($cid > 0) {
-        return fpl_etiquette_couleur_stable_auto($cid, $nom_norm);
-    }
-
-    $palette = fpl_etiquette_palette_fallback();
-    return strtoupper($palette[0]);
+    return '#19377d';
 }
 
 /** Petite ligne numérique au-dessus du QR à partir du code FPL */

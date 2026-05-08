@@ -26,11 +26,17 @@ if (empty($_SESSION['admin_csrf'])) {
 }
 
 require_once __DIR__ . '/../../models/model_caisse.php';
+require_once __DIR__ . '/../../models/model_caisse_compta.php';
 require_once __DIR__ . '/../../includes/barcode_caisse_ticket.php';
 require_once __DIR__ . '/../../models/model_produits.php';
 require_once __DIR__ . '/../../models/model_categories.php';
 
 $cart = caisse_cart_get();
+if (admin_current_role() === 'commercial' && !empty($cart['inclure_tva'])) {
+    $cart['inclure_tva'] = 0;
+    caisse_cart_save($cart);
+    $cart = caisse_cart_get();
+}
 $totals = caisse_compute_totals($cart);
 $total_ttc = (float) ($totals['total_ttc'] ?? $totals['total'] ?? 0);
 $total_ht = (float) ($totals['total_ht'] ?? 0);
@@ -64,14 +70,39 @@ $categories = get_all_categories();
 
 $has_ident = function_exists('produits_has_column') && produits_has_column('identifiant_interne');
 
+/** Catalogue actif (stock > 0) pour filtrage temps réel côté navigateur — limite pour poids de page */
+$caisse_catalog_json = [];
+$caisse_catalog_limit = 2500;
+$caisse_catalog_rows = search_produits_with_filters('', null, null, null, 'nom', 0, $caisse_catalog_limit);
+foreach ($caisse_catalog_rows as $pr) {
+    if ((int) ($pr['stock'] ?? 0) <= 0) {
+        continue;
+    }
+    $caisse_catalog_json[] = [
+        'id' => (int) ($pr['id'] ?? 0),
+        'nom' => (string) ($pr['nom'] ?? ''),
+        'ref' => $has_ident ? strtoupper(trim((string) ($pr['identifiant_interne'] ?? ''))) : '',
+        'cat_id' => (int) ($pr['categorie_id'] ?? 0),
+        'prix' => round((float) caisse_prix_unitaire_produit($pr), 2),
+        'stock' => (int) ($pr['stock'] ?? 0),
+    ];
+}
+$caisse_catalog_json_script = json_encode($caisse_catalog_json, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS);
+if ($caisse_catalog_json_script === false) {
+    $caisse_catalog_json_script = '[]';
+}
+
 $ticket_id = isset($_GET['ticket']) ? (int) $_GET['ticket'] : 0;
 $ticket_data = ($ticket_id > 0) ? caisse_get_vente_by_id($ticket_id) : null;
 $ticket_introuvable = ($ticket_id > 0 && !$ticket_data);
-$ticket_dec = $ticket_data ? caisse_decomposer_ttc($ticket_data['montant_total'] ?? 0) : null;
+$ticket_recap = $ticket_data ? caisse_vente_recap_fiscal_affichage($ticket_data) : null;
+$ticket_show_tva_row = $ticket_recap && abs((float) ($ticket_recap['tva'] ?? 0)) >= 0.005;
 $ticket_statut = $ticket_data ? caisse_vente_statut($ticket_data) : null;
 $masquer_zone_paiement_commercial = in_array(admin_current_role(), ['commercial', 'commercial_general'], true);
-$ticket_barcode_src = ($ticket_data && $ticket_dec) ? caisse_ticket_get_barcode_web_path($ticket_data) : '';
-$ticket_barcode_payload = ($ticket_data && $ticket_dec) ? caisse_ticket_valeur_code_barres($ticket_data) : '';
+/** Option « Inclure la TVA » : masquée pour le rôle commercial seul ; visible pour commercial_general et les autres */
+$afficher_option_tva_caisse = admin_current_role() !== 'commercial';
+$ticket_barcode_src = $ticket_data ? caisse_ticket_get_barcode_web_path($ticket_data) : '';
+$ticket_barcode_payload = $ticket_data ? caisse_ticket_valeur_code_barres($ticket_data) : '';
 
 $tables_ok = caisse_tables_exist();
 $page_title = 'Caisse';
@@ -104,7 +135,7 @@ if ($preview_recu !== null && $total_ttc > 0) {
     <link rel="stylesheet" href="/css/admin-dashboard-caisse-pages.css<?php echo asset_version_query(); ?>">
 </head>
 
-<body class="admin-caisse-page<?php echo $masquer_zone_paiement_commercial ? ' admin-caisse-commercial' : ''; ?>">
+<body class="admin-caisse-page<?php echo $masquer_zone_paiement_commercial ? ' admin-caisse-commercial' : ''; ?><?php echo ($ticket_data && $ticket_recap) ? ' caisse-modal-open' : ''; ?>">
     <?php include __DIR__ . '/../includes/nav.php'; ?>
 
     <div class="caisse-page-wrap">
@@ -112,8 +143,6 @@ if ($preview_recu !== null && $total_ttc > 0) {
             <div class="caisse-page-head-inner">
                 <h1 class="caisse-page-title"><i class="fas fa-cash-register"></i>
                     <?php echo htmlspecialchars($page_title); ?></h1>
-                <p class="caisse-page-lead">Scan ou code → ajout immédiat · Panier central · Résumé et paiement à droite
-                </p>
             </div>
         </header>
 
@@ -145,15 +174,24 @@ if ($preview_recu !== null && $total_ttc > 0) {
         </div>
         <?php endif; ?>
 
-        <?php if ($ticket_data && $ticket_dec): ?>
+        <?php if ($ticket_data && $ticket_recap): ?>
+        <div id="caisseTicketViewModal" class="caisse-ticket-view-modal caisse-ticket-view-modal--fullscreen is-open"
+            role="dialog" aria-modal="true" aria-labelledby="caisseTicketViewTitleVendeur" aria-hidden="false">
+            <a href="index.php" class="caisse-ticket-view-modal__backdrop no-print"
+                aria-label="Fermer l'aperçu du ticket"></a>
+            <div class="caisse-ticket-view-modal__panel">
+                <div class="caisse-ticket-view-modal__head no-print">
+                    <h2 id="caisseTicketViewTitleVendeur" class="caisse-ticket-view-modal__title"><i class="fas fa-receipt"
+                            aria-hidden="true"></i> Ticket généré</h2>
+                    <a href="index.php" class="caisse-ticket-view-modal__close" aria-label="Fermer"><i
+                            class="fas fa-times"></i></a>
+                </div>
         <div class="caisse-ticket-card" id="ticket-print-zone">
             <div class="caisse-ticket-brand">FOUTA POIDS LOURDS</div>
             <div class="caisse-ticket-head">
                 <strong><?php echo htmlspecialchars(caisse_ticket_numero_date_public($ticket_data)); ?></strong>
                 <span><?php echo isset($ticket_data['date_vente']) ? htmlspecialchars(date('d/m/Y H:i', strtotime($ticket_data['date_vente']))) : ''; ?></span>
             </div>
-            <p class="caisse-ticket-numero-scan-hint">Scanner à la caisse :
-                <code><?php echo htmlspecialchars($ticket_barcode_payload); ?></code></p>
             <?php if ($ticket_statut === 'en_attente' && isset($ticket_data['reference']) && (string) $ticket_data['reference'] !== ''): ?>
             <p class="caisse-ticket-ref-caisse">Ref : <strong><code><?php echo htmlspecialchars((string) $ticket_data['reference']); ?></code></strong></p>
             <?php endif; ?>
@@ -172,7 +210,7 @@ if ($preview_recu !== null && $total_ttc > 0) {
                     <tr>
                         <th>Article</th>
                         <th>Qté</th>
-                        <th>PU TTC</th>
+                        <th>PU HT</th>
                         <th>Total</th>
                     </tr>
                 </thead>
@@ -189,19 +227,19 @@ if ($preview_recu !== null && $total_ttc > 0) {
             </table>
             <div class="caisse-ticket-tva-block">
                 <div class="caisse-ticket-row"><span>Total
-                        HT</span><strong><?php echo number_format($ticket_dec['ht'], 0, ',', ' '); ?> FCFA</strong>
+                        HT</span><strong><?php echo number_format($ticket_recap['ht'], 0, ',', ' '); ?> FCFA</strong>
                 </div>
+                <?php if ($ticket_show_tva_row): ?>
                 <div class="caisse-ticket-row"><span>TVA
                         (<?php echo htmlspecialchars((string) CAISSE_TVA_TAUX_POURCENT); ?>
-                        %)</span><strong><?php echo number_format($ticket_dec['tva'], 0, ',', ' '); ?> FCFA</strong>
+                        %)</span><strong><?php echo number_format($ticket_recap['tva'], 0, ',', ' '); ?> FCFA</strong>
                 </div>
-                <div class="caisse-ticket-row caisse-ticket-row--total"><span>Total
-                        TTC</span><strong><?php echo number_format($ticket_dec['ttc'], 0, ',', ' '); ?> FCFA</strong>
+                <?php endif; ?>
+                <div class="caisse-ticket-row caisse-ticket-row--total"><span><?php echo $ticket_show_tva_row ? 'Total TTC' : 'Total à payer'; ?></span><strong><?php echo number_format($ticket_recap['ttc'], 0, ',', ' '); ?> FCFA</strong>
                 </div>
             </div>
             <?php if ($ticket_barcode_src !== ''): ?>
             <div class="caisse-ticket-barcode-block">
-                <p class="caisse-ticket-barcode-label"><i class="fas fa-barcode"></i> Code-barres (Code 128)</p>
                 <div class="caisse-ticket-barcode-wrap">
                     <img src="<?php echo htmlspecialchars($ticket_barcode_src); ?>?v=<?php echo (int) ($ticket_data['id'] ?? 0); ?>"
                         alt="Code-barres ticket <?php echo htmlspecialchars($ticket_barcode_payload); ?>"
@@ -210,19 +248,9 @@ if ($preview_recu !== null && $total_ttc > 0) {
                 <div class="caisse-ticket-barcode-value"><?php echo htmlspecialchars($ticket_barcode_payload); ?></div>
             </div>
             <?php endif; ?>
-            <?php if ($ticket_statut === 'paye'):
-            $mode_tkt = (string) ($ticket_data['mode_paiement'] ?? '');
-            $lib_mode = [
-                'especes' => 'Espèces',
-                'carte' => 'Carte bancaire',
-                'mobile_money' => 'Mobile money',
-                'cheque' => 'Chèque',
-                'mixte' => 'Mixte',
-                'autre' => 'Autre',
-            ];
-        ?>
+            <?php if ($ticket_statut === 'paye'): ?>
             <p class="caisse-ticket-pay">Paiement :
-                <strong><?php echo htmlspecialchars($lib_mode[$mode_tkt] ?? $mode_tkt); ?></strong></p>
+                <strong><?php echo htmlspecialchars(caisse_compta_libelle_paiement_ticket($ticket_data)); ?></strong></p>
             <?php endif; ?>
             <div class="caisse-ticket-actions no-print">
                 <button type="button" class="btn-primary" id="btnPrintTicket"><i class="fas fa-print"></i>
@@ -233,17 +261,45 @@ if ($preview_recu !== null && $total_ttc > 0) {
                 <a href="index.php" class="btn-secondary">Nouvelle vente</a>
                 <?php endif; ?>
             </div>
+            </div>
+            </div>
         </div>
         <?php endif; ?>
 
-        <div class="caisse-shell" <?php echo $ticket_data ? 'style="display:none"' : ''; ?>>
+        <div class="caisse-shell">
 
             <!-- ——— Zone A : scan + recherche ——— -->
-            <section class="caisse-zone caisse-zone--a" aria-label="Scan et recherche produit">
+            <section class="caisse-zone caisse-zone--a" aria-label="Recherche catalogue et scan">
                 <div class="caisse-zone-a-grid">
-                    <div class="caisse-scan-card">
-                        <span class="caisse-zone-label"><i class="fas fa-barcode"></i> A · Code-barres &amp;
-                            référence</span>
+                    <div class="caisse-search-card caisse-search-card--primary">
+                        <h2 class="caisse-catalog-title"><i class="fas fa-search" aria-hidden="true"></i> Recherche catalogue</h2>
+                        <form method="get" action="index.php" class="caisse-search-form" id="caisse-search-form-get">
+                            <div class="caisse-search-fields">
+                                <input type="search" name="q" id="caisse_q_live" value="<?php echo htmlspecialchars($q, ENT_QUOTES, 'UTF-8'); ?>"
+                                    placeholder="Nom, mot-clé, réf. FPL…" class="caisse-search-input caisse-search-input--live"
+                                    aria-label="Recherche produit" autocomplete="off" autofocus>
+                                <select name="cat" id="caisse_cat_live" class="caisse-search-select" aria-label="Catégorie">
+                                    <option value="">Toutes les catégories</option>
+                                    <?php foreach ($categories as $c): ?>
+                                    <option value="<?php echo (int) $c['id']; ?>"
+                                        <?php echo ($cat !== null && (int) $c['id'] === $cat) ? 'selected' : ''; ?>>
+                                        <?php echo htmlspecialchars($c['nom'] ?? '', ENT_QUOTES, 'UTF-8'); ?>
+                                    </option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <button type="submit" class="btn-primary caisse-search-btn">Rechercher (liste complète)</button>
+                            </div>
+                        </form>
+                        <div class="caisse-live-results-wrap">
+                            <span id="caisse-live-results-label" class="visually-hidden">Suggestions produits</span>
+                            <div id="caisse-live-results" class="caisse-live-results" role="listbox" aria-labelledby="caisse-live-results-label"
+                                data-csrf="<?php echo htmlspecialchars($_SESSION['admin_csrf'], ENT_QUOTES, 'UTF-8'); ?>"
+                                data-has-ident="<?php echo $has_ident ? '1' : '0'; ?>" hidden></div>
+                        </div>
+                    </div>
+
+                    <div class="caisse-scan-card caisse-scan-card--compact">
+                        <span class="caisse-zone-label"><i class="fas fa-barcode"></i> A · Code-barres &amp; référence</span>
                         <form method="post" action="post.php" class="caisse-scan-form">
                             <input type="hidden" name="csrf_token"
                                 value="<?php echo htmlspecialchars($_SESSION['admin_csrf']); ?>">
@@ -253,31 +309,9 @@ if ($preview_recu !== null && $total_ttc > 0) {
                             <div class="caisse-scan-input-wrap">
                                 <i class="fas fa-keyboard caisse-scan-icon" aria-hidden="true"></i>
                                 <input type="text" name="code" id="code_scan" class="caisse-scan-input"
-                                    placeholder="FPL, code ticket TKT…, ID produit, nom…" autocomplete="off"
-                                    autofocus>
+                                    placeholder="FPL, code ticket TKT…, ID produit…" autocomplete="off">
                                 <button type="submit" class="caisse-scan-submit" title="Valider (Entrée)"><i
                                         class="fas fa-arrow-right"></i></button>
-                            </div>
-                        </form>
-                    </div>
-
-                    <div class="caisse-search-card">
-                        <span class="caisse-zone-label"><i class="fas fa-search"></i> Recherche catalogue</span>
-                        <form method="get" action="index.php" class="caisse-search-form">
-                            <div class="caisse-search-fields">
-                                <input type="search" name="q" value="<?php echo htmlspecialchars($q); ?>"
-                                    placeholder="Nom, mot-clé, réf. FPL…" class="caisse-search-input"
-                                    aria-label="Recherche produit">
-                                <select name="cat" class="caisse-search-select" aria-label="Catégorie">
-                                    <option value="">Toutes les catégories</option>
-                                    <?php foreach ($categories as $c): ?>
-                                    <option value="<?php echo (int) $c['id']; ?>"
-                                        <?php echo ($cat !== null && (int) $c['id'] === $cat) ? 'selected' : ''; ?>>
-                                        <?php echo htmlspecialchars($c['nom'] ?? ''); ?>
-                                    </option>
-                                    <?php endforeach; ?>
-                                </select>
-                                <button type="submit" class="btn-primary caisse-search-btn">Rechercher</button>
                             </div>
                         </form>
                     </div>
@@ -290,7 +324,7 @@ if ($preview_recu !== null && $total_ttc > 0) {
                             <tr>
                                 <th>Produit</th>
                                 <?php if ($has_ident): ?><th>Référence</th><?php endif; ?>
-                                <th>Prix TTC</th>
+                                <th>Prix HT</th>
                                 <th>Stock</th>
                                 <th></th>
                             </tr>
@@ -337,9 +371,6 @@ if ($preview_recu !== null && $total_ttc > 0) {
                         </tbody>
                     </table>
                 </div>
-                <?php else: ?>
-                <p class="caisse-results-hint"><i class="fas fa-info-circle"></i> Indiquez un terme de recherche ou une
-                    catégorie pour afficher les produits.</p>
                 <?php endif; ?>
             </section>
 
@@ -374,7 +405,7 @@ if ($preview_recu !== null && $total_ttc > 0) {
                             <thead>
                                 <tr>
                                     <th>Produit</th>
-                                    <th>Prix TTC</th>
+                                    <th>Prix HT</th>
                                     <th>Quantité</th>
                                     <th>Total</th>
                                     <th class="caisse-col-actions"></th>
@@ -388,13 +419,24 @@ if ($preview_recu !== null && $total_ttc > 0) {
                                 $tl = $pu * $q * (1 - min(100, max(0, $rl)) / 100);
                                 $p_stock = get_produit_by_id((int) ($line['produit_id'] ?? 0));
                                 $stock_dispo = $p_stock ? (int) ($p_stock['stock'] ?? 0) : $q;
+                                $ref_produit = '';
+                                if ($has_ident && $p_stock && trim((string) ($p_stock['identifiant_interne'] ?? '')) !== '') {
+                                    $ref_produit = strtoupper(trim((string) $p_stock['identifiant_interne']));
+                                }
                             ?>
                                 <tr>
                                     <td>
-                                        <span
-                                            class="caisse-cart-nom"><?php echo htmlspecialchars($line['nom'] ?? ''); ?></span>
-                                        <?php if ($rl > 0): ?><span
-                                            class="caisse-cart-badge">−<?php echo htmlspecialchars((string) $rl); ?>%</span><?php endif; ?>
+                                        <div class="caisse-cart-produit-cell">
+                                            <div class="caisse-cart-produit-line1">
+                                                <span
+                                                    class="caisse-cart-nom"><?php echo htmlspecialchars($line['nom'] ?? ''); ?></span>
+                                                <?php if ($rl > 0): ?><span
+                                                    class="caisse-cart-badge">−<?php echo htmlspecialchars((string) $rl); ?>%</span><?php endif; ?>
+                                            </div>
+                                            <?php if ($ref_produit !== ''): ?>
+                                            <span class="caisse-cart-ref"><code><?php echo htmlspecialchars($ref_produit); ?></code></span>
+                                            <?php endif; ?>
+                                        </div>
                                     </td>
                                     <td><?php echo number_format($pu, 0, ',', ' '); ?></td>
                                     <td>
@@ -445,6 +487,24 @@ if ($preview_recu !== null && $total_ttc > 0) {
                         </form>
                     </details>
 
+                    <?php if ($afficher_option_tva_caisse): ?>
+                    <div class="caisse-tva-option">
+                        <form method="post" action="post.php" class="caisse-tva-option-form">
+                            <input type="hidden" name="csrf_token"
+                                value="<?php echo htmlspecialchars($_SESSION['admin_csrf']); ?>">
+                            <input type="hidden" name="caisse_action" value="set_inclure_tva">
+                            <input type="hidden" name="inclure_tva" value="0">
+                            <label class="caisse-tva-option-label">
+                                <input type="checkbox" name="inclure_tva" value="1"
+                                    class="caisse-tva-option-check"
+                                    <?php echo !empty($cart['inclure_tva']) ? 'checked' : ''; ?>
+                                    onchange="this.form.submit()">
+                                <span><strong>Inclure la TVA</strong> (<?php echo htmlspecialchars((string) CAISSE_TVA_TAUX_POURCENT); ?> %) : la TVA s’ajoute au net catalogue — le total à payer augmente. <em>Sans cocher</em>, le montant affiché est le <strong>total TTC</strong> ; le ticket détaille HT + TVA.</span>
+                            </label>
+                        </form>
+                    </div>
+                    <?php endif; ?>
+
                     <?php if (!empty($cart['lines']) && $total_ttc > 0): ?>
                     <form method="post" action="post.php" class="caisse-generer-ticket-form">
                         <input type="hidden" name="csrf_token"
@@ -454,8 +514,8 @@ if ($preview_recu !== null && $total_ttc > 0) {
                             <?php echo !$tables_ok ? 'disabled' : ''; ?>>
                             <i class="fas fa-ticket-alt"></i> Générer le ticket
                         </button>
-                        <p class="caisse-generer-hint">Impression du ticket pour le client ; le panier reste actif pour
-                            continuer la vente.</p>
+                        <p class="caisse-generer-hint">Le ticket s’affiche en plein écran ; le panier est vidé pour une
+                            nouvelle vente.</p>
                     </form>
                     <?php endif; ?>
                     <?php endif; ?>
@@ -473,10 +533,16 @@ if ($preview_recu !== null && $total_ttc > 0) {
                         <div class="caisse-recap-row"><span>TVA (<?php echo htmlspecialchars((string) $taux_tva); ?>
                                 %)</span><strong><?php echo number_format($montant_tva, 0, ',', ' '); ?>
                                 <small>FCFA</small></strong></div>
-                        <div class="caisse-recap-row caisse-recap-row--main"><span>Total
-                                TTC</span><strong><?php echo number_format($total_ttc, 0, ',', ' '); ?>
+                        <div class="caisse-recap-row caisse-recap-row--main"><span><?php echo $taux_tva > 0 ? 'Total TTC (à payer)' : 'Total à payer'; ?></span><strong><?php echo number_format($total_ttc, 0, ',', ' '); ?>
                                 <small>FCFA</small></strong></div>
                     </div>
+                    <?php if ($taux_tva > 0): ?>
+                    <?php if ($afficher_option_tva_caisse): ?>
+                    <p class="caisse-recap-note">Sans cocher « Inclure la TVA », le montant affiché est le <strong>total TTC</strong> (décomposition HT + TVA sur le ticket). Coché : le panier reste en <strong>net HT</strong> et la TVA s’ajoute.</p>
+                    <?php else: ?>
+                    <p class="caisse-recap-note">Le total à payer est TTC ; le détail HT + TVA figure sur le ticket.</p>
+                    <?php endif; ?>
+                    <?php endif; ?>
 
                     <?php if (!empty($cart['lines']) && $total_ttc > 0): ?>
                     <div class="caisse-monnaie-box">
@@ -517,27 +583,35 @@ if ($preview_recu !== null && $total_ttc > 0) {
                         <label for="mode_paiement">Mode de paiement</label>
                         <select name="mode_paiement" id="mode_paiement" class="caisse-select-pay" required>
                             <option value="especes">Espèces</option>
-                            <option value="mobile_money">Mobile money (Wave, Orange Money…)</option>
+                            <option value="orange_money">Orange Money</option>
+                            <option value="wave">Wave</option>
                             <option value="carte">Carte bancaire</option>
                             <option value="cheque">Chèque</option>
-                            <option value="mixte">Mixte</option>
+                            <option value="mixte">Paiement mixte</option>
                             <option value="autre">Autre</option>
                         </select>
 
-                        <label for="montant_recu_final">Montant reçu (obligatoire en espèces)</label>
+                        <div id="caisseVendeurBlocEspeces">
+                        <label for="montant_recu_final" id="caisse_vendeur_label_montant_recu">Montant reçu</label>
                         <input type="text" name="montant_recu" id="montant_recu_final" inputmode="decimal"
                             placeholder="Ex. 20000" class="caisse-input-pay" autocomplete="off">
+                        </div>
 
-                        <p class="caisse-pay-split-title">Paiement mixte uniquement</p>
+                        <div id="caisseVendeurBlocMixte" class="caisse-encaisse-bloc-mixte is-hidden">
+                        <p class="caisse-pay-split-title">Répartition mixte (chaque partie versée)</p>
                         <label for="montant_especes">Part espèces</label>
                         <input type="text" name="montant_especes" id="montant_especes" inputmode="decimal"
                             placeholder="0" class="caisse-input-pay">
-                        <label for="montant_carte">Part carte</label>
+                        <label for="montant_carte">Part carte bancaire</label>
                         <input type="text" name="montant_carte" id="montant_carte" inputmode="decimal" placeholder="0"
                             class="caisse-input-pay">
-                        <label for="montant_mobile_money">Part mobile money</label>
-                        <input type="text" name="montant_mobile_money" id="montant_mobile_money" inputmode="decimal"
+                        <label for="montant_orange_money">Part Orange Money</label>
+                        <input type="text" name="montant_orange_money" id="montant_orange_money" inputmode="decimal"
                             placeholder="0" class="caisse-input-pay">
+                        <label for="montant_wave">Part Wave</label>
+                        <input type="text" name="montant_wave" id="montant_wave" inputmode="decimal" placeholder="0"
+                            class="caisse-input-pay">
+                        </div>
 
                         <label for="notes_vente">Note (optionnel)</label>
                         <textarea name="notes_vente" id="notes_vente" rows="2" class="caisse-textarea-pay"
@@ -554,16 +628,186 @@ if ($preview_recu !== null && $total_ttc > 0) {
         </div>
     </div>
 
+    <script type="application/json" id="caisse-catalog-json"><?php echo $caisse_catalog_json_script; ?></script>
+
     <script>
     (function() {
         var btn = document.getElementById('btnPrintTicket');
         if (btn) btn.addEventListener('click', function() {
             window.print();
         });
-        var scan = document.getElementById('code_scan');
-        if (scan && !scan.disabled) {
-            scan.focus();
+    })();
+    (function() {
+        var elJson = document.getElementById('caisse-catalog-json');
+        var box = document.getElementById('caisse-live-results');
+        var inputQ = document.getElementById('caisse_q_live');
+        var selCat = document.getElementById('caisse_cat_live');
+        if (!elJson || !box || !inputQ || !selCat) {
+            return;
         }
+        var catalog = [];
+        try {
+            catalog = JSON.parse(elJson.textContent || '[]');
+        } catch (e) {
+            catalog = [];
+        }
+        var csrf = box.getAttribute('data-csrf') || '';
+        var hasIdent = box.getAttribute('data-has-ident') === '1';
+        var maxLive = 25;
+        var fmtFcfa = function(n) {
+            var x = Math.round(Number(n));
+            return String(x).replace(/\B(?=(\d{3})+(?!\d))/g, '\u202f');
+        };
+        var debounceTimer;
+        function esc(s) {
+            var d = document.createElement('div');
+            d.textContent = s;
+            return d.innerHTML;
+        }
+        function matchProduct(p, qRaw, catVal) {
+            if (catVal) {
+                if (String(p.cat_id) !== String(catVal)) {
+                    return false;
+                }
+            }
+            var q = (qRaw || '').trim();
+            if (!q) {
+                return false;
+            }
+            var d = q.toLowerCase();
+            var nom = (p.nom || '').toLowerCase();
+            if (nom.indexOf(d) !== -1) {
+                return true;
+            }
+            var ref = (p.ref || '').toUpperCase();
+            var qu = q.toUpperCase();
+            if (ref && ref.indexOf(qu) !== -1) {
+                return true;
+            }
+            var qDigits = q.replace(/\D/g, '');
+            if (qDigits && ref) {
+                var rDigits = ref.replace(/\D/g, '');
+                if (rDigits.indexOf(qDigits) !== -1) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        function renderLive() {
+            var q = inputQ.value;
+            var catVal = selCat.value;
+            var hits = [];
+            var i;
+            var needFilter = (q.trim() !== '') || (catVal !== '');
+            if (!needFilter) {
+                box.innerHTML = '';
+                box.hidden = true;
+                box.classList.remove('is-empty');
+                return;
+            }
+            if (q.trim() === '' && catVal !== '') {
+                for (i = 0; i < catalog.length; i++) {
+                    if (String(catalog[i].cat_id) === String(catVal)) {
+                        hits.push(catalog[i]);
+                    }
+                    if (hits.length >= maxLive) {
+                        break;
+                    }
+                }
+            } else {
+                for (i = 0; i < catalog.length; i++) {
+                    if (matchProduct(catalog[i], q, catVal)) {
+                        hits.push(catalog[i]);
+                    }
+                    if (hits.length >= maxLive) {
+                        break;
+                    }
+                }
+            }
+            if (hits.length === 0) {
+                box.innerHTML = '<p class="caisse-live-empty">Aucun produit en stock ne correspond.</p>';
+                box.hidden = false;
+                box.classList.add('is-empty');
+                return;
+            }
+            var html = '<ul class="caisse-live-list">';
+            for (i = 0; i < hits.length; i++) {
+                var p = hits[i];
+                var refCell = hasIdent
+                    ? '<span class="caisse-live-ref"><code>' + esc(p.ref || '—') + '</code></span>'
+                    : '';
+                html += '<li class="caisse-live-item" role="option">' +
+                    '<div class="caisse-live-item-main">' +
+                    '<span class="caisse-live-nom">' + esc(p.nom) + '</span>' + refCell +
+                    '<span class="caisse-live-meta">' + fmtFcfa(p.prix) + ' FCFA HT · stock ' + esc(String(p.stock)) + '</span>' +
+                    '</div>' +
+                    '<form method="post" action="post.php" class="caisse-live-add">' +
+                    '<input type="hidden" name="csrf_token" value="' + esc(csrf) + '">' +
+                    '<input type="hidden" name="caisse_action" value="add_product">' +
+                    '<input type="hidden" name="produit_id" value="' + esc(String(p.id)) + '">' +
+                    '<input type="hidden" name="quantite" value="1">' +
+                    '<button type="submit" class="btn-add-line"><i class="fas fa-plus"></i> Ajouter</button>' +
+                    '</form></li>';
+            }
+            if (catalog.length >= 2500 && hits.length >= maxLive) {
+                html += '</ul><p class="caisse-live-cap-hint">Affichage limité à ' + maxLive + ' résultats — affinez la recherche ou utilisez « Liste complète ».</p>';
+            } else {
+                html += '</ul>';
+            }
+            box.innerHTML = html;
+            box.hidden = false;
+            box.classList.remove('is-empty');
+        }
+        function schedule() {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(renderLive, 180);
+        }
+        inputQ.addEventListener('input', schedule);
+        inputQ.addEventListener('focus', function() {
+            schedule();
+        });
+        selCat.addEventListener('change', renderLive);
+        document.addEventListener('click', function(ev) {
+            if (!box.hidden && !box.contains(ev.target) && ev.target !== inputQ && !selCat.contains(ev.target)) {
+                var insideFields = ev.target.closest && ev.target.closest('.caisse-search-fields');
+                if (!insideFields && inputQ.value.trim() === '') {
+                    box.innerHTML = '';
+                    box.hidden = true;
+                    box.classList.remove('is-empty');
+                }
+            }
+        });
+    })();
+    (function() {
+        var selPay = document.getElementById('mode_paiement');
+        var bEsp = document.getElementById('caisseVendeurBlocEspeces');
+        var bMix = document.getElementById('caisseVendeurBlocMixte');
+        var labRecuV = document.getElementById('caisse_vendeur_label_montant_recu');
+        if (!selPay || !bEsp || !bMix) return;
+        var labParMode = {
+            especes: 'Montant reçu (espèces)',
+            orange_money: 'Montant reçu (Orange Money)',
+            wave: 'Montant reçu (Wave)',
+            carte: 'Montant débité / reçu (carte bancaire)',
+            cheque: 'Montant du chèque',
+            autre: 'Montant reçu'
+        };
+        function syncPay() {
+            var m = selPay.value;
+            var inpRecu = document.getElementById('montant_recu_final');
+            if (m === 'mixte') {
+                bMix.classList.remove('is-hidden');
+                if (inpRecu) inpRecu.value = '';
+            } else {
+                bMix.classList.add('is-hidden');
+            }
+            bEsp.style.display = (m === 'mixte') ? 'none' : '';
+            if (labRecuV) {
+                labRecuV.textContent = labParMode[m] || 'Montant reçu';
+            }
+        }
+        selPay.addEventListener('change', syncPay);
+        syncPay();
     })();
     </script>
 </body>

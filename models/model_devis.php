@@ -6,6 +6,50 @@
 
 require_once __DIR__ . '/../conn/conn.php';
 require_once __DIR__ . '/model_admin_activite.php';
+require_once __DIR__ . '/../includes/fiscal_tva.php';
+
+/**
+ * Colonnes TVA présentes sur la table devis
+ */
+function devis_tva_columns_ok() {
+    global $db;
+    static $ok = null;
+    if ($ok !== null) {
+        return $ok;
+    }
+    $ok = false;
+    if (!$db) {
+        return false;
+    }
+    try {
+        $db->query('SELECT tva_incluse, taux_tva_pourcent FROM devis LIMIT 1');
+        $ok = true;
+    } catch (PDOException $e) {
+        $ok = false;
+    }
+    return $ok;
+}
+
+/**
+ * Net HT d'un devis : somme des lignes + frais de livraison
+ */
+function devis_calcul_net_ht($devis_id) {
+    global $db;
+    $devis_id = (int) $devis_id;
+    if ($devis_id <= 0) {
+        return 0.0;
+    }
+    try {
+        $stmt = $db->prepare('SELECT COALESCE(SUM(prix_total), 0) FROM devis_produits WHERE devis_id = :id');
+        $stmt->execute(['id' => $devis_id]);
+        $s = (float) $stmt->fetchColumn();
+        $d = get_devis_by_id($devis_id);
+        $frais = $d ? (float) ($d['frais_livraison'] ?? 0) : 0.0;
+        return round($s + $frais, 2);
+    } catch (PDOException $e) {
+        return 0.0;
+    }
+}
 
 /**
  * Génère un numéro de devis unique (format DEV + 5 chiffres)
@@ -35,23 +79,35 @@ function generate_numero_devis() {
  * @param float $frais_livraison
  * @param int|null $user_id
  * @param int|null $admin_createur_id Admin ayant créé le devis (traçabilité)
+ * @param bool $tva_incluse Total à payer TTC (HT + TVA) si true — comme la caisse
  * @return array|false ['success'=>true, 'devis_id'=>int, 'numero_devis'=>string] ou false
  */
-function create_devis($items, $client_nom, $client_prenom, $client_telephone, $adresse_livraison, $client_email = null, $notes = null, $zone_livraison_id = null, $frais_livraison = 0, $user_id = null, $admin_createur_id = null) {
+function create_devis($items, $client_nom, $client_prenom, $client_telephone, $adresse_livraison, $client_email = null, $notes = null, $zone_livraison_id = null, $frais_livraison = 0, $user_id = null, $admin_createur_id = null, $tva_incluse = false) {
     global $db;
 
-    if (empty($items) || empty(trim($client_nom)) || empty(trim($client_prenom)) || empty(trim($client_telephone)) || empty(trim($adresse_livraison))) {
+    if (empty($items) || empty(trim($client_nom)) || empty(trim($client_prenom)) || empty(trim($client_telephone))) {
         return false;
     }
 
-    $montant_total = 0;
+    $net_ht = 0;
     foreach ($items as $it) {
         $qte = (int) ($it['quantite'] ?? 1);
         $pu = (float) str_replace(',', '.', $it['prix_unitaire'] ?? 0);
-        $montant_total += $qte * $pu;
+        $net_ht += $qte * $pu;
     }
     $frais_livraison = (float) ($frais_livraison ?? 0);
-    $montant_total += $frais_livraison;
+    $net_ht += $frais_livraison;
+    $net_ht = round($net_ht, 2);
+
+    $tva_flag = (bool) $tva_incluse;
+    if (!devis_tva_columns_ok()) {
+        $montant_total = $net_ht;
+        $tva_flag = false;
+    } else {
+        $fiscal = fiscal_decomposer_net_ht($net_ht, $tva_flag);
+        $montant_total = $fiscal['montant_ttc'];
+    }
+    $taux_tva_stocke = fiscal_taux_tva_pourcent();
 
     $numero = generate_numero_devis();
     try {
@@ -63,8 +119,37 @@ function create_devis($items, $client_nom, $client_prenom, $client_telephone, $a
 
         $has_admin = admin_activite_column_exists('devis', 'admin_createur_id');
         $aid = $has_admin && $admin_createur_id !== null && (int) $admin_createur_id > 0 ? (int) $admin_createur_id : null;
+        $tva_ok = devis_tva_columns_ok();
 
-        if ($has_admin) {
+        if ($has_admin && $tva_ok) {
+            $stmt = $db->prepare("
+                INSERT INTO devis (
+                    numero_devis, client_nom, client_prenom, client_telephone, client_email,
+                    adresse_livraison, zone_livraison_id, frais_livraison, tva_incluse, taux_tva_pourcent, user_id, admin_createur_id,
+                    montant_total, notes, statut
+                ) VALUES (
+                    :numero_devis, :client_nom, :client_prenom, :client_telephone, :client_email,
+                    :adresse_livraison, :zone_livraison_id, :frais_livraison, :tva_incluse, :taux_tva_pourcent, :user_id, :admin_createur_id,
+                    :montant_total, :notes, 'brouillon'
+                )
+            ");
+            $stmt->execute([
+                'numero_devis' => $numero,
+                'client_nom' => trim($client_nom),
+                'client_prenom' => trim($client_prenom),
+                'client_telephone' => trim($client_telephone),
+                'client_email' => $client_email && trim($client_email) !== '' ? trim($client_email) : null,
+                'adresse_livraison' => trim($adresse_livraison),
+                'zone_livraison_id' => $zone_livraison_id && (int) $zone_livraison_id > 0 ? (int) $zone_livraison_id : null,
+                'frais_livraison' => $frais_livraison,
+                'tva_incluse' => $tva_flag ? 1 : 0,
+                'taux_tva_pourcent' => $taux_tva_stocke,
+                'user_id' => $user_id && (int) $user_id > 0 ? (int) $user_id : null,
+                'admin_createur_id' => $aid,
+                'montant_total' => $montant_total,
+                'notes' => $notes ? trim($notes) : null
+            ]);
+        } elseif ($has_admin) {
             $stmt = $db->prepare("
                 INSERT INTO devis (
                     numero_devis, client_nom, client_prenom, client_telephone, client_email,
@@ -87,6 +172,33 @@ function create_devis($items, $client_nom, $client_prenom, $client_telephone, $a
                 'frais_livraison' => $frais_livraison,
                 'user_id' => $user_id && (int) $user_id > 0 ? (int) $user_id : null,
                 'admin_createur_id' => $aid,
+                'montant_total' => $montant_total,
+                'notes' => $notes ? trim($notes) : null
+            ]);
+        } elseif ($tva_ok) {
+            $stmt = $db->prepare("
+                INSERT INTO devis (
+                    numero_devis, client_nom, client_prenom, client_telephone, client_email,
+                    adresse_livraison, zone_livraison_id, frais_livraison, tva_incluse, taux_tva_pourcent, user_id,
+                    montant_total, notes, statut
+                ) VALUES (
+                    :numero_devis, :client_nom, :client_prenom, :client_telephone, :client_email,
+                    :adresse_livraison, :zone_livraison_id, :frais_livraison, :tva_incluse, :taux_tva_pourcent, :user_id,
+                    :montant_total, :notes, 'brouillon'
+                )
+            ");
+            $stmt->execute([
+                'numero_devis' => $numero,
+                'client_nom' => trim($client_nom),
+                'client_prenom' => trim($client_prenom),
+                'client_telephone' => trim($client_telephone),
+                'client_email' => $client_email && trim($client_email) !== '' ? trim($client_email) : null,
+                'adresse_livraison' => trim($adresse_livraison),
+                'zone_livraison_id' => $zone_livraison_id && (int) $zone_livraison_id > 0 ? (int) $zone_livraison_id : null,
+                'frais_livraison' => $frais_livraison,
+                'tva_incluse' => $tva_flag ? 1 : 0,
+                'taux_tva_pourcent' => $taux_tva_stocke,
+                'user_id' => $user_id && (int) $user_id > 0 ? (int) $user_id : null,
                 'montant_total' => $montant_total,
                 'notes' => $notes ? trim($notes) : null
             ]);
@@ -149,18 +261,100 @@ function create_devis($items, $client_nom, $client_prenom, $client_telephone, $a
 }
 
 /**
- * Récupère tous les devis
- * @param string|null $statut Filtrer par statut
- * @return array
+ * Clé stable pour regrouper les devis d'un même client (compte ou contact)
  */
-function get_all_devis($statut = null) {
+function devis_client_groupe_cle($row)
+{
+    $uid = isset($row['user_id']) ? (int) $row['user_id'] : 0;
+    if ($uid > 0) {
+        return 'u:' . $uid;
+    }
+    $p = preg_replace('/\D/', '', (string) ($row['client_telephone'] ?? ''));
+    $e = strtolower(trim((string) ($row['client_email'] ?? '')));
+    $n = strtolower(trim((string) ($row['client_nom'] ?? '') . '|' . trim((string) ($row['client_prenom'] ?? ''))));
+    return 'c:' . md5($p . '|' . $e . '|' . $n);
+}
+
+/**
+ * Devis non soldés côté facture (pas de facture marquée payée associée)
+ * @return array<int, array<string, mixed>>
+ */
+function get_devis_sans_facture_payee()
+{
     global $db;
     try {
+        if (function_exists('factures_devis_col_payee_ok') && factures_devis_col_payee_ok()) {
+            $stmt = $db->query('
+                SELECT d.* FROM devis d
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM factures_devis fd
+                    WHERE fd.devis_id = d.id AND fd.payee = 1
+                )
+                ORDER BY d.date_creation DESC
+            ');
+        } else {
+            $stmt = $db->query('SELECT d.* FROM devis d ORDER BY d.date_creation DESC');
+        }
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (PDOException $e) {
+        return [];
+    }
+}
+
+/**
+ * Regroupe les devis "ouverts" (non facture payée) par client
+ * @return array<int, array{cle:string, label:string, email:string, telephone:string, user_id:int, nb:int, derniere:string, devis:array}>
+ */
+function get_devis_agreges_par_client_non_payes()
+{
+    $rows = get_devis_sans_facture_payee();
+    $groups = [];
+    foreach ($rows as $d) {
+        $k = devis_client_groupe_cle($d);
+        if (!isset($groups[$k])) {
+            $groups[$k] = [
+                'cle' => $k,
+                'user_id' => (int) ($d['user_id'] ?? 0),
+                'label' => trim((string) (($d['client_prenom'] ?? '') . ' ' . ($d['client_nom'] ?? ''))),
+                'email' => (string) ($d['client_email'] ?? ''),
+                'telephone' => (string) ($d['client_telephone'] ?? ''),
+                'nb' => 0,
+                'derniere' => (string) $d['date_creation'],
+                'devis' => [],
+            ];
+        }
+        $groups[$k]['nb']++;
+        $groups[$k]['devis'][] = $d;
+        if (strtotime((string) $d['date_creation']) > strtotime($groups[$k]['derniere'])) {
+            $groups[$k]['derniere'] = (string) $d['date_creation'];
+        }
+    }
+    $list = array_values($groups);
+    usort($list, function ($a, $b) {
+        return strtotime($b['derniere']) <=> strtotime($a['derniere']);
+    });
+    return $list;
+}
+
+/**
+ * Récupère tous les devis
+ * @param string|null $statut Filtrer par statut
+ * @param array{exclude_facture_payee?:bool} $opts
+ * @return array
+ */
+function get_all_devis($statut = null, $opts = [])
+{
+    global $db;
+    try {
+        $exclude_payee = !empty($opts['exclude_facture_payee']);
         $sql = "SELECT d.* FROM devis d WHERE 1=1";
         $params = [];
         if ($statut) {
             $sql .= " AND d.statut = :statut";
             $params['statut'] = $statut;
+        }
+        if ($exclude_payee && function_exists('factures_devis_col_payee_ok') && factures_devis_col_payee_ok()) {
+            $sql .= " AND NOT EXISTS (SELECT 1 FROM factures_devis fd WHERE fd.devis_id = d.id AND fd.payee = 1)";
         }
         $sql .= " ORDER BY d.date_creation DESC";
         $stmt = $db->prepare($sql);
@@ -236,16 +430,52 @@ function update_devis($devis_id, $items, $infos) {
     try {
         $db->beginTransaction();
 
-        $montant_total = 0;
+        $net_ht = 0;
         foreach ($items as $it) {
             $qte = (int) ($it['quantite'] ?? 1);
             $pu = (float) str_replace(',', '.', $it['prix_unitaire'] ?? 0);
-            $montant_total += $qte * $pu;
+            $net_ht += $qte * $pu;
         }
         $frais = (float) ($infos['frais_livraison'] ?? 0);
-        $montant_total += $frais;
+        $net_ht += $frais;
+        $net_ht = round($net_ht, 2);
 
-        $stmt = $db->prepare("
+        $tva_flag = !empty($infos['tva_incluse']);
+        if (!devis_tva_columns_ok()) {
+            $montant_total = $net_ht;
+            $tva_flag = false;
+        } else {
+            $fiscal = fiscal_decomposer_net_ht($net_ht, $tva_flag);
+            $montant_total = $fiscal['montant_ttc'];
+        }
+        $taux_stocke = fiscal_taux_tva_pourcent();
+
+        if (devis_tva_columns_ok()) {
+            $stmt = $db->prepare("
+            UPDATE devis SET
+                client_nom = :client_nom, client_prenom = :client_prenom,
+                client_telephone = :client_telephone, client_email = :client_email,
+                adresse_livraison = :adresse_livraison, zone_livraison_id = :zone_livraison_id,
+                frais_livraison = :frais_livraison, tva_incluse = :tva_incluse, taux_tva_pourcent = :taux_tva_pourcent,
+                montant_total = :montant_total, notes = :notes
+            WHERE id = :id
+        ");
+            $stmt->execute([
+                'client_nom' => trim($infos['client_nom'] ?? ''),
+                'client_prenom' => trim($infos['client_prenom'] ?? ''),
+                'client_telephone' => trim($infos['client_telephone'] ?? ''),
+                'client_email' => !empty(trim($infos['client_email'] ?? '')) ? trim($infos['client_email']) : null,
+                'adresse_livraison' => trim($infos['adresse_livraison'] ?? ''),
+                'zone_livraison_id' => !empty($infos['zone_livraison_id']) ? (int) $infos['zone_livraison_id'] : null,
+                'frais_livraison' => $frais,
+                'tva_incluse' => $tva_flag ? 1 : 0,
+                'taux_tva_pourcent' => $taux_stocke,
+                'montant_total' => $montant_total,
+                'notes' => !empty(trim($infos['notes'] ?? '')) ? trim($infos['notes']) : null,
+                'id' => $devis_id
+            ]);
+        } else {
+            $stmt = $db->prepare("
             UPDATE devis SET
                 client_nom = :client_nom, client_prenom = :client_prenom,
                 client_telephone = :client_telephone, client_email = :client_email,
@@ -253,18 +483,19 @@ function update_devis($devis_id, $items, $infos) {
                 frais_livraison = :frais_livraison, montant_total = :montant_total, notes = :notes
             WHERE id = :id
         ");
-        $stmt->execute([
-            'client_nom' => trim($infos['client_nom'] ?? ''),
-            'client_prenom' => trim($infos['client_prenom'] ?? ''),
-            'client_telephone' => trim($infos['client_telephone'] ?? ''),
-            'client_email' => !empty(trim($infos['client_email'] ?? '')) ? trim($infos['client_email']) : null,
-            'adresse_livraison' => trim($infos['adresse_livraison'] ?? ''),
-            'zone_livraison_id' => !empty($infos['zone_livraison_id']) ? (int) $infos['zone_livraison_id'] : null,
-            'frais_livraison' => $frais,
-            'montant_total' => $montant_total,
-            'notes' => !empty(trim($infos['notes'] ?? '')) ? trim($infos['notes']) : null,
-            'id' => $devis_id
-        ]);
+            $stmt->execute([
+                'client_nom' => trim($infos['client_nom'] ?? ''),
+                'client_prenom' => trim($infos['client_prenom'] ?? ''),
+                'client_telephone' => trim($infos['client_telephone'] ?? ''),
+                'client_email' => !empty(trim($infos['client_email'] ?? '')) ? trim($infos['client_email']) : null,
+                'adresse_livraison' => trim($infos['adresse_livraison'] ?? ''),
+                'zone_livraison_id' => !empty($infos['zone_livraison_id']) ? (int) $infos['zone_livraison_id'] : null,
+                'frais_livraison' => $frais,
+                'montant_total' => $montant_total,
+                'notes' => !empty(trim($infos['notes'] ?? '')) ? trim($infos['notes']) : null,
+                'id' => $devis_id
+            ]);
+        }
 
         $db->prepare("DELETE FROM devis_produits WHERE devis_id = :id")->execute(['id' => $devis_id]);
 

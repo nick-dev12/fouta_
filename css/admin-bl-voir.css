@@ -205,21 +205,162 @@
   padding: 32px 16px !important;
 }
 
-/* Actions */
+/* Actions bas de page (suppression) */
 .bl-voir-page .bl-voir-actions {
   justify-content: center;
   gap: 14px 18px;
 }
 
-.bl-voir-page .bl-voir-actions .btn-primary,
-.bl-voir-page .bl-voir-actions .btn-secondary {
-  min-width: 160px;
-  justify-content: center;
+/* Bandeau montant / statut + CTA valider */
+.bl-voir-page .bl-voir-hero {
+  align-items: center;
+  gap: 20px 28px;
+}
+
+.bl-voir-hero__cta {
+  flex: 1 1 200px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  min-width: min(100%, 240px);
+}
+
+.bl-voir-hero__validate-form {
+  margin: 0;
+}
+
+/* Boutons type « sidebar » : pastille icône + libellé (format compact) */
+.bl-voir-admin-page .bl-act-btn,
+.bl-voir-admin-page a.bl-act-btn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 12px 20px;
-  border-radius: 12px;
+  padding: 6px 13px 6px 7px;
+  margin: 0;
+  border: 1px solid rgba(53, 100, 166, 0.14);
+  border-radius: 11px;
+  background: var(--blanc, #fff);
+  box-shadow: 0 2px 10px rgba(53, 100, 166, 0.07);
+  font-family: var(--font-corps, inherit);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--titres, #0d0d0d);
+  text-decoration: none;
+  cursor: pointer;
+  line-height: 1.25;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    border-color 0.18s ease,
+    background 0.18s ease;
+}
+
+.bl-voir-admin-page button.bl-act-btn {
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.bl-voir-admin-page .bl-act-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(53, 100, 166, 0.12);
+  border-color: rgba(53, 100, 166, 0.22);
+  text-decoration: none;
+  color: var(--titres, #0d0d0d);
+}
+
+.bl-voir-admin-page .bl-act-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(53, 100, 166, 0.22);
+}
+
+.bl-voir-admin-page .bl-act-btn__ic {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.88rem;
+  line-height: 1;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.bl-voir-admin-page .bl-act-btn__label {
+  text-align: left;
+  padding-right: 2px;
+}
+
+.bl-voir-admin-page .bl-act-btn--client .bl-act-btn__ic {
+  background: rgba(99, 102, 241, 0.14);
+  color: #4338ca;
+}
+
+.bl-voir-admin-page .bl-act-btn--facture .bl-act-btn__ic {
+  background: rgba(53, 100, 166, 0.16);
+  color: #2d5690;
+}
+
+.bl-voir-admin-page .bl-act-btn--edit .bl-act-btn__ic {
+  background: rgba(0, 131, 143, 0.14);
+  color: #006978;
+}
+
+.bl-voir-admin-page .bl-act-btn--retour .bl-act-btn__ic {
+  background: rgba(106, 27, 154, 0.12);
+  color: #6a1b9a;
+}
+
+.bl-voir-admin-page .bl-act-btn--validate {
+  border-color: rgba(46, 125, 50, 0.22);
+  box-shadow: 0 2px 12px rgba(46, 125, 50, 0.1);
+}
+
+.bl-voir-admin-page .bl-act-btn--validate:hover {
+  border-color: rgba(46, 125, 50, 0.35);
+  box-shadow: 0 6px 22px rgba(46, 125, 50, 0.14);
+}
+
+.bl-voir-admin-page .bl-act-btn--validate .bl-act-btn__ic {
+  background: rgba(46, 125, 50, 0.14);
+  color: #2e7d32;
+}
+
+.bl-voir-admin-page .bl-act-btn--danger {
+  border-color: rgba(198, 40, 40, 0.2);
+  box-shadow: 0 2px 10px rgba(198, 40, 40, 0.06);
+}
+
+.bl-voir-admin-page .bl-act-btn--danger:hover {
+  border-color: rgba(198, 40, 40, 0.32);
+  box-shadow: 0 6px 20px rgba(198, 40, 40, 0.1);
+}
+
+.bl-voir-admin-page .bl-act-btn--danger .bl-act-btn__ic {
+  background: rgba(211, 47, 47, 0.12);
+  color: #c62828;
+}
+
+.bl-voir-admin-page .bl-voir-header-actions {
+  gap: 12px 14px;
+}
+
+.bl-voir-page .bl-voir-actions .bl-act-btn {
+  min-width: 132px;
+  justify-content: center;
+}
+
+@media (max-width: 900px) {
+  .bl-voir-hero__cta {
+    flex: 1 1 100%;
+    justify-content: stretch;
+  }
+
+  .bl-voir-hero__validate-form,
+  .bl-voir-hero__validate-form .bl-act-btn {
+    width: 100%;
+    justify-content: center;
+  }
 }
 
 @media (max-width: 768px) {
@@ -243,6 +384,11 @@
     border-top: 1px solid var(--glass-border, rgba(0, 0, 0, 0.08));
   }
 
+  .bl-voir-page .bl-voir-hero__cta {
+    padding-top: 12px;
+    border-top: 1px solid var(--glass-border, rgba(0, 0, 0, 0.08));
+  }
+
   .bl-voir-lines-table.admin-table.bl-lines-table {
     min-width: 480px;
   }
@@ -257,5 +403,19 @@
 
   .bl-voir-page .bl-voir-hero {
     padding: 18px 16px;
+  }
+}
+
+/* Header BL voir : boutons élégants en grille sur petits écrans */
+@media (max-width: 720px) {
+  .bl-voir-admin-page .bl-voir-header-actions.bl-page-header__actions--stack {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .bl-voir-admin-page .bl-voir-header-actions .bl-act-btn {
+    flex: 1 1 calc(50% - 7px);
+    justify-content: flex-start;
+    min-width: 0;
   }
 }

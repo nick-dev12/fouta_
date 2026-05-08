@@ -81,7 +81,7 @@ function bilan_export_libelle_type_depense($type) {
 function bilan_export_libelle_statut_fm($st) {
     $m = [
         'brouillon' => 'Brouillon',
-        'validee' => 'Validée',
+        'validee' => 'Impayée',
         'payee' => 'Payée',
     ];
     $k = strtolower((string) $st);

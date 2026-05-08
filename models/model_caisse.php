@@ -12,15 +12,108 @@ require_once __DIR__ . '/model_mouvements_stock.php';
 define('CAISSE_SESSION_KEY', 'caisse_cart_v1');
 
 /**
- * Taux TVA pour affichage HT / TVA / TTC (prix produits considérés TTC)
- * Modifiez selon votre fiscalité.
+ * Taux TVA caisse (constant utilisée pour la décomposition TTC et l’ajout au net HT).
+ * Les prix catalogue restent saisis comme aujourd’hui ; suivant la case « Inclure la TVA »,
+ * le net panier est interprété comme TTC (décomposition) ou comme HT (TVA en sus).
  */
 if (!defined('CAISSE_TVA_TAUX_POURCENT')) {
     define('CAISSE_TVA_TAUX_POURCENT', 18.0);
 }
 
+/** Modes de paiement en caisse (ENUM après migration canaux). */
+function caisse_modes_paiement_valides()
+{
+    return ['especes', 'carte', 'orange_money', 'wave', 'cheque', 'mixte', 'autre'];
+}
+
 /**
- * Décompose un montant TTC en HT + TVA (TVA incluse)
+ * Modes pour lesquels le formulaire propose « montant reçu / versé » et « monnaie à rendre » (hors paiement mixte).
+ */
+function caisse_mode_avec_montant_recu_affiche($mode_paiement)
+{
+    return in_array((string) $mode_paiement, ['especes', 'orange_money', 'wave', 'carte', 'cheque', 'autre'], true);
+}
+
+/**
+ * Somme saisie pour contrôle paiement mixte (champs texte formulaire).
+ */
+function caisse_mixte_somme_saisie(array $d)
+{
+    $sum = 0.0;
+    foreach (['montant_especes', 'montant_carte', 'montant_orange_money', 'montant_wave', 'montant_mobile_money'] as $k) {
+        if (!array_key_exists($k, $d) || $d[$k] === null || $d[$k] === '') {
+            continue;
+        }
+        $sum += round(max(0, (float) str_replace(',', '.', (string) $d[$k])), 2);
+    }
+
+    return $sum;
+}
+
+/**
+ * Montants enregistrés sur la vente : total alloué au canal pour un mode simple,
+ * ou parts saisies pour le mixte (ancien champ montant_mobile_money fusionné dans Orange Money).
+ *
+ * @param array $d montant_especes, montant_carte, montant_orange_money, montant_wave, montant_mobile_money (float|string|null)
+ * @return array{montant_especes:?float,montant_carte:?float,montant_orange_money:?float,montant_wave:?float,montant_mobile_money:?float}
+ */
+function caisse_normaliser_montants_paiement_pour_db($mode_paiement, $montant_total, array $d)
+{
+    $mt = round(max(0, (float) $montant_total), 2);
+    $one = function ($key) use ($d) {
+        if (!array_key_exists($key, $d) || $d[$key] === null || $d[$key] === '') {
+            return null;
+        }
+        $v = round(max(0, (float) str_replace(',', '.', (string) $d[$key])), 2);
+
+        return $v > 0 ? $v : null;
+    };
+    $me = $one('montant_especes');
+    $mc = $one('montant_carte');
+    $mo = $one('montant_orange_money');
+    $mw = $one('montant_wave');
+    $mm = $one('montant_mobile_money');
+
+    $vide = ['montant_especes' => null, 'montant_carte' => null, 'montant_orange_money' => null, 'montant_wave' => null, 'montant_mobile_money' => null];
+
+    if ($mode_paiement === 'mixte') {
+        $orange = ($mo ?? 0) + ($mm ?? 0);
+
+        return [
+            'montant_especes' => $me,
+            'montant_carte' => $mc,
+            'montant_orange_money' => $orange > 0 ? round($orange, 2) : null,
+            'montant_wave' => $mw,
+            'montant_mobile_money' => null,
+        ];
+    }
+
+    switch ($mode_paiement) {
+        case 'especes':
+            $vide['montant_especes'] = $mt;
+
+            return $vide;
+        case 'carte':
+            $vide['montant_carte'] = $mt;
+
+            return $vide;
+        case 'orange_money':
+            $vide['montant_orange_money'] = $mt;
+
+            return $vide;
+        case 'wave':
+            $vide['montant_wave'] = $mt;
+
+            return $vide;
+        default:
+
+            return $vide;
+    }
+}
+
+/**
+ * Décompose un montant TTC en HT + TVA (TVA incluse dans le montant)
+ * — utilisé pour l’affichage d’anciens tickets sans colonnes fiscales.
  *
  * @return array{ht:float, tva:float, ttc:float}
  */
@@ -37,7 +130,46 @@ function caisse_decomposer_ttc($montant_ttc)
 }
 
 /**
- * Prix unitaire affiché en caisse (promotion si applicable)
+ * Récap HT / TVA / net à payer pour l’impression ticket et les écrans.
+ * Avec colonnes fiscales en base : montant_total = TTC à payer ;
+ * tva_incluse = 1 → TVA ajoutée au net HT catalogue ; 0 → TVA comprise dans le total (montant HT et TVA = décomposition du TTC).
+ * Sans colonnes (ticket ancien) : décomposition « TTC inclus » sur montant_total.
+ *
+ * @return array{ht:float, tva:float, ttc:float, tva_incluse:bool, legacy_decompose:bool}
+ */
+function caisse_vente_recap_fiscal_affichage(array $vente_row)
+{
+    $ttc = max(0, round((float) ($vente_row['montant_total'] ?? 0), 2));
+    $mh = array_key_exists('montant_ht', $vente_row) ? $vente_row['montant_ht'] : null;
+    $mv = array_key_exists('montant_tva', $vente_row) ? $vente_row['montant_tva'] : null;
+    $has_stored = (array_key_exists('montant_ht', $vente_row) && $vente_row['montant_ht'] !== null)
+        && (array_key_exists('montant_tva', $vente_row) && $vente_row['montant_tva'] !== null);
+
+    if ($has_stored) {
+        $ht = round((float) $mh, 2);
+        $tva = round((float) $mv, 2);
+        $incl = !empty($vente_row['tva_incluse']);
+        return [
+            'ht' => $ht,
+            'tva' => $tva,
+            'ttc' => $ttc,
+            'tva_incluse' => $incl,
+            'legacy_decompose' => false,
+        ];
+    }
+
+    $dec = caisse_decomposer_ttc($ttc);
+    return [
+        'ht' => $dec['ht'],
+        'tva' => $dec['tva'],
+        'ttc' => $dec['ttc'],
+        'tva_incluse' => true,
+        'legacy_decompose' => true,
+    ];
+}
+
+/**
+ * Prix unitaire HT en caisse (promotion si applicable)
  */
 function caisse_prix_unitaire_produit(array $p)
 {
@@ -62,6 +194,7 @@ function caisse_cart_get()
         $_SESSION[CAISSE_SESSION_KEY] = [
             'lines' => [],
             'remise_globale_pct' => 0.0,
+            'inclure_tva' => 0,
         ];
     }
     if (!isset($_SESSION[CAISSE_SESSION_KEY]['lines']) || !is_array($_SESSION[CAISSE_SESSION_KEY]['lines'])) {
@@ -69,6 +202,9 @@ function caisse_cart_get()
     }
     if (!isset($_SESSION[CAISSE_SESSION_KEY]['remise_globale_pct'])) {
         $_SESSION[CAISSE_SESSION_KEY]['remise_globale_pct'] = 0.0;
+    }
+    if (!array_key_exists('inclure_tva', $_SESSION[CAISSE_SESSION_KEY])) {
+        $_SESSION[CAISSE_SESSION_KEY]['inclure_tva'] = 0;
     }
     return $_SESSION[CAISSE_SESSION_KEY];
 }
@@ -84,7 +220,10 @@ function caisse_cart_clear()
 }
 
 /**
- * Sous-total ligne après remise ligne, puis total après remise globale
+ * Sous-total catalogue (lignes × remises), net après remise globale, puis TVA.
+ * - Case « Inclure la TVA » décochée : le net panier est considéré comme montant TTC à payer ;
+ *   on en déduit le HT et la TVA pour l’affichage ticket / compta.
+ * - Case cochée : le net panier est le HT ; la TVA s’ajoute (TTC plus élevé).
  */
 function caisse_compute_totals(array $cart)
 {
@@ -97,17 +236,48 @@ function caisse_compute_totals(array $cart)
         $sous += $ligne_ht;
     }
     $rg = min(100, max(0, (float) ($cart['remise_globale_pct'] ?? 0)));
-    $total_ttc = $sous * (1 - $rg / 100);
-    $total_ttc = round($total_ttc, 2);
-    $dec = caisse_decomposer_ttc($total_ttc);
+    $net_brut = round($sous * (1 - $rg / 100), 2);
+    $inclure = !empty($cart['inclure_tva']);
+    $taux = (float) CAISSE_TVA_TAUX_POURCENT / 100.0;
+
+    if ($taux <= 0) {
+        return [
+            'sous_total' => round($sous, 2),
+            'remise_globale_pct' => $rg,
+            'total_ht' => $net_brut,
+            'montant_tva' => 0.0,
+            'total' => $net_brut,
+            'total_ttc' => $net_brut,
+            'taux_tva_pourcent' => (float) CAISSE_TVA_TAUX_POURCENT,
+            'inclure_tva' => $inclure ? 1 : 0,
+        ];
+    }
+
+    if ($inclure) {
+        $montant_tva = round($net_brut * $taux, 2);
+        $total_a_payer = round($net_brut + $montant_tva, 2);
+        return [
+            'sous_total' => round($sous, 2),
+            'remise_globale_pct' => $rg,
+            'total_ht' => $net_brut,
+            'montant_tva' => $montant_tva,
+            'total' => $total_a_payer,
+            'total_ttc' => $total_a_payer,
+            'taux_tva_pourcent' => (float) CAISSE_TVA_TAUX_POURCENT,
+            'inclure_tva' => 1,
+        ];
+    }
+
+    $dec = caisse_decomposer_ttc($net_brut);
     return [
         'sous_total' => round($sous, 2),
         'remise_globale_pct' => $rg,
-        'total' => $total_ttc,
-        'total_ttc' => $total_ttc,
         'total_ht' => $dec['ht'],
         'montant_tva' => $dec['tva'],
+        'total' => $dec['ttc'],
+        'total_ttc' => $dec['ttc'],
         'taux_tva_pourcent' => (float) CAISSE_TVA_TAUX_POURCENT,
+        'inclure_tva' => 0,
     ];
 }
 
@@ -434,6 +604,9 @@ function caisse_creer_ticket_en_attente($admin_id, array $cart)
 
     $numero_provisoire = caisse_generer_numero_ticket_provisoire();
     $montant_total = $totals['total'];
+    $montant_ht = $totals['total_ht'];
+    $montant_tva = $totals['montant_tva'];
+    $tva_incluse = !empty($cart['inclure_tva']) ? 1 : 0;
     $rg = (float) ($cart['remise_globale_pct'] ?? 0);
 
     try {
@@ -441,11 +614,11 @@ function caisse_creer_ticket_en_attente($admin_id, array $cart)
 
         $stmt = $db->prepare("
             INSERT INTO caisse_ventes (
-                admin_id, caissier_id, numero_ticket, montant_total, remise_globale_pct, mode_paiement,
+                admin_id, caissier_id, numero_ticket, montant_total, montant_ht, montant_tva, tva_incluse, remise_globale_pct, mode_paiement,
                 montant_especes, montant_carte, montant_mobile_money, montant_recu, monnaie_rendue, notes,
                 statut, date_vente, date_encaissement
             ) VALUES (
-                :admin_id, NULL, :numero_ticket, :montant_total, :remise_globale_pct, 'especes',
+                :admin_id, NULL, :numero_ticket, :montant_total, :montant_ht, :montant_tva, :tva_incluse, :remise_globale_pct, 'especes',
                 NULL, NULL, NULL, NULL, NULL, NULL,
                 'en_attente', NOW(), NULL
             )
@@ -454,6 +627,9 @@ function caisse_creer_ticket_en_attente($admin_id, array $cart)
             'admin_id' => $admin_id,
             'numero_ticket' => $numero_provisoire,
             'montant_total' => $montant_total,
+            'montant_ht' => $montant_ht,
+            'montant_tva' => $montant_tva,
+            'tva_incluse' => $tva_incluse,
             'remise_globale_pct' => $rg,
         ]);
         $vente_id = (int) $db->lastInsertId();
@@ -530,6 +706,7 @@ function caisse_finaliser_vente_en_attente($vente_id, $caissier_admin_id, $mode_
     $cart = [
         'lines' => [],
         'remise_globale_pct' => (float) ($v['remise_globale_pct'] ?? 0),
+        'inclure_tva' => (int) ($v['tva_incluse'] ?? 0),
     ];
     foreach ($v['lignes'] as $lg) {
         $key = caisse_line_key((int) $lg['produit_id']);
@@ -548,7 +725,7 @@ function caisse_finaliser_vente_en_attente($vente_id, $caissier_admin_id, $mode_
         return ['ok' => false, 'error' => 'Ticket invalide.'];
     }
 
-    $modes_ok = ['especes', 'carte', 'mobile_money', 'cheque', 'mixte', 'autre'];
+    $modes_ok = caisse_modes_paiement_valides();
     if (!in_array($mode_paiement, $modes_ok, true)) {
         return ['ok' => false, 'error' => 'Mode de paiement invalide.'];
     }
@@ -566,24 +743,29 @@ function caisse_finaliser_vente_en_attente($vente_id, $caissier_admin_id, $mode_
         }
     }
 
-    $montant_especes = isset($paiement_details['montant_especes']) ? (float) $paiement_details['montant_especes'] : null;
-    $montant_carte = isset($paiement_details['montant_carte']) ? (float) $paiement_details['montant_carte'] : null;
-    $montant_mobile = isset($paiement_details['montant_mobile_money']) ? (float) $paiement_details['montant_mobile_money'] : null;
     $montant_recu = isset($paiement_details['montant_recu']) ? (float) $paiement_details['montant_recu'] : null;
-    $monnaie = isset($paiement_details['monnaie_rendue']) ? (float) $paiement_details['monnaie_rendue'] : null;
+    $monnaie_preset = isset($paiement_details['monnaie_rendue']) ? (float) $paiement_details['monnaie_rendue'] : null;
     $notes_in = isset($paiement_details['notes']) ? trim((string) $paiement_details['notes']) : '';
     $notes_val = $notes_in !== '' ? $notes_in : ($v['notes'] ?? null);
 
-    if ($mode_paiement === 'especes' && $montant_recu !== null && $montant_recu + 0.001 < $montant_total) {
+    if (caisse_mode_avec_montant_recu_affiche($mode_paiement) && $montant_recu !== null && $montant_recu + 0.001 < $montant_total) {
         return ['ok' => false, 'error' => 'Montant reçu inférieur au total à payer.'];
     }
 
     if ($mode_paiement === 'mixte') {
-        $sum = ($montant_especes ?? 0) + ($montant_carte ?? 0) + ($montant_mobile ?? 0);
+        $sum = caisse_mixte_somme_saisie($paiement_details);
         if ($sum + 0.01 < $montant_total) {
-            return ['ok' => false, 'error' => 'La somme des règlements (espèces + carte + mobile) doit couvrir le total.'];
+            return ['ok' => false, 'error' => 'La somme des règlements (espèces, carte, Orange Money, Wave) doit couvrir le total à payer.'];
         }
     }
+
+    $montants_db = caisse_normaliser_montants_paiement_pour_db($mode_paiement, $montant_total, $paiement_details);
+    $montant_especes = $montants_db['montant_especes'];
+    $montant_carte = $montants_db['montant_carte'];
+    $montant_orange = $montants_db['montant_orange_money'];
+    $montant_wave = $montants_db['montant_wave'];
+    $montant_mobile = $montants_db['montant_mobile_money'];
+    $monnaie = $monnaie_preset;
 
     $numero = (string) ($v['numero_ticket'] ?? '');
 
@@ -595,6 +777,8 @@ function caisse_finaliser_vente_en_attente($vente_id, $caissier_admin_id, $mode_
                 mode_paiement = :mode_paiement,
                 montant_especes = :montant_especes,
                 montant_carte = :montant_carte,
+                montant_orange_money = :montant_orange_money,
+                montant_wave = :montant_wave,
                 montant_mobile_money = :montant_mobile_money,
                 montant_recu = :montant_recu,
                 monnaie_rendue = :monnaie_rendue,
@@ -613,6 +797,8 @@ function caisse_finaliser_vente_en_attente($vente_id, $caissier_admin_id, $mode_
             'mode_paiement' => $mode_paiement,
             'montant_especes' => $montant_especes,
             'montant_carte' => $montant_carte,
+            'montant_orange_money' => $montant_orange,
+            'montant_wave' => $montant_wave,
             'montant_mobile_money' => $montant_mobile,
             'montant_recu' => $montant_recu,
             'monnaie_rendue' => $monnaie,
@@ -662,6 +848,124 @@ function caisse_finaliser_vente_en_attente($vente_id, $caissier_admin_id, $mode_
 }
 
 /**
+ * Corrige le mode de paiement et les montants d’un ticket déjà payé (sans toucher au stock).
+ *
+ * @return array{ok:bool, vente_id?:int, numero_ticket?:string, error?:string}
+ */
+function caisse_corriger_paiement_vente_payee($vente_id, $mode_paiement, array $paiement_details)
+{
+    global $db;
+
+    if (!caisse_tables_exist()) {
+        return ['ok' => false, 'error' => 'Tables caisse absentes.'];
+    }
+
+    $vente_id = (int) $vente_id;
+    if ($vente_id <= 0) {
+        return ['ok' => false, 'error' => 'Ticket invalide.'];
+    }
+
+    $v = caisse_get_vente_by_id($vente_id);
+    if (!$v) {
+        return ['ok' => false, 'error' => 'Ticket introuvable.'];
+    }
+    if (caisse_vente_statut($v) !== 'paye') {
+        return ['ok' => false, 'error' => 'Seuls les tickets déjà payés peuvent être corrigés ainsi.'];
+    }
+
+    $cart = [
+        'lines' => [],
+        'remise_globale_pct' => (float) ($v['remise_globale_pct'] ?? 0),
+        'inclure_tva' => (int) ($v['tva_incluse'] ?? 0),
+    ];
+    foreach ($v['lignes'] as $lg) {
+        $key = caisse_line_key((int) $lg['produit_id']);
+        $cart['lines'][$key] = [
+            'produit_id' => (int) $lg['produit_id'],
+            'nom' => $lg['designation'] ?? '',
+            'prix_unitaire' => (float) ($lg['prix_unitaire'] ?? 0),
+            'quantite' => (int) ($lg['quantite'] ?? 0),
+            'remise_ligne_pct' => (float) ($lg['remise_ligne_pct'] ?? 0),
+        ];
+    }
+
+    $totals = caisse_compute_totals($cart);
+    $montant_total = $totals['total'];
+    if ($montant_total <= 0 || empty($cart['lines'])) {
+        return ['ok' => false, 'error' => 'Ticket invalide.'];
+    }
+
+    $modes_ok = caisse_modes_paiement_valides();
+    if (!in_array($mode_paiement, $modes_ok, true)) {
+        return ['ok' => false, 'error' => 'Mode de paiement invalide.'];
+    }
+
+    $montant_recu = isset($paiement_details['montant_recu']) ? (float) $paiement_details['montant_recu'] : null;
+    $monnaie_preset = isset($paiement_details['monnaie_rendue']) ? (float) $paiement_details['monnaie_rendue'] : null;
+    $notes_in = isset($paiement_details['notes']) ? trim((string) $paiement_details['notes']) : '';
+    $notes_val = $notes_in !== '' ? $notes_in : ($v['notes'] ?? null);
+
+    if (caisse_mode_avec_montant_recu_affiche($mode_paiement) && $montant_recu !== null && $montant_recu + 0.001 < $montant_total) {
+        return ['ok' => false, 'error' => 'Montant reçu inférieur au total à payer.'];
+    }
+
+    if ($mode_paiement === 'mixte') {
+        $sum = caisse_mixte_somme_saisie($paiement_details);
+        if ($sum + 0.01 < $montant_total) {
+            return ['ok' => false, 'error' => 'La somme des règlements (espèces, carte, Orange Money, Wave) doit couvrir le total à payer.'];
+        }
+    }
+
+    $montants_db = caisse_normaliser_montants_paiement_pour_db($mode_paiement, $montant_total, $paiement_details);
+    $montant_especes = $montants_db['montant_especes'];
+    $montant_carte = $montants_db['montant_carte'];
+    $montant_orange = $montants_db['montant_orange_money'];
+    $montant_wave = $montants_db['montant_wave'];
+    $montant_mobile = $montants_db['montant_mobile_money'];
+    $monnaie = $monnaie_preset;
+
+    $numero = (string) ($v['numero_ticket'] ?? '');
+
+    try {
+        $sqlUp = '
+            UPDATE caisse_ventes SET
+                mode_paiement = :mode_paiement,
+                montant_especes = :montant_especes,
+                montant_carte = :montant_carte,
+                montant_orange_money = :montant_orange_money,
+                montant_wave = :montant_wave,
+                montant_mobile_money = :montant_mobile_money,
+                montant_recu = :montant_recu,
+                monnaie_rendue = :monnaie_rendue,
+                notes = :notes
+            WHERE id = :id AND statut = \'paye\'';
+        $stmtU = $db->prepare($sqlUp);
+        $stmtU->execute([
+            'mode_paiement' => $mode_paiement,
+            'montant_especes' => $montant_especes,
+            'montant_carte' => $montant_carte,
+            'montant_orange_money' => $montant_orange,
+            'montant_wave' => $montant_wave,
+            'montant_mobile_money' => $montant_mobile,
+            'montant_recu' => $montant_recu,
+            'monnaie_rendue' => $monnaie,
+            'notes' => $notes_val !== null && $notes_val !== '' ? $notes_val : null,
+            'id' => $vente_id,
+        ]);
+        $chk = $db->prepare('SELECT COUNT(*) FROM caisse_ventes WHERE id = :id AND statut = \'paye\'');
+        $chk->execute(['id' => $vente_id]);
+        if ((int) $chk->fetchColumn() !== 1) {
+            return ['ok' => false, 'error' => 'Impossible de mettre à jour le paiement (ticket introuvable ou non payé).'];
+        }
+
+        return ['ok' => true, 'vente_id' => $vente_id, 'numero_ticket' => $numero];
+    } catch (PDOException $e) {
+        error_log('[caisse_corriger_paiement_vente_payee] ' . $e->getMessage());
+        return ['ok' => false, 'error' => 'Erreur lors de la mise à jour du paiement.'];
+    }
+}
+
+/**
  * Enregistre la vente, décrémente le stock, mouvements de stock
  *
  * @return array{ok:bool, vente_id?:int, numero_ticket?:string, error?:string}
@@ -679,7 +983,7 @@ function caisse_enregistrer_vente($admin_id, array $cart, $mode_paiement, array 
         return ['ok' => false, 'error' => 'Panier vide ou total invalide.'];
     }
 
-    $modes_ok = ['especes', 'carte', 'mobile_money', 'cheque', 'mixte', 'autre'];
+    $modes_ok = caisse_modes_paiement_valides();
     if (!in_array($mode_paiement, $modes_ok, true)) {
         return ['ok' => false, 'error' => 'Mode de paiement invalide.'];
     }
@@ -707,37 +1011,44 @@ function caisse_enregistrer_vente($admin_id, array $cart, $mode_paiement, array 
 
     $numero_provisoire = caisse_generer_numero_ticket_provisoire();
     $montant_total = $totals['total'];
+    $montant_ht = $totals['total_ht'];
+    $montant_tva = $totals['montant_tva'];
+    $tva_incluse = !empty($cart['inclure_tva']) ? 1 : 0;
     $rg = (float) ($cart['remise_globale_pct'] ?? 0);
 
-    $montant_especes = isset($paiement_details['montant_especes']) ? (float) $paiement_details['montant_especes'] : null;
-    $montant_carte = isset($paiement_details['montant_carte']) ? (float) $paiement_details['montant_carte'] : null;
-    $montant_mobile = isset($paiement_details['montant_mobile_money']) ? (float) $paiement_details['montant_mobile_money'] : null;
     $montant_recu = isset($paiement_details['montant_recu']) ? (float) $paiement_details['montant_recu'] : null;
     $monnaie = isset($paiement_details['monnaie_rendue']) ? (float) $paiement_details['monnaie_rendue'] : null;
     $notes = isset($paiement_details['notes']) ? trim((string) $paiement_details['notes']) : null;
 
-    if ($mode_paiement === 'especes' && $montant_recu !== null && $montant_recu + 0.001 < $montant_total) {
+    if (caisse_mode_avec_montant_recu_affiche($mode_paiement) && $montant_recu !== null && $montant_recu + 0.001 < $montant_total) {
         return ['ok' => false, 'error' => 'Montant reçu inférieur au total à payer.'];
     }
 
     if ($mode_paiement === 'mixte') {
-        $sum = ($montant_especes ?? 0) + ($montant_carte ?? 0) + ($montant_mobile ?? 0);
+        $sum = caisse_mixte_somme_saisie($paiement_details);
         if ($sum + 0.01 < $montant_total) {
-            return ['ok' => false, 'error' => 'La somme des règlements (espèces + carte + mobile) doit couvrir le total.'];
+            return ['ok' => false, 'error' => 'La somme des règlements (espèces, carte, Orange Money, Wave) doit couvrir le total à payer.'];
         }
     }
+
+    $montants_db = caisse_normaliser_montants_paiement_pour_db($mode_paiement, $montant_total, $paiement_details);
+    $montant_especes = $montants_db['montant_especes'];
+    $montant_carte = $montants_db['montant_carte'];
+    $montant_orange = $montants_db['montant_orange_money'];
+    $montant_wave = $montants_db['montant_wave'];
+    $montant_mobile = $montants_db['montant_mobile_money'];
 
     try {
         $db->beginTransaction();
 
         $stmt = $db->prepare("
             INSERT INTO caisse_ventes (
-                admin_id, caissier_id, numero_ticket, montant_total, remise_globale_pct, mode_paiement,
-                montant_especes, montant_carte, montant_mobile_money, montant_recu, monnaie_rendue, notes,
+                admin_id, caissier_id, numero_ticket, montant_total, montant_ht, montant_tva, tva_incluse, remise_globale_pct, mode_paiement,
+                montant_especes, montant_carte, montant_orange_money, montant_wave, montant_mobile_money, montant_recu, monnaie_rendue, notes,
                 statut, date_vente, date_encaissement
             ) VALUES (
-                :admin_id, :caissier_id, :numero_ticket, :montant_total, :remise_globale_pct, :mode_paiement,
-                :montant_especes, :montant_carte, :montant_mobile_money, :montant_recu, :monnaie_rendue, :notes,
+                :admin_id, :caissier_id, :numero_ticket, :montant_total, :montant_ht, :montant_tva, :tva_incluse, :remise_globale_pct, :mode_paiement,
+                :montant_especes, :montant_carte, :montant_orange_money, :montant_wave, :montant_mobile_money, :montant_recu, :monnaie_rendue, :notes,
                 'paye', NOW(), NOW()
             )
         ");
@@ -746,10 +1057,15 @@ function caisse_enregistrer_vente($admin_id, array $cart, $mode_paiement, array 
             'caissier_id' => $admin_id,
             'numero_ticket' => $numero_provisoire,
             'montant_total' => $montant_total,
+            'montant_ht' => $montant_ht,
+            'montant_tva' => $montant_tva,
+            'tva_incluse' => $tva_incluse,
             'remise_globale_pct' => $rg,
             'mode_paiement' => $mode_paiement,
             'montant_especes' => $montant_especes,
             'montant_carte' => $montant_carte,
+            'montant_orange_money' => $montant_orange,
+            'montant_wave' => $montant_wave,
             'montant_mobile_money' => $montant_mobile,
             'montant_recu' => $montant_recu,
             'monnaie_rendue' => $monnaie,

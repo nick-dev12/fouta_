@@ -244,6 +244,11 @@
   margin-top: 0;
 }
 
+/* Sous-catégories : options non pertinentes masquées (complément à l’attribut HTML hidden) */
+.page-produit-modifier #sous_categorie_id option[hidden] {
+  display: none;
+}
+
 .page-produit-modifier .form-group label {
   display: block;
   color: var(--titres);
@@ -451,6 +456,26 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
   z-index: 1;
+}
+
+.page-produit-modifier .pm-etiquette-fpl-preview-wrap {
+  margin-top: 10px;
+  min-height: 72px;
+  border: 1px dashed var(--glass-border, rgba(0, 0, 0, 0.12));
+  border-radius: var(--pm-radius-sm, 8px);
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--fond-secondaire, #fafafa);
+}
+
+.page-produit-modifier .pm-etiquette-fpl-preview-img {
+  max-width: 100%;
+  max-height: 140px;
+  object-fit: contain;
+  display: block;
+  border-radius: var(--pm-radius-sm, 8px);
 }
 
 .page-produit-modifier .image-preview-accumulator .preview-remove {
@@ -954,4 +979,144 @@
   .page-produit-modifier .pm-hero {
     padding: 28px 32px;
   }
+}
+
+/* ---------- Modale sous-catégorie (formulaire produit) ---------- */
+body.pm-modal-open {
+  overflow: hidden;
+}
+
+.page-produit-modifier .pm-modal--fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  pointer-events: none;
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 0.2s ease, visibility 0.2s;
+}
+
+.page-produit-modifier .pm-modal--fullscreen.is-open {
+  pointer-events: auto;
+  visibility: visible;
+  opacity: 1;
+}
+
+.page-produit-modifier .pm-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(13, 13, 13, 0.55);
+  cursor: pointer;
+}
+
+.page-produit-modifier .pm-modal__panel {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 520px;
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+  background: var(--fond-principal, #fff);
+  border-radius: var(--pm-radius);
+  box-shadow: var(--glass-shadow, 0 8px 32px rgba(0, 0, 0, 0.12));
+  border: 1px solid var(--glass-border, rgba(0, 0, 0, 0.08));
+  display: flex;
+  flex-direction: column;
+}
+
+.page-produit-modifier .pm-modal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--glass-border, rgba(0, 0, 0, 0.08));
+  flex-shrink: 0;
+}
+
+.page-produit-modifier .pm-modal__title {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--titres, #0d0d0d);
+}
+
+.page-produit-modifier .pm-modal__close {
+  background: var(--fond-secondaire, #fafafa);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--pm-radius-sm);
+  font-size: 1.1rem;
+  cursor: pointer;
+  color: var(--gris-moyen, #737373);
+  padding: 8px 12px;
+  line-height: 1;
+}
+
+.page-produit-modifier .pm-modal__close:hover {
+  color: var(--couleur-dominante, #3564a6);
+  border-color: var(--border-input-focus, var(--couleur-dominante));
+}
+
+.page-produit-modifier .pm-modal__form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.page-produit-modifier .pm-modal__body {
+  padding: 24px;
+  flex: 1;
+}
+
+.page-produit-modifier .pm-modal__body .form-group textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+.page-produit-modifier .pm-modal__foot {
+  padding: 16px 24px;
+  border-top: 1px solid var(--glass-border, rgba(0, 0, 0, 0.08));
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.page-produit-modifier .pm-souscat-field__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.page-produit-modifier .pm-souscat-field__row select {
+  flex: 1;
+  min-width: 200px;
+}
+
+.page-produit-modifier .pm-btn-souscat {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  font-size: var(--pm-font-size-input, 15px);
+  font-weight: 600;
+  color: var(--couleur-dominante, #3564a6);
+  background: var(--bleu-pale, rgba(53, 100, 166, 0.12));
+  border: 1px solid rgba(53, 100, 166, 0.35);
+  border-radius: var(--pm-radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.page-produit-modifier .pm-btn-souscat:hover {
+  background: rgba(53, 100, 166, 0.18);
+  border-color: var(--couleur-dominante, #3564a6);
 }

@@ -150,6 +150,172 @@
   color: #1b5e20;
 }
 
+.page-compta-admin .compta-synthese-hub {
+  margin: 0 0 20px;
+  padding: 16px 18px 20px;
+  background: var(--fond-secondaire);
+  border: 1px solid var(--border-input);
+  border-radius: 14px;
+  box-shadow: var(--glass-shadow);
+}
+
+.page-compta-admin .compta-synthese-filter {
+  margin-bottom: 8px;
+}
+
+.page-compta-admin .compta-hub-filter__date-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px 14px;
+}
+
+.page-compta-admin .compta-hub-filter__date-line .compta-ventes-filter__sublabel {
+  margin-bottom: 0;
+  align-self: center;
+}
+
+.page-compta-admin .compta-hub-filter__jma-block {
+  margin-bottom: 12px;
+}
+
+.page-compta-admin .compta-hub-jma-inline {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+}
+
+.page-compta-admin .compta-hub-jma-sep {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--gris-moyen);
+  user-select: none;
+  line-height: 1;
+}
+
+.page-compta-admin .compta-hub-jma-sel.compta-ventes-filter__select--sm {
+  min-width: 3.25rem;
+  padding: 8px 8px;
+  font-size: 0.88rem;
+}
+
+.page-compta-admin .compta-hub-jma-sel--mois.compta-ventes-filter__select--sm {
+  min-width: 3.5rem;
+}
+
+.page-compta-admin .compta-hub-jma-sel--y.compta-ventes-filter__select--sm {
+  min-width: 4.25rem;
+}
+
+.page-compta-admin .compta-synthese-hub__period {
+  margin: 0 0 14px;
+  font-size: 0.88rem;
+  color: var(--gris-fonce);
+  line-height: 1.45;
+}
+
+.page-compta-admin .compta-synthese-hub__period i {
+  margin-right: 6px;
+  opacity: 0.85;
+}
+
+.page-compta-admin .compta-synthese-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+@media (max-width: 900px) {
+  .page-compta-admin .compta-synthese-cards {
+    grid-template-columns: 1fr;
+  }
+}
+
+.page-compta-admin .compta-synthese-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--glass-border);
+  background: var(--fond-principal);
+  box-shadow: 0 2px 10px rgba(53, 100, 166, 0.06);
+}
+
+.page-compta-admin .compta-synthese-card__ic {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+}
+
+.page-compta-admin .compta-synthese-card--depenses .compta-synthese-card__ic {
+  background: rgba(255, 107, 53, 0.14);
+  color: var(--orange-fonce);
+}
+
+.page-compta-admin .compta-synthese-card--gains .compta-synthese-card__ic {
+  background: rgba(22, 163, 74, 0.15);
+  color: #15803d;
+}
+
+.page-compta-admin .compta-synthese-card--benefice .compta-synthese-card__ic {
+  background: var(--bleu-pale);
+  color: var(--couleur-dominante);
+}
+
+.page-compta-admin .compta-synthese-card--benefice.compta-synthese-card--negative .compta-synthese-card__ic {
+  background: rgba(220, 38, 38, 0.12);
+  color: #b91c1c;
+}
+
+.page-compta-admin .compta-synthese-card--benefice.compta-synthese-card--negative {
+  border-color: rgba(220, 38, 38, 0.25);
+}
+
+.page-compta-admin .compta-synthese-card__body {
+  min-width: 0;
+  flex: 1;
+}
+
+.page-compta-admin .compta-synthese-card__label {
+  display: block;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+  color: var(--gris-moyen);
+  margin-bottom: 4px;
+}
+
+.page-compta-admin .compta-synthese-card__value {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--titres);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.page-compta-admin .compta-synthese-card__value small {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--gris-moyen);
+  margin-left: 2px;
+}
+
+.page-compta-admin .compta-synthese-card__detail {
+  display: block;
+  margin-top: 6px;
+  font-size: 0.78rem;
+  color: var(--gris-fonce);
+  font-variant-numeric: tabular-nums;
+}
+
 .page-compta-section.content-section.compta-page {
   background: var(--fond-principal);
   border: 1px solid var(--border-input);
@@ -179,6 +345,11 @@
 .page-compta-admin .compta-tab--caisse .compta-tab__ic {
   background: rgba(0, 105, 92, 0.12);
   color: #00695c;
+}
+
+.page-compta-admin .compta-tab--devis-payes .compta-tab__ic {
+  background: rgba(46, 125, 50, 0.14);
+  color: #2e7d32;
 }
 
 .page-compta-admin .compta-tab:hover {
@@ -218,13 +389,168 @@
   color: #fff;
 }
 
+.page-compta-admin .compta-tab--devis-payes.is-active .compta-tab__ic {
+  background: #2e7d32;
+  color: #fff;
+}
+
 /* Héros de panneau compta : fond uni */
 .page-compta-admin .compta-hero--ventes,
 .page-compta-admin .compta-hero--depenses,
 .page-compta-admin .compta-hero--bl,
-.page-compta-admin .compta-hero--caisse {
+.page-compta-admin .compta-hero--caisse,
+.page-compta-admin .compta-hero--devis-payes {
   background: var(--fond-secondaire);
   background-image: none;
+}
+
+/* Devis payés — grille cartes */
+.page-compta-admin .compta-devis-payes-body {
+  padding: 0 0 1.5rem;
+}
+
+.page-compta-admin .compta-devis-payes-migration-hint {
+  font-size: 0.95rem;
+  margin-top: 0.5rem;
+}
+
+.page-compta-admin .compta-devis-payes-count strong {
+  color: var(--couleur-dominante);
+}
+
+.page-compta-admin .compta-devis-payes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.25rem;
+  margin-top: 1rem;
+}
+
+.page-compta-admin .compta-devis-payee-card {
+  background: var(--fond-principal);
+  border: 1px solid var(--border-input);
+  border-radius: 14px;
+  padding: 1.15rem 1.25rem 1.25rem;
+  box-shadow: 0 2px 14px rgba(53, 100, 166, 0.08);
+}
+
+.page-compta-admin .compta-devis-payee-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.65rem;
+}
+
+.page-compta-admin .compta-devis-payee-card__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #1b5e20;
+  background: rgba(27, 94, 32, 0.12);
+  padding: 0.28rem 0.55rem;
+  border-radius: 8px;
+}
+
+.page-compta-admin .compta-devis-payee-card__ref {
+  font-family: ui-monospace, monospace;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--couleur-dominante);
+}
+
+.page-compta-admin .compta-devis-payee-card__client {
+  font-size: 1.08rem;
+  font-weight: 700;
+  color: var(--texte-fonce);
+  margin-bottom: 0.75rem;
+  line-height: 1.3;
+}
+
+.page-compta-admin .compta-devis-payee-card__meta {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem;
+  font-size: 0.9rem;
+  color: var(--gris-fonce);
+}
+
+.page-compta-admin .compta-devis-payee-card__meta li {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.page-compta-admin .compta-devis-payee-card__k {
+  min-width: 5.5rem;
+  color: var(--gris-moyen);
+}
+
+.page-compta-admin .compta-devis-payee-card__v--muted {
+  color: var(--gris-moyen);
+  font-size: 0.88rem;
+}
+
+.page-compta-admin .compta-devis-payee-card__montant {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--texte-fonce);
+  margin-bottom: 1rem;
+}
+
+.page-compta-admin .compta-devis-payee-card__montant small {
+  font-size: 0.65em;
+  font-weight: 600;
+  color: var(--gris-moyen);
+}
+
+.page-compta-admin .compta-devis-payee-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.page-compta-admin .compta-devis-payee-card__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 0.85rem;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-decoration: none;
+  border: 1px solid transparent;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.page-compta-admin .compta-devis-payee-card__btn--primary {
+  background: var(--couleur-dominante);
+  color: #fff;
+  border-color: var(--couleur-dominante);
+}
+
+.page-compta-admin .compta-devis-payee-card__btn--primary:hover {
+  background: var(--couleur-dominante-hover);
+  border-color: var(--couleur-dominante-hover);
+  color: #fff;
+}
+
+.page-compta-admin .compta-devis-payee-card__btn--secondary {
+  background: var(--fond-secondaire);
+  color: var(--couleur-dominante);
+  border-color: var(--border-input);
+}
+
+.page-compta-admin .compta-devis-payee-card__btn--secondary:hover {
+  border-color: var(--couleur-dominante);
+  background: rgba(53, 100, 166, 0.08);
+}
+
+.page-compta-admin .compta-devis-payes-empty {
+  margin-top: 1rem;
 }
 
 .page-compta-admin .compta-hero::before {
@@ -232,8 +558,319 @@
   background-image: none;
 }
 
+/* -----------------------------------------------------------------------------
+   Option TVA — modaux nouveau devis / nouveau BL (carte « Produits »)
+   ----------------------------------------------------------------------------- */
+.page-devis-admin .modal-tva-option {
+  margin-top: 1.15rem;
+  padding-top: 1.15rem;
+  border-top: 1px solid rgba(53, 100, 166, 0.1);
+}
+
+.page-devis-admin .modal-tva-option__label {
+  display: block;
+  margin: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+.page-devis-admin .modal-tva-option__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  position: relative;
+  overflow: hidden;
+  padding: 1rem 1.2rem 1rem 1.1rem;
+  border-radius: 16px;
+  border: 1px solid rgba(53, 100, 166, 0.14);
+  background: linear-gradient(165deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 255, 1) 48%, rgba(255, 255, 255, 1) 100%);
+  box-shadow:
+    0 1px 2px rgba(53, 100, 166, 0.05),
+    0 10px 28px rgba(53, 100, 166, 0.09),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  transition: transform 0.22s ease, box-shadow 0.28s ease, border-color 0.22s ease;
+}
+
+.page-devis-admin .modal-tva-option__glow {
+  position: absolute;
+  pointer-events: none;
+  width: 140px;
+  height: 140px;
+  right: -36px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: radial-gradient(circle at center, rgba(53, 100, 166, 0.12) 0%, rgba(53, 100, 166, 0.02) 45%, transparent 65%);
+}
+
+.page-devis-admin .modal-tva-option__label:hover .modal-tva-option__inner {
+  transform: translateY(-2px);
+  border-color: rgba(53, 100, 166, 0.26);
+  box-shadow:
+    0 2px 4px rgba(53, 100, 166, 0.06),
+    0 16px 40px rgba(53, 100, 166, 0.13),
+    inset 0 1px 0 rgba(255, 255, 255, 1);
+}
+
+.page-devis-admin .modal-tva-option__label:active .modal-tva-option__inner {
+  transform: translateY(0);
+  transition-duration: 0.1s;
+}
+
+.page-devis-admin .modal-tva-option__label:has(.modal-tva-option__checkbox:checked) .modal-tva-option__inner {
+  border-color: rgba(53, 100, 166, 0.38);
+  background: linear-gradient(165deg, rgba(53, 100, 166, 0.1) 0%, rgba(255, 255, 255, 0.99) 55%, #fff 100%);
+  box-shadow:
+    0 1px 2px rgba(53, 100, 166, 0.08),
+    0 10px 32px rgba(53, 100, 166, 0.16),
+    inset 0 0 0 1px rgba(53, 100, 166, 0.06);
+}
+
+.page-devis-admin .modal-tva-option__leading {
+  display: flex;
+  align-items: center;
+  gap: 0.95rem;
+  min-width: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.page-devis-admin .modal-tva-option__icon {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.05rem;
+  color: var(--couleur-dominante);
+  background: linear-gradient(145deg, #fff 0%, rgba(53, 100, 166, 0.07) 100%);
+  border: 2px solid rgba(53, 100, 166, 0.25);
+  box-shadow:
+    0 2px 8px rgba(53, 100, 166, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.page-devis-admin .modal-tva-option__label:has(.modal-tva-option__checkbox:checked) .modal-tva-option__icon {
+  color: #fff;
+  background: linear-gradient(145deg, var(--couleur-dominante) 0%, var(--couleur-dominante-hover) 100%);
+  border-color: rgba(255, 255, 255, 0.35);
+  box-shadow: 0 4px 14px rgba(53, 100, 166, 0.35);
+}
+
+.page-devis-admin .modal-tva-option__title {
+  font-weight: 600;
+  font-size: 1.05rem;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  color: var(--texte-fonce);
+  margin: 0;
+}
+
+.page-devis-admin .modal-tva-option__toggle {
+  position: relative;
+  width: 54px;
+  height: 32px;
+  flex-shrink: 0;
+  z-index: 1;
+}
+
+.page-devis-admin .modal-tva-option__checkbox {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.page-devis-admin .modal-tva-option__track {
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #aeb8c6 0%, #c8d0db 100%);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.08);
+  transition: background 0.25s ease, box-shadow 0.25s ease;
+  pointer-events: none;
+}
+
+.page-devis-admin .modal-tva-option__track::after {
+  content: "";
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #fff 0%, #f3f5f8 100%);
+  top: 3px;
+  left: 3px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18), 0 1px 0 rgba(255, 255, 255, 0.9) inset;
+  transition: transform 0.26s cubic-bezier(0.34, 1.3, 0.64, 1);
+}
+
+.page-devis-admin .modal-tva-option__checkbox:checked + .modal-tva-option__track {
+  background: linear-gradient(180deg, var(--couleur-dominante) 0%, var(--couleur-dominante-hover) 100%);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.page-devis-admin .modal-tva-option__checkbox:checked + .modal-tva-option__track::after {
+  transform: translateX(22px);
+}
+
+.page-devis-admin .modal-tva-option__checkbox:focus-visible + .modal-tva-option__track {
+  outline: 2px solid var(--couleur-dominante);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-devis-admin .modal-tva-option__inner,
+  .page-devis-admin .modal-tva-option__track,
+  .page-devis-admin .modal-tva-option__track::after {
+    transition: none;
+  }
+
+  .page-devis-admin .modal-tva-option__label:hover .modal-tva-option__inner {
+    transform: none;
+  }
+}
+
+@media (max-width: 540px) {
+  .page-devis-admin .modal-tva-option__inner {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.85rem;
+    padding: 1rem 1rem 1rem 1rem;
+  }
+
+  .page-devis-admin .modal-tva-option__leading {
+    justify-content: flex-start;
+  }
+
+  .page-devis-admin .modal-tva-option__toggle {
+    align-self: flex-end;
+  }
+}
+
 @media (max-width: 600px) {
   .page-devis-section .admin-devis-bl-tabs .admin-tab {
     flex-wrap: wrap;
   }
+}
+
+/* ——— Compta : tableaux liste clients BL & devis payés (remplace grilles cartes) ——— */
+.page-compta-admin .compta-panel-table-wrap {
+  margin-top: 0;
+  overflow-x: auto;
+  border-radius: 14px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  box-shadow: var(--glass-shadow);
+  transition: box-shadow 0.22s ease, border-color 0.2s ease;
+}
+
+.page-compta-admin .compta-panel-table-wrap:hover {
+  box-shadow: var(--ombre-gourmande);
+  border-color: var(--border-input);
+}
+
+.page-compta-admin .compta-panel-table-wrap .data-table {
+  width: 100%;
+  margin: 0;
+  border-radius: 0;
+  border: none;
+  font-size: 0.9rem;
+}
+
+.page-compta-admin .compta-panel-table-wrap .data-table th,
+.page-compta-admin .compta-panel-table-wrap .data-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--glass-border);
+  vertical-align: middle;
+}
+
+.page-compta-admin .compta-panel-table-wrap .data-table thead th {
+  background: rgba(53, 100, 166, 0.08);
+  color: var(--gris-moyen);
+  font-weight: 700;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.page-compta-admin .compta-panel-table-wrap .data-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.page-compta-admin .compta-panel-table-wrap .data-table tbody tr:hover {
+  background: transparent;
+}
+
+.page-compta-admin .compta-panel-table-wrap .data-table tbody tr:hover td {
+  background: rgba(53, 100, 166, 0.06);
+}
+
+.page-compta-admin .compta-panel-table-wrap .compta-table-col-num,
+.page-compta-admin .compta-panel-table-wrap thead th.compta-table-col-num {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.page-compta-admin .compta-panel-table-wrap .compta-table-col-actions {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.page-compta-admin .compta-table-sub {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--gris-moyen);
+}
+
+.page-compta-admin .compta-table-sub i {
+  margin-right: 4px;
+  opacity: 0.85;
+}
+
+.page-compta-admin .compta-table-actions a:not(.compta-devis-payee-card__btn) {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  color: var(--couleur-dominante);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.page-compta-admin .compta-table-actions a:not(.compta-devis-payee-card__btn):hover {
+  text-decoration: underline;
+}
+
+.page-compta-admin .compta-table-actions--split {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.page-compta-admin .compta-devis-payes-table__muted {
+  color: var(--gris-moyen);
+  font-size: 0.88rem;
+}
+
+.page-compta-admin .compta-devis-payes-table .compta-devis-payee-card__btn {
+  font-size: 0.82rem;
+  padding: 0.45rem 0.7rem;
+}
+
+.page-compta-admin .compta-bl-tab-surface .compta-panel-table-wrap {
+  margin: 0 0 0.25rem;
+}
+
+.page-compta-admin .compta-devis-payes-body .compta-panel-table-wrap {
+  margin-top: 1rem;
 }

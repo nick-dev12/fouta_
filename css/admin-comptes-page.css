@@ -607,7 +607,7 @@
 
 /* ========== Cartes comptes d’accès (liste) — design premium ========== */
 .page-comptes-index .comptes-acces-grid {
-  gap: 1.5rem;
+  gap: 1.1rem;
 }
 
 .comptes-acces-card {
@@ -615,72 +615,35 @@
   display: flex;
   flex-direction: column;
   background: var(--fond-principal);
-  border-radius: 22px;
-  border: 1px solid rgba(53, 100, 166, 0.12);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.85) inset,
-    0 10px 40px rgba(53, 100, 166, 0.09),
-    0 2px 10px rgba(13, 13, 40, 0.04);
+  border-radius: 14px;
+  border: 1px solid var(--glass-border);
+  border-top: 3px solid var(--couleur-dominante);
+  box-shadow: var(--ombre-douce);
   overflow: hidden;
-  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.28s ease, border-color 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
   min-width: 0;
 }
 
-.comptes-acces-card::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: linear-gradient(90deg, var(--couleur-dominante) 0%, var(--bleu-clair) 50%, var(--accent-promo) 100%);
-  z-index: 3;
-  pointer-events: none;
-}
-
 .comptes-acces-card:hover {
-  transform: translateY(-5px);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.9) inset,
-    0 16px 48px rgba(53, 100, 166, 0.16),
-    0 8px 20px rgba(13, 13, 40, 0.06);
-  border-color: rgba(53, 100, 166, 0.22);
+  border-color: rgba(53, 100, 166, 0.28);
+  box-shadow: var(--ombre-gourmande);
 }
 
 .comptes-acces-card--inactive {
-  opacity: 0.94;
-}
-
-.comptes-acces-card--inactive::before {
-  opacity: 0.55;
+  opacity: 0.92;
+  border-top-color: var(--gris-moyen);
 }
 
 .comptes-acces-card--inactive .comptes-acces-card__head {
-  filter: saturate(0.82) brightness(0.96);
+  background: var(--gris-fonce);
+  filter: none;
 }
 
 .comptes-acces-card__head {
   position: relative;
-  padding: 1.25rem 1.35rem 1.3rem;
-  background: linear-gradient(
-    145deg,
-    #2a4f7e 0%,
-    var(--couleur-dominante) 38%,
-    #4a7ab8 78%,
-    rgba(74, 122, 184, 0.95) 100%
-  );
+  padding: 0.85rem 1rem 0.9rem;
+  background: var(--couleur-dominante);
   color: var(--texte-clair);
-}
-
-.comptes-acces-card__head::after {
-  content: "";
-  position: absolute;
-  right: -20%;
-  top: -30%;
-  width: 58%;
-  height: 140%;
-  background: radial-gradient(ellipse at 70% 30%, rgba(255, 255, 255, 0.14) 0%, transparent 55%);
-  pointer-events: none;
 }
 
 .comptes-acces-card__head-badges {
@@ -689,30 +652,29 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.45rem 0.55rem;
-  margin-bottom: 1rem;
+  gap: 0.35rem 0.45rem;
+  margin-bottom: 0.65rem;
 }
 
 .comptes-acces-card__status {
   display: inline-flex;
   align-items: center;
-  padding: 0.35rem 0.85rem;
+  padding: 0.2rem 0.55rem;
   border-radius: 999px;
-  font-size: 0.62rem;
-  font-weight: 800;
+  font-size: 0.58rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
 }
 
 .comptes-acces-card__status--actif {
   background: rgba(46, 196, 120, 0.35);
   color: #e8fff4;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.22);
 }
 
 .comptes-acces-card__status--inactif {
-  background: rgba(0, 0, 0, 0.25);
+  background: rgba(0, 0, 0, 0.22);
   color: rgba(255, 255, 255, 0.95);
   border: 1px solid rgba(255, 255, 255, 0.12);
 }
@@ -722,14 +684,14 @@
   z-index: 1;
   display: inline-flex;
   align-items: center;
-  padding: 0.32rem 0.8rem;
+  padding: 0.22rem 0.55rem;
   border-radius: 999px;
-  font-size: 0.68rem;
-  font-weight: 700;
+  font-size: 0.62rem;
+  font-weight: 600;
   max-width: 100%;
   word-break: break-word;
   line-height: 1.25;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.22);
 }
 
 .comptes-acces-card__head .role-badge.role-admin {
@@ -774,25 +736,22 @@
   z-index: 1;
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.65rem;
 }
 
 .comptes-acces-card__avatar {
-  width: 62px;
-  height: 62px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.2);
-  border: 3px solid rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.18);
+  border: 2px solid rgba(255, 255, 255, 0.38);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.45rem;
-  font-weight: 800;
+  font-size: 1.1rem;
+  font-weight: 700;
   font-family: var(--font-titres);
   flex-shrink: 0;
-  box-shadow:
-    0 4px 14px rgba(0, 0, 0, 0.18),
-    0 0 0 6px rgba(255, 255, 255, 0.08);
 }
 
 .comptes-acces-card__id-text {
@@ -801,93 +760,93 @@
 }
 
 .comptes-acces-card__name {
-  margin: 0 0 0.35rem;
+  margin: 0 0 0.2rem;
   font-family: var(--font-titres);
-  font-size: 1.12rem;
+  font-size: 0.98rem;
   font-weight: 700;
-  line-height: 1.22;
+  line-height: 1.2;
   color: #fff;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
 }
 
 .comptes-acces-card__email {
   margin: 0;
-  font-size: 0.8rem;
-  line-height: 1.42;
-  opacity: 0.93;
+  font-size: 0.74rem;
+  line-height: 1.35;
+  opacity: 0.92;
   display: flex;
   align-items: flex-start;
-  gap: 0.5rem;
+  gap: 0.35rem;
   word-break: break-word;
 }
 
 .comptes-acces-card__email i {
-  margin-top: 0.12rem;
+  margin-top: 0.08rem;
   opacity: 0.88;
   flex-shrink: 0;
+  font-size: 0.7rem;
 }
 
 .comptes-acces-card__body {
-  padding: 1.25rem 1.3rem 1.35rem;
+  padding: 0.85rem 0.95rem 1rem;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.65rem;
   flex: 1;
-  background: linear-gradient(180deg, var(--fond-principal) 0%, var(--blanc-casse) 100%);
+  background: var(--fond-principal);
 }
 
 .comptes-acces-card__meta {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0.65rem;
+  gap: 0.45rem;
 }
 
 .comptes-acces-card__meta-tile {
   display: flex;
   align-items: flex-start;
-  gap: 0.65rem;
-  padding: 0.8rem 0.85rem;
-  background: var(--fond-principal);
-  border: 1px solid rgba(53, 100, 166, 0.1);
-  border-radius: 14px;
-  min-height: 4.35rem;
-  box-shadow: 0 2px 10px rgba(53, 100, 166, 0.06);
+  gap: 0.45rem;
+  padding: 0.55rem 0.6rem;
+  background: var(--fond-secondaire);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  min-height: 3.35rem;
 }
 
 .comptes-acces-card__meta-ic {
-  width: 2.35rem;
-  height: 2.35rem;
-  border-radius: 11px;
+  width: 1.85rem;
+  height: 1.85rem;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(145deg, var(--bleu-pale), rgba(53, 100, 166, 0.12));
+  background: var(--bleu-pale);
   color: var(--couleur-dominante);
-  font-size: 0.88rem;
+  font-size: 0.75rem;
   flex-shrink: 0;
-  border: 1px solid rgba(53, 100, 166, 0.12);
+  border: 1px solid rgba(53, 100, 166, 0.1);
 }
 
 .comptes-acces-card__meta-txt {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.12rem;
+  gap: 0.06rem;
 }
 
 .comptes-acces-card__meta-label {
-  font-size: 0.58rem;
-  font-weight: 800;
+  font-size: 0.52rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   color: var(--texte-mute, var(--gris-moyen));
 }
 
 .comptes-acces-card__meta-value {
-  font-size: 0.95rem;
+  font-size: 0.82rem;
   font-weight: 700;
   color: var(--titres);
-  line-height: 1.15;
+  line-height: 1.12;
 }
 
 .comptes-acces-card__meta-value--empty {
@@ -897,7 +856,7 @@
 }
 
 .comptes-acces-card__meta-hint {
-  font-size: 0.72rem;
+  font-size: 0.65rem;
   color: var(--gris-moyen);
   font-weight: 600;
 }
@@ -906,17 +865,15 @@
   display: flex;
   flex-wrap: wrap;
   align-items: stretch;
-  gap: 0.55rem;
-  padding: 0.65rem;
-  margin: 0 -0.15rem;
-  background: var(--blanc-neige);
+  gap: 0.4rem;
+  padding: 0.45rem;
+  background: var(--fond-secondaire);
   border: 1px solid var(--glass-border);
-  border-radius: 16px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  border-radius: 10px;
 }
 
 .comptes-acces-card__statut-form {
-  flex: 1 1 120px;
+  flex: 1 1 100px;
   min-width: 0;
   margin: 0;
   display: flex;
@@ -930,94 +887,88 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.45rem;
-  min-height: 2.65rem;
-  padding: 0.55rem 1rem;
+  gap: 0.35rem;
+  min-height: 2.15rem;
+  padding: 0.4rem 0.75rem;
   border: none;
-  border-radius: 12px;
-  font-size: 0.8rem;
-  font-weight: 700;
+  border-radius: 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
   font-family: inherit;
   cursor: pointer;
   text-decoration: none;
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  transition: background 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
 }
 
 .comptes-acces-card__btn--activity {
-  flex: 1 1 120px;
+  flex: 1 1 100px;
   min-width: 0;
-  background: linear-gradient(180deg, #fff 0%, var(--bleu-pale) 100%);
+  background: var(--fond-principal);
   color: var(--bleu-fonce);
-  border: 1.5px solid rgba(53, 100, 166, 0.22);
-  box-shadow: 0 2px 8px rgba(53, 100, 166, 0.08);
+  border: 1px solid rgba(53, 100, 166, 0.2);
+  box-shadow: none;
 }
 
 .comptes-acces-card__btn--activity:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(53, 100, 166, 0.16);
+  background: var(--bleu-pale);
 }
 
 .comptes-acces-card__btn--deactivate {
-  background: linear-gradient(135deg, var(--accent-promo) 0%, var(--orange-fonce) 100%);
+  background: var(--accent-promo);
   color: #fff;
-  box-shadow: 0 4px 14px rgba(255, 107, 53, 0.35);
+  box-shadow: 0 2px 8px rgba(255, 107, 53, 0.28);
 }
 
 .comptes-acces-card__btn--deactivate:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(255, 107, 53, 0.45);
+  filter: brightness(1.05);
 }
 
 .comptes-acces-card__btn--activate {
-  background: linear-gradient(135deg, #2d9d5f 0%, #1f6f42 100%);
+  background: #1f6f42;
   color: #fff;
-  box-shadow: 0 4px 14px rgba(31, 111, 66, 0.3);
+  box-shadow: 0 2px 8px rgba(31, 111, 66, 0.25);
 }
 
 .comptes-acces-card__btn--activate:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 22px rgba(31, 111, 66, 0.38);
+  filter: brightness(1.06);
 }
 
 .comptes-acces-card__self-chip {
-  flex: 1 1 120px;
+  flex: 1 1 100px;
   min-width: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.45rem;
-  min-height: 2.65rem;
-  padding: 0.5rem 0.85rem;
-  border-radius: 12px;
-  background: rgba(53, 100, 166, 0.06);
-  border: 1.5px dashed rgba(53, 100, 166, 0.3);
+  gap: 0.35rem;
+  min-height: 2.15rem;
+  padding: 0.4rem 0.65rem;
+  border-radius: 8px;
+  background: var(--bleu-pale);
+  border: 1px dashed rgba(53, 100, 166, 0.28);
   color: var(--couleur-dominante);
-  font-size: 0.8rem;
-  font-weight: 700;
+  font-size: 0.72rem;
+  font-weight: 600;
   cursor: default;
 }
 
 .comptes-acces-card__role-block {
-  margin-top: 0.05rem;
-  padding: 1rem 1rem 1.1rem;
-  background: linear-gradient(145deg, rgba(53, 100, 166, 0.06) 0%, var(--fond-principal) 70%);
-  border: 1px solid rgba(53, 100, 166, 0.14);
-  border-radius: 16px;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.85),
-    0 2px 12px rgba(53, 100, 166, 0.06);
+  margin-top: 0.1rem;
+  padding: 0.65rem 0.75rem 0.75rem;
+  background: var(--fond-secondaire);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
 }
 
 .comptes-acces-card__role-title {
-  margin: 0 0 0.7rem;
-  font-size: 0.68rem;
-  font-weight: 800;
+  margin: 0 0 0.5rem;
+  font-size: 0.6rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   color: var(--couleur-dominante);
   display: flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.35rem;
 }
 
 .comptes-acces-card__role-form {
@@ -1028,17 +979,17 @@
   display: flex;
   flex-wrap: wrap;
   align-items: stretch;
-  gap: 0.55rem;
+  gap: 0.4rem;
 }
 
 .comptes-acces-card__select {
-  flex: 1 1 10rem;
+  flex: 1 1 8rem;
   min-width: 0;
-  min-height: 2.75rem;
-  padding: 0.5rem 0.85rem;
-  border-radius: 12px;
-  border: 1.5px solid var(--border-input);
-  font-size: 0.88rem;
+  min-height: 2.2rem;
+  padding: 0.38rem 0.65rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-input);
+  font-size: 0.8rem;
   font-family: inherit;
   background: var(--fond-principal);
   color: var(--titres);
@@ -1048,31 +999,60 @@
 .comptes-acces-card__select:focus {
   outline: none;
   border-color: var(--couleur-dominante);
-  box-shadow: 0 0 0 4px var(--focus-ring);
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
 .comptes-acces-card__btn--save {
   flex: 0 1 auto;
-  min-width: 8rem;
-  background: linear-gradient(135deg, var(--accent-promo) 0%, var(--orange-fonce, #d14e22) 100%);
+  min-width: 6.5rem;
+  background: var(--accent-promo);
   color: var(--texte-clair);
-  box-shadow: 0 4px 14px rgba(255, 107, 53, 0.35);
+  box-shadow: 0 2px 8px rgba(255, 107, 53, 0.28);
 }
 
 .comptes-acces-card__btn--save:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(255, 107, 53, 0.45);
+  filter: brightness(1.05);
+}
+
+.comptes-acces-card__delete-form {
+  margin: 0.55rem 0 0;
+  padding-top: 0.55rem;
+  border-top: 1px solid var(--glass-border);
+}
+
+.comptes-acces-card__delete-form .comptes-acces-card__btn--delete {
+  width: 100%;
+}
+
+.comptes-acces-card__btn--delete {
+  background: var(--fond-principal);
+  color: #9b1c1c;
+  border: 1px solid rgba(155, 28, 28, 0.35);
+  box-shadow: none;
+}
+
+.comptes-acces-card__btn--delete:hover:not(:disabled) {
+  background: rgba(155, 28, 28, 0.08);
+  border-color: rgba(155, 28, 28, 0.5);
+}
+
+.comptes-acces-card__btn--delete:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  color: var(--gris-moyen);
+  border-color: var(--glass-border);
+  background: var(--fond-secondaire);
 }
 
 .comptes-acces-card__self-hint {
   margin: 0;
-  padding: 0.85rem 0.95rem;
-  font-size: 0.81rem;
-  line-height: 1.52;
+  padding: 0.65rem 0.75rem;
+  font-size: 0.76rem;
+  line-height: 1.45;
   color: var(--gris-fonce);
   background: var(--bleu-pale);
-  border-radius: 14px;
-  border: 1px solid rgba(53, 100, 166, 0.15);
+  border-radius: 10px;
+  border: 1px solid rgba(53, 100, 166, 0.12);
 }
 
 .comptes-acces-card__self-hint i {

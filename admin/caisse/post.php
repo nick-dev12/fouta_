@@ -166,6 +166,15 @@ if ($action === 'remove_line') {
     caisse_redirect_ok();
 }
 
+if ($action === 'set_inclure_tva') {
+    if (admin_current_role() === 'commercial') {
+        caisse_redirect_ok();
+    }
+    $cart['inclure_tva'] = isset($_POST['inclure_tva']) && (string) $_POST['inclure_tva'] === '1' ? 1 : 0;
+    caisse_cart_save($cart);
+    caisse_redirect_ok();
+}
+
 if ($action === 'set_remise_globale') {
     $pct = (float) ($_POST['remise_globale_pct'] ?? 0);
     $cart['remise_globale_pct'] = min(100, max(0, $pct));
@@ -201,14 +210,15 @@ if ($action === 'generer_ticket') {
         caisse_cart_save($cart);
         caisse_redirect_ok();
     }
+    $vente_id_redirect = (int) ($res['vente_id'] ?? 0);
+    caisse_cart_clear();
+    unset($_SESSION['caisse_preview_recu']);
     $msg_ok = 'Ticket généré : ' . ($res['numero_ticket'] ?? '') . '.';
     if (!empty($res['reference_caisse'])) {
-        $msg_ok .= ' Réf. caisse : ' . $res['reference_caisse'] . ' (recherche rapide à l’encaissement).';
+        $msg_ok .= ' Réf. caisse : ' . $res['reference_caisse'] . '.';
     }
-    $msg_ok .= ' Le panier reste actif — utilisez le lien ci-dessous pour afficher le ticket à imprimer.';
     $_SESSION['caisse_flash_success'] = $msg_ok;
-    $_SESSION['caisse_last_ticket_id'] = (int) ($res['vente_id'] ?? 0);
-    caisse_redirect_ok();
+    caisse_redirect_ok('ticket=' . $vente_id_redirect);
 }
 
 if ($action === 'encaisser') {
@@ -224,18 +234,20 @@ if ($action === 'encaisser') {
     $montant_recu = isset($_POST['montant_recu']) && $_POST['montant_recu'] !== '' ? (float) str_replace(',', '.', (string) $_POST['montant_recu']) : null;
     $montant_especes = isset($_POST['montant_especes']) && $_POST['montant_especes'] !== '' ? (float) str_replace(',', '.', (string) $_POST['montant_especes']) : null;
     $montant_carte = isset($_POST['montant_carte']) && $_POST['montant_carte'] !== '' ? (float) str_replace(',', '.', (string) $_POST['montant_carte']) : null;
-    $montant_mobile_money = isset($_POST['montant_mobile_money']) && $_POST['montant_mobile_money'] !== '' ? (float) str_replace(',', '.', (string) $_POST['montant_mobile_money']) : null;
+    $montant_orange_money = isset($_POST['montant_orange_money']) && $_POST['montant_orange_money'] !== '' ? (float) str_replace(',', '.', (string) $_POST['montant_orange_money']) : null;
+    $montant_wave = isset($_POST['montant_wave']) && $_POST['montant_wave'] !== '' ? (float) str_replace(',', '.', (string) $_POST['montant_wave']) : null;
     $notes = trim((string) ($_POST['notes_vente'] ?? ''));
 
     $paiement = [
         'montant_recu' => $montant_recu,
         'montant_especes' => $montant_especes,
         'montant_carte' => $montant_carte,
-        'montant_mobile_money' => $montant_mobile_money,
+        'montant_orange_money' => $montant_orange_money,
+        'montant_wave' => $montant_wave,
         'notes' => $notes,
     ];
 
-    if ($mode === 'especes' && $montant_recu !== null) {
+    if (caisse_mode_avec_montant_recu_affiche($mode) && $montant_recu !== null) {
         $paiement['monnaie_rendue'] = max(0, round($montant_recu - $total, 2));
     }
 
@@ -265,20 +277,22 @@ if ($action === 'finaliser_ticket') {
     $montant_recu = isset($_POST['montant_recu']) && $_POST['montant_recu'] !== '' ? (float) str_replace(',', '.', (string) $_POST['montant_recu']) : null;
     $montant_especes = isset($_POST['montant_especes']) && $_POST['montant_especes'] !== '' ? (float) str_replace(',', '.', (string) $_POST['montant_especes']) : null;
     $montant_carte = isset($_POST['montant_carte']) && $_POST['montant_carte'] !== '' ? (float) str_replace(',', '.', (string) $_POST['montant_carte']) : null;
-    $montant_mobile_money = isset($_POST['montant_mobile_money']) && $_POST['montant_mobile_money'] !== '' ? (float) str_replace(',', '.', (string) $_POST['montant_mobile_money']) : null;
+    $montant_orange_money = isset($_POST['montant_orange_money']) && $_POST['montant_orange_money'] !== '' ? (float) str_replace(',', '.', (string) $_POST['montant_orange_money']) : null;
+    $montant_wave = isset($_POST['montant_wave']) && $_POST['montant_wave'] !== '' ? (float) str_replace(',', '.', (string) $_POST['montant_wave']) : null;
     $notes = trim((string) ($_POST['notes_vente'] ?? ''));
 
     $paiement = [
         'montant_recu' => $montant_recu,
         'montant_especes' => $montant_especes,
         'montant_carte' => $montant_carte,
-        'montant_mobile_money' => $montant_mobile_money,
+        'montant_orange_money' => $montant_orange_money,
+        'montant_wave' => $montant_wave,
         'notes' => $notes,
     ];
 
     $vpre = caisse_get_vente_by_id($vente_id);
     if ($vpre) {
-        $cart_chk = ['lines' => [], 'remise_globale_pct' => (float) ($vpre['remise_globale_pct'] ?? 0)];
+        $cart_chk = ['lines' => [], 'remise_globale_pct' => (float) ($vpre['remise_globale_pct'] ?? 0), 'inclure_tva' => (int) ($vpre['tva_incluse'] ?? 0)];
         foreach ($vpre['lignes'] as $lg) {
             $k = caisse_line_key((int) $lg['produit_id']);
             $cart_chk['lines'][$k] = [
@@ -293,7 +307,7 @@ if ($action === 'finaliser_ticket') {
     }
     $total = $totals_chk ? (float) $totals_chk['total'] : 0;
 
-    if ($mode === 'especes' && $montant_recu !== null) {
+    if (caisse_mode_avec_montant_recu_affiche($mode) && $montant_recu !== null) {
         $paiement['monnaie_rendue'] = max(0, round($montant_recu - $total, 2));
     }
 
@@ -305,6 +319,64 @@ if ($action === 'finaliser_ticket') {
     }
     $_SESSION['caisse_flash_success'] = 'Encaissement enregistré. Ticket n° ' . ($res['numero_ticket'] ?? '') . '.';
     header('Location: encaisser-ticket.php?ticket=' . (int) ($res['vente_id'] ?? 0) . '&imprimer=1');
+    exit;
+}
+
+if ($action === 'corriger_paiement_ticket') {
+    if (!admin_can_encaisser_ticket()) {
+        $_SESSION['caisse_flash_error'] = 'Action non autorisée.';
+        header('Location: encaisser-ticket.php');
+        exit;
+    }
+    $vente_id = (int) ($_POST['vente_id'] ?? 0);
+    $mode = trim((string) ($_POST['mode_paiement'] ?? 'especes'));
+
+    $montant_recu = isset($_POST['montant_recu']) && $_POST['montant_recu'] !== '' ? (float) str_replace(',', '.', (string) $_POST['montant_recu']) : null;
+    $montant_especes = isset($_POST['montant_especes']) && $_POST['montant_especes'] !== '' ? (float) str_replace(',', '.', (string) $_POST['montant_especes']) : null;
+    $montant_carte = isset($_POST['montant_carte']) && $_POST['montant_carte'] !== '' ? (float) str_replace(',', '.', (string) $_POST['montant_carte']) : null;
+    $montant_orange_money = isset($_POST['montant_orange_money']) && $_POST['montant_orange_money'] !== '' ? (float) str_replace(',', '.', (string) $_POST['montant_orange_money']) : null;
+    $montant_wave = isset($_POST['montant_wave']) && $_POST['montant_wave'] !== '' ? (float) str_replace(',', '.', (string) $_POST['montant_wave']) : null;
+    $notes = trim((string) ($_POST['notes_vente'] ?? ''));
+
+    $paiement = [
+        'montant_recu' => $montant_recu,
+        'montant_especes' => $montant_especes,
+        'montant_carte' => $montant_carte,
+        'montant_orange_money' => $montant_orange_money,
+        'montant_wave' => $montant_wave,
+        'notes' => $notes,
+    ];
+
+    $vpre = caisse_get_vente_by_id($vente_id);
+    $totals_chk = null;
+    if ($vpre) {
+        $cart_chk = ['lines' => [], 'remise_globale_pct' => (float) ($vpre['remise_globale_pct'] ?? 0), 'inclure_tva' => (int) ($vpre['tva_incluse'] ?? 0)];
+        foreach ($vpre['lignes'] as $lg) {
+            $k = caisse_line_key((int) $lg['produit_id']);
+            $cart_chk['lines'][$k] = [
+                'produit_id' => (int) $lg['produit_id'],
+                'nom' => $lg['designation'] ?? '',
+                'prix_unitaire' => (float) ($lg['prix_unitaire'] ?? 0),
+                'quantite' => (int) ($lg['quantite'] ?? 0),
+                'remise_ligne_pct' => (float) ($lg['remise_ligne_pct'] ?? 0),
+            ];
+        }
+        $totals_chk = caisse_compute_totals($cart_chk);
+    }
+    $total = $totals_chk ? (float) $totals_chk['total'] : 0;
+
+    if (caisse_mode_avec_montant_recu_affiche($mode) && $montant_recu !== null) {
+        $paiement['monnaie_rendue'] = max(0, round($montant_recu - $total, 2));
+    }
+
+    $res = caisse_corriger_paiement_vente_payee($vente_id, $mode, $paiement);
+    if (!$res['ok']) {
+        $_SESSION['caisse_flash_error'] = $res['error'] ?? 'Erreur lors de la correction du paiement.';
+        header('Location: encaisser-ticket.php?ticket=' . $vente_id);
+        exit;
+    }
+    $_SESSION['caisse_flash_success'] = 'Paiement du ticket mis à jour (mode et montants).';
+    header('Location: encaisser-ticket.php?ticket=' . (int) ($res['vente_id'] ?? $vente_id));
     exit;
 }
 

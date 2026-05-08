@@ -1,6 +1,6 @@
 <?php
 /**
- * Espace Comptabilité — hub à onglets (ventes, dépenses, BL / factures HT)
+ * Espace Comptabilité — hub à onglets (ventes, dépenses, BL / factures HT, caisse, devis payés)
  */
 session_start();
 if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
@@ -21,55 +21,94 @@ require_once __DIR__ . '/../../models/model_commandes_admin.php';
 require_once __DIR__ . '/../../models/model_bl.php';
 require_once __DIR__ . '/../../models/model_depenses.php';
 require_once __DIR__ . '/../../models/model_caisse_compta.php';
+require_once __DIR__ . '/../../models/model_factures_devis.php';
 
 if (empty($_SESSION['admin_csrf'])) {
     $_SESSION['admin_csrf'] = bin2hex(random_bytes(32));
 }
 
 $depenses_ok = depenses_tables_ok();
-$depense_flash_ok = isset($_GET['dep_ok']) && $_GET['dep_ok'] === '1';
-$depense_error_msg = '';
-$open_depense_modal = false;
 
-if ($depenses_ok && $_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['depense_ajout'])) {
-    $tok = $_POST['csrf_token'] ?? '';
-    if (!hash_equals((string) ($_SESSION['admin_csrf'] ?? ''), (string) $tok)) {
-        $depense_error_msg = 'Session expirée. Rechargez la page.';
-        $open_depense_modal = true;
-    } else {
-        $r = process_depense_ajout($_POST, (int) ($_SESSION['admin_id'] ?? 0));
-        if (!empty($r['success'])) {
-            header('Location: index.php?tab=depenses&dep_ok=1');
-            exit;
-        }
-        $depense_error_msg = $r['message'] ?? 'Erreur lors de l\'enregistrement.';
-        if ($depense_error_msg !== '') {
-            $open_depense_modal = true;
-        }
+$d_periode = isset($_GET['d_periode']) ? trim((string) $_GET['d_periode']) : 'jour';
+if (!in_array($d_periode, ['jour', 'semaine', 'plage'], true)) {
+    $d_periode = 'jour';
+}
+$d_today = getdate();
+$d_rj = isset($_GET['d_rj']) ? (int) $_GET['d_rj'] : (int) $d_today['mday'];
+$d_rm = isset($_GET['d_rm']) ? (int) $_GET['d_rm'] : (int) $d_today['mon'];
+$d_ra = isset($_GET['d_ra']) ? (int) $_GET['d_ra'] : (int) $d_today['year'];
+$d_p1j = isset($_GET['d_p1j']) ? (int) $_GET['d_p1j'] : (int) $d_today['mday'];
+$d_p1m = isset($_GET['d_p1m']) ? (int) $_GET['d_p1m'] : (int) $d_today['mon'];
+$d_p1a = isset($_GET['d_p1a']) ? (int) $_GET['d_p1a'] : (int) $d_today['year'];
+$d_p2j = isset($_GET['d_p2j']) ? (int) $_GET['d_p2j'] : (int) $d_today['mday'];
+$d_p2m = isset($_GET['d_p2m']) ? (int) $_GET['d_p2m'] : (int) $d_today['mon'];
+$d_p2a = isset($_GET['d_p2a']) ? (int) $_GET['d_p2a'] : (int) $d_today['year'];
+
+$legacy_d_ref = isset($_GET['d_ref']) ? trim((string) $_GET['d_ref']) : '';
+if ($legacy_d_ref !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $legacy_d_ref) && !isset($_GET['d_rj'])) {
+    $drp = explode('-', $legacy_d_ref);
+    if (count($drp) === 3 && checkdate((int) $drp[1], (int) $drp[2], (int) $drp[0])) {
+        $d_ra = (int) $drp[0];
+        $d_rm = (int) $drp[1];
+        $d_rj = (int) $drp[2];
     }
 }
+$legacy_d_d1 = isset($_GET['d_date_debut']) ? trim((string) $_GET['d_date_debut']) : '';
+if ($legacy_d_d1 !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $legacy_d_d1) && !isset($_GET['d_p1j'])) {
+    $dx1 = caisse_compta_split_ymd($legacy_d_d1);
+    $d_p1j = $dx1['j'];
+    $d_p1m = $dx1['m'];
+    $d_p1a = $dx1['a'];
+}
+$legacy_d_d2 = isset($_GET['d_date_fin']) ? trim((string) $_GET['d_date_fin']) : '';
+if ($legacy_d_d2 !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $legacy_d_d2) && !isset($_GET['d_p2j'])) {
+    $dx2 = caisse_compta_split_ymd($legacy_d_d2);
+    $d_p2j = $dx2['j'];
+    $d_p2m = $dx2['m'];
+    $d_p2a = $dx2['a'];
+}
 
-$d_date_debut = isset($_GET['d_date_debut']) ? trim((string) $_GET['d_date_debut']) : '';
-$d_date_fin = isset($_GET['d_date_fin']) ? trim((string) $_GET['d_date_fin']) : '';
+$d_annee_min = (int) date('Y') - 5;
+$d_annee_max = (int) date('Y') + 1;
+
+$d_ref = caisse_compta_date_from_jma($d_rj, $d_rm, $d_ra);
+if ($d_ref === null) {
+    $d_ref = date('Y-m-d');
+}
+$d_anchor = caisse_compta_split_ymd($d_ref);
+$d_rj = $d_anchor['j'];
+$d_rm = $d_anchor['m'];
+$d_ra = $d_anchor['a'];
+
+$d_pl_deb = caisse_compta_date_from_jma($d_p1j, $d_p1m, $d_p1a);
+if ($d_pl_deb === null) {
+    $d_pl_deb = date('Y-m-d');
+}
+$d_pl_fin = caisse_compta_date_from_jma($d_p2j, $d_p2m, $d_p2a);
+if ($d_pl_fin === null) {
+    $d_pl_fin = date('Y-m-d');
+}
+
+$d_range = depenses_compute_date_range($d_periode, $d_ref, $d_pl_deb, $d_pl_fin);
+$d_date_debut = $d_range[0];
+$d_date_fin = $d_range[1];
+
+if ($d_periode === 'plage') {
+    $dp1 = caisse_compta_split_ymd($d_date_debut);
+    $d_p1j = $dp1['j'];
+    $d_p1m = $dp1['m'];
+    $d_p1a = $dp1['a'];
+    $dp2 = caisse_compta_split_ymd($d_date_fin);
+    $d_p2j = $dp2['j'];
+    $d_p2m = $dp2['m'];
+    $d_p2a = $dp2['a'];
+}
+
+$d_depenses_periode_label = depenses_libelle_periode_filtre($d_periode, $d_date_debut, $d_date_fin);
+
 $d_categorie = isset($_GET['d_categorie']) ? (int) $_GET['d_categorie'] : 0;
 $d_type_dep = isset($_GET['d_type']) && in_array($_GET['d_type'], ['sans_tva', 'avec_tva', ''], true) ? $_GET['d_type'] : '';
 $d_q = isset($_GET['d_q']) ? trim((string) $_GET['d_q']) : '';
-
-$d_date_debut_ok = $d_date_debut !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $d_date_debut)
-    && checkdate((int) substr($d_date_debut, 5, 2), (int) substr($d_date_debut, 8, 2), (int) substr($d_date_debut, 0, 4));
-$d_date_fin_ok = $d_date_fin !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $d_date_fin)
-    && checkdate((int) substr($d_date_fin, 5, 2), (int) substr($d_date_fin, 8, 2), (int) substr($d_date_fin, 0, 4));
-if (!$d_date_debut_ok) {
-    $d_date_debut = date('Y-m-01');
-}
-if (!$d_date_fin_ok) {
-    $d_date_fin = date('Y-m-d');
-}
-if (strcmp($d_date_debut, $d_date_fin) > 0) {
-    $t = $d_date_debut;
-    $d_date_debut = $d_date_fin;
-    $d_date_fin = $t;
-}
 
 $categories_dep = [];
 $depenses_liste = [];
@@ -87,44 +126,105 @@ if ($depenses_ok) {
     $totaux_dep = depenses_calculer_totaux($depenses_liste);
 }
 
-$c_date_debut = isset($_GET['c_date_debut']) ? trim((string) $_GET['c_date_debut']) : '';
-$c_date_fin = isset($_GET['c_date_fin']) ? trim((string) $_GET['c_date_fin']) : '';
-$c_modes_list = ['especes', 'carte', 'mobile_money', 'cheque', 'mixte', 'autre'];
-$c_mode_raw = isset($_GET['c_mode']) ? trim((string) $_GET['c_mode']) : '';
-$c_mode = ($c_mode_raw === '' || in_array($c_mode_raw, $c_modes_list, true)) ? $c_mode_raw : '';
+$c_periode = isset($_GET['c_periode']) ? trim((string) $_GET['c_periode']) : 'jour';
+if (!in_array($c_periode, ['jour', 'semaine', 'plage'], true)) {
+    $c_periode = 'jour';
+}
+$c_today = getdate();
+$c_aj = isset($_GET['c_aj']) ? (int) $_GET['c_aj'] : (int) $c_today['mday'];
+$c_am = isset($_GET['c_am']) ? (int) $_GET['c_am'] : (int) $c_today['mon'];
+$c_aa = isset($_GET['c_aa']) ? (int) $_GET['c_aa'] : (int) $c_today['year'];
+$c_p1j = isset($_GET['c_p1j']) ? (int) $_GET['c_p1j'] : (int) $c_today['mday'];
+$c_p1m = isset($_GET['c_p1m']) ? (int) $_GET['c_p1m'] : (int) $c_today['mon'];
+$c_p1a = isset($_GET['c_p1a']) ? (int) $_GET['c_p1a'] : (int) $c_today['year'];
+$c_p2j = isset($_GET['c_p2j']) ? (int) $_GET['c_p2j'] : (int) $c_today['mday'];
+$c_p2m = isset($_GET['c_p2m']) ? (int) $_GET['c_p2m'] : (int) $c_today['mon'];
+$c_p2a = isset($_GET['c_p2a']) ? (int) $_GET['c_p2a'] : (int) $c_today['year'];
+
+$c_canal_raw = isset($_GET['c_canal']) ? trim((string) $_GET['c_canal']) : '';
+$c_canaux_list = function_exists('caisse_compta_canaux_tri') ? caisse_compta_canaux_tri() : [];
+$c_canal = ($c_canal_raw === '' || in_array($c_canal_raw, $c_canaux_list, true)) ? $c_canal_raw : '';
 $c_admin = isset($_GET['c_admin']) ? (int) $_GET['c_admin'] : 0;
 $c_q = isset($_GET['c_q']) ? trim((string) $_GET['c_q']) : '';
 
-$c_date_debut_ok = $c_date_debut !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $c_date_debut)
-    && checkdate((int) substr($c_date_debut, 5, 2), (int) substr($c_date_debut, 8, 2), (int) substr($c_date_debut, 0, 4));
-$c_date_fin_ok = $c_date_fin !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $c_date_fin)
-    && checkdate((int) substr($c_date_fin, 5, 2), (int) substr($c_date_fin, 8, 2), (int) substr($c_date_fin, 0, 4));
-if (!$c_date_debut_ok) {
-    $c_date_debut = date('Y-m-01');
+$c_ref = caisse_compta_date_from_jma($c_aj, $c_am, $c_aa);
+if ($c_ref === null) {
+    $c_ref = date('Y-m-d');
 }
-if (!$c_date_fin_ok) {
-    $c_date_fin = date('Y-m-d');
+$c_pl_deb = caisse_compta_date_from_jma($c_p1j, $c_p1m, $c_p1a);
+if ($c_pl_deb === null) {
+    $c_pl_deb = date('Y-m-d');
 }
-if (strcmp($c_date_debut, $c_date_fin) > 0) {
-    $tc = $c_date_debut;
-    $c_date_debut = $c_date_fin;
-    $c_date_fin = $tc;
+$c_pl_fin = caisse_compta_date_from_jma($c_p2j, $c_p2m, $c_p2a);
+if ($c_pl_fin === null) {
+    $c_pl_fin = date('Y-m-d');
+}
+
+$c_range = depenses_compute_date_range($c_periode, $c_ref, $c_pl_deb, $c_pl_fin);
+$c_date_debut = $c_range[0];
+$c_date_fin = $c_range[1];
+$c_caisse_periode_label = depenses_libelle_periode_filtre($c_periode, $c_date_debut, $c_date_fin);
+
+if ($c_periode === 'plage') {
+    $p = caisse_compta_split_ymd($c_date_debut);
+    $c_p1j = $p['j'];
+    $c_p1m = $p['m'];
+    $c_p1a = $p['a'];
+    $p2 = caisse_compta_split_ymd($c_date_fin);
+    $c_p2j = $p2['j'];
+    $c_p2m = $p2['m'];
+    $c_p2a = $p2['a'];
+} else {
+    if ($c_periode === 'jour') {
+        $p = caisse_compta_split_ymd($c_date_debut);
+    } else {
+        $p = caisse_compta_split_ymd($c_ref);
+    }
+    $c_aj = $p['j'];
+    $c_am = $p['m'];
+    $c_aa = $p['a'];
 }
 
 $caisse_ok = function_exists('caisse_tables_exist') && caisse_tables_exist();
 $caisse_admins_filtre = [];
 $caisse_ventes_liste = [];
-$caisse_totaux = ['total_ttc' => 0.0, 'nb' => 0, 'par_mode' => []];
+$caisse_totaux = ['total_ttc' => 0.0, 'nb' => 0, 'par_canal' => []];
+$caisse_agrege_canaux = ['total_ttc' => 0.0, 'nb' => 0, 'par_canal' => []];
 if ($caisse_ok) {
     $caisse_admins_filtre = caisse_compta_liste_admins_actifs();
+    $caisse_agrege_canaux = caisse_compta_agreger_canaux_periode($c_date_debut, $c_date_fin, $c_admin, $c_q);
+    $caisse_totaux = [
+        'total_ttc' => $caisse_agrege_canaux['total_ttc'],
+        'nb' => $caisse_agrege_canaux['nb'],
+        'par_canal' => $caisse_agrege_canaux['par_canal'],
+    ];
     $caisse_ventes_liste = caisse_compta_get_ventes_filtrees([
         'date_debut' => $c_date_debut,
         'date_fin' => $c_date_fin,
-        'mode_paiement' => $c_mode,
+        'canal' => $c_canal,
         'admin_id' => $c_admin,
         'q' => $c_q,
     ]);
-    $caisse_totaux = caisse_compta_calculer_totaux($caisse_ventes_liste);
+}
+
+$compta_caisse_filter_qs = ['tab' => 'caisse', 'c_periode' => $c_periode];
+if ($c_periode === 'plage') {
+    $compta_caisse_filter_qs['c_p1j'] = $c_p1j;
+    $compta_caisse_filter_qs['c_p1m'] = $c_p1m;
+    $compta_caisse_filter_qs['c_p1a'] = $c_p1a;
+    $compta_caisse_filter_qs['c_p2j'] = $c_p2j;
+    $compta_caisse_filter_qs['c_p2m'] = $c_p2m;
+    $compta_caisse_filter_qs['c_p2a'] = $c_p2a;
+} else {
+    $compta_caisse_filter_qs['c_aj'] = $c_aj;
+    $compta_caisse_filter_qs['c_am'] = $c_am;
+    $compta_caisse_filter_qs['c_aa'] = $c_aa;
+}
+if ($c_admin > 0) {
+    $compta_caisse_filter_qs['c_admin'] = $c_admin;
+}
+if ($c_q !== '') {
+    $compta_caisse_filter_qs['c_q'] = $c_q;
 }
 
 $fm_ok = factures_mensuelles_table_ok();
@@ -203,14 +303,16 @@ $stats_bl_mois = $bl_tables_ok
 $stats_fm_mois = $fm_ok
     ? get_somme_et_nb_factures_mensuelles_mois($bl_sel_annee, $bl_sel_mois)
     : ['somme_ht' => 0.0, 'nb_factures' => 0];
-$factures_mois = $fm_ok ? get_factures_mensuelles_par_mois($bl_sel_annee, $bl_sel_mois) : [];
 $bl_clients_list_compta = $bl_tables_ok ? get_clients_b2b_avec_bl() : [];
 
-$tab_valid = ['ventes', 'depenses', 'bl', 'caisse'];
+$tab_valid = ['ventes', 'depenses', 'bl', 'caisse', 'devis_payes'];
 $active_tab = isset($_GET['tab']) && in_array($_GET['tab'], $tab_valid, true) ? $_GET['tab'] : 'ventes';
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['depense_ajout'])) {
-    $active_tab = 'depenses';
+
+$factures_devis_payees_list = [];
+if (function_exists('get_factures_devis_payees_avec_devis')) {
+    $factures_devis_payees_list = get_factures_devis_payees_avec_devis();
 }
+$nb_devis_payes = count($factures_devis_payees_list);
 
 $is_admin_role = in_array(($_SESSION['admin_role'] ?? ''), ['admin', 'informaticien'], true);
 
@@ -314,6 +416,92 @@ $tab_ventes_active = $active_tab === 'ventes';
 $tab_depenses_active = $active_tab === 'depenses';
 $tab_bl_active = $active_tab === 'bl';
 $tab_caisse_active = $active_tab === 'caisse';
+$tab_devis_payes_active = $active_tab === 'devis_payes';
+
+/* Synthèse hub — cartes gains / dépenses / bénéfice (saisie dates en jour / mois / année) */
+$h_periode = isset($_GET['h_periode']) ? trim((string) $_GET['h_periode']) : 'jour';
+if (!in_array($h_periode, ['jour', 'semaine', 'plage'], true)) {
+    $h_periode = 'jour';
+}
+$h_today = getdate();
+$h_rj = isset($_GET['h_rj']) ? (int) $_GET['h_rj'] : (int) $h_today['mday'];
+$h_rm = isset($_GET['h_rm']) ? (int) $_GET['h_rm'] : (int) $h_today['mon'];
+$h_ra = isset($_GET['h_ra']) ? (int) $_GET['h_ra'] : (int) $h_today['year'];
+$h_p1j = isset($_GET['h_p1j']) ? (int) $_GET['h_p1j'] : (int) $h_today['mday'];
+$h_p1m = isset($_GET['h_p1m']) ? (int) $_GET['h_p1m'] : (int) $h_today['mon'];
+$h_p1a = isset($_GET['h_p1a']) ? (int) $_GET['h_p1a'] : (int) $h_today['year'];
+$h_p2j = isset($_GET['h_p2j']) ? (int) $_GET['h_p2j'] : (int) $h_today['mday'];
+$h_p2m = isset($_GET['h_p2m']) ? (int) $_GET['h_p2m'] : (int) $h_today['mon'];
+$h_p2a = isset($_GET['h_p2a']) ? (int) $_GET['h_p2a'] : (int) $h_today['year'];
+
+$legacy_h_ref = isset($_GET['h_ref']) ? trim((string) $_GET['h_ref']) : '';
+if ($legacy_h_ref !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $legacy_h_ref) && !isset($_GET['h_rj'])) {
+    $hrp = explode('-', $legacy_h_ref);
+    if (count($hrp) === 3 && checkdate((int) $hrp[1], (int) $hrp[2], (int) $hrp[0])) {
+        $h_ra = (int) $hrp[0];
+        $h_rm = (int) $hrp[1];
+        $h_rj = (int) $hrp[2];
+    }
+}
+$legacy_h_d1 = isset($_GET['h_date_debut']) ? trim((string) $_GET['h_date_debut']) : '';
+if ($legacy_h_d1 !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $legacy_h_d1) && !isset($_GET['h_p1j'])) {
+    $hx1 = caisse_compta_split_ymd($legacy_h_d1);
+    $h_p1j = $hx1['j'];
+    $h_p1m = $hx1['m'];
+    $h_p1a = $hx1['a'];
+}
+$legacy_h_d2 = isset($_GET['h_date_fin']) ? trim((string) $_GET['h_date_fin']) : '';
+if ($legacy_h_d2 !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $legacy_h_d2) && !isset($_GET['h_p2j'])) {
+    $hx2 = caisse_compta_split_ymd($legacy_h_d2);
+    $h_p2j = $hx2['j'];
+    $h_p2m = $hx2['m'];
+    $h_p2a = $hx2['a'];
+}
+
+$h_annee_min = (int) date('Y') - 5;
+$h_annee_max = (int) date('Y') + 1;
+
+$h_ref = caisse_compta_date_from_jma($h_rj, $h_rm, $h_ra);
+if ($h_ref === null) {
+    $h_ref = date('Y-m-d');
+}
+$p_anchor = caisse_compta_split_ymd($h_ref);
+$h_rj = $p_anchor['j'];
+$h_rm = $p_anchor['m'];
+$h_ra = $p_anchor['a'];
+
+$h_pl_deb = caisse_compta_date_from_jma($h_p1j, $h_p1m, $h_p1a);
+if ($h_pl_deb === null) {
+    $h_pl_deb = date('Y-m-d');
+}
+$h_pl_fin = caisse_compta_date_from_jma($h_p2j, $h_p2m, $h_p2a);
+if ($h_pl_fin === null) {
+    $h_pl_fin = date('Y-m-d');
+}
+
+$h_range = depenses_compute_date_range($h_periode, $h_ref, $h_pl_deb, $h_pl_fin);
+$h_date_debut = $h_range[0];
+$h_date_fin = $h_range[1];
+
+if ($h_periode === 'plage') {
+    $hp1 = caisse_compta_split_ymd($h_date_debut);
+    $h_p1j = $hp1['j'];
+    $h_p1m = $hp1['m'];
+    $h_p1a = $hp1['a'];
+    $hp2 = caisse_compta_split_ymd($h_date_fin);
+    $h_p2j = $hp2['j'];
+    $h_p2m = $hp2['m'];
+    $h_p2a = $hp2['a'];
+}
+
+$h_synthese_label = depenses_libelle_periode_filtre($h_periode, $h_date_debut, $h_date_fin);
+
+$h_depenses_agg = $depenses_ok ? depenses_sommes_agregees_periode($h_date_debut, $h_date_fin) : ['sum_ttc' => 0.0];
+$h_depenses_ttc = (float) ($h_depenses_agg['sum_ttc'] ?? 0);
+$h_ca_web = commandes_ca_vendues_somme_entre_dates($h_date_debut, $h_date_fin);
+$h_caisse_ttc = $caisse_ok ? caisse_compta_somme_ttc_entre_dates($h_date_debut, $h_date_fin) : 0.0;
+$h_gains_total = $h_ca_web + $h_caisse_ttc;
+$h_benefice = $h_gains_total - $h_depenses_ttc;
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -331,7 +519,7 @@ $tab_caisse_active = $active_tab === 'caisse';
     <link rel="stylesheet" href="/css/compta-bilan.css<?php echo asset_version_query(); ?>">
     <link rel="stylesheet" href="/css/admin-devis-compta-pages.css<?php echo asset_version_query(); ?>">
 </head>
-<body<?php echo !empty($open_depense_modal) ? ' class="compta-dep-modal-open"' : ''; ?>>
+<body>
     <?php include '../includes/nav.php'; ?>
 
     <div class="page-compta-admin">
@@ -339,18 +527,151 @@ $tab_caisse_active = $active_tab === 'caisse';
         <div class="dashboard-hero-text">
             <p class="dashboard-eyebrow">Finance &amp; suivi</p>
             <h1><i class="fas fa-calculator" aria-hidden="true"></i> Comptabilité</h1>
-            <p class="dashboard-subtitle">Centralisez les ventes boutique, les dépenses et le suivi des bons de livraison HT (B2B).</p>
         </div>
         <div class="compta-hub-bilan-cta">
             <a href="bilan.php" class="compta-btn compta-btn--bilan"><i class="fas fa-scale-balanced" aria-hidden="true"></i> Bilan comptable &amp; export CSV</a>
         </div>
     </div>
 
-    <section class="content-section compta-page page-compta-section" aria-label="Espace comptabilité">
-        <div class="compta-intro">
-            <p><strong>Rappel :</strong> les factures mensuelles B2B sont en <strong>HT</strong> (sans TVA). Les commandes e-commerce suivent les statuts et montants enregistrés sur chaque commande. Les <strong>ventes caisse</strong> (magasin) sont en <strong>TTC</strong>, issues des tickets enregistrés à la caisse.</p>
+    <div class="compta-synthese-hub" aria-label="Synthèse gains et charges">
+        <form method="get" action="index.php" id="compta-hub-synthese-form" class="compta-ventes-filter compta-synthese-filter">
+            <input type="hidden" name="tab" value="<?php echo htmlspecialchars($active_tab, ENT_QUOTES, 'UTF-8'); ?>">
+            <div class="compta-ventes-filter__row">
+                <label for="compta-h-periode" class="compta-ventes-filter__label">Vue synthèse</label>
+                <div class="compta-ventes-filter__controls">
+                    <select name="h_periode" id="compta-h-periode" class="compta-ventes-filter__select">
+                        <option value="jour" <?php echo $h_periode === 'jour' ? 'selected' : ''; ?>>Un jour</option>
+                        <option value="semaine" <?php echo $h_periode === 'semaine' ? 'selected' : ''; ?>>Une semaine (lun.–dim.)</option>
+                        <option value="plage" <?php echo $h_periode === 'plage' ? 'selected' : ''; ?>>Période (du … au …)</option>
+                    </select>
+                    <button type="submit" class="compta-ventes-filter__btn"><i class="fas fa-filter" aria-hidden="true"></i> Actualiser</button>
+                    <a href="index.php?tab=<?php echo urlencode($active_tab); ?>" class="compta-ventes-filter__reset">Aujourd’hui</a>
+                </div>
+            </div>
+            <div id="compta-wrap-h-jour" class="compta-ventes-filter__panel compta-ventes-filter__fields compta-hub-filter__jma-block <?php echo $h_periode === 'jour' ? '' : 'is-hidden'; ?>" title="Ordre : jour / mois / année">
+                <div class="compta-hub-filter__date-line">
+                    <span class="compta-ventes-filter__sublabel">Date</span>
+                    <div class="compta-hub-jma-inline" role="group" aria-label="Date (jour, mois, année)">
+                        <select name="h_rj" id="h_rj_jour" class="compta-ventes-filter__select compta-ventes-filter__select--sm compta-hub-jma-sel" aria-label="Jour (1–31)">
+                            <?php for ($hd = 1; $hd <= 31; $hd++): ?>
+                                <option value="<?php echo $hd; ?>" <?php echo (int) $h_rj === $hd ? 'selected' : ''; ?>><?php echo $hd; ?></option>
+                            <?php endfor; ?>
+                        </select>
+                        <span class="compta-hub-jma-sep" aria-hidden="true">/</span>
+                        <select name="h_rm" id="h_rm_jour" class="compta-ventes-filter__select compta-ventes-filter__select--sm compta-hub-jma-sel compta-hub-jma-sel--mois" aria-label="Mois (1–12)">
+                            <?php for ($hm = 1; $hm <= 12; $hm++): ?>
+                                <option value="<?php echo $hm; ?>" <?php echo (int) $h_rm === $hm ? 'selected' : ''; ?>><?php echo str_pad((string) $hm, 2, '0', STR_PAD_LEFT); ?></option>
+                            <?php endfor; ?>
+                        </select>
+                        <span class="compta-hub-jma-sep" aria-hidden="true">/</span>
+                        <select name="h_ra" id="h_ra_jour" class="compta-ventes-filter__select compta-ventes-filter__select--sm compta-hub-jma-sel compta-hub-jma-sel--y" aria-label="Année">
+                            <?php for ($hy = $h_annee_max; $hy >= $h_annee_min; $hy--): ?>
+                                <option value="<?php echo $hy; ?>" <?php echo (int) $h_ra === $hy ? 'selected' : ''; ?>><?php echo $hy; ?></option>
+                            <?php endfor; ?>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div id="compta-wrap-h-semaine" class="compta-ventes-filter__panel compta-ventes-filter__fields compta-hub-filter__jma-block <?php echo $h_periode === 'semaine' ? '' : 'is-hidden'; ?>" title="Ordre : jour / mois / année">
+                <div class="compta-hub-filter__date-line">
+                    <span class="compta-ventes-filter__sublabel">Semaine contenant le</span>
+                    <div class="compta-hub-jma-inline" role="group" aria-label="Date de référence (jour, mois, année)">
+                        <select name="h_rj" id="h_rj_sem" class="compta-ventes-filter__select compta-ventes-filter__select--sm compta-hub-jma-sel" aria-label="Jour (1–31)">
+                            <?php for ($hd = 1; $hd <= 31; $hd++): ?>
+                                <option value="<?php echo $hd; ?>" <?php echo (int) $h_rj === $hd ? 'selected' : ''; ?>><?php echo $hd; ?></option>
+                            <?php endfor; ?>
+                        </select>
+                        <span class="compta-hub-jma-sep" aria-hidden="true">/</span>
+                        <select name="h_rm" id="h_rm_sem" class="compta-ventes-filter__select compta-ventes-filter__select--sm compta-hub-jma-sel compta-hub-jma-sel--mois" aria-label="Mois (1–12)">
+                            <?php for ($hm = 1; $hm <= 12; $hm++): ?>
+                                <option value="<?php echo $hm; ?>" <?php echo (int) $h_rm === $hm ? 'selected' : ''; ?>><?php echo str_pad((string) $hm, 2, '0', STR_PAD_LEFT); ?></option>
+                            <?php endfor; ?>
+                        </select>
+                        <span class="compta-hub-jma-sep" aria-hidden="true">/</span>
+                        <select name="h_ra" id="h_ra_sem" class="compta-ventes-filter__select compta-ventes-filter__select--sm compta-hub-jma-sel compta-hub-jma-sel--y" aria-label="Année">
+                            <?php for ($hy = $h_annee_max; $hy >= $h_annee_min; $hy--): ?>
+                                <option value="<?php echo $hy; ?>" <?php echo (int) $h_ra === $hy ? 'selected' : ''; ?>><?php echo $hy; ?></option>
+                            <?php endfor; ?>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div id="compta-wrap-h-plage" class="compta-ventes-filter__panel compta-ventes-filter__fields compta-ventes-filter__fields--plage <?php echo $h_periode === 'plage' ? '' : 'is-hidden'; ?>" title="Ordre : jour / mois / année">
+                <div>
+                    <span class="compta-ventes-filter__sublabel">Du</span>
+                    <div class="compta-hub-jma-inline" role="group" aria-label="Date de début">
+                        <select name="h_p1j" id="h_p1j" class="compta-ventes-filter__select compta-ventes-filter__select--sm compta-hub-jma-sel" aria-label="Jour du début">
+                            <?php for ($hd = 1; $hd <= 31; $hd++): ?>
+                                <option value="<?php echo $hd; ?>" <?php echo (int) $h_p1j === $hd ? 'selected' : ''; ?>><?php echo $hd; ?></option>
+                            <?php endfor; ?>
+                        </select>
+                        <span class="compta-hub-jma-sep" aria-hidden="true">/</span>
+                        <select name="h_p1m" id="h_p1m" class="compta-ventes-filter__select compta-ventes-filter__select--sm compta-hub-jma-sel compta-hub-jma-sel--mois" aria-label="Mois du début">
+                            <?php for ($hm = 1; $hm <= 12; $hm++): ?>
+                                <option value="<?php echo $hm; ?>" <?php echo (int) $h_p1m === $hm ? 'selected' : ''; ?>><?php echo str_pad((string) $hm, 2, '0', STR_PAD_LEFT); ?></option>
+                            <?php endfor; ?>
+                        </select>
+                        <span class="compta-hub-jma-sep" aria-hidden="true">/</span>
+                        <select name="h_p1a" id="h_p1a" class="compta-ventes-filter__select compta-ventes-filter__select--sm compta-hub-jma-sel compta-hub-jma-sel--y" aria-label="Année du début">
+                            <?php for ($hy = $h_annee_max; $hy >= $h_annee_min; $hy--): ?>
+                                <option value="<?php echo $hy; ?>" <?php echo (int) $h_p1a === $hy ? 'selected' : ''; ?>><?php echo $hy; ?></option>
+                            <?php endfor; ?>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <span class="compta-ventes-filter__sublabel">Au</span>
+                    <div class="compta-hub-jma-inline" role="group" aria-label="Date de fin">
+                        <select name="h_p2j" id="h_p2j" class="compta-ventes-filter__select compta-ventes-filter__select--sm compta-hub-jma-sel" aria-label="Jour de fin">
+                            <?php for ($hd = 1; $hd <= 31; $hd++): ?>
+                                <option value="<?php echo $hd; ?>" <?php echo (int) $h_p2j === $hd ? 'selected' : ''; ?>><?php echo $hd; ?></option>
+                            <?php endfor; ?>
+                        </select>
+                        <span class="compta-hub-jma-sep" aria-hidden="true">/</span>
+                        <select name="h_p2m" id="h_p2m" class="compta-ventes-filter__select compta-ventes-filter__select--sm compta-hub-jma-sel compta-hub-jma-sel--mois" aria-label="Mois de fin">
+                            <?php for ($hm = 1; $hm <= 12; $hm++): ?>
+                                <option value="<?php echo $hm; ?>" <?php echo (int) $h_p2m === $hm ? 'selected' : ''; ?>><?php echo str_pad((string) $hm, 2, '0', STR_PAD_LEFT); ?></option>
+                            <?php endfor; ?>
+                        </select>
+                        <span class="compta-hub-jma-sep" aria-hidden="true">/</span>
+                        <select name="h_p2a" id="h_p2a" class="compta-ventes-filter__select compta-ventes-filter__select--sm compta-hub-jma-sel compta-hub-jma-sel--y" aria-label="Année de fin">
+                            <?php for ($hy = $h_annee_max; $hy >= $h_annee_min; $hy--): ?>
+                                <option value="<?php echo $hy; ?>" <?php echo (int) $h_p2a === $hy ? 'selected' : ''; ?>><?php echo $hy; ?></option>
+                            <?php endfor; ?>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </form>
+        <p class="compta-synthese-hub__period"><i class="fas fa-calendar-check" aria-hidden="true"></i> <?php echo htmlspecialchars($h_synthese_label); ?> · gains = commandes web (livrées / payées) + caisse TTC ; dépenses = charges TTC saisies.</p>
+        <div class="compta-synthese-cards">
+            <article class="compta-synthese-card compta-synthese-card--depenses">
+                <span class="compta-synthese-card__ic" aria-hidden="true"><i class="fas fa-wallet"></i></span>
+                <div class="compta-synthese-card__body">
+                    <span class="compta-synthese-card__label">Dépenses (TTC)</span>
+                    <span class="compta-synthese-card__value"><?php echo $depenses_ok ? number_format($h_depenses_ttc, 0, ',', ' ') : '—'; ?> <small>FCFA</small></span>
+                </div>
+            </article>
+            <article class="compta-synthese-card compta-synthese-card--gains">
+                <span class="compta-synthese-card__ic" aria-hidden="true"><i class="fas fa-sack-dollar"></i></span>
+                <div class="compta-synthese-card__body">
+                    <span class="compta-synthese-card__label">Gains (revenus TTC)</span>
+                    <span class="compta-synthese-card__value"><?php echo number_format($h_gains_total, 0, ',', ' '); ?> <small>FCFA</small></span>
+                    <span class="compta-synthese-card__detail">Web <?php echo number_format($h_ca_web, 0, ',', ' '); ?> + Caisse <?php echo number_format($h_caisse_ttc, 0, ',', ' '); ?></span>
+                </div>
+            </article>
+            <article class="compta-synthese-card compta-synthese-card--benefice<?php echo $h_benefice < 0 ? ' compta-synthese-card--negative' : ''; ?>">
+                <span class="compta-synthese-card__ic" aria-hidden="true"><i class="fas fa-scale-balanced"></i></span>
+                <div class="compta-synthese-card__body">
+                    <span class="compta-synthese-card__label">Bénéfice estimé</span>
+                    <span class="compta-synthese-card__value"><?php echo number_format($h_benefice, 0, ',', ' '); ?> <small>FCFA</small></span>
+                    <span class="compta-synthese-card__detail">Gains − dépenses (TTC)</span>
+                </div>
+            </article>
         </div>
+    </div>
 
+    <section class="content-section compta-page page-compta-section" aria-label="Espace comptabilité">
         <div class="compta-tabs-wrap">
             <div class="compta-tabs" role="tablist" aria-label="Sections comptabilité">
                 <button type="button" class="compta-tab compta-tab--ventes <?php echo $tab_ventes_active ? 'is-active' : ''; ?>" id="compta-tab-ventes" role="tab" aria-selected="<?php echo $tab_ventes_active ? 'true' : 'false'; ?>" aria-controls="compta-panel-ventes" data-compta-tab="ventes">
@@ -381,6 +702,13 @@ $tab_caisse_active = $active_tab === 'caisse';
                         <span class="compta-tab__hint">Tickets TTC, filtres</span>
                     </span>
                 </button>
+                <button type="button" class="compta-tab compta-tab--devis-payes <?php echo $tab_devis_payes_active ? 'is-active' : ''; ?>" id="compta-tab-devis-payes" role="tab" aria-selected="<?php echo $tab_devis_payes_active ? 'true' : 'false'; ?>" aria-controls="compta-panel-devis-payes" data-compta-tab="devis_payes">
+                    <span class="compta-tab__ic" aria-hidden="true"><i class="fas fa-file-invoice-dollar"></i></span>
+                    <span class="compta-tab__txt">
+                        <span class="compta-tab__label">Devis payés</span>
+                        <span class="compta-tab__hint">Factures devis réglées (FPL)</span>
+                    </span>
+                </button>
             </div>
         </div>
 
@@ -388,7 +716,6 @@ $tab_caisse_active = $active_tab === 'caisse';
             <div class="compta-hero compta-hero--ventes">
                 <div class="compta-hero__copy">
                     <h2 class="compta-hero__title">Ventes &amp; commandes e-commerce</h2>
-                    <p class="compta-hero__lead">Accédez à la file des commandes à traiter, aux détails et à l’historique des ventes pour analyser les produits vendus et les montants.</p>
                     <div class="compta-hero__actions">
                         <a href="../commandes/index.php" class="compta-btn compta-btn--primary"><i class="fas fa-list" aria-hidden="true"></i> Ouvrir les commandes</a>
                         <?php if ($is_admin_role): ?>
@@ -403,7 +730,7 @@ $tab_caisse_active = $active_tab === 'caisse';
                 <div class="compta-ventes-filter__row">
                     <label for="compta-v-periode" class="compta-ventes-filter__label">Type de filtre (date de commande)</label>
                     <div class="compta-ventes-filter__controls">
-                        <select name="v_periode" id="compta-v-periode" class="compta-ventes-filter__select" aria-describedby="compta-ventes-filter-help">
+                        <select name="v_periode" id="compta-v-periode" class="compta-ventes-filter__select">
                             <option value="jour" <?php echo $v_periode === 'jour' ? 'selected' : ''; ?>>Un jour</option>
                             <option value="plage" <?php echo $v_periode === 'plage' ? 'selected' : ''; ?>>Période (du … au …)</option>
                             <option value="mois" <?php echo $v_periode === 'mois' ? 'selected' : ''; ?>>Un mois calendaire</option>
@@ -463,15 +790,6 @@ $tab_caisse_active = $active_tab === 'caisse';
                         <?php endfor; ?>
                     </select>
                 </div>
-
-                <p id="compta-ventes-filter-help" class="compta-ventes-filter__help">
-                    <?php if ($ventes_filtre_actif): ?>
-                        Filtre actif : commandes <strong>livrées</strong> ou <strong>payées</strong> sur la période <strong><?php echo htmlspecialchars($libelle_periode_ventes); ?></strong>.
-                        <a href="index.php?tab=ventes">Revenir à la vue globale</a>.
-                    <?php else: ?>
-                        <strong>Vue globale</strong> : totaux et liste de toutes les commandes livrées ou payées (toutes dates). Choisissez un type de filtre, les dates si besoin, puis <strong>Afficher</strong> pour restreindre à une période.
-                    <?php endif; ?>
-                </p>
             </form>
 
             <div class="compta-stat-grid" aria-label="<?php echo $ventes_filtre_actif ? 'Indicateurs ventes sur la période filtrée' : 'Indicateurs ventes (vue globale)'; ?>">
@@ -522,13 +840,6 @@ $tab_caisse_active = $active_tab === 'caisse';
                 </div>
             <?php endif; ?>
 
-            <div class="compta-info-card">
-                <i class="fas fa-lightbulb" aria-hidden="true"></i>
-                <div>
-                    <strong>Rappel</strong>
-                    <p>Les filtres s’appliquent à la <strong>date de commande</strong>. Pour une vue tableau détaillée ou des statistiques sur toutes les commandes (tous statuts), utilisez <?php if ($is_admin_role): ?><a href="../commandes/historique-ventes.php">l’historique des ventes</a><?php else: ?>l’historique des ventes (accès administrateur)<?php endif; ?>.</p>
-                </div>
-            </div>
         </div>
 
         <div id="compta-panel-depenses" class="compta-panel compta-panel--depenses <?php echo $tab_depenses_active ? 'is-active' : ''; ?>" role="tabpanel" aria-labelledby="compta-tab-depenses" <?php echo $tab_depenses_active ? '' : 'hidden'; ?> data-compta-panel="depenses">
@@ -536,36 +847,14 @@ $tab_caisse_active = $active_tab === 'caisse';
                 <div class="compta-hero__copy">
                     <p class="compta-dep-eyebrow">Charges &amp; suivi</p>
                     <h2 class="compta-hero__title" id="compta-dep-hero-title">Dépenses</h2>
-                    <p class="compta-hero__lead">Enregistrez les charges en <strong>HT</strong>, avec ou sans <strong>TVA</strong>, par catégorie. Les montants sont affichés en FCFA ; filtres par période et libellé.</p>
+                    <p class="compta-hero__lead">Consultation des charges saisies par la <strong>caisse</strong> (montants en <strong>HT</strong> / <strong>TVA</strong>, FCFA). La saisie est réservée au profil caissier (menu <strong>Dépenses caisse</strong>).</p>
                 </div>
-                <?php if ($depenses_ok): ?>
-                <div class="compta-hero__actions compta-dep-hero__actions">
-                    <button type="button" class="compta-btn compta-btn--primary compta-dep-btn-open-modal" id="compta-dep-open-modal" aria-haspopup="dialog" aria-controls="compta-dep-modal">
-                        <i class="fas fa-plus-circle" aria-hidden="true"></i> Enregistrer une dépense
-                    </button>
-                </div>
-                <?php endif; ?>
             </div>
 
             <?php if (!$depenses_ok): ?>
                 <p class="message error compta-dep-msg compta-dep-msg--standalone"><i class="fas fa-database" aria-hidden="true"></i> Tables absentes : exécutez la migration <code>migrations/create_depenses_compta.sql</code> (ou <code>migration_admin_b2b_structure.sql</code>).</p>
             <?php else: ?>
             <div class="compta-dep-body">
-                <?php
-                $compta_dep_show_alerts = $depense_flash_ok || $depense_error_msg !== '';
-                ?>
-                <?php if ($compta_dep_show_alerts): ?>
-                <div class="compta-dep-alerts" role="region" aria-label="Messages dépenses">
-                <?php endif; ?>
-                <?php if ($depense_flash_ok): ?>
-                    <div class="message success compta-dep-msg"><i class="fas fa-check-circle" aria-hidden="true"></i> Dépense enregistrée.</div>
-                <?php endif; ?>
-                <?php if ($depense_error_msg !== ''): ?>
-                    <div class="message error compta-dep-msg"><i class="fas fa-exclamation-circle" aria-hidden="true"></i> <?php echo htmlspecialchars($depense_error_msg); ?></div>
-                <?php endif; ?>
-                <?php if ($compta_dep_show_alerts): ?>
-                </div>
-                <?php endif; ?>
 
                 <div class="compta-dep-kpis" aria-label="Synthèse sur la période filtrée">
                     <div class="compta-dep-kpi">
@@ -585,52 +874,142 @@ $tab_caisse_active = $active_tab === 'caisse';
                         <span class="compta-dep-kpi__val"><?php echo number_format($totaux_dep['sum_ttc'], 0, ',', ' '); ?> <small>FCFA</small></span>
                     </div>
                 </div>
+                <p class="compta-dep-periode-hint"><i class="fas fa-calendar-alt" aria-hidden="true"></i> <?php echo htmlspecialchars($d_depenses_periode_label); ?></p>
 
-                <div class="compta-dep-grid">
-                    <section class="compta-dep-card compta-dep-card--filters" aria-labelledby="compta-dep-filtres-title">
-                        <h3 id="compta-dep-filtres-title" class="compta-dep-card__title"><i class="fas fa-filter" aria-hidden="true"></i> Filtres</h3>
-                        <form method="get" action="index.php" class="compta-dep-filters">
-                            <input type="hidden" name="tab" value="depenses">
-                            <div class="compta-dep-filters__grid">
-                                <div class="compta-dep-filters__field">
-                                    <label for="d_date_debut">Du</label>
-                                    <input type="date" name="d_date_debut" id="d_date_debut" value="<?php echo htmlspecialchars($d_date_debut); ?>">
-                                </div>
-                                <div class="compta-dep-filters__field">
-                                    <label for="d_date_fin">Au</label>
-                                    <input type="date" name="d_date_fin" id="d_date_fin" value="<?php echo htmlspecialchars($d_date_fin); ?>">
-                                </div>
-                                <div class="compta-dep-filters__field">
-                                    <label for="d_categorie">Catégorie</label>
-                                    <select name="d_categorie" id="d_categorie">
-                                        <option value="0">Toutes</option>
-                                        <?php foreach ($categories_dep as $cat): ?>
-                                            <option value="<?php echo (int) $cat['id']; ?>" <?php echo $d_categorie === (int) $cat['id'] ? 'selected' : ''; ?>><?php echo htmlspecialchars($cat['nom']); ?></option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </div>
-                                <div class="compta-dep-filters__field">
-                                    <label for="d_type">TVA</label>
-                                    <select name="d_type" id="d_type">
-                                        <option value="" <?php echo $d_type_dep === '' ? 'selected' : ''; ?>>Tous types</option>
-                                        <option value="sans_tva" <?php echo $d_type_dep === 'sans_tva' ? 'selected' : ''; ?>>Sans TVA</option>
-                                        <option value="avec_tva" <?php echo $d_type_dep === 'avec_tva' ? 'selected' : ''; ?>>Avec TVA</option>
-                                    </select>
-                                </div>
-                                <div class="compta-dep-filters__field compta-dep-filters__field--full">
-                                    <label for="d_q">Recherche libellé</label>
-                                    <input type="search" name="d_q" id="d_q" value="<?php echo htmlspecialchars($d_q); ?>" placeholder="Mot-clé…" autocomplete="off">
-                                </div>
+                <form method="get" action="index.php" id="compta-dep-filtres-form" class="compta-ventes-filter compta-dep-periode-form" aria-label="Filtrer les dépenses par période">
+                    <input type="hidden" name="tab" value="depenses">
+                    <div class="compta-ventes-filter__row">
+                        <label for="compta-d-periode" class="compta-ventes-filter__label">Période (date de dépense)</label>
+                        <div class="compta-ventes-filter__controls">
+                            <select name="d_periode" id="compta-d-periode" class="compta-ventes-filter__select">
+                                <option value="jour" <?php echo $d_periode === 'jour' ? 'selected' : ''; ?>>Un jour</option>
+                                <option value="semaine" <?php echo $d_periode === 'semaine' ? 'selected' : ''; ?>>Une semaine (lun.–dim.)</option>
+                                <option value="plage" <?php echo $d_periode === 'plage' ? 'selected' : ''; ?>>Période (du … au …)</option>
+                            </select>
+                            <button type="submit" class="compta-ventes-filter__btn"><i class="fas fa-filter" aria-hidden="true"></i> Afficher</button>
+                            <a href="index.php?tab=depenses" class="compta-ventes-filter__reset">Aujourd’hui</a>
+                        </div>
+                    </div>
+                    <div id="compta-wrap-d-jour" class="compta-ventes-filter__panel compta-ventes-filter__fields compta-hub-filter__jma-block <?php echo $d_periode === 'jour' ? '' : 'is-hidden'; ?>" title="Ordre : jour / mois / année">
+                        <div class="compta-hub-filter__date-line">
+                            <span class="compta-ventes-filter__sublabel">Date</span>
+                            <div class="compta-hub-jma-inline" role="group" aria-label="Date (jour, mois, année)">
+                                <select name="d_rj" id="d_rj_jour" class="compta-ventes-filter__select compta-ventes-filter__select--sm compta-hub-jma-sel" aria-label="Jour (1–31)">
+                                    <?php for ($dd = 1; $dd <= 31; $dd++): ?>
+                                        <option value="<?php echo $dd; ?>" <?php echo (int) $d_rj === $dd ? 'selected' : ''; ?>><?php echo $dd; ?></option>
+                                    <?php endfor; ?>
+                                </select>
+                                <span class="compta-hub-jma-sep" aria-hidden="true">/</span>
+                                <select name="d_rm" id="d_rm_jour" class="compta-ventes-filter__select compta-ventes-filter__select--sm compta-hub-jma-sel compta-hub-jma-sel--mois" aria-label="Mois (1–12)">
+                                    <?php for ($dm = 1; $dm <= 12; $dm++): ?>
+                                        <option value="<?php echo $dm; ?>" <?php echo (int) $d_rm === $dm ? 'selected' : ''; ?>><?php echo str_pad((string) $dm, 2, '0', STR_PAD_LEFT); ?></option>
+                                    <?php endfor; ?>
+                                </select>
+                                <span class="compta-hub-jma-sep" aria-hidden="true">/</span>
+                                <select name="d_ra" id="d_ra_jour" class="compta-ventes-filter__select compta-ventes-filter__select--sm compta-hub-jma-sel compta-hub-jma-sel--y" aria-label="Année">
+                                    <?php for ($dy = $d_annee_max; $dy >= $d_annee_min; $dy--): ?>
+                                        <option value="<?php echo $dy; ?>" <?php echo (int) $d_ra === $dy ? 'selected' : ''; ?>><?php echo $dy; ?></option>
+                                    <?php endfor; ?>
+                                </select>
                             </div>
-                            <div class="compta-dep-filters__actions">
-                                <button type="submit" class="compta-dep-filters__btn"><i class="fas fa-search" aria-hidden="true"></i> Appliquer</button>
-                                <a href="index.php?tab=depenses" class="compta-dep-filters__reset">Réinitialiser</a>
+                        </div>
+                    </div>
+                    <div id="compta-wrap-d-semaine" class="compta-ventes-filter__panel compta-ventes-filter__fields compta-hub-filter__jma-block <?php echo $d_periode === 'semaine' ? '' : 'is-hidden'; ?>" title="Ordre : jour / mois / année">
+                        <div class="compta-hub-filter__date-line">
+                            <span class="compta-ventes-filter__sublabel">Semaine contenant le</span>
+                            <div class="compta-hub-jma-inline" role="group" aria-label="Date de référence (jour, mois, année)">
+                                <select name="d_rj" id="d_rj_sem" class="compta-ventes-filter__select compta-ventes-filter__select--sm compta-hub-jma-sel" aria-label="Jour (1–31)">
+                                    <?php for ($dd = 1; $dd <= 31; $dd++): ?>
+                                        <option value="<?php echo $dd; ?>" <?php echo (int) $d_rj === $dd ? 'selected' : ''; ?>><?php echo $dd; ?></option>
+                                    <?php endfor; ?>
+                                </select>
+                                <span class="compta-hub-jma-sep" aria-hidden="true">/</span>
+                                <select name="d_rm" id="d_rm_sem" class="compta-ventes-filter__select compta-ventes-filter__select--sm compta-hub-jma-sel compta-hub-jma-sel--mois" aria-label="Mois (1–12)">
+                                    <?php for ($dm = 1; $dm <= 12; $dm++): ?>
+                                        <option value="<?php echo $dm; ?>" <?php echo (int) $d_rm === $dm ? 'selected' : ''; ?>><?php echo str_pad((string) $dm, 2, '0', STR_PAD_LEFT); ?></option>
+                                    <?php endfor; ?>
+                                </select>
+                                <span class="compta-hub-jma-sep" aria-hidden="true">/</span>
+                                <select name="d_ra" id="d_ra_sem" class="compta-ventes-filter__select compta-ventes-filter__select--sm compta-hub-jma-sel compta-hub-jma-sel--y" aria-label="Année">
+                                    <?php for ($dy = $d_annee_max; $dy >= $d_annee_min; $dy--): ?>
+                                        <option value="<?php echo $dy; ?>" <?php echo (int) $d_ra === $dy ? 'selected' : ''; ?>><?php echo $dy; ?></option>
+                                    <?php endfor; ?>
+                                </select>
                             </div>
-                        </form>
-                    </section>
-                </div>
+                        </div>
+                    </div>
+                    <div id="compta-wrap-d-plage" class="compta-ventes-filter__panel compta-ventes-filter__fields compta-ventes-filter__fields--plage <?php echo $d_periode === 'plage' ? '' : 'is-hidden'; ?>" title="Ordre : jour / mois / année">
+                        <div>
+                            <span class="compta-ventes-filter__sublabel">Du</span>
+                            <div class="compta-hub-jma-inline" role="group" aria-label="Date de début">
+                                <select name="d_p1j" id="d_p1j" class="compta-ventes-filter__select compta-ventes-filter__select--sm compta-hub-jma-sel" aria-label="Jour du début">
+                                    <?php for ($dd = 1; $dd <= 31; $dd++): ?>
+                                        <option value="<?php echo $dd; ?>" <?php echo (int) $d_p1j === $dd ? 'selected' : ''; ?>><?php echo $dd; ?></option>
+                                    <?php endfor; ?>
+                                </select>
+                                <span class="compta-hub-jma-sep" aria-hidden="true">/</span>
+                                <select name="d_p1m" id="d_p1m" class="compta-ventes-filter__select compta-ventes-filter__select--sm compta-hub-jma-sel compta-hub-jma-sel--mois" aria-label="Mois du début">
+                                    <?php for ($dm = 1; $dm <= 12; $dm++): ?>
+                                        <option value="<?php echo $dm; ?>" <?php echo (int) $d_p1m === $dm ? 'selected' : ''; ?>><?php echo str_pad((string) $dm, 2, '0', STR_PAD_LEFT); ?></option>
+                                    <?php endfor; ?>
+                                </select>
+                                <span class="compta-hub-jma-sep" aria-hidden="true">/</span>
+                                <select name="d_p1a" id="d_p1a" class="compta-ventes-filter__select compta-ventes-filter__select--sm compta-hub-jma-sel compta-hub-jma-sel--y" aria-label="Année du début">
+                                    <?php for ($dy = $d_annee_max; $dy >= $d_annee_min; $dy--): ?>
+                                        <option value="<?php echo $dy; ?>" <?php echo (int) $d_p1a === $dy ? 'selected' : ''; ?>><?php echo $dy; ?></option>
+                                    <?php endfor; ?>
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <span class="compta-ventes-filter__sublabel">Au</span>
+                            <div class="compta-hub-jma-inline" role="group" aria-label="Date de fin">
+                                <select name="d_p2j" id="d_p2j" class="compta-ventes-filter__select compta-ventes-filter__select--sm compta-hub-jma-sel" aria-label="Jour de fin">
+                                    <?php for ($dd = 1; $dd <= 31; $dd++): ?>
+                                        <option value="<?php echo $dd; ?>" <?php echo (int) $d_p2j === $dd ? 'selected' : ''; ?>><?php echo $dd; ?></option>
+                                    <?php endfor; ?>
+                                </select>
+                                <span class="compta-hub-jma-sep" aria-hidden="true">/</span>
+                                <select name="d_p2m" id="d_p2m" class="compta-ventes-filter__select compta-ventes-filter__select--sm compta-hub-jma-sel compta-hub-jma-sel--mois" aria-label="Mois de fin">
+                                    <?php for ($dm = 1; $dm <= 12; $dm++): ?>
+                                        <option value="<?php echo $dm; ?>" <?php echo (int) $d_p2m === $dm ? 'selected' : ''; ?>><?php echo str_pad((string) $dm, 2, '0', STR_PAD_LEFT); ?></option>
+                                    <?php endfor; ?>
+                                </select>
+                                <span class="compta-hub-jma-sep" aria-hidden="true">/</span>
+                                <select name="d_p2a" id="d_p2a" class="compta-ventes-filter__select compta-ventes-filter__select--sm compta-hub-jma-sel compta-hub-jma-sel--y" aria-label="Année de fin">
+                                    <?php for ($dy = $d_annee_max; $dy >= $d_annee_min; $dy--): ?>
+                                        <option value="<?php echo $dy; ?>" <?php echo (int) $d_p2a === $dy ? 'selected' : ''; ?>><?php echo $dy; ?></option>
+                                    <?php endfor; ?>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="compta-dep-filtres-detail compta-ventes-filter__panel compta-ventes-filter__fields" style="margin-top:12px;">
+                        <div class="compta-dep-filters__field">
+                            <label for="d_categorie">Catégorie</label>
+                            <select name="d_categorie" id="d_categorie">
+                                <option value="0">Toutes</option>
+                                <?php foreach ($categories_dep as $cat): ?>
+                                    <option value="<?php echo (int) $cat['id']; ?>" <?php echo $d_categorie === (int) $cat['id'] ? 'selected' : ''; ?>><?php echo htmlspecialchars($cat['nom']); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="compta-dep-filters__field">
+                            <label for="d_type">TVA</label>
+                            <select name="d_type" id="d_type">
+                                <option value="" <?php echo $d_type_dep === '' ? 'selected' : ''; ?>>Tous types</option>
+                                <option value="sans_tva" <?php echo $d_type_dep === 'sans_tva' ? 'selected' : ''; ?>>Sans TVA</option>
+                                <option value="avec_tva" <?php echo $d_type_dep === 'avec_tva' ? 'selected' : ''; ?>>Avec TVA</option>
+                            </select>
+                        </div>
+                        <div class="compta-dep-filters__field compta-dep-filters__field--full">
+                            <label for="d_q">Recherche libellé</label>
+                            <input type="search" name="d_q" id="d_q" value="<?php echo htmlspecialchars($d_q); ?>" placeholder="Mot-clé…" autocomplete="off">
+                        </div>
+                    </div>
+                </form>
 
-                <h3 class="compta-section-title compta-dep-list-title"><i class="fas fa-list" aria-hidden="true"></i> Détail des dépenses</h3>
+                <h3 class="compta-section-title compta-dep-list-title"><i class="fas fa-list" aria-hidden="true"></i> Détail des dépenses <span class="compta-section-title__per">(<?php echo htmlspecialchars($d_depenses_periode_label); ?>)</span></h3>
 
                 <?php if (empty($depenses_liste)): ?>
                     <div class="compta-dep-empty">
@@ -649,6 +1028,10 @@ $tab_caisse_active = $active_tab === 'caisse';
                             $tva_show = $row['montant_tva'] !== null && (float) $row['montant_tva'] > 0;
                             $tva = $tva_show ? number_format((float) $row['montant_tva'], 0, ',', ' ') : '—';
                             $ttc = number_format((float) ($row['montant_ttc'] ?? 0), 0, ',', ' ');
+                            $createur_etiq = trim(($row['createur_admin_prenom'] ?? '') . ' ' . ($row['createur_admin_nom'] ?? ''));
+                            if ($createur_etiq === '') {
+                                $createur_etiq = '—';
+                            }
                             ?>
                         <article class="compta-dep-item" role="listitem">
                             <div class="compta-dep-item__top">
@@ -664,6 +1047,11 @@ $tab_caisse_active = $active_tab === 'caisse';
                                 <i class="fas fa-folder-open" aria-hidden="true"></i>
                                 <span class="compta-dep-item__sr">Catégorie : </span>
                                 <?php echo htmlspecialchars($row['categorie_nom'] ?? '—'); ?>
+                            </p>
+                            <p class="compta-dep-item__createur">
+                                <i class="fas fa-user-tie" aria-hidden="true"></i>
+                                <span class="compta-dep-item__sr">Saisie : </span>
+                                <?php echo htmlspecialchars($createur_etiq); ?>
                             </p>
                             <dl class="compta-dep-item__amounts">
                                 <div class="compta-dep-item__amt">
@@ -686,135 +1074,6 @@ $tab_caisse_active = $active_tab === 'caisse';
                 <?php endif; ?>
 
             </div>
-
-                <div id="compta-dep-modal" class="compta-dep-modal<?php echo !empty($open_depense_modal) ? ' is-open' : ''; ?>" role="dialog" aria-modal="true" aria-labelledby="compta-dep-modal-title" <?php echo !empty($open_depense_modal) ? '' : 'aria-hidden="true"'; ?>>
-                    <div class="compta-dep-modal__backdrop" data-compta-dep-modal-close tabindex="-1" aria-hidden="true"></div>
-                    <div class="compta-dep-modal__scroll">
-                        <div class="compta-dep-modal__inner">
-                            <header class="compta-dep-modal__head">
-                                <div class="compta-dep-modal__head-text">
-                                    <h2 id="compta-dep-modal-title"><i class="fas fa-receipt" aria-hidden="true"></i> Nouvelle dépense</h2>
-                                    <p>Saisissez le montant <strong>HT</strong> ; la TVA et le TTC sont calculés selon le type choisi.</p>
-                                </div>
-                                <button type="button" class="compta-dep-modal__close" data-compta-dep-modal-close aria-label="Fermer la fenêtre">
-                                    <i class="fas fa-times" aria-hidden="true"></i>
-                                </button>
-                            </header>
-                            <div class="compta-dep-modal__body">
-                                <form method="post" action="index.php?tab=depenses" class="compta-dep-form">
-                                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['admin_csrf']); ?>">
-                                    <input type="hidden" name="depense_ajout" value="1">
-                                    <div class="compta-dep-form__row">
-                                        <label for="dep_libelle">Libellé <span class="req">*</span></label>
-                                        <input type="text" name="libelle" id="dep_libelle" required maxlength="255" placeholder="Ex. Facture électricité" autocomplete="off">
-                                    </div>
-                                    <div class="compta-dep-form__row compta-dep-form__row--2">
-                                        <div>
-                                            <label for="dep_date">Date <span class="req">*</span></label>
-                                            <input type="date" name="date_depense" id="dep_date" required value="<?php echo htmlspecialchars(date('Y-m-d')); ?>">
-                                        </div>
-                                        <div>
-                                            <label for="dep_cat">Catégorie</label>
-                                            <select name="categorie_id" id="dep_cat">
-                                                <option value="0">— Non classé —</option>
-                                                <?php foreach ($categories_dep as $cat): ?>
-                                                    <option value="<?php echo (int) $cat['id']; ?>"><?php echo htmlspecialchars($cat['nom']); ?></option>
-                                                <?php endforeach; ?>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div class="compta-dep-form__row">
-                                        <label for="dep_type">Type <span class="req">*</span></label>
-                                        <select name="type_depense" id="dep_type" data-compta-dep-type>
-                                            <option value="sans_tva">Hors TVA (HT = TTC)</option>
-                                            <option value="avec_tva" selected>Avec TVA (HT + TVA = TTC)</option>
-                                        </select>
-                                    </div>
-                                    <div class="compta-dep-form__row compta-dep-form__row--2">
-                                        <div>
-                                            <label for="dep_ht">Montant HT (FCFA) <span class="req">*</span></label>
-                                            <input type="text" name="montant_ht" id="dep_ht" required inputmode="decimal" placeholder="0" pattern="[0-9]+([.,][0-9]+)?">
-                                        </div>
-                                        <div class="compta-dep-wrap-taux" id="compta-dep-wrap-taux">
-                                            <label for="dep_tva">TVA (%)</label>
-                                            <input type="text" name="taux_tva" id="dep_tva" inputmode="decimal" placeholder="20" value="20">
-                                        </div>
-                                    </div>
-                                    <div class="compta-dep-form__row">
-                                        <label for="dep_notes">Notes</label>
-                                        <textarea name="notes" id="dep_notes" rows="3" placeholder="Réf. facture, fournisseur…"></textarea>
-                                    </div>
-                                    <div class="compta-dep-modal__form-actions">
-                                        <button type="button" class="compta-dep-modal__btn-cancel" data-compta-dep-modal-close>Annuler</button>
-                                        <button type="submit" class="compta-dep-submit"><i class="fas fa-save" aria-hidden="true"></i> Enregistrer la dépense</button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <script>
-                (function () {
-                    var modal = document.getElementById('compta-dep-modal');
-                    var openBtn = document.getElementById('compta-dep-open-modal');
-                    if (!modal) return;
-
-                    function getBody() {
-                        return document.body;
-                    }
-
-                    function isOpen() {
-                        return modal.classList.contains('is-open');
-                    }
-
-                    function setOpen(open) {
-                        if (open) {
-                            modal.classList.add('is-open');
-                            modal.removeAttribute('aria-hidden');
-                            getBody().classList.add('compta-dep-modal-open');
-                        } else {
-                            modal.classList.remove('is-open');
-                            modal.setAttribute('aria-hidden', 'true');
-                            getBody().classList.remove('compta-dep-modal-open');
-                            if (openBtn) openBtn.focus();
-                        }
-                    }
-
-                    modal.querySelectorAll('[data-compta-dep-modal-close]').forEach(function (el) {
-                        el.addEventListener('click', function () {
-                            setOpen(false);
-                        });
-                    });
-
-                    if (openBtn) {
-                        openBtn.addEventListener('click', function () {
-                            setOpen(true);
-                            var first = modal.querySelector('input:not([type="hidden"]), select, textarea, button[type="submit"]');
-                            if (first) setTimeout(function () { first.focus(); }, 50);
-                        });
-                    }
-
-                    document.addEventListener('keydown', function (e) {
-                        if (e.key === 'Escape' && isOpen()) {
-                            e.preventDefault();
-                            setOpen(false);
-                        }
-                    });
-
-                    var sel = modal.querySelector('[data-compta-dep-type]');
-                    var wrap = modal.querySelector('#compta-dep-wrap-taux');
-                    if (sel && wrap) {
-                        function syncTva() {
-                            var on = sel.value === 'avec_tva';
-                            wrap.style.display = on ? '' : 'none';
-                            wrap.querySelectorAll('input').forEach(function (inp) { inp.disabled = !on; });
-                        }
-                        sel.addEventListener('change', syncTva);
-                        syncTva();
-                    }
-                })();
-                </script>
             <?php endif; ?>
         </div>
 
@@ -826,10 +1085,10 @@ $tab_caisse_active = $active_tab === 'caisse';
             <div class="compta-hero compta-hero--bl compta-bl-hero compta-bl-hero--premium">
                 <div class="compta-hero__copy">
                     <p class="compta-bl-eyebrow">B2B · <?php echo htmlspecialchars($periode_label_long); ?></p>
-                    <h2 class="compta-hero__title" id="compta-bl-hero-title">Bons de livraison &amp; factures HT</h2>
-                    <p class="compta-hero__lead">Filtrez par mois selon la <strong>date du BL</strong>. Les totaux ci-dessous incluent uniquement les BL au statut <strong>validé</strong> ou <strong>payé (comptabilité)</strong> — les brouillons sont exclus. Les factures mensuelles HT regroupent ces BL par client B2B.</p>
+                    <h2 class="compta-hero__title" id="compta-bl-hero-title">Bons de livraison</h2>
                     <div class="compta-hero__actions compta-bl-hero__actions">
                         <a href="#compta-bl-clients-anchor" class="compta-btn compta-btn--secondary"><i class="fas fa-people-group" aria-hidden="true"></i> Liste clients &amp; BL</a>
+                        <a href="bl-factures-archives.php" class="compta-btn compta-btn--primary"><i class="fas fa-list" aria-hidden="true"></i> Liste des factures</a>
                     </div>
                 </div>
             </div>
@@ -857,7 +1116,6 @@ $tab_caisse_active = $active_tab === 'caisse';
                             <button type="submit" class="compta-bl-filter__btn"><i class="fas fa-filter" aria-hidden="true"></i> Afficher</button>
                         </div>
                     </div>
-                    <p class="compta-bl-filter__help">Par défaut : <strong>mois en cours</strong>. La liste des mois inclut les périodes où au moins un BL existe.</p>
                 </form>
 
                 <div class="compta-bl-kpis" aria-label="Synthèse de la période">
@@ -866,7 +1124,6 @@ $tab_caisse_active = $active_tab === 'caisse';
                         <div class="compta-bl-kpi__body">
                             <span class="compta-bl-kpi__label">Factures HT enregistrées</span>
                             <span class="compta-bl-kpi__value"><?php echo number_format($stats_fm_mois['somme_ht'], 0, ',', ' '); ?> <small>FCFA</small></span>
-                            <span class="compta-bl-kpi__sub"><?php echo (int) $stats_fm_mois['nb_factures']; ?> facture<?php echo $stats_fm_mois['nb_factures'] > 1 ? 's' : ''; ?> sur la période</span>
                         </div>
                     </div>
                     <div class="compta-bl-kpi">
@@ -874,7 +1131,6 @@ $tab_caisse_active = $active_tab === 'caisse';
                         <div class="compta-bl-kpi__body">
                             <span class="compta-bl-kpi__label">Bons de livraison (compta)</span>
                             <span class="compta-bl-kpi__value"><?php echo (int) $stats_bl_mois['nb_bl']; ?></span>
-                            <span class="compta-bl-kpi__sub">Total HT : <?php echo number_format($stats_bl_mois['somme_bl_ht'], 0, ',', ' '); ?> FCFA · <?php echo (int) ($stats_bl_mois['nb_valide'] ?? 0); ?> bon(s) validé(s) (comptabilité)</span>
                         </div>
                     </div>
                     <div class="compta-bl-kpi">
@@ -882,12 +1138,10 @@ $tab_caisse_active = $active_tab === 'caisse';
                         <div class="compta-bl-kpi__body">
                             <span class="compta-bl-kpi__label">Clients distincts</span>
                             <span class="compta-bl-kpi__value"><?php echo (int) $stats_bl_mois['nb_clients']; ?></span>
-                            <span class="compta-bl-kpi__sub"><?php echo htmlspecialchars($periode_label_long); ?></span>
                         </div>
                     </div>
                 </div>
 
-                <p class="compta-bl-synth-note"><strong>Comptabilité :</strong> seuls les BL <strong>validés</strong> ou <strong>payés</strong> entrent dans les montants ci-dessus. Ouvrez une <strong>fiche client</strong> pour lister les BL, générer la <strong>facture mensuelle HT</strong> et consulter les documents.</p>
             <?php endif; ?>
 
             <h3 id="compta-bl-clients-anchor" class="compta-section-title compta-section-title--spaced compta-bl-list-title"><i class="fas fa-people-group" aria-hidden="true"></i> Clients &amp; bons de livraison</h3>
@@ -905,136 +1159,64 @@ $tab_caisse_active = $active_tab === 'caisse';
                         </div>
                         <div class="bl-contacts-hero__copy">
                             <h2 class="bl-contacts-hero__title">Contacts B2B</h2>
-                            <p class="bl-contacts-hero__lead">Même présentation que l’onglet BL des devis : ouvrez une fiche pour voir tous les BL et <strong>générer la facture mensuelle HT</strong>.</p>
+                            <p class="bl-contacts-hero__lead compta-bl-contacts-hero__lead">Clients avec bons de livraison — accès à la fiche et aux BL.</p>
                         </div>
                         <div class="bl-contacts-hero__stat" title="Nombre de contacts listés">
                             <span class="bl-contacts-hero__stat-num"><?php echo (int) $bl_nb_contacts_compta; ?></span>
                             <span class="bl-contacts-hero__stat-label">contact<?php echo $bl_nb_contacts_compta > 1 ? 's' : ''; ?></span>
                         </div>
                     </header>
-                    <div class="bl-contacts-grid" role="list">
+                    <div class="compta-panel-table-wrap compta-bl-clients-table-wrap">
+                        <table class="data-table compta-bl-clients-table" aria-labelledby="compta-bl-clients-anchor">
+                            <thead>
+                                <tr>
+                                    <th scope="col" class="compta-bl-clients-table__th compta-bl-clients-table__th--client"><span class="compta-bl-clients-table__th-label"><i class="fas fa-building" aria-hidden="true"></i> Client</span></th>
+                                    <th scope="col" class="compta-bl-clients-table__th"><span class="compta-bl-clients-table__th-label"><i class="fas fa-phone-alt" aria-hidden="true"></i> Téléphone</span></th>
+                                    <th scope="col" class="compta-bl-clients-table__th"><span class="compta-bl-clients-table__th-label"><i class="fas fa-envelope" aria-hidden="true"></i> Email</span></th>
+                                    <th scope="col" class="compta-table-col-num compta-bl-clients-table__th compta-bl-clients-table__th--bl"><span class="compta-bl-clients-table__th-label"><i class="fas fa-truck" aria-hidden="true"></i> BL</span></th>
+                                    <th scope="col" class="compta-table-col-actions compta-bl-clients-table__th compta-bl-clients-table__th--actions"><span class="compta-bl-clients-table__th-label"><i class="fas fa-external-link-alt" aria-hidden="true"></i> Actions</span></th>
+                                </tr>
+                            </thead>
+                            <tbody>
                     <?php foreach ($bl_clients_list_compta as $cl): ?>
                         <?php
                         $cid = (int) $cl['id'];
                         $nb_bl_c = (int) ($cl['nb_bl'] ?? 0);
-                        $contact_nom_c = trim(($cl['nom_contact'] ?? '') . ' ' . ($cl['prenom_contact'] ?? ''));
                         $rs_c = trim($cl['raison_sociale'] ?? '');
-                        $initials_c = '?';
-                        if ($rs_c !== '') {
-                            $words_c = preg_split('/\s+/u', $rs_c, -1, PREG_SPLIT_NO_EMPTY);
-                            if (count($words_c) >= 2) {
-                                $initials_c = mb_strtoupper(
-                                    mb_substr($words_c[0], 0, 1) . mb_substr($words_c[1], 0, 1),
-                                    'UTF-8'
-                                );
-                            } else {
-                                $initials_c = mb_strtoupper(mb_substr($rs_c, 0, min(2, mb_strlen($rs_c, 'UTF-8')), 'UTF-8'), 'UTF-8');
-                            }
-                        }
-                        $adr_short_c = '';
-                        if (!empty($cl['adresse'])) {
-                            $adr_short_c = mb_substr($cl['adresse'], 0, 110);
-                            if (mb_strlen($cl['adresse'], 'UTF-8') > 110) {
-                                $adr_short_c .= '…';
-                            }
-                        }
-                        $last_bl_c = !empty($cl['dernier_bl_date'])
-                            ? date('d/m/Y · H:i', strtotime($cl['dernier_bl_date']))
-                            : '—';
+                        $tel_raw = trim((string) ($cl['telephone'] ?? ''));
+                        $email_raw = trim((string) ($cl['email'] ?? ''));
                         ?>
-                        <article class="bl-contact-card" role="listitem">
-                            <div class="bl-contact-card__inner">
-                                <div class="bl-contact-card__head">
-                                    <div class="bl-contact-card__avatar" aria-hidden="true"><?php echo htmlspecialchars($initials_c); ?></div>
-                                    <div class="bl-contact-card__head-text">
-                                        <h3 class="bl-contact-card__company"><?php echo htmlspecialchars($rs_c ?: '—'); ?></h3>
-                                        <?php if ($contact_nom_c !== ''): ?>
-                                            <p class="bl-contact-card__person">
-                                                <i class="fas fa-user-tie" aria-hidden="true"></i>
-                                                <?php echo htmlspecialchars($contact_nom_c); ?>
-                                            </p>
-                                        <?php endif; ?>
-                                    </div>
-                                    <span class="bl-contact-card__pill">
-                                        <i class="fas fa-file-invoice" aria-hidden="true"></i>
-                                        <?php echo $nb_bl_c; ?> BL
-                                    </span>
-                                </div>
-                                <ul class="bl-contact-card__meta">
-                                    <li class="bl-contact-card__meta-row">
-                                        <span class="bl-contact-card__meta-ic" aria-hidden="true"><i class="fas fa-phone"></i></span>
-                                        <span class="bl-contact-card__meta-val"><?php echo htmlspecialchars($cl['telephone'] ?? '—'); ?></span>
-                                    </li>
-                                    <li class="bl-contact-card__meta-row">
-                                        <span class="bl-contact-card__meta-ic" aria-hidden="true"><i class="fas fa-envelope"></i></span>
-                                        <span class="bl-contact-card__meta-val"><?php echo !empty($cl['email']) ? htmlspecialchars($cl['email']) : '—'; ?></span>
-                                    </li>
-                                    <?php if ($adr_short_c !== ''): ?>
-                                    <li class="bl-contact-card__meta-row bl-contact-card__meta-row--address">
-                                        <span class="bl-contact-card__meta-ic" aria-hidden="true"><i class="fas fa-location-dot"></i></span>
-                                        <span class="bl-contact-card__meta-val"><?php echo htmlspecialchars($adr_short_c); ?></span>
-                                    </li>
-                                    <?php endif; ?>
-                                </ul>
-                                <div class="bl-contact-card__foot">
-                                    <div class="bl-contact-card__last">
-                                        <span class="bl-contact-card__last-label">Dernier BL</span>
-                                        <?php if (!empty($cl['dernier_bl_date'])): ?>
-                                            <time class="bl-contact-card__last-date" datetime="<?php echo htmlspecialchars(date('c', strtotime($cl['dernier_bl_date']))); ?>"><?php echo htmlspecialchars($last_bl_c); ?></time>
+                                <tr class="compta-bl-clients-table__row">
+                                    <td class="compta-bl-clients-table__cell compta-bl-clients-table__cell--client">
+                                        <div class="compta-bl-clients-table__client">
+                                            <span class="compta-bl-clients-table__company"><?php echo htmlspecialchars($rs_c ?: '—'); ?></span>
+                                        </div>
+                                    </td>
+                                    <td class="compta-bl-clients-table__cell compta-bl-clients-table__cell--meta">
+                                        <?php if ($tel_raw !== ''): ?>
+                                            <a class="compta-bl-clients-table__link compta-bl-clients-table__link--tel" href="tel:<?php echo htmlspecialchars(preg_replace('/\s+/', '', $tel_raw)); ?>"><?php echo htmlspecialchars($tel_raw); ?></a>
                                         <?php else: ?>
-                                            <span class="bl-contact-card__last-date">—</span>
+                                            <span class="compta-bl-clients-table__empty">—</span>
                                         <?php endif; ?>
-                                    </div>
-                                    <a href="bl-fiche-client.php?id=<?php echo $cid; ?>" class="bl-contact-card__cta">
-                                        <span>Voir les bons &amp; facture</span>
-                                        <i class="fas fa-arrow-right" aria-hidden="true"></i>
-                                    </a>
-                                </div>
-                            </div>
-                        </article>
+                                    </td>
+                                    <td class="compta-bl-clients-table__cell compta-bl-clients-table__cell--meta">
+                                        <?php if ($email_raw !== ''): ?>
+                                            <a class="compta-bl-clients-table__link compta-bl-clients-table__link--mail" href="mailto:<?php echo htmlspecialchars($email_raw); ?>"><?php echo htmlspecialchars($email_raw); ?></a>
+                                        <?php else: ?>
+                                            <span class="compta-bl-clients-table__empty">—</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td class="compta-table-col-num compta-bl-clients-table__cell compta-bl-clients-table__cell--bl">
+                                        <span class="compta-bl-clients-table__bl-pill" title="Nombre de bons de livraison"><?php echo (int) $nb_bl_c; ?></span>
+                                    </td>
+                                    <td class="compta-table-actions compta-bl-clients-table__cell compta-bl-clients-table__cell--cta">
+                                        <a class="compta-bl-clients-table__cta" href="bl-fiche-client.php?id=<?php echo $cid; ?>" aria-label="Ouvrir la fiche client, les bons de livraison et la facturation"><span class="compta-bl-clients-table__cta-text">Fiche client</span><i class="fas fa-arrow-right compta-bl-clients-table__cta-ic" aria-hidden="true"></i></a>
+                                    </td>
+                                </tr>
                     <?php endforeach; ?>
+                            </tbody>
+                        </table>
                     </div>
-                </div>
-            <?php endif; ?>
-
-            <h3 class="compta-section-title compta-section-title--spaced compta-bl-fm-title"><i class="fas fa-file-invoice-dollar" aria-hidden="true"></i> Factures mensuelles HT <span class="compta-section-title__per">(<?php echo htmlspecialchars($periode_label_long); ?>)</span></h3>
-
-            <?php if (!$fm_ok): ?>
-                <div class="compta-bl-alerts" role="status">
-                    <p class="message error compta-bl-msg compta-bl-msg--standalone"><i class="fas fa-database" aria-hidden="true"></i> Tables absentes : exécutez <code>migrations/migration_admin_b2b_structure.sql</code>.</p>
-                </div>
-            <?php elseif (empty($factures_mois)): ?>
-                <div class="compta-blank compta-bl-empty compta-bl-empty--fm">
-                    <p><i class="fas fa-file-invoice" aria-hidden="true"></i> Aucune facture mensuelle pour <?php echo htmlspecialchars($periode_label_long); ?>. Générez une facture depuis une <a href="#compta-bl-clients-anchor">fiche client</a> ci-dessus.</p>
-                </div>
-            <?php else: ?>
-                <div class="compta-fm-table-wrap compta-bl-fm-table-wrap">
-                    <table class="compta-fm-table" aria-label="Factures mensuelles de la période">
-                        <thead>
-                            <tr>
-                                <th>N° facture</th>
-                                <th>Client</th>
-                                <th>Statut</th>
-                                <th class="compta-fm-table__num">Total HT</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                        <?php foreach ($factures_mois as $f):
-                            $st = $f['statut'] ?? '';
-                            $st_label = $st === 'brouillon' ? 'Brouillon' : ($st === 'validee' ? 'Validée' : ($st === 'payee' ? 'Payée' : $st));
-                            $fid = (int) $f['id'];
-                            ?>
-                            <tr>
-                                <td><strong><?php echo htmlspecialchars($f['numero_facture'] ?? ''); ?></strong></td>
-                                <td><?php echo htmlspecialchars($f['raison_sociale'] ?? '—'); ?></td>
-                                <td><span class="compta-badge compta-badge--<?php echo htmlspecialchars($st); ?>"><?php echo htmlspecialchars($st_label); ?></span></td>
-                                <td class="compta-fm-table__num"><?php echo number_format((float) ($f['total_ht'] ?? 0), 0, ',', ' '); ?> FCFA</td>
-                                <td><a href="../devis/facture_mensuelle.php?id=<?php echo $fid; ?>" class="compta-fm-table__link">Ouvrir</a></td>
-                            </tr>
-                        <?php endforeach; ?>
-                        </tbody>
-                    </table>
                 </div>
             <?php endif; ?>
 
@@ -1043,13 +1225,14 @@ $tab_caisse_active = $active_tab === 'caisse';
 
         <div id="compta-panel-caisse" class="compta-panel compta-panel--caisse <?php echo $tab_caisse_active ? 'is-active' : ''; ?>" role="tabpanel" aria-labelledby="compta-tab-caisse" <?php echo $tab_caisse_active ? '' : 'hidden'; ?> data-compta-panel="caisse">
             <?php
-            $caisse_eyebrow_periode = date('d/m/Y', strtotime($c_date_debut)) . ' – ' . date('d/m/Y', strtotime($c_date_fin));
+            $caisse_annee_min = (int) date('Y') - 5;
+            $caisse_annee_max = (int) date('Y') + 1;
             ?>
             <div class="compta-hero compta-hero--caisse compta-caisse-hero compta-caisse-hero--premium">
                 <div class="compta-hero__copy">
-                    <p class="compta-caisse-eyebrow">Caisse magasin · TTC · <?php echo htmlspecialchars($caisse_eyebrow_periode); ?></p>
+                    <p class="compta-caisse-eyebrow">Caisse magasin · TTC · <?php echo htmlspecialchars($c_caisse_periode_label); ?></p>
                     <h2 class="compta-hero__title" id="compta-caisse-hero-title">Caisse magasin</h2>
-                    <p class="compta-hero__lead">Consultez les <strong>ventes enregistrées à la caisse</strong> (montants <strong>TTC</strong> par ticket). Filtrez par période, mode de paiement, caissier ou recherche (n° ticket, note).</p>
+                    <p class="compta-hero__lead">Consultez les <strong>ventes enregistrées à la caisse</strong> (montants <strong>TTC</strong> par ticket). Filtre période : <strong>jour</strong>, <strong>semaine</strong> ou <strong>plage</strong> ; dates en <strong>jour · mois · année</strong>. Par défaut : <strong>journée en cours</strong>.</p>
                     <div class="compta-hero__actions compta-caisse-hero__actions">
                         <a href="../caisse/index.php" class="compta-btn compta-btn--primary"><i class="fas fa-cash-register" aria-hidden="true"></i> Ouvrir la caisse</a>
                     </div>
@@ -1075,70 +1258,145 @@ $tab_caisse_active = $active_tab === 'caisse';
                     </div>
                 </div>
 
-                <?php if (!empty($caisse_totaux['par_mode'])): ?>
-                <div class="compta-caisse-modes" aria-label="Répartition par mode de paiement">
-                    <?php foreach ($caisse_totaux['par_mode'] as $mk => $mv):
-                        if ($mk === '') {
+                <nav class="compta-caisse-subtabs" aria-label="Filtrer le détail par canal de paiement">
+                    <a class="compta-caisse-subtab <?php echo $c_canal === '' ? 'is-active' : ''; ?>" href="index.php?<?php echo htmlspecialchars(http_build_query($compta_caisse_filter_qs)); ?>">Tous</a>
+                    <?php foreach ($c_canaux_list as $ck):
+                        $qs_canal = array_merge($compta_caisse_filter_qs, ['c_canal' => $ck]);
+                        $pch = $caisse_totaux['par_canal'][$ck] ?? ['total' => 0, 'nb' => 0];
+                        ?>
+                    <a class="compta-caisse-subtab <?php echo $c_canal === $ck ? 'is-active' : ''; ?>"
+                        href="index.php?<?php echo htmlspecialchars(http_build_query($qs_canal)); ?>">
+                        <span class="compta-caisse-subtab__name"><?php echo htmlspecialchars(caisse_compta_libelle_mode($ck)); ?></span>
+                        <span class="compta-caisse-subtab__sum"><?php echo number_format((float) $pch['total'], 0, ',', ' '); ?> FCFA</span>
+                    </a>
+                    <?php endforeach; ?>
+                </nav>
+
+                <?php if (!empty($caisse_totaux['par_canal']) && $caisse_ok): ?>
+                <div class="compta-caisse-modes compta-caisse-modes--canal" aria-label="Montants encaissés par canal (paiements mixtes ventilés)">
+                    <?php foreach ($caisse_totaux['par_canal'] as $mk => $mv):
+                        if ((float) $mv['total'] < 0.005) {
                             continue;
                         }
                         ?>
                     <div class="compta-caisse-mode-chip">
                         <span class="compta-caisse-mode-chip__name"><?php echo htmlspecialchars(caisse_compta_libelle_mode($mk)); ?></span>
-                        <span class="compta-caisse-mode-chip__nb"><?php echo (int) $mv['nb']; ?> ticket<?php echo $mv['nb'] > 1 ? 's' : ''; ?></span>
-                        <span class="compta-caisse-mode-chip__sum"><?php echo number_format($mv['total'], 0, ',', ' '); ?> FCFA</span>
+                        <span class="compta-caisse-mode-chip__nb"><?php echo (int) $mv['nb']; ?> ligne<?php echo $mv['nb'] > 1 ? 's' : ''; ?></span>
+                        <span class="compta-caisse-mode-chip__sum"><?php echo number_format((float) $mv['total'], 0, ',', ' '); ?> FCFA</span>
                     </div>
                     <?php endforeach; ?>
                 </div>
                 <?php endif; ?>
 
-                <div class="compta-dep-grid">
-                    <section class="compta-dep-card compta-dep-card--filters compta-caisse-filters-card" aria-labelledby="compta-caisse-filtres-title">
-                        <h3 id="compta-caisse-filtres-title" class="compta-dep-card__title"><i class="fas fa-filter" aria-hidden="true"></i> Filtres</h3>
-                        <form method="get" action="index.php" class="compta-dep-filters compta-caisse-filters">
-                            <input type="hidden" name="tab" value="caisse">
-                            <div class="compta-dep-filters__grid">
-                                <div class="compta-dep-filters__field">
-                                    <label for="c_date_debut">Du</label>
-                                    <input type="date" name="c_date_debut" id="c_date_debut" value="<?php echo htmlspecialchars($c_date_debut); ?>">
-                                </div>
-                                <div class="compta-dep-filters__field">
-                                    <label for="c_date_fin">Au</label>
-                                    <input type="date" name="c_date_fin" id="c_date_fin" value="<?php echo htmlspecialchars($c_date_fin); ?>">
-                                </div>
-                                <div class="compta-dep-filters__field">
-                                    <label for="c_mode">Mode de paiement</label>
-                                    <select name="c_mode" id="c_mode">
-                                        <option value="" <?php echo $c_mode === '' ? 'selected' : ''; ?>>Tous</option>
-                                        <option value="especes" <?php echo $c_mode === 'especes' ? 'selected' : ''; ?>>Espèces</option>
-                                        <option value="carte" <?php echo $c_mode === 'carte' ? 'selected' : ''; ?>>Carte bancaire</option>
-                                        <option value="mobile_money" <?php echo $c_mode === 'mobile_money' ? 'selected' : ''; ?>>Mobile money</option>
-                                        <option value="cheque" <?php echo $c_mode === 'cheque' ? 'selected' : ''; ?>>Chèque</option>
-                                        <option value="mixte" <?php echo $c_mode === 'mixte' ? 'selected' : ''; ?>>Mixte</option>
-                                        <option value="autre" <?php echo $c_mode === 'autre' ? 'selected' : ''; ?>>Autre</option>
+                <div class="compta-caisse-filter-hub" aria-label="Filtres caisse magasin">
+                    <form method="get" action="index.php" class="compta-ventes-filter compta-synthese-filter compta-caisse-compact-filter" id="compta-caisse-filters-form">
+                        <input type="hidden" name="tab" value="caisse">
+                        <?php if ($c_canal !== ''): ?>
+                        <input type="hidden" name="c_canal" value="<?php echo htmlspecialchars($c_canal); ?>">
+                        <?php endif; ?>
+                        <div class="compta-ventes-filter__row compta-caisse-filter__row-top">
+                            <label for="compta-c-periode" class="compta-ventes-filter__label">Période caisse</label>
+                            <div class="compta-ventes-filter__controls">
+                                <select name="c_periode" id="compta-c-periode" class="compta-ventes-filter__select compta-ventes-filter__select--md">
+                                    <option value="jour" <?php echo $c_periode === 'jour' ? 'selected' : ''; ?>>Un jour</option>
+                                    <option value="semaine" <?php echo $c_periode === 'semaine' ? 'selected' : ''; ?>>Une semaine (lun.–dim.)</option>
+                                    <option value="plage" <?php echo $c_periode === 'plage' ? 'selected' : ''; ?>>Période (du … au …)</option>
+                                </select>
+                                <button type="submit" class="compta-ventes-filter__btn"><i class="fas fa-filter" aria-hidden="true"></i> Appliquer</button>
+                                <a href="index.php?tab=caisse" class="compta-ventes-filter__reset">Réinitialiser</a>
+                            </div>
+                        </div>
+
+                        <div id="compta-wrap-c-anchor" class="compta-ventes-filter__panel compta-ventes-filter__fields compta-caisse-filter__date-panel <?php echo $c_periode === 'plage' ? 'is-hidden' : ''; ?>" title="Ordre de saisie : jour / mois / année">
+                            <div class="compta-caisse-filter__date-line">
+                                <span class="compta-ventes-filter__sublabel compta-caisse-filter__date-line-label" id="compta-c-anchor-label"><?php echo $c_periode === 'semaine' ? 'Semaine contenant le' : 'Date'; ?></span>
+                                <div class="compta-caisse-jma-inline" role="group" aria-labelledby="compta-c-anchor-label">
+                                    <select name="c_aj" id="c_aj" class="compta-ventes-filter__select compta-ventes-filter__select--sm compta-caisse-jma-sel" aria-label="Jour (1–31)">
+                                        <?php for ($cd = 1; $cd <= 31; $cd++): ?>
+                                            <option value="<?php echo $cd; ?>" <?php echo (int) $c_aj === $cd ? 'selected' : ''; ?>><?php echo $cd; ?></option>
+                                        <?php endfor; ?>
+                                    </select>
+                                    <span class="compta-caisse-jma-sep" aria-hidden="true">/</span>
+                                    <select name="c_am" id="c_am" class="compta-ventes-filter__select compta-ventes-filter__select--sm compta-caisse-jma-sel compta-caisse-jma-sel--mois" aria-label="Mois (1–12)" title="Mois (ordre jour / mois / année)">
+                                        <?php for ($cm = 1; $cm <= 12; $cm++): ?>
+                                            <option value="<?php echo $cm; ?>" <?php echo (int) $c_am === $cm ? 'selected' : ''; ?>><?php echo str_pad((string) $cm, 2, '0', STR_PAD_LEFT); ?></option>
+                                        <?php endfor; ?>
+                                    </select>
+                                    <span class="compta-caisse-jma-sep" aria-hidden="true">/</span>
+                                    <select name="c_aa" id="c_aa" class="compta-ventes-filter__select compta-ventes-filter__select--sm compta-caisse-jma-sel compta-caisse-jma-sel--y" aria-label="Année">
+                                        <?php for ($ca = $caisse_annee_max; $ca >= $caisse_annee_min; $ca--): ?>
+                                            <option value="<?php echo $ca; ?>" <?php echo (int) $c_aa === $ca ? 'selected' : ''; ?>><?php echo $ca; ?></option>
+                                        <?php endfor; ?>
                                     </select>
                                 </div>
-                                <div class="compta-dep-filters__field">
-                                    <label for="c_admin">Caissier</label>
-                                    <select name="c_admin" id="c_admin">
-                                        <option value="0">Tous</option>
-                                        <?php foreach ($caisse_admins_filtre as $adm): ?>
-                                            <option value="<?php echo (int) $adm['id']; ?>" <?php echo $c_admin === (int) $adm['id'] ? 'selected' : ''; ?>>
-                                                <?php echo htmlspecialchars(trim(($adm['prenom'] ?? '') . ' ' . ($adm['nom'] ?? '')) ?: ($adm['email'] ?? '#' . $adm['id'])); ?>
-                                            </option>
-                                        <?php endforeach; ?>
+                            </div>
+                        </div>
+
+                        <div id="compta-wrap-c-plage" class="compta-ventes-filter__panel compta-ventes-filter__fields compta-ventes-filter__fields--plage compta-caisse-filter__date-panel <?php echo $c_periode === 'plage' ? '' : 'is-hidden'; ?>" title="Ordre : jour / mois / année">
+                            <div>
+                                <span class="compta-ventes-filter__sublabel">Du</span>
+                                <div class="compta-caisse-jma-inline" role="group" aria-label="Date de début">
+                                    <select name="c_p1j" id="c_p1j" class="compta-ventes-filter__select compta-ventes-filter__select--sm compta-caisse-jma-sel" aria-label="Jour du début">
+                                        <?php for ($cd = 1; $cd <= 31; $cd++): ?>
+                                            <option value="<?php echo $cd; ?>" <?php echo (int) $c_p1j === $cd ? 'selected' : ''; ?>><?php echo $cd; ?></option>
+                                        <?php endfor; ?>
+                                    </select>
+                                    <span class="compta-caisse-jma-sep" aria-hidden="true">/</span>
+                                    <select name="c_p1m" id="c_p1m" class="compta-ventes-filter__select compta-ventes-filter__select--sm compta-caisse-jma-sel compta-caisse-jma-sel--mois" aria-label="Mois du début">
+                                        <?php for ($cm = 1; $cm <= 12; $cm++): ?>
+                                            <option value="<?php echo $cm; ?>" <?php echo (int) $c_p1m === $cm ? 'selected' : ''; ?>><?php echo str_pad((string) $cm, 2, '0', STR_PAD_LEFT); ?></option>
+                                        <?php endfor; ?>
+                                    </select>
+                                    <span class="compta-caisse-jma-sep" aria-hidden="true">/</span>
+                                    <select name="c_p1a" id="c_p1a" class="compta-ventes-filter__select compta-ventes-filter__select--sm compta-caisse-jma-sel compta-caisse-jma-sel--y" aria-label="Année du début">
+                                        <?php for ($ca = $caisse_annee_max; $ca >= $caisse_annee_min; $ca--): ?>
+                                            <option value="<?php echo $ca; ?>" <?php echo (int) $c_p1a === $ca ? 'selected' : ''; ?>><?php echo $ca; ?></option>
+                                        <?php endfor; ?>
                                     </select>
                                 </div>
-                                <div class="compta-dep-filters__field compta-dep-filters__field--full">
-                                    <label for="c_q">Recherche (n° ticket, note)</label>
-                                    <input type="search" name="c_q" id="c_q" value="<?php echo htmlspecialchars($c_q); ?>" placeholder="Ex. TKT2026…" autocomplete="off">
+                            </div>
+                            <div>
+                                <span class="compta-ventes-filter__sublabel">Au</span>
+                                <div class="compta-caisse-jma-inline" role="group" aria-label="Date de fin">
+                                    <select name="c_p2j" id="c_p2j" class="compta-ventes-filter__select compta-ventes-filter__select--sm compta-caisse-jma-sel" aria-label="Jour de fin">
+                                        <?php for ($cd = 1; $cd <= 31; $cd++): ?>
+                                            <option value="<?php echo $cd; ?>" <?php echo (int) $c_p2j === $cd ? 'selected' : ''; ?>><?php echo $cd; ?></option>
+                                        <?php endfor; ?>
+                                    </select>
+                                    <span class="compta-caisse-jma-sep" aria-hidden="true">/</span>
+                                    <select name="c_p2m" id="c_p2m" class="compta-ventes-filter__select compta-ventes-filter__select--sm compta-caisse-jma-sel compta-caisse-jma-sel--mois" aria-label="Mois de fin">
+                                        <?php for ($cm = 1; $cm <= 12; $cm++): ?>
+                                            <option value="<?php echo $cm; ?>" <?php echo (int) $c_p2m === $cm ? 'selected' : ''; ?>><?php echo str_pad((string) $cm, 2, '0', STR_PAD_LEFT); ?></option>
+                                        <?php endfor; ?>
+                                    </select>
+                                    <span class="compta-caisse-jma-sep" aria-hidden="true">/</span>
+                                    <select name="c_p2a" id="c_p2a" class="compta-ventes-filter__select compta-ventes-filter__select--sm compta-caisse-jma-sel compta-caisse-jma-sel--y" aria-label="Année de fin">
+                                        <?php for ($ca = $caisse_annee_max; $ca >= $caisse_annee_min; $ca--): ?>
+                                            <option value="<?php echo $ca; ?>" <?php echo (int) $c_p2a === $ca ? 'selected' : ''; ?>><?php echo $ca; ?></option>
+                                        <?php endfor; ?>
+                                    </select>
                                 </div>
                             </div>
-                            <div class="compta-dep-filters__actions">
-                                <button type="submit" class="compta-dep-filters__btn"><i class="fas fa-search" aria-hidden="true"></i> Appliquer</button>
-                                <a href="index.php?tab=caisse" class="compta-dep-filters__reset">Réinitialiser</a>
+                        </div>
+
+                        <div class="compta-ventes-filter__fields compta-ventes-filter__fields--plage compta-caisse-filter__row-extra">
+                            <div>
+                                <label for="c_admin" class="compta-ventes-filter__sublabel">Vendeur (ticket)</label>
+                                <select name="c_admin" id="c_admin" class="compta-ventes-filter__select compta-ventes-filter__select--md">
+                                    <option value="0">Tous</option>
+                                    <?php foreach ($caisse_admins_filtre as $adm): ?>
+                                        <option value="<?php echo (int) $adm['id']; ?>" <?php echo $c_admin === (int) $adm['id'] ? 'selected' : ''; ?>>
+                                            <?php echo htmlspecialchars(trim(($adm['prenom'] ?? '') . ' ' . ($adm['nom'] ?? '')) ?: ($adm['email'] ?? '#' . $adm['id'])); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
                             </div>
-                        </form>
-                    </section>
+                            <div class="compta-caisse-filter__field-q">
+                                <label for="c_q" class="compta-ventes-filter__sublabel">Recherche</label>
+                                <input type="search" name="c_q" id="c_q" class="compta-ventes-filter__date compta-caisse-filter__q-input" value="<?php echo htmlspecialchars($c_q); ?>" placeholder="N° ticket, note…" autocomplete="off">
+                            </div>
+                        </div>
+                    </form>
                 </div>
 
                 <h3 class="compta-section-title compta-caisse-list-title compta-caisse-tickets-title"><i class="fas fa-receipt" aria-hidden="true"></i> Détail des tickets</h3>
@@ -1158,19 +1416,17 @@ $tab_caisse_active = $active_tab === 'caisse';
                                     <th scope="col">Caissier</th>
                                     <th scope="col">Paiement</th>
                                     <th scope="col" class="compta-caisse-table__num">TTC</th>
-                                    <th scope="col"></th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php foreach ($caisse_ventes_liste as $cv):
-                                    $vid = (int) ($cv['id'] ?? 0);
                                     $dt = $cv['date_vente'] ?? '';
                                     $dt_fr = $dt !== '' ? date('d/m/Y H:i', strtotime($dt)) : '—';
                                     $adm_nom = trim(($cv['admin_prenom'] ?? '') . ' ' . ($cv['admin_nom'] ?? ''));
                                     if ($adm_nom === '') {
                                         $adm_nom = '—';
                                     }
-                                    $mode_lbl = caisse_compta_libelle_mode($cv['mode_paiement'] ?? '');
+                                    $mode_lbl = caisse_compta_libelle_paiement_ticket($cv);
                                     ?>
                                 <tr>
                                     <td data-label="Date"><time datetime="<?php echo htmlspecialchars(substr($dt, 0, 19)); ?>"><?php echo htmlspecialchars($dt_fr); ?></time></td>
@@ -1178,9 +1434,6 @@ $tab_caisse_active = $active_tab === 'caisse';
                                     <td data-label="Caissier"><?php echo htmlspecialchars($adm_nom); ?></td>
                                     <td data-label="Paiement"><span class="compta-caisse-badge"><?php echo htmlspecialchars($mode_lbl); ?></span></td>
                                     <td class="compta-caisse-table__num" data-label="TTC"><?php echo number_format((float) ($cv['montant_total'] ?? 0), 0, ',', ' '); ?> <span class="compta-caisse-cur">FCFA</span></td>
-                                    <td class="compta-caisse-table__act" data-label="">
-                                        <a href="../caisse/index.php?ticket=<?php echo $vid; ?>" class="compta-caisse-link">Voir le ticket <i class="fas fa-external-link-alt" aria-hidden="true"></i></a>
-                                    </td>
                                 </tr>
                                 <?php endforeach; ?>
                             </tbody>
@@ -1192,6 +1445,86 @@ $tab_caisse_active = $active_tab === 'caisse';
             <?php endif; ?>
 
             </div><!-- .compta-caisse-body -->
+        </div>
+
+        <div id="compta-panel-devis-payes" class="compta-panel compta-panel--devis-payes <?php echo $tab_devis_payes_active ? 'is-active' : ''; ?>" role="tabpanel" aria-labelledby="compta-tab-devis-payes" <?php echo $tab_devis_payes_active ? '' : 'hidden'; ?> data-compta-panel="devis_payes">
+            <div class="compta-hero compta-hero--devis-payes">
+                <div class="compta-hero__copy">
+                    <p class="compta-caisse-eyebrow">Factures devis · comptabilité</p>
+                    <h2 class="compta-hero__title" id="compta-devis-payes-hero-title">Devis payés</h2>
+                    <p class="compta-hero__lead">Devis dont la facture a été <strong>marquée payée</strong> depuis l’écran facture : référence <strong>FPL</strong>, montants et liens vers le devis et la facture.</p>
+                    <p class="compta-hero__lead compta-devis-payes-migration-hint" role="note">
+                        <?php if (!function_exists('factures_devis_col_payee_ok') || !factures_devis_col_payee_ok()): ?>
+                            <i class="fas fa-database" aria-hidden="true"></i> Colonnes absentes : exécutez <code>migrations/run_add_factures_devis_paiement_fpl.php</code>.
+                        <?php else: ?>
+                            <span class="compta-devis-payes-count"><strong><?php echo (int) $nb_devis_payes; ?></strong> facturation<?php echo $nb_devis_payes > 1 ? 's' : ''; ?> réglée<?php echo $nb_devis_payes > 1 ? 's' : ''; ?></span>
+                        <?php endif; ?>
+                    </p>
+                </div>
+            </div>
+
+            <div class="compta-devis-payes-body">
+                <?php if (!function_exists('factures_devis_col_payee_ok') || !factures_devis_col_payee_ok()): ?>
+                    <div class="compta-dep-empty compta-devis-payes-empty" role="status">
+                        <i class="fas fa-plug" aria-hidden="true"></i>
+                        <p>Migrez la table <code>factures_devis</code> pour activer le suivi des paiements.</p>
+                    </div>
+                <?php elseif (empty($factures_devis_payees_list)): ?>
+                    <div class="compta-dep-empty compta-devis-payes-empty" role="status">
+                        <i class="fas fa-inbox" aria-hidden="true"></i>
+                        <p>Aucune facture de devis marquée payée pour l’instant.</p>
+                    </div>
+                <?php else: ?>
+                    <div class="compta-panel-table-wrap compta-devis-payes-table-wrap">
+                        <table class="data-table compta-devis-payes-table" aria-labelledby="compta-devis-payes-hero-title">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Statut</th>
+                                    <th scope="col">Référence</th>
+                                    <th scope="col">Client</th>
+                                    <th scope="col">Devis</th>
+                                    <th scope="col">Paiement</th>
+                                    <th scope="col">Ancien n°</th>
+                                    <th scope="col" class="compta-table-col-num">Montant</th>
+                                    <th scope="col" class="compta-table-col-actions">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                        <?php foreach ($factures_devis_payees_list as $fpx):
+                            $fid = (int) ($fpx['id'] ?? 0);
+                            $did = (int) ($fpx['devis_id'] ?? $fpx['devis_id_ref'] ?? 0);
+                            $ref_fpl = (string) ($fpx['numero_reference_fpl'] ?? '');
+                            $num_inv = (string) ($fpx['numero_facture'] ?? '');
+                            $cli = trim(($fpx['client_prenom'] ?? '') . ' ' . ($fpx['client_nom'] ?? ''));
+                            if ($cli === '') {
+                                $cli = 'Client';
+                            }
+                            $nd = (string) ($fpx['numero_devis'] ?? '');
+                            $dp = $fpx['date_paiement'] ?? '';
+                            $dp_fr = $dp !== '' ? date('d/m/Y H:i', strtotime((string) $dp)) : '—';
+                            $mt = (float) ($fpx['montant_total'] ?? 0);
+                            $show_ancien = ($ref_fpl !== '' && $num_inv !== '' && strcasecmp($ref_fpl, $num_inv) !== 0);
+                            $ref_display = $ref_fpl !== '' ? $ref_fpl : $num_inv;
+                            ?>
+                                <tr>
+                                    <td><span class="compta-devis-payee-card__badge" title="Réglé"><i class="fas fa-check-circle" aria-hidden="true"></i> Payé</span></td>
+                                    <td><span class="compta-devis-payee-card__ref"><?php echo htmlspecialchars($ref_display); ?></span></td>
+                                    <td><strong><?php echo htmlspecialchars($cli); ?></strong></td>
+                                    <td>#<?php echo htmlspecialchars($nd); ?></td>
+                                    <td><?php echo htmlspecialchars($dp_fr); ?></td>
+                                    <td class="compta-devis-payes-table__muted"><?php echo $show_ancien ? htmlspecialchars($num_inv) : '—'; ?></td>
+                                    <td class="compta-table-col-num"><?php echo number_format($mt, 0, ',', ' '); ?> <small>FCFA</small></td>
+                                    <td class="compta-table-actions compta-table-actions--split">
+                                        <a href="../devis/details.php?id=<?php echo $did; ?>" class="compta-devis-payee-card__btn compta-devis-payee-card__btn--secondary"><i class="fas fa-eye" aria-hidden="true"></i> Détail</a>
+                                        <a href="../devis/facture.php?id=<?php echo $fid; ?>" class="compta-devis-payee-card__btn compta-devis-payee-card__btn--primary"><i class="fas fa-file-invoice" aria-hidden="true"></i> Facture</a>
+                                    </td>
+                                </tr>
+                        <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                <?php endif; ?>
+            </div>
         </div>
     </section>
     </div>
@@ -1225,6 +1558,13 @@ $tab_caisse_active = $active_tab === 'caisse';
                     window.history.replaceState({}, '', u);
                 } catch (e) {}
             }
+            try {
+                var hubForm = document.getElementById('compta-hub-synthese-form');
+                if (hubForm) {
+                    var ti = hubForm.querySelector('input[name="tab"]');
+                    if (ti) { ti.value = which; }
+                }
+            } catch (e2) {}
         }
         tabs.forEach(function(btn) {
             btn.addEventListener('click', function() {
@@ -1256,6 +1596,107 @@ $tab_caisse_active = $active_tab === 'caisse';
                 panels.forEach(function(panel) {
                     var hide = panel.classList.contains('is-hidden');
                     panel.querySelectorAll('input, select').forEach(function(inp) {
+                        inp.disabled = hide;
+                    });
+                });
+            });
+        }
+    })();
+    (function() {
+        var sel = document.getElementById('compta-d-periode');
+        var form = document.getElementById('compta-dep-filtres-form');
+        function toggleDepPanels(p) {
+            var map = { jour: 'compta-wrap-d-jour', semaine: 'compta-wrap-d-semaine', plage: 'compta-wrap-d-plage' };
+            Object.keys(map).forEach(function(k) {
+                var el = document.getElementById(map[k]);
+                if (!el) { return; }
+                if (k === p) {
+                    el.classList.remove('is-hidden');
+                } else {
+                    el.classList.add('is-hidden');
+                }
+            });
+        }
+        if (sel) {
+            sel.addEventListener('change', function() { toggleDepPanels(this.value); });
+        }
+        if (form) {
+            form.addEventListener('submit', function() {
+                var panels = form.querySelectorAll('.compta-ventes-filter__panel');
+                panels.forEach(function(panel) {
+                    var hide = panel.classList.contains('is-hidden');
+                    panel.querySelectorAll('input, select').forEach(function(inp) {
+                        inp.disabled = hide;
+                    });
+                });
+            });
+        }
+    })();
+    (function() {
+        var sel = document.getElementById('compta-h-periode');
+        var form = document.getElementById('compta-hub-synthese-form');
+        function toggleHubPanels(p) {
+            var map = { jour: 'compta-wrap-h-jour', semaine: 'compta-wrap-h-semaine', plage: 'compta-wrap-h-plage' };
+            Object.keys(map).forEach(function(k) {
+                var el = document.getElementById(map[k]);
+                if (!el) { return; }
+                if (k === p) {
+                    el.classList.remove('is-hidden');
+                } else {
+                    el.classList.add('is-hidden');
+                }
+            });
+        }
+        if (sel) {
+            sel.addEventListener('change', function() { toggleHubPanels(this.value); });
+        }
+        if (form) {
+            form.addEventListener('submit', function() {
+                form.querySelectorAll('.compta-ventes-filter__panel').forEach(function(panel) {
+                    var hide = panel.classList.contains('is-hidden');
+                    panel.querySelectorAll('input, select').forEach(function(inp) {
+                        inp.disabled = hide;
+                    });
+                });
+            });
+        }
+    })();
+    (function() {
+        var sel = document.getElementById('compta-c-periode');
+        var form = document.getElementById('compta-caisse-filters-form');
+        var anchor = document.getElementById('compta-wrap-c-anchor');
+        var plage = document.getElementById('compta-wrap-c-plage');
+        var anchorLbl = document.getElementById('compta-c-anchor-label');
+        function syncAnchorLabel(p) {
+            if (!anchorLbl) {
+                return;
+            }
+            if (p === 'semaine') {
+                anchorLbl.textContent = 'Semaine contenant le';
+            } else if (p === 'jour') {
+                anchorLbl.textContent = 'Date';
+            }
+        }
+        function toggleCaisse(p) {
+            var isPlage = (p === 'plage');
+            if (anchor) {
+                anchor.classList.toggle('is-hidden', isPlage);
+            }
+            if (plage) {
+                plage.classList.toggle('is-hidden', !isPlage);
+            }
+            syncAnchorLabel(p);
+        }
+        if (sel) {
+            sel.addEventListener('change', function() {
+                toggleCaisse(this.value);
+            });
+        }
+        if (form) {
+            form.addEventListener('submit', function() {
+                form.querySelectorAll('.compta-ventes-filter__panel').forEach(function(panel) {
+                    var hide = panel.classList.contains('is-hidden');
+                    panel.querySelectorAll('select').forEach(function(inp) {
                         inp.disabled = hide;
                     });
                 });

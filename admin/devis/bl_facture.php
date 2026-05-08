@@ -18,6 +18,7 @@ if (!admin_can_devis_bl()) {
 }
 
 require_once __DIR__ . '/../../models/model_bl.php';
+require_once __DIR__ . '/../../includes/fiscal_tva.php';
 
 $bl_id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 if ($bl_id <= 0 || !bl_tables_available()) {
@@ -33,6 +34,12 @@ if (!$bl) {
 
 $lignes = get_lignes_bl($bl_id);
 $total_ht = (float) ($bl['total_ht'] ?? 0);
+
+$tva_incl = bl_tva_columns_ok() && !empty($bl['tva_incluse']);
+$taux_bl = (bl_tva_columns_ok() && isset($bl['taux_tva_pourcent']) && (float) $bl['taux_tva_pourcent'] > 0)
+    ? (float) $bl['taux_tva_pourcent']
+    : null;
+$decomp = fiscal_decomposer_net_ht($total_ht, $tva_incl, $taux_bl);
 
 $d_bl = strtotime($bl['date_bl'] ?? 'now');
 $mois = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
@@ -51,9 +58,17 @@ foreach ($lignes as $l) {
 
 $facture = [
     'numero_facture' => $bl['numero_bl'] ?? '',
-    'montant_total' => $total_ht,
+    'montant_total' => $tva_incl ? $decomp['montant_ttc'] : $total_ht,
     'commande_id' => 0,
+    'tva_incluse' => $tva_incl ? 1 : 0,
+    'montant_ht' => $decomp['montant_ht'],
+    'montant_tva' => $decomp['montant_tva'],
+    'taux_tva_pourcent' => $taux_bl ?? fiscal_taux_tva_pourcent(),
 ];
+$facture_tva_incluse = $tva_incl;
+$facture_fiscal_ht = $decomp['montant_ht'];
+$facture_fiscal_tva = $decomp['montant_tva'];
+$facture_fiscal_taux = $taux_bl ?? fiscal_taux_tva_pourcent();
 
 $commande = [
     'notes' => $bl['notes'] ?? '',

@@ -75,9 +75,19 @@ $p = $_POST;
         <form method="post" action="ajouter.php" class="er-form-card" enctype="multipart/form-data">
             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
             <input type="hidden" name="creer_employe_rh_simple" value="1">
-            <input type="hidden" name="MAX_FILE_SIZE" value="4194304">
+            <input type="hidden" name="MAX_FILE_SIZE" value="8388608">
 
             <div class="er-form-grid">
+                <?php
+                $sf_sel = isset($p['statut_familial']) ? trim((string) $p['statut_familial']) : '';
+                if ($sf_sel === '') {
+                    $sf_sel = 'non_renseigne';
+                }
+                $tc_sel = isset($p['type_contrat']) ? trim((string) $p['type_contrat']) : '';
+                if ($tc_sel === '') {
+                    $tc_sel = 'non_renseigne';
+                }
+                ?>
                 <div class="er-field">
                     <label for="nom">Nom <span class="er-req">*</span></label>
                     <input type="text" id="nom" name="nom" required autocomplete="family-name" placeholder="Ex. : Diop"
@@ -93,10 +103,48 @@ $p = $_POST;
                     <input type="text" id="telephone" name="telephone" autocomplete="tel" inputmode="tel" placeholder="+33 … ou 06 …"
                         value="<?php echo htmlspecialchars($p['telephone'] ?? ''); ?>">
                 </div>
+                <div class="er-field">
+                    <label for="statut_familial">Statut familial</label>
+                    <select id="statut_familial" name="statut_familial">
+                        <?php foreach (employe_statuts_familiaux_choices() as $k => $label): ?>
+                        <option value="<?php echo htmlspecialchars($k); ?>" <?php echo ($sf_sel === $k) ? 'selected' : ''; ?>><?php echo htmlspecialchars($label); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="er-field">
+                    <label for="type_contrat">Type de contrat</label>
+                    <select id="type_contrat" name="type_contrat">
+                        <?php foreach (employe_types_contrat_choices() as $k => $label): ?>
+                        <option value="<?php echo htmlspecialchars($k); ?>" <?php echo ($tc_sel === $k) ? 'selected' : ''; ?>><?php echo htmlspecialchars($label); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="er-field">
+                    <label for="salaire_base">Salaire brut (FCFA) <span class="er-opt">(optionnel)</span></label>
+                    <input type="text" id="salaire_base" name="salaire_base" inputmode="decimal" autocomplete="off"
+                        placeholder="Préremplit le bulletin de paie"
+                        value="<?php echo htmlspecialchars($p['salaire_base'] ?? ''); ?>">
+                </div>
+                <div class="er-field">
+                    <label for="montant_irpp_mensuel">IRPP mensuel (FCFA) <span class="er-opt">(optionnel)</span></label>
+                    <input type="text" id="montant_irpp_mensuel" name="montant_irpp_mensuel" inputmode="decimal" autocomplete="off"
+                        placeholder="Impôt sur le revenu retenu chaque mois"
+                        value="<?php echo htmlspecialchars($p['montant_irpp_mensuel'] ?? ''); ?>">
+                </div>
+                <div class="er-field">
+                    <label for="date_embauche">Date d’embauche <span class="er-opt">(optionnel)</span></label>
+                    <input type="date" id="date_embauche" name="date_embauche"
+                        value="<?php echo !empty($p['date_embauche']) ? htmlspecialchars(substr((string) $p['date_embauche'], 0, 10)) : ''; ?>">
+                </div>
                 <div class="er-field er-field--full">
                     <label for="poste">Fonction <span class="er-req">*</span></label>
                     <input type="text" id="poste" name="poste" required placeholder="Ex. : Magasinier, Comptable, Chauffeur…"
                         value="<?php echo htmlspecialchars($p['poste'] ?? ''); ?>">
+                </div>
+                <div class="er-field er-field--full">
+                    <label for="contrat_pdf">Contrat (PDF) <span class="er-opt">(optionnel, max 8 Mo)</span></label>
+                    <input type="file" id="contrat_pdf" name="contrat_pdf" accept="application/pdf">
+                    <p class="er-photo-hint">Fichier PDF uniquement.</p>
                 </div>
                 <div class="er-field er-field--full er-photo-field">
                     <label for="photo_employe">Photo de l’employé <span class="er-opt">(optionnel, max 4 Mo)</span></label>

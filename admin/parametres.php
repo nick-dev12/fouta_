@@ -40,7 +40,8 @@ if (isset($_SESSION['success_message'])) {
         <header class="parametres-hero">
             <p class="parametres-hero__eyebrow">Configuration du site</p>
             <h1 class="parametres-hero__title"><i class="fas fa-sliders" aria-hidden="true"></i> Paramètres</h1>
-            <p class="parametres-hero__lead">Personnalisez l’apparence et les contenus affichés sur la boutique (bannière, médias, logos).</p>
+            <p class="parametres-hero__lead">Personnalisez l’apparence et les contenus affichés sur la boutique
+                (bannière, médias, logos).</p>
         </header>
 
         <?php if (!empty($success_message)): ?>
@@ -57,7 +58,8 @@ if (isset($_SESSION['success_message'])) {
                         <h3 class="parametre-title">Bannière d'Accueil</h3>
                     </div>
                     <a href="parametres/section4.php" class="parametre-link">
-                        <span class="parametre-link__txt"><i class="fas fa-pen-to-square" aria-hidden="true"></i> Modifier la bannière</span>
+                        <span class="parametre-link__txt"><i class="fas fa-pen-to-square" aria-hidden="true"></i>
+                            Modifier la bannière</span>
                         <i class="fas fa-chevron-right parametre-link__chev" aria-hidden="true"></i>
                     </a>
                 </div>
@@ -70,7 +72,8 @@ if (isset($_SESSION['success_message'])) {
                         <h3 class="parametre-title">Image d'affiche</h3>
                     </div>
                     <a href="slider/index.php" class="parametre-link">
-                        <span class="parametre-link__txt"><i class="fas fa-pen-to-square" aria-hidden="true"></i> Gérer le slider</span>
+                        <span class="parametre-link__txt"><i class="fas fa-pen-to-square" aria-hidden="true"></i> Gérer
+                            le slider</span>
                         <i class="fas fa-chevron-right parametre-link__chev" aria-hidden="true"></i>
                     </a>
                 </div>
@@ -83,7 +86,8 @@ if (isset($_SESSION['success_message'])) {
                         <h3 class="parametre-title">Section Vidéos</h3>
                     </div>
                     <a href="parametres/videos.php" class="parametre-link">
-                        <span class="parametre-link__txt"><i class="fas fa-pen-to-square" aria-hidden="true"></i> Gérer les vidéos</span>
+                        <span class="parametre-link__txt"><i class="fas fa-pen-to-square" aria-hidden="true"></i> Gérer
+                            les vidéos</span>
                         <i class="fas fa-chevron-right parametre-link__chev" aria-hidden="true"></i>
                     </a>
                 </div>
@@ -96,7 +100,8 @@ if (isset($_SESSION['success_message'])) {
                         <h3 class="parametre-title">Logos Partenaires</h3>
                     </div>
                     <a href="parametres/logos.php" class="parametre-link">
-                        <span class="parametre-link__txt"><i class="fas fa-pen-to-square" aria-hidden="true"></i> Gérer les logos</span>
+                        <span class="parametre-link__txt"><i class="fas fa-pen-to-square" aria-hidden="true"></i> Gérer
+                            les logos</span>
                         <i class="fas fa-chevron-right parametre-link__chev" aria-hidden="true"></i>
                     </a>
                 </div>
@@ -109,7 +114,8 @@ if (isset($_SESSION['success_message'])) {
                         <h3 class="parametre-title">Types clients &amp; plafonds BL</h3>
                     </div>
                     <a href="parametres/types_client_bl.php" class="parametre-link">
-                        <span class="parametre-link__txt"><i class="fas fa-sliders-h" aria-hidden="true"></i> Configurer Standard / VIP</span>
+                        <span class="parametre-link__txt"><i class="fas fa-sliders-h" aria-hidden="true"></i> Configurer
+                            Standard / VIP</span>
                         <i class="fas fa-chevron-right parametre-link__chev" aria-hidden="true"></i>
                     </a>
                 </div>
@@ -122,7 +128,22 @@ if (isset($_SESSION['success_message'])) {
                         <h3 class="parametre-title">Alertes de stock</h3>
                     </div>
                     <a href="parametres/alertes-stock.php" class="parametre-link">
-                        <span class="parametre-link__txt"><i class="fas fa-sliders-h" aria-hidden="true"></i> Seuils standard / moyen / haut</span>
+                        <span class="parametre-link__txt"><i class="fas fa-sliders-h" aria-hidden="true"></i> Seuils
+                            standard / moyen / haut</span>
+                        <i class="fas fa-chevron-right parametre-link__chev" aria-hidden="true"></i>
+                    </a>
+                </div>
+            </article>
+
+            <article class="parametre-card parametre-card--bulletin-paie" role="listitem">
+                <div class="parametre-card__body">
+                    <div class="parametre-card__head">
+                        <div class="parametre-icon" aria-hidden="true"><i class="fas fa-file-invoice-dollar"></i></div>
+                        <h3 class="parametre-title">Bulletins de paie (RH)</h3>
+                    </div>
+                    <a href="parametres/bulletin_paie.php" class="parametre-link">
+                        <span class="parametre-link__txt"><i class="fas fa-sliders-h" aria-hidden="true"></i> Employeur,
+                            rubriques &amp; mentions</span>
                         <i class="fas fa-chevron-right parametre-link__chev" aria-hidden="true"></i>
                     </a>
                 </div>

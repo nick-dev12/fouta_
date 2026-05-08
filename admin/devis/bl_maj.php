@@ -40,11 +40,23 @@ if (!empty($_POST['lignes']) && is_array($_POST['lignes'])) {
         if (!is_array($l)) {
             continue;
         }
+        $designation = trim((string) ($l['designation'] ?? $l['nom_produit'] ?? ''));
+        $quantite_raw = $l['quantite'] ?? 0;
+        $quantite = is_numeric($quantite_raw) ? (float) $quantite_raw : (float) str_replace(',', '.', (string) $quantite_raw);
+        $pu_src = $l['prix_unitaire_ht'] ?? $l['prix_unitaire'] ?? 0;
+        $pu = (float) str_replace(',', '.', (string) $pu_src);
+        $promo_raw = $l['prix_promotion'] ?? '';
+        if ($promo_raw !== '' && is_numeric(str_replace(',', '.', (string) $promo_raw))) {
+            $promo = (float) str_replace(',', '.', (string) $promo_raw);
+            if ($promo > 0) {
+                $pu = $promo;
+            }
+        }
         $lignes[] = [
             'produit_id' => !empty($l['produit_id']) ? (int) $l['produit_id'] : null,
-            'designation' => trim($l['designation'] ?? ''),
-            'quantite' => $l['quantite'] ?? 0,
-            'prix_unitaire_ht' => $l['prix_unitaire_ht'] ?? 0,
+            'designation' => $designation,
+            'quantite' => $quantite,
+            'prix_unitaire_ht' => $pu,
         ];
     }
 }

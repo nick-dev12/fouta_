@@ -430,4 +430,73 @@ function update_admin_statut($id, $statut)
     }
 }
 
+/**
+ * Nombre de ventes caisse où ce compte est le vendeur (admin_id) — blocage si > 0 (FK RESTRICT).
+ */
+function admin_count_caisse_ventes_as_vendeur($admin_id)
+{
+    global $db;
+    $admin_id = (int) $admin_id;
+    if ($admin_id <= 0) {
+        return 0;
+    }
+    try {
+        $st = $db->query("SHOW TABLES LIKE 'caisse_ventes'");
+        if (!$st || $st->rowCount() === 0) {
+            return 0;
+        }
+        $stmt = $db->prepare('SELECT COUNT(*) FROM caisse_ventes WHERE admin_id = :id');
+        $stmt->execute(['id' => $admin_id]);
+        return (int) $stmt->fetchColumn();
+    } catch (PDOException $e) {
+        return 0;
+    }
+}
+
+/**
+ * Supprime définitivement un compte admin (sécurité : compte inactif uniquement, pas le dernier, pas si ventes caisse vendeur).
+ *
+ * @return array{ok:bool, error?:string}
+ */
+function delete_admin_account($admin_id)
+{
+    global $db;
+    $admin_id = (int) $admin_id;
+    if ($admin_id <= 0) {
+        return ['ok' => false, 'error' => 'Identifiant invalide.'];
+    }
+
+    try {
+        $stmt = $db->query('SELECT COUNT(*) FROM admin');
+        $total = (int) $stmt->fetchColumn();
+        if ($total <= 1) {
+            return ['ok' => false, 'error' => 'Impossible de supprimer le dernier compte d’accès.'];
+        }
+
+        $chk = $db->prepare('SELECT id, statut FROM admin WHERE id = :id LIMIT 1');
+        $chk->execute(['id' => $admin_id]);
+        $row = $chk->fetch(PDO::FETCH_ASSOC);
+        if (!$row) {
+            return ['ok' => false, 'error' => 'Compte introuvable.'];
+        }
+        if (($row['statut'] ?? '') !== 'inactif') {
+            return ['ok' => false, 'error' => 'Désactivez d’abord ce compte, puis seulement vous pourrez le supprimer définitivement.'];
+        }
+
+        if (admin_count_caisse_ventes_as_vendeur($admin_id) > 0) {
+            return ['ok' => false, 'error' => 'Impossible de supprimer ce compte : il est auteur de tickets / ventes caisse.'];
+        }
+
+        $del = $db->prepare('DELETE FROM admin WHERE id = :id');
+        $del->execute(['id' => $admin_id]);
+        if ($del->rowCount() !== 1) {
+            return ['ok' => false, 'error' => 'Suppression impossible.'];
+        }
+        return ['ok' => true];
+    } catch (PDOException $e) {
+        error_log('[delete_admin_account] ' . $e->getMessage());
+        return ['ok' => false, 'error' => 'Suppression impossible (données liées ou erreur technique).'];
+    }
+}
+
 ?>

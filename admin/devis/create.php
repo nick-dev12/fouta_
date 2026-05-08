@@ -22,6 +22,15 @@ if (!admin_can_devis_bl()) {
     exit;
 }
 
+$token = $_POST['csrf_token'] ?? '';
+$expected = $_SESSION['admin_csrf'] ?? '';
+if ($token === '' || !hash_equals((string) $expected, (string) $token)) {
+    $_SESSION['devis_erreur'] = 'Session expirée. Réessayez.';
+    header('Location: index.php?modal=devis');
+    exit;
+}
+
+require_once __DIR__ . '/../../models/model_contacts.php';
 require_once __DIR__ . '/../../models/model_devis.php';
 
 $client_nom = trim($_POST['client_nom'] ?? '');
@@ -56,7 +65,6 @@ $erreur = null;
 if (empty($client_nom)) $erreur = 'Le nom du client est requis.';
 elseif (empty($client_prenom)) $erreur = 'Le prénom du client est requis.';
 elseif (empty($client_telephone)) $erreur = 'Le téléphone du client est requis.';
-elseif (empty($adresse_livraison)) $erreur = "L'adresse de livraison est requise.";
 elseif (empty($items)) $erreur = 'Ajoutez au moins un produit au devis.';
 
 if ($erreur) {
@@ -65,6 +73,15 @@ if ($erreur) {
     header('Location: index.php?modal=devis');
     exit;
 }
+
+ensure_contact_from_bl(
+    $client_nom,
+    $client_prenom,
+    $client_telephone,
+    $client_email !== '' ? $client_email : null
+);
+
+$tva_incl = isset($_POST['inclure_tva']) && (string) $_POST['inclure_tva'] === '1';
 
 $result = create_devis(
     $items,
@@ -77,7 +94,8 @@ $result = create_devis(
     $zone_livraison_id,
     $frais_livraison,
     $user_id,
-    (int) ($_SESSION['admin_id'] ?? 0) > 0 ? (int) $_SESSION['admin_id'] : null
+    (int) ($_SESSION['admin_id'] ?? 0) > 0 ? (int) $_SESSION['admin_id'] : null,
+    $tva_incl
 );
 
 if ($result && $result['success']) {

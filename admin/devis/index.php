@@ -17,16 +17,20 @@ if (!admin_can_devis_bl()) {
     exit;
 }
 
+require_once __DIR__ . '/../../models/model_factures_devis.php';
 require_once __DIR__ . '/../../models/model_devis.php';
 require_once __DIR__ . '/../../models/model_zones_livraison.php';
 require_once __DIR__ . '/../../models/model_bl.php';
 require_once __DIR__ . '/../../models/model_bons_retour.php';
+require_once __DIR__ . '/../../includes/fiscal_tva.php';
+$fiscal_tva_pourcent_devis_bl = fiscal_taux_tva_pourcent();
 
 if (empty($_SESSION['admin_csrf'])) {
     $_SESSION['admin_csrf'] = bin2hex(random_bytes(32));
 }
 
-$devis_list = get_all_devis();
+$devis_clients_groupes = get_devis_agreges_par_client_non_payes();
+$devis_nb_contacts = count($devis_clients_groupes);
 $zones_livraison = get_all_zones_livraison('actif');
 $bl_tables_ok = bl_tables_available();
 $bl_clients_list = $bl_tables_ok ? get_clients_b2b_avec_bl() : [];
@@ -131,7 +135,7 @@ $devis_page_has_alert = isset($_SESSION['success_message']) || !empty($error_dev
             <div class="admin-devis-bl-tabs" role="tablist" aria-label="Devis, bons de livraison ou bons de retour">
                 <button type="button" class="admin-tab admin-tab--devis <?php echo $tab_devis_active ? 'is-active' : ''; ?>" id="tab-btn-devis" role="tab" aria-selected="<?php echo $tab_devis_active ? 'true' : 'false'; ?>" aria-controls="panel-devis" data-tab="devis">
                     <span class="admin-tab__ic" aria-hidden="true"><i class="fas fa-file-invoice"></i></span>
-                    <span class="admin-tab__txt">Devis (<?php echo count($devis_list); ?>)</span>
+                    <span class="admin-tab__txt">Devis (<?php echo (int) $devis_nb_contacts; ?>)</span>
                 </button>
                 <button type="button" class="admin-tab admin-tab--bl <?php echo $tab_bl_active ? 'is-active' : ''; ?>" id="tab-btn-bl" role="tab" aria-selected="<?php echo $tab_bl_active ? 'true' : 'false'; ?>" aria-controls="panel-bl" data-tab="bl" <?php echo !$bl_tables_ok ? 'disabled title="Migration B2B requise"' : ''; ?>>
                     <span class="admin-tab__ic" aria-hidden="true"><i class="fas fa-truck-loading"></i></span>
@@ -150,62 +154,84 @@ $devis_page_has_alert = isset($_SESSION['success_message']) || !empty($error_dev
                 <i class="fas fa-plus-circle"></i> Nouveau devis
             </button>
         </div>
-        <?php if (empty($devis_list)): ?>
+        <?php if (empty($devis_clients_groupes)): ?>
             <div class="empty-state page-devis-empty">
                 <div class="page-devis-empty__ic" aria-hidden="true"><i class="fas fa-file-invoice"></i></div>
-                <h3>Aucun devis</h3>
-                <p>Cliquez sur « Nouveau devis » pour créer votre premier devis.</p>
+                <h3>Aucun devis à suivre</h3>
+                <p>Tous les devis ont une facture marquée payée, ou aucun devis n’a encore été créé. Utilisez « Nouveau devis » pour en ajouter.</p>
             </div>
         <?php else: ?>
-            <div class="commandes-grid">
-                <?php foreach ($devis_list as $d): ?>
-                    <?php
-                    $devis_id_row = (int) $d['id'];
-                    $is_brouillon = ($d['statut'] ?? '') === 'brouillon';
-                    ?>
-                    <div class="commande-item">
-                        <div class="commande-header">
-                            <div class="commande-info">
-                                <h3>Devis #<?php echo htmlspecialchars($d['numero_devis']); ?></h3>
-                                <p>
-                                    <strong>Client:</strong> <?php echo htmlspecialchars(trim($d['client_prenom'] . ' ' . $d['client_nom'])); ?><br>
-                                    <span class="client-email"><?php echo !empty($d['client_email']) ? htmlspecialchars($d['client_email']) : '—'; ?></span>
-                                </p>
-                                <p class="commande-date">Date: <?php echo date('d/m/Y à H:i', strtotime($d['date_creation'])); ?></p>
-                            </div>
-                            <span class="commande-statut statut-<?php echo htmlspecialchars($d['statut']); ?>">
-                                <?php echo ucfirst($d['statut']); ?>
-                            </span>
-                        </div>
-                        <div class="commande-details">
-                            <div class="detail-item">
-                                <label>Montant total</label>
-                                <div class="value"><?php echo number_format($d['montant_total'], 0, ',', ' '); ?> FCFA</div>
-                            </div>
-                            <div class="detail-item">
-                                <label>Adresse</label>
-                                <div class="value small">
-                                    <?php
-                                    $adr_show = $d['adresse_livraison'] ?? '';
-                                    $adr_snip = function_exists('mb_substr') ? mb_substr($adr_show, 0, 48) : substr($adr_show, 0, 48);
-                                    echo htmlspecialchars($adr_snip);
-                                    echo (function_exists('mb_strlen') ? mb_strlen($adr_show) : strlen($adr_show)) > 48 ? '…' : '';
-                                    ?>
-                                </div>
-                            </div>
-                            <div class="detail-item">
-                                <label>Téléphone</label>
-                                <div class="value"><?php echo htmlspecialchars($d['client_telephone']); ?></div>
-                            </div>
-                        </div>
-                        <div class="commande-actions-devis devis-card-actions">
-                            <a href="details.php?id=<?php echo $devis_id_row; ?>" class="btn-view"><i class="fas fa-eye"></i> Voir</a>
-                            <?php if ($is_brouillon): ?>
-                                <a href="modifier.php?id=<?php echo $devis_id_row; ?>" class="btn-secondary"><i class="fas fa-edit"></i> Modifier</a>
-                            <?php endif; ?>
-                        </div>
+            <div class="bl-tab-surface">
+                <header class="bl-contacts-hero">
+                    <div class="bl-contacts-hero__icon-wrap" aria-hidden="true">
+                        <i class="fas fa-file-invoice"></i>
                     </div>
+                    <div class="bl-contacts-hero__copy">
+                        <h2 class="bl-contacts-hero__title">Clients &amp; devis</h2>
+                        <p class="bl-contacts-hero__lead">Contacts regroupés : devis hors facture réglée (non marquée payée en comptabilité).</p>
+                    </div>
+                    <div class="bl-contacts-hero__stat" title="Nombre de contacts">
+                        <span class="bl-contacts-hero__stat-num"><?php echo (int) $devis_nb_contacts; ?></span>
+                        <span class="bl-contacts-hero__stat-label">contact<?php echo $devis_nb_contacts > 1 ? 's' : ''; ?></span>
+                    </div>
+                </header>
+
+                <div class="bl-contacts-grid" role="list">
+                <?php foreach ($devis_clients_groupes as $cl): ?>
+                    <?php
+                    $cid_display = $cl['cle'];
+                    $nb_d = (int) ($cl['nb'] ?? 0);
+                    $label = trim($cl['label'] ?? '');
+                    if ($label === '') {
+                        $label = 'Client';
+                    }
+                    $initials = '?';
+                    $words = preg_split('/\s+/u', $label, -1, PREG_SPLIT_NO_EMPTY);
+                    if (count($words) >= 2) {
+                        $initials = mb_strtoupper(mb_substr($words[0], 0, 1) . mb_substr($words[1], 0, 1), 'UTF-8');
+                    } elseif (count($words) === 1) {
+                        $initials = mb_strtoupper(mb_substr($words[0], 0, min(2, mb_strlen($words[0], 'UTF-8')), 'UTF-8'), 'UTF-8');
+                    }
+                    $last_d = !empty($cl['derniere']) ? date('d/m/Y · H:i', strtotime($cl['derniere'])) : '—';
+                    ?>
+                    <article class="bl-contact-card" role="listitem">
+                        <div class="bl-contact-card__inner">
+                            <div class="bl-contact-card__head">
+                                <div class="bl-contact-card__avatar" aria-hidden="true"><?php echo htmlspecialchars($initials); ?></div>
+                                <div class="bl-contact-card__head-text">
+                                    <h3 class="bl-contact-card__company"><?php echo htmlspecialchars($label); ?></h3>
+                                </div>
+                                <span class="bl-contact-card__pill">
+                                    <i class="fas fa-file-invoice" aria-hidden="true"></i>
+                                    <?php echo $nb_d; ?> devis
+                                </span>
+                            </div>
+
+                            <ul class="bl-contact-card__meta">
+                                <li class="bl-contact-card__meta-row">
+                                    <span class="bl-contact-card__meta-ic" aria-hidden="true"><i class="fas fa-phone"></i></span>
+                                    <span class="bl-contact-card__meta-val"><?php echo htmlspecialchars($cl['telephone'] ?? '—'); ?></span>
+                                </li>
+                                <li class="bl-contact-card__meta-row">
+                                    <span class="bl-contact-card__meta-ic" aria-hidden="true"><i class="fas fa-envelope"></i></span>
+                                    <span class="bl-contact-card__meta-val"><?php echo !empty($cl['email']) ? htmlspecialchars($cl['email']) : '—'; ?></span>
+                                </li>
+                            </ul>
+
+                            <div class="bl-contact-card__foot">
+                                <div class="bl-contact-card__last">
+                                    <span class="bl-contact-card__last-label">Dernier devis</span>
+                                    <span class="bl-contact-card__last-date"><?php echo htmlspecialchars($last_d); ?></span>
+                                </div>
+                                <a href="devis_par_client.php?k=<?php echo rawurlencode($cid_display); ?>" class="bl-contact-card__cta">
+                                    <span>Voir les devis</span>
+                                    <i class="fas fa-arrow-right" aria-hidden="true"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </article>
                 <?php endforeach; ?>
+                </div>
             </div>
         <?php endif; ?>
         </div>
@@ -473,6 +499,7 @@ $devis_page_has_alert = isset($_SESSION['success_message']) || !empty($error_dev
                 <?php endif; ?>
 
                 <form method="POST" action="create.php" id="form-devis">
+                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['admin_csrf'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
                     <input type="hidden" name="user_id" id="user_id" value="<?php echo htmlspecialchars($devis_post['user_id'] ?? ''); ?>">
                     <div class="form-commande-manuelle-grid">
                         <div class="form-commande-manuelle-col form-col-articles">
@@ -498,11 +525,35 @@ $devis_page_has_alert = isset($_SESSION['success_message']) || !empty($error_dev
                                     <h3>Produits du devis</h3>
                                     <span class="lignes-count" id="lignes-count">0 article(s)</span>
                                 </div>
-                                <div id="lignes-commande" class="lignes-commande">
+                                <div id="lignes-commande" class="lignes-commande lignes-commande-modal-wrap">
+                                    <div class="ligne-commande-head ligne-commande-head-bl" id="lignes-head-devis" hidden>
+                                        <span class="lch-head-cell">Produit</span>
+                                        <span class="lch-head-cell">Quantité</span>
+                                        <span class="lch-head-cell">prix FCFA</span>
+                                        <span class="lch-head-cell">promo FCFA</span>
+                                        <span class="lch-head-cell lch-head-actions" aria-hidden="true"></span>
+                                    </div>
                                     <div class="lignes-empty" id="lignes-empty">
                                         <i class="fas fa-inbox"></i>
                                         <p>Aucun produit ajouté. Utilisez la recherche ci-dessus.</p>
                                     </div>
+                                </div>
+                                <div class="modal-tva-option" role="group" aria-labelledby="modal-tva-devis-title">
+                                    <input type="hidden" name="inclure_tva" value="0">
+                                    <label class="modal-tva-option__label" for="inclure_tva_devis">
+                                        <span class="modal-tva-option__inner">
+                                            <span class="modal-tva-option__glow" aria-hidden="true"></span>
+                                            <span class="modal-tva-option__leading">
+                                                <span class="modal-tva-option__icon" aria-hidden="true"><i class="fas fa-percent"></i></span>
+                                                <span class="modal-tva-option__title" id="modal-tva-devis-title">Inclure la TVA</span>
+                                            </span>
+                                            <span class="modal-tva-option__toggle">
+                                                <input type="checkbox" name="inclure_tva" value="1" id="inclure_tva_devis" class="modal-tva-option__checkbox"
+                                                    <?php echo (is_array($devis_post) && !empty($devis_post['inclure_tva'])) ? 'checked' : ''; ?>>
+                                                <span class="modal-tva-option__track" aria-hidden="true"></span>
+                                            </span>
+                                        </span>
+                                    </label>
                                 </div>
                             </div>
                         </div>
@@ -547,7 +598,7 @@ $devis_page_has_alert = isset($_SESSION['success_message']) || !empty($error_dev
                                         value="<?php echo htmlspecialchars($devis_post['client_email'] ?? ''); ?>">
                                 </div>
                                 <div class="form-group">
-                                    <label for="zone_livraison_id"><i class="fas fa-map-marker-alt"></i> Adresse de livraison <span class="required">*</span></label>
+                                    <label for="zone_livraison_id"><i class="fas fa-map-marker-alt"></i> Adresse de livraison <span class="optional">(optionnel)</span></label>
                                     <select id="zone_livraison_id" name="zone_livraison_id">
                                         <option value="">— Sélectionnez une adresse —</option>
                                         <?php foreach ($zones_livraison as $z): ?>
@@ -574,15 +625,19 @@ $devis_page_has_alert = isset($_SESSION['success_message']) || !empty($error_dev
                                 </div>
                                 <div class="commande-manuelle-recap">
                                     <div class="recap-line">
-                                        <span>Sous-total produits</span>
+                                        <span>Sous-total produits (HT)</span>
                                         <span id="recap-sous-total">0 FCFA</span>
                                     </div>
                                     <div class="recap-line">
-                                        <span>Frais de livraison</span>
+                                        <span>Frais de livraison (HT)</span>
                                         <span id="recap-frais">0 FCFA</span>
                                     </div>
+                                    <div class="recap-line recap-tva-line-devis" id="recap-tva-line-devis" style="display:none;">
+                                        <span>TVA (<span id="recap-tva-pct-devis"><?php echo htmlspecialchars((string) $fiscal_tva_pourcent_devis_bl); ?></span> %)</span>
+                                        <span id="recap-tva-montant-devis">0 FCFA</span>
+                                    </div>
                                     <div class="recap-line recap-total">
-                                        <span>Total</span>
+                                        <span id="recap-total-label-devis">Total</span>
                                         <span id="recap-total">0 FCFA</span>
                                     </div>
                                 </div>
@@ -647,18 +702,35 @@ $devis_page_has_alert = isset($_SESSION['success_message']) || !empty($error_dev
                                     <h3>Produits du devis</h3>
                                     <span class="lignes-count" id="lignes-count-bl">0 article(s)</span>
                                 </div>
-                                <div id="lignes-commande-bl" class="lignes-commande lignes-commande-bl-wrap">
+                                <div id="lignes-commande-bl" class="lignes-commande lignes-commande-modal-wrap">
                                     <div class="ligne-commande-head ligne-commande-head-bl" id="lignes-head-bl" hidden>
-                                        <span class="lch-head-cell">Désignation du produit</span>
+                                        <span class="lch-head-cell">Produit</span>
                                         <span class="lch-head-cell">Quantité</span>
-                                        <span class="lch-head-cell">Prix unitaire <span class="lch-fcfa">FCFA</span></span>
-                                        <span class="lch-head-cell">Prix promo <span class="lch-fcfa">FCFA</span></span>
+                                        <span class="lch-head-cell">prix FCFA</span>
+                                        <span class="lch-head-cell">promo FCFA</span>
                                         <span class="lch-head-cell lch-head-actions" aria-hidden="true"></span>
                                     </div>
                                     <div class="lignes-empty" id="lignes-empty-bl">
                                         <i class="fas fa-inbox"></i>
                                         <p>Aucun produit ajouté. Utilisez la recherche ci-dessus.</p>
                                     </div>
+                                </div>
+                                <div class="modal-tva-option" role="group" aria-labelledby="modal-tva-bl-title">
+                                    <input type="hidden" name="inclure_tva" value="0">
+                                    <label class="modal-tva-option__label" for="inclure_tva_bl">
+                                        <span class="modal-tva-option__inner">
+                                            <span class="modal-tva-option__glow" aria-hidden="true"></span>
+                                            <span class="modal-tva-option__leading">
+                                                <span class="modal-tva-option__icon" aria-hidden="true"><i class="fas fa-percent"></i></span>
+                                                <span class="modal-tva-option__title" id="modal-tva-bl-title">Inclure la TVA</span>
+                                            </span>
+                                            <span class="modal-tva-option__toggle">
+                                                <input type="checkbox" name="inclure_tva" value="1" id="inclure_tva_bl" class="modal-tva-option__checkbox"
+                                                    <?php echo (is_array($bp) && !empty($bp['inclure_tva'])) ? 'checked' : ''; ?>>
+                                                <span class="modal-tva-option__track" aria-hidden="true"></span>
+                                            </span>
+                                        </span>
+                                    </label>
                                 </div>
                             </div>
                         </div>
@@ -677,7 +749,6 @@ $devis_page_has_alert = isset($_SESSION['success_message']) || !empty($error_dev
                                         <span class="search-loading" id="search-client-loading-bl" style="visibility:hidden;"><i class="fas fa-spinner fa-spin"></i></span>
                                     </div>
                                     <div id="search-client-results-bl" class="search-produit-results" role="listbox" aria-hidden="true" style="position:absolute; left:0; right:0; top:100%; z-index:100;"></div>
-                                    <p class="form-hint"><i class="fas fa-info-circle"></i> Recherchez un client ou saisissez manuellement ci-dessous.</p>
                                 </div>
                                 <div class="form-row-2">
                                     <div class="form-group">
@@ -696,23 +767,14 @@ $devis_page_has_alert = isset($_SESSION['success_message']) || !empty($error_dev
                                     <input type="tel" id="client_telephone_bl" name="client_telephone" required
                                         placeholder="Ex: 07 12 34 56 78"
                                         value="<?php echo htmlspecialchars($bp['client_telephone'] ?? ''); ?>">
-                                    <p class="form-hint" style="margin-top:8px;"><i class="fas fa-address-book"></i> Le carnet <strong>Contacts</strong> est mis à jour automatiquement : si ce numéro n’y figure pas encore, le contact (nom, prénom, téléphone, email) est enregistré.</p>
                                 </div>
                                 <div class="form-group">
                                     <label for="client_email_bl">Email <span class="optional">(optionnel)</span></label>
                                     <input type="email" id="client_email_bl" name="client_email"
                                         value="<?php echo htmlspecialchars($bp['client_email'] ?? ''); ?>">
                                 </div>
-                                <div class="form-group bl-client-type-hint-row">
-                                    <label>Type client</label>
-                                    <p class="form-hint bl-client-type-affich">
-                                        <i class="fas fa-tag"></i>
-                                        Affiché selon la fiche Contacts ou le compte : <strong id="client_type_bl_display">Standard</strong>
-                                        <span id="client_type_bl_qualif"> — valeur par défaut si saisie manuelle uniquement ; choisissez un résultat de recherche pour afficher VIP/Standard du carnet.</span>
-                                    </p>
-                                </div>
                                 <div class="form-group">
-                                    <label for="zone_livraison_id_bl"><i class="fas fa-map-marker-alt"></i> Adresse de livraison <span class="required">*</span></label>
+                                    <label for="zone_livraison_id_bl"><i class="fas fa-map-marker-alt"></i> Adresse de livraison <span class="optional">(optionnel)</span></label>
                                     <select id="zone_livraison_id_bl" name="zone_livraison_id">
                                         <option value="">— Sélectionnez une adresse —</option>
                                         <?php foreach ($zones_livraison as $z): ?>
@@ -758,15 +820,19 @@ $devis_page_has_alert = isset($_SESSION['success_message']) || !empty($error_dev
                                 </div>
                                 <div class="commande-manuelle-recap">
                                     <div class="recap-line">
-                                        <span>Sous-total produits</span>
+                                        <span>Sous-total produits (HT)</span>
                                         <span id="recap-sous-total-bl">0 FCFA</span>
                                     </div>
                                     <div class="recap-line">
-                                        <span>Frais de livraison</span>
+                                        <span>Frais de livraison (HT)</span>
                                         <span id="recap-frais-bl">0 FCFA</span>
                                     </div>
+                                    <div class="recap-line recap-tva-line-bl" id="recap-tva-line-bl" style="display:none;">
+                                        <span>TVA (<span id="recap-tva-pct-bl"><?php echo htmlspecialchars((string) $fiscal_tva_pourcent_devis_bl); ?></span> %)</span>
+                                        <span id="recap-tva-montant-bl">0 FCFA</span>
+                                    </div>
                                     <div class="recap-line recap-total">
-                                        <span>Total</span>
+                                        <span id="recap-total-label-bl">Total</span>
                                         <span id="recap-total-bl">0 FCFA</span>
                                     </div>
                                 </div>
@@ -792,6 +858,7 @@ $devis_page_has_alert = isset($_SESSION['success_message']) || !empty($error_dev
 
     <script>
     (function() {
+        var FISCAL_TVA_PCT = <?php echo json_encode((float) $fiscal_tva_pourcent_devis_bl); ?>;
         var modal = document.getElementById('modal-devis');
         var btnOpen = document.getElementById('btn-nouveau-devis');
         var btnClose = document.getElementById('modal-devis-close');
@@ -831,6 +898,11 @@ $devis_page_has_alert = isset($_SESSION['success_message']) || !empty($error_dev
             var n = items.length;
             if (lignesEmpty) lignesEmpty.style.display = n === 0 ? 'flex' : 'none';
             if (lignesCount) lignesCount.textContent = n + ' article(s)';
+            var headDevis = document.getElementById('lignes-head-devis');
+            if (headDevis) {
+                if (n > 0) headDevis.removeAttribute('hidden');
+                else headDevis.setAttribute('hidden', 'hidden');
+            }
         }
 
         function addLigne(produit) {
@@ -839,15 +911,33 @@ $devis_page_has_alert = isset($_SESSION['success_message']) || !empty($error_dev
             var nom = (produit.nom || '');
             var idx = ligneIndex++;
             var div = document.createElement('div');
-            div.className = 'ligne-commande-item';
+            div.className = 'ligne-commande-item ligne-commande-item-bl';
             div.dataset.produitId = produit.id;
             div.innerHTML =
-                '<input type="hidden" name="lignes[' + idx + '][produit_id]" value="' + produit.id + '">' +
-                '<input type="text" name="lignes[' + idx + '][nom_produit]" value="' + (nom.replace(/"/g, '&quot;')) + '" placeholder="Nom du produit (modifiable)" class="ligne-nom-input" title="Modifier le nom affiché">' +
-                '<input type="number" name="lignes[' + idx + '][quantite]" value="1" min="1" max="' + (produit.stock_dispo || produit.stock || 999) + '" class="ligne-qte" title="Quantité">' +
-                '<input type="number" name="lignes[' + idx + '][prix_unitaire]" value="' + (prixPromo || prix) + '" min="0" step="0.01" class="ligne-prix" title="Prix unitaire (FCFA)">' +
-                '<input type="number" name="lignes[' + idx + '][prix_promotion]" value="' + (prixPromo || '') + '" min="0" step="0.01" placeholder="Optionnel" class="ligne-prix-promo" title="Prix promo (optionnel)">' +
-                '<button type="button" class="ligne-remove" aria-label="Retirer"><i class="fas fa-trash"></i></button>';
+                '<div class="ligne-bl-cell">' +
+                    '<input type="hidden" name="lignes[' + idx + '][produit_id]" value="' + produit.id + '">' +
+                    '<span class="ligne-bl-label">Désignation</span>' +
+                    '<input type="text" name="lignes[' + idx + '][nom_produit]" value="' + (nom.replace(/"/g, '&quot;')) + '" placeholder="Nom du produit" class="ligne-nom-input" aria-label="Désignation du produit">' +
+                '</div>' +
+                '<div class="ligne-bl-cell">' +
+                    '<span class="ligne-bl-label">Quantité</span>' +
+                    '<input type="number" name="lignes[' + idx + '][quantite]" value="1" min="1" max="' + (produit.stock_dispo || produit.stock || 999) + '" class="ligne-qte" aria-label="Quantité">' +
+                '</div>' +
+                '<div class="ligne-bl-cell ligne-bl-cell-prix">' +
+                    '<span class="ligne-bl-label">Prix unitaire</span>' +
+                    '<div class="ligne-bl-prix-row">' +
+                        '<input type="number" name="lignes[' + idx + '][prix_unitaire]" value="' + (prixPromo || prix) + '" min="0" step="0.01" class="ligne-prix" aria-label="Prix unitaire en FCFA">' +
+                        '<span class="ligne-unit-fcfa">FCFA</span>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="ligne-bl-cell ligne-bl-cell-prix">' +
+                    '<span class="ligne-bl-label">Prix promo</span>' +
+                    '<div class="ligne-bl-prix-row">' +
+                        '<input type="number" name="lignes[' + idx + '][prix_promotion]" value="' + (prixPromo || '') + '" min="0" step="0.01" placeholder="Optionnel" class="ligne-prix-promo" aria-label="Prix promotionnel en FCFA">' +
+                        '<span class="ligne-unit-fcfa">FCFA</span>' +
+                    '</div>' +
+                '</div>' +
+                '<button type="button" class="ligne-remove" aria-label="Retirer la ligne"><i class="fas fa-trash"></i></button>';
             if (lignesEmpty) lignesEmpty.style.display = 'none';
             div.querySelector('.ligne-remove').addEventListener('click', function() {
                 div.remove();
@@ -916,6 +1006,10 @@ $devis_page_has_alert = isset($_SESSION['success_message']) || !empty($error_dev
         var recapSousTotal = document.getElementById('recap-sous-total');
         var recapFrais = document.getElementById('recap-frais');
         var recapTotal = document.getElementById('recap-total');
+        var recapTotalLabelDevis = document.getElementById('recap-total-label-devis');
+        var recapTvaLineDevis = document.getElementById('recap-tva-line-devis');
+        var recapTvaMontantDevis = document.getElementById('recap-tva-montant-devis');
+        var inclureTvaDevis = document.getElementById('inclure_tva_devis');
         var formDevis = document.getElementById('form-devis');
 
         function formatNumber(n) {
@@ -944,10 +1038,23 @@ $devis_page_has_alert = isset($_SESSION['success_message']) || !empty($error_dev
         function updateRecap() {
             var sousTotal = getSousTotal();
             var frais = getFraisLivraison();
-            var total = sousTotal + frais;
+            var netHt = sousTotal + frais;
+            var tvaOn = inclureTvaDevis && inclureTvaDevis.checked;
+            var tvaMontant = 0;
+            var totalAff = netHt;
+            if (tvaOn) {
+                tvaMontant = Math.round(netHt * (FISCAL_TVA_PCT / 100));
+                totalAff = Math.round(netHt + tvaMontant);
+                if (recapTvaLineDevis) recapTvaLineDevis.style.display = '';
+                if (recapTvaMontantDevis) recapTvaMontantDevis.textContent = formatNumber(tvaMontant) + ' FCFA';
+                if (recapTotalLabelDevis) recapTotalLabelDevis.textContent = 'Total TTC';
+            } else {
+                if (recapTvaLineDevis) recapTvaLineDevis.style.display = 'none';
+                if (recapTotalLabelDevis) recapTotalLabelDevis.textContent = 'Total';
+            }
             if (recapSousTotal) recapSousTotal.textContent = formatNumber(sousTotal) + ' FCFA';
             if (recapFrais) recapFrais.textContent = formatNumber(frais) + ' FCFA';
-            if (recapTotal) recapTotal.textContent = formatNumber(total) + ' FCFA';
+            if (recapTotal) recapTotal.textContent = formatNumber(totalAff) + ' FCFA';
             if (fraisInput) fraisInput.value = frais;
         }
 
@@ -976,6 +1083,8 @@ $devis_page_has_alert = isset($_SESSION['success_message']) || !empty($error_dev
 
         if (zoneSelect) zoneSelect.addEventListener('change', onZoneChange);
 
+        if (inclureTvaDevis) inclureTvaDevis.addEventListener('change', updateRecap);
+
         if (lignesContainer) {
             lignesContainer.addEventListener('input', function(ev) {
                 if (ev.target.classList.contains('ligne-qte') || ev.target.classList.contains('ligne-prix') || ev.target.classList.contains('ligne-prix-promo')) {
@@ -986,15 +1095,12 @@ $devis_page_has_alert = isset($_SESSION['success_message']) || !empty($error_dev
 
         if (formDevis) {
             formDevis.addEventListener('submit', function(ev) {
-                if (zoneSelect && zoneSelect.value === 'custom' && adresseTa) {
-                    if (adresseLivraison) adresseLivraison.value = adresseTa.value.trim();
-                } else if (zoneSelect && zoneSelect.value && zoneSelect.value !== 'custom') {
-                    onZoneChange();
-                }
-                if (adresseLivraison && !adresseLivraison.value.trim()) {
-                    ev.preventDefault();
-                    alert('Veuillez sélectionner une adresse de livraison ou saisir une adresse personnalisée.');
-                    return false;
+                var zv = zoneSelect ? zoneSelect.value : '';
+                if (zv === 'custom' && adresseTa && adresseLivraison) {
+                    adresseLivraison.value = adresseTa.value.trim();
+                } else if (zv && zv !== 'custom' && zoneSelect && adresseLivraison) {
+                    var optD = zoneSelect.options[zoneSelect.selectedIndex];
+                    adresseLivraison.value = optD && optD.dataset.adresse ? optD.dataset.adresse : '';
                 }
             });
         }
@@ -1099,10 +1205,13 @@ $devis_page_has_alert = isset($_SESSION['success_message']) || !empty($error_dev
         updateLignesUI();
         if (modal && modal.classList.contains('modal-open') && zoneSelect && zoneSelect.value) {
             onZoneChange();
+        } else {
+            updateRecap();
         }
     })();
 
     (function() {
+        var FISCAL_TVA_PCT = <?php echo json_encode((float) $fiscal_tva_pourcent_devis_bl); ?>;
         var tabDevis = document.getElementById('tab-btn-devis');
         var tabBl = document.getElementById('tab-btn-bl');
         var tabBr = document.getElementById('tab-btn-br');
@@ -1309,6 +1418,10 @@ $devis_page_has_alert = isset($_SESSION['success_message']) || !empty($error_dev
         var recapSousTotalBl = document.getElementById('recap-sous-total-bl');
         var recapFraisBl = document.getElementById('recap-frais-bl');
         var recapTotalBl = document.getElementById('recap-total-bl');
+        var recapTotalLabelBl = document.getElementById('recap-total-label-bl');
+        var recapTvaLineBl = document.getElementById('recap-tva-line-bl');
+        var recapTvaMontantBl = document.getElementById('recap-tva-montant-bl');
+        var inclureTvaBl = document.getElementById('inclure_tva_bl');
         var formBl = document.getElementById('form-bl');
 
         function formatNumberBl(n) {
@@ -1337,10 +1450,23 @@ $devis_page_has_alert = isset($_SESSION['success_message']) || !empty($error_dev
         function updateRecapBl() {
             var sousTotal = getSousTotalBl();
             var frais = getFraisLivraisonBl();
-            var total = sousTotal + frais;
+            var netHt = sousTotal + frais;
+            var tvaOn = inclureTvaBl && inclureTvaBl.checked;
+            var tvaMontant = 0;
+            var totalAff = netHt;
+            if (tvaOn) {
+                tvaMontant = Math.round(netHt * (FISCAL_TVA_PCT / 100));
+                totalAff = Math.round(netHt + tvaMontant);
+                if (recapTvaLineBl) recapTvaLineBl.style.display = '';
+                if (recapTvaMontantBl) recapTvaMontantBl.textContent = formatNumberBl(tvaMontant) + ' FCFA';
+                if (recapTotalLabelBl) recapTotalLabelBl.textContent = 'Total TTC';
+            } else {
+                if (recapTvaLineBl) recapTvaLineBl.style.display = 'none';
+                if (recapTotalLabelBl) recapTotalLabelBl.textContent = 'Total';
+            }
             if (recapSousTotalBl) recapSousTotalBl.textContent = formatNumberBl(sousTotal) + ' FCFA';
             if (recapFraisBl) recapFraisBl.textContent = formatNumberBl(frais) + ' FCFA';
-            if (recapTotalBl) recapTotalBl.textContent = formatNumberBl(total) + ' FCFA';
+            if (recapTotalBl) recapTotalBl.textContent = formatNumberBl(totalAff) + ' FCFA';
             if (fraisInputBl) fraisInputBl.value = frais;
         }
 
@@ -1369,6 +1495,8 @@ $devis_page_has_alert = isset($_SESSION['success_message']) || !empty($error_dev
 
         if (zoneSelectBl) zoneSelectBl.addEventListener('change', onZoneChangeBl);
 
+        if (inclureTvaBl) inclureTvaBl.addEventListener('change', updateRecapBl);
+
         if (lignesContainerBl) {
             lignesContainerBl.addEventListener('input', function(ev) {
                 if (ev.target.classList.contains('ligne-qte') || ev.target.classList.contains('ligne-prix') || ev.target.classList.contains('ligne-prix-promo')) {
@@ -1379,15 +1507,12 @@ $devis_page_has_alert = isset($_SESSION['success_message']) || !empty($error_dev
 
         if (formBl) {
             formBl.addEventListener('submit', function(ev) {
-                if (zoneSelectBl && zoneSelectBl.value === 'custom' && adresseTaBl) {
-                    if (adresseLivraisonBl) adresseLivraisonBl.value = adresseTaBl.value.trim();
-                } else if (zoneSelectBl && zoneSelectBl.value && zoneSelectBl.value !== 'custom') {
-                    onZoneChangeBl();
-                }
-                if (adresseLivraisonBl && !adresseLivraisonBl.value.trim()) {
-                    ev.preventDefault();
-                    alert('Veuillez sélectionner une adresse de livraison ou saisir une adresse personnalisée.');
-                    return false;
+                var zvb = zoneSelectBl ? zoneSelectBl.value : '';
+                if (zvb === 'custom' && adresseTaBl && adresseLivraisonBl) {
+                    adresseLivraisonBl.value = adresseTaBl.value.trim();
+                } else if (zvb && zvb !== 'custom' && zoneSelectBl && adresseLivraisonBl) {
+                    var optB = zoneSelectBl.options[zoneSelectBl.selectedIndex];
+                    adresseLivraisonBl.value = optB && optB.dataset.adresse ? optB.dataset.adresse : '';
                 }
             });
         }
@@ -1423,19 +1548,8 @@ $devis_page_has_alert = isset($_SESSION['success_message']) || !empty($error_dev
         var clientPrenomInputBl = document.getElementById('client_prenom_bl');
         var clientTelInputBl = document.getElementById('client_telephone_bl');
         var clientEmailInputBl = document.getElementById('client_email_bl');
-        var clientTypeStrongBl = document.getElementById('client_type_bl_display');
-        var clientTypeQualifBl = document.getElementById('client_type_bl_qualif');
         var userIdInputBl = document.getElementById('user_id_bl');
         var clientSearchTimeoutBl;
-        function setAffichTypeClientBL(label, depuisRecherche) {
-            var lib = label || 'Standard';
-            if (clientTypeStrongBl) clientTypeStrongBl.textContent = lib;
-            if (clientTypeQualifBl) {
-                clientTypeQualifBl.textContent = depuisRecherche
-                    ? (' — défini depuis le résultat de recherche (« ' + lib + ' »). Les comptes boutique sont traités comme Standard.')
-                    : ' — valeur par défaut si saisie manuelle uniquement ; choisissez un résultat de recherche pour afficher VIP/Standard du carnet.';
-            }
-        }
         if (searchClientInputBl && searchClientResultsBl && clientNomInputBl && clientPrenomInputBl && clientTelInputBl) {
             function doClientSearchBl(q) {
                 if (q.length < 1) {
@@ -1464,7 +1578,6 @@ $devis_page_has_alert = isset($_SESSION['success_message']) || !empty($error_dev
                                     clientTelInputBl.value = c.telephone || '';
                                     if (clientEmailInputBl) clientEmailInputBl.value = c.email || '';
                                     if (userIdInputBl) userIdInputBl.value = (c.source === 'user') ? c.id : '';
-                                    setAffichTypeClientBL(c.type_libelle || 'Standard', true);
                                     searchClientInputBl.value = '';
                                     searchClientResultsBl.innerHTML = '';
                                     searchClientResultsBl.setAttribute('aria-hidden', 'true');

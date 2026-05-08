@@ -21,6 +21,8 @@ if (empty($_SESSION['admin_csrf'])) {
 
 require_once __DIR__ . '/../../models/model_devis.php';
 require_once __DIR__ . '/../../models/model_zones_livraison.php';
+require_once __DIR__ . '/../../includes/fiscal_tva.php';
+$fiscal_tva_pourcent_modifier = fiscal_taux_tva_pourcent();
 
 $devis_id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 if ($devis_id <= 0) {
@@ -75,6 +77,12 @@ if ($devis_post && is_array($devis_post)) {
             'prix_promotion' => '',
         ];
     }
+}
+
+if ($devis_post && is_array($devis_post)) {
+    $inclure_tva_checked = !empty($devis_post['inclure_tva']);
+} else {
+    $inclure_tva_checked = !empty($devis['tva_incluse']);
 }
 
 $nb_lignes = count($lignes_form);
@@ -138,14 +146,24 @@ $nb_lignes = count($lignes_form);
                             <h3>Produits du devis</h3>
                             <span class="lignes-count" id="lignes-count"><?php echo (int) $nb_lignes; ?> article(s)</span>
                         </div>
-                        <div id="lignes-commande" class="lignes-commande">
+                        <div id="lignes-commande" class="lignes-commande lignes-commande-modal-wrap">
+                            <div class="ligne-commande-head ligne-commande-head-bl" id="lignes-head-devis" <?php echo $nb_lignes > 0 ? '' : 'hidden'; ?>>
+                                <span class="lch-head-cell">Produit</span>
+                                <span class="lch-head-cell">Quantité</span>
+                                <span class="lch-head-cell">prix FCFA</span>
+                                <span class="lch-head-cell">promo FCFA</span>
+                                <span class="lch-head-cell lch-head-actions" aria-hidden="true"></span>
+                            </div>
                             <?php if ($nb_lignes === 0): ?>
                                 <div class="lignes-empty" id="lignes-empty">
                                     <i class="fas fa-inbox"></i>
                                     <p>Aucun produit. Utilisez la recherche ci-dessus.</p>
                                 </div>
                             <?php else: ?>
-                                <div class="lignes-empty" id="lignes-empty" style="display:none;"></div>
+                                <div class="lignes-empty" id="lignes-empty" style="display:none;">
+                                    <i class="fas fa-inbox"></i>
+                                    <p>Aucun produit. Utilisez la recherche ci-dessus.</p>
+                                </div>
                                 <?php foreach ($lignes_form as $idx => $l): ?>
                                     <?php
                                     $nom = htmlspecialchars($l['nom_produit'] ?? '');
@@ -154,13 +172,31 @@ $nb_lignes = count($lignes_form);
                                     $pu = htmlspecialchars((string) ($l['prix_unitaire'] ?? '0'));
                                     $pp = isset($l['prix_promotion']) && $l['prix_promotion'] !== '' ? htmlspecialchars((string) $l['prix_promotion']) : '';
                                     ?>
-                                    <div class="ligne-commande-item" data-produit-id="<?php echo $pid; ?>">
-                                        <input type="hidden" name="lignes[<?php echo $idx; ?>][produit_id]" value="<?php echo $pid; ?>">
-                                        <input type="text" name="lignes[<?php echo $idx; ?>][nom_produit]" value="<?php echo $nom; ?>" class="ligne-nom-input" title="Nom affiché">
-                                        <input type="number" name="lignes[<?php echo $idx; ?>][quantite]" value="<?php echo $q; ?>" min="1" max="99999" class="ligne-qte" title="Quantité">
-                                        <input type="number" name="lignes[<?php echo $idx; ?>][prix_unitaire]" value="<?php echo $pu; ?>" min="0" step="0.01" class="ligne-prix" title="Prix unitaire">
-                                        <input type="number" name="lignes[<?php echo $idx; ?>][prix_promotion]" value="<?php echo $pp; ?>" min="0" step="0.01" placeholder="Optionnel" class="ligne-prix-promo" title="Prix promo">
-                                        <button type="button" class="ligne-remove" aria-label="Retirer"><i class="fas fa-trash"></i></button>
+                                    <div class="ligne-commande-item ligne-commande-item-bl" data-produit-id="<?php echo $pid; ?>">
+                                        <div class="ligne-bl-cell">
+                                            <input type="hidden" name="lignes[<?php echo (int) $idx; ?>][produit_id]" value="<?php echo $pid; ?>">
+                                            <span class="ligne-bl-label">Désignation</span>
+                                            <input type="text" name="lignes[<?php echo (int) $idx; ?>][nom_produit]" value="<?php echo $nom; ?>" class="ligne-nom-input" aria-label="Désignation du produit">
+                                        </div>
+                                        <div class="ligne-bl-cell">
+                                            <span class="ligne-bl-label">Quantité</span>
+                                            <input type="number" name="lignes[<?php echo (int) $idx; ?>][quantite]" value="<?php echo $q; ?>" min="1" max="99999" class="ligne-qte" aria-label="Quantité">
+                                        </div>
+                                        <div class="ligne-bl-cell ligne-bl-cell-prix">
+                                            <span class="ligne-bl-label">Prix unitaire</span>
+                                            <div class="ligne-bl-prix-row">
+                                                <input type="number" name="lignes[<?php echo (int) $idx; ?>][prix_unitaire]" value="<?php echo $pu; ?>" min="0" step="0.01" class="ligne-prix" aria-label="Prix unitaire en FCFA">
+                                                <span class="ligne-unit-fcfa">FCFA</span>
+                                            </div>
+                                        </div>
+                                        <div class="ligne-bl-cell ligne-bl-cell-prix">
+                                            <span class="ligne-bl-label">Prix promo</span>
+                                            <div class="ligne-bl-prix-row">
+                                                <input type="number" name="lignes[<?php echo (int) $idx; ?>][prix_promotion]" value="<?php echo $pp; ?>" min="0" step="0.01" placeholder="Optionnel" class="ligne-prix-promo" aria-label="Prix promotionnel en FCFA">
+                                                <span class="ligne-unit-fcfa">FCFA</span>
+                                            </div>
+                                        </div>
+                                        <button type="button" class="ligne-remove" aria-label="Retirer la ligne"><i class="fas fa-trash"></i></button>
                                     </div>
                                 <?php endforeach; ?>
                             <?php endif; ?>
@@ -202,7 +238,7 @@ $nb_lignes = count($lignes_form);
                             <input type="email" id="client_email" name="client_email" value="<?php echo htmlspecialchars($client_email); ?>">
                         </div>
                         <div class="form-group">
-                            <label for="zone_livraison_id"><i class="fas fa-map-marker-alt"></i> Adresse de livraison <span class="required">*</span></label>
+                            <label for="zone_livraison_id"><i class="fas fa-map-marker-alt"></i> Adresse de livraison <span class="optional">(optionnel)</span></label>
                             <select id="zone_livraison_id" name="zone_livraison_id">
                                 <option value="">— Sélectionnez une adresse —</option>
                                 <?php foreach ($zones_livraison as $z): ?>
@@ -231,17 +267,28 @@ $nb_lignes = count($lignes_form);
                             <label for="notes">Notes</label>
                             <textarea id="notes" name="notes" rows="2"><?php echo htmlspecialchars($notes); ?></textarea>
                         </div>
+                        <div class="form-group devis-option-tva">
+                            <label class="checkbox-inline-label" for="inclure_tva_devis">
+                                <input type="hidden" name="inclure_tva" value="0">
+                                <input type="checkbox" name="inclure_tva" value="1" id="inclure_tva_devis" <?php echo $inclure_tva_checked ? 'checked' : ''; ?>>
+                                <span>Inclure la TVA (<?php echo htmlspecialchars((string) $fiscal_tva_pourcent_modifier); ?> %) — total à payer TTC (comme la caisse)</span>
+                            </label>
+                        </div>
                         <div class="commande-manuelle-recap">
                             <div class="recap-line">
-                                <span>Sous-total produits</span>
+                                <span>Sous-total produits (HT)</span>
                                 <span id="recap-sous-total">0 FCFA</span>
                             </div>
                             <div class="recap-line">
-                                <span>Frais de livraison</span>
+                                <span>Frais de livraison (HT)</span>
                                 <span id="recap-frais">0 FCFA</span>
                             </div>
+                            <div class="recap-line recap-tva-line-devis" id="recap-tva-line-devis" style="<?php echo $inclure_tva_checked ? '' : 'display:none;'; ?>">
+                                <span>TVA (<span id="recap-tva-pct-devis"><?php echo htmlspecialchars((string) $fiscal_tva_pourcent_modifier); ?></span> %)</span>
+                                <span id="recap-tva-montant-devis">0 FCFA</span>
+                            </div>
                             <div class="recap-line recap-total">
-                                <span>Total</span>
+                                <span id="recap-total-label-devis">Total</span>
                                 <span id="recap-total">0 FCFA</span>
                             </div>
                         </div>
@@ -260,6 +307,7 @@ $nb_lignes = count($lignes_form);
 
     <script>
     (function() {
+        var FISCAL_TVA_PCT = <?php echo json_encode((float) $fiscal_tva_pourcent_modifier); ?>;
         var modal = null;
         var searchInput = document.getElementById('search-produit');
         var searchResults = document.getElementById('search-produit-results');
@@ -275,6 +323,11 @@ $nb_lignes = count($lignes_form);
             var n = items.length;
             if (lignesEmpty) lignesEmpty.style.display = n === 0 ? 'flex' : 'none';
             if (lignesCount) lignesCount.textContent = n + ' article(s)';
+            var headDevis = document.getElementById('lignes-head-devis');
+            if (headDevis) {
+                if (n > 0) headDevis.removeAttribute('hidden');
+                else headDevis.setAttribute('hidden', 'hidden');
+            }
         }
 
         function addLigne(produit) {
@@ -283,15 +336,33 @@ $nb_lignes = count($lignes_form);
             var nom = (produit.nom || '');
             var idx = ligneIndex++;
             var div = document.createElement('div');
-            div.className = 'ligne-commande-item';
+            div.className = 'ligne-commande-item ligne-commande-item-bl';
             div.dataset.produitId = produit.id;
             div.innerHTML =
-                '<input type="hidden" name="lignes[' + idx + '][produit_id]" value="' + produit.id + '">' +
-                '<input type="text" name="lignes[' + idx + '][nom_produit]" value="' + (nom.replace(/"/g, '&quot;')) + '" placeholder="Nom du produit (modifiable)" class="ligne-nom-input" title="Modifier le nom affiché">' +
-                '<input type="number" name="lignes[' + idx + '][quantite]" value="1" min="1" max="' + (produit.stock_dispo || produit.stock || 999) + '" class="ligne-qte" title="Quantité">' +
-                '<input type="number" name="lignes[' + idx + '][prix_unitaire]" value="' + (prixPromo || prix) + '" min="0" step="0.01" class="ligne-prix" title="Prix unitaire (FCFA)">' +
-                '<input type="number" name="lignes[' + idx + '][prix_promotion]" value="' + (prixPromo || '') + '" min="0" step="0.01" placeholder="Optionnel" class="ligne-prix-promo" title="Prix promo (optionnel)">' +
-                '<button type="button" class="ligne-remove" aria-label="Retirer"><i class="fas fa-trash"></i></button>';
+                '<div class="ligne-bl-cell">' +
+                    '<input type="hidden" name="lignes[' + idx + '][produit_id]" value="' + produit.id + '">' +
+                    '<span class="ligne-bl-label">Désignation</span>' +
+                    '<input type="text" name="lignes[' + idx + '][nom_produit]" value="' + (nom.replace(/"/g, '&quot;')) + '" placeholder="Nom du produit" class="ligne-nom-input" aria-label="Désignation du produit">' +
+                '</div>' +
+                '<div class="ligne-bl-cell">' +
+                    '<span class="ligne-bl-label">Quantité</span>' +
+                    '<input type="number" name="lignes[' + idx + '][quantite]" value="1" min="1" max="' + (produit.stock_dispo || produit.stock || 999) + '" class="ligne-qte" aria-label="Quantité">' +
+                '</div>' +
+                '<div class="ligne-bl-cell ligne-bl-cell-prix">' +
+                    '<span class="ligne-bl-label">Prix unitaire</span>' +
+                    '<div class="ligne-bl-prix-row">' +
+                        '<input type="number" name="lignes[' + idx + '][prix_unitaire]" value="' + (prixPromo || prix) + '" min="0" step="0.01" class="ligne-prix" aria-label="Prix unitaire en FCFA">' +
+                        '<span class="ligne-unit-fcfa">FCFA</span>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="ligne-bl-cell ligne-bl-cell-prix">' +
+                    '<span class="ligne-bl-label">Prix promo</span>' +
+                    '<div class="ligne-bl-prix-row">' +
+                        '<input type="number" name="lignes[' + idx + '][prix_promotion]" value="' + (prixPromo || '') + '" min="0" step="0.01" placeholder="Optionnel" class="ligne-prix-promo" aria-label="Prix promotionnel en FCFA">' +
+                        '<span class="ligne-unit-fcfa">FCFA</span>' +
+                    '</div>' +
+                '</div>' +
+                '<button type="button" class="ligne-remove" aria-label="Retirer la ligne"><i class="fas fa-trash"></i></button>';
             if (lignesEmpty) lignesEmpty.style.display = 'none';
             div.querySelector('.ligne-remove').addEventListener('click', function() {
                 div.remove();
@@ -351,6 +422,10 @@ $nb_lignes = count($lignes_form);
         var recapSousTotal = document.getElementById('recap-sous-total');
         var recapFrais = document.getElementById('recap-frais');
         var recapTotal = document.getElementById('recap-total');
+        var recapTotalLabelDevis = document.getElementById('recap-total-label-devis');
+        var recapTvaLineDevis = document.getElementById('recap-tva-line-devis');
+        var recapTvaMontantDevis = document.getElementById('recap-tva-montant-devis');
+        var inclureTvaDevis = document.getElementById('inclure_tva_devis');
         var formDevis = document.getElementById('form-devis');
 
         function formatNumber(n) {
@@ -379,10 +454,23 @@ $nb_lignes = count($lignes_form);
         function updateRecap() {
             var sousTotal = getSousTotal();
             var frais = getFraisLivraison();
-            var total = sousTotal + frais;
+            var netHt = sousTotal + frais;
+            var tvaOn = inclureTvaDevis && inclureTvaDevis.checked;
+            var tvaMontant = 0;
+            var totalAff = netHt;
+            if (tvaOn) {
+                tvaMontant = Math.round(netHt * (FISCAL_TVA_PCT / 100));
+                totalAff = Math.round(netHt + tvaMontant);
+                if (recapTvaLineDevis) recapTvaLineDevis.style.display = '';
+                if (recapTvaMontantDevis) recapTvaMontantDevis.textContent = formatNumber(tvaMontant) + ' FCFA';
+                if (recapTotalLabelDevis) recapTotalLabelDevis.textContent = 'Total TTC';
+            } else {
+                if (recapTvaLineDevis) recapTvaLineDevis.style.display = 'none';
+                if (recapTotalLabelDevis) recapTotalLabelDevis.textContent = 'Total';
+            }
             if (recapSousTotal) recapSousTotal.textContent = formatNumber(sousTotal) + ' FCFA';
             if (recapFrais) recapFrais.textContent = formatNumber(frais) + ' FCFA';
-            if (recapTotal) recapTotal.textContent = formatNumber(total) + ' FCFA';
+            if (recapTotal) recapTotal.textContent = formatNumber(totalAff) + ' FCFA';
             if (fraisInput) fraisInput.value = frais;
         }
 
@@ -411,6 +499,8 @@ $nb_lignes = count($lignes_form);
 
         if (zoneSelect) zoneSelect.addEventListener('change', onZoneChange);
 
+        if (inclureTvaDevis) inclureTvaDevis.addEventListener('change', updateRecap);
+
         if (lignesContainer) {
             lignesContainer.querySelectorAll('.ligne-remove').forEach(function(btn) {
                 btn.addEventListener('click', function() {
@@ -431,11 +521,6 @@ $nb_lignes = count($lignes_form);
                     if (adresseLivraison) adresseLivraison.value = adresseTa.value.trim();
                 } else if (zoneSelect && zoneSelect.value && zoneSelect.value !== 'custom') {
                     onZoneChange();
-                }
-                if (adresseLivraison && !adresseLivraison.value.trim()) {
-                    ev.preventDefault();
-                    alert('Veuillez sélectionner une adresse de livraison ou saisir une adresse personnalisée.');
-                    return false;
                 }
             });
         }
@@ -515,8 +600,9 @@ $nb_lignes = count($lignes_form);
         updateLignesUI();
         if (zoneSelect && zoneSelect.value) {
             onZoneChange();
+        } else {
+            updateRecap();
         }
-        updateRecap();
     })();
     </script>
 </body>

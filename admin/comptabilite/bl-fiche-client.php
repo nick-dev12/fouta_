@@ -38,7 +38,9 @@ if (!$client) {
     exit;
 }
 
-$bl_list = get_all_bl_for_client_b2b($client_b2b_id);
+$fm_tables_ok = factures_mensuelles_table_ok();
+$bl_list = get_all_bl_for_client_b2b($client_b2b_id, true);
+$nb_bl_fm_archives = $fm_tables_ok ? count_bl_lies_fm_tout_statut_pour_client($client_b2b_id) : 0;
 $raison = $client['raison_sociale'] ?? '';
 $contact_nom = trim(($client['nom_contact'] ?? '') . ' ' . ($client['prenom_contact'] ?? ''));
 
@@ -57,10 +59,10 @@ if ($raison !== '') {
 
 $nb_bl = count($bl_list);
 
-$fm_tables_ok = factures_mensuelles_table_ok();
 $nb_bl_a_facturer = $fm_tables_ok ? count(get_bl_valides_non_factures($client_b2b_id)) : 0;
-$fm_mois_courant = $fm_tables_ok ? get_facture_mensuelle_mois_courant($client_b2b_id) : false;
-$fm_compte_bl = $fm_tables_ok ? facture_mensuelle_compte_bl_client($client_b2b_id) : null;
+$fm_derniere = $fm_tables_ok ? get_facture_mensuelle_derniere_pour_client($client_b2b_id) : false;
+
+$mois_sel_fr = [1 => 'janvier', 2 => 'février', 3 => 'mars', 4 => 'avril', 5 => 'mai', 6 => 'juin', 7 => 'juillet', 8 => 'août', 9 => 'septembre', 10 => 'octobre', 11 => 'novembre', 12 => 'décembre'];
 
 $fm_erreur = $_SESSION['fm_erreur'] ?? null;
 if (isset($_SESSION['fm_erreur'])) {
@@ -136,30 +138,49 @@ if (isset($_SESSION['fm_erreur'])) {
             <?php if ($fm_tables_ok): ?>
                 <div class="bl-facture-bar">
                     <div class="bl-facture-bar__text">
-                        <strong><i class="fas fa-file-invoice-dollar" aria-hidden="true"></i> Facturation HT (mois en cours)</strong>
-                        <span class="bl-facture-bar__meta">
-                            <?php echo (int) $nb_bl_a_facturer; ?> BL validé<?php echo $nb_bl_a_facturer > 1 ? 's' : ''; ?> à inclure ·
-                            regroupe les produits et montants des bons de livraison non encore facturés.
-                        </span>
+                        <strong><i class="fas fa-file-invoice-dollar" aria-hidden="true"></i> Facturation HT (facture mensuelle)</strong>
                     </div>
                     <div class="bl-facture-bar__actions">
-                        <?php if (!empty($fm_mois_courant)): ?>
-                            <a href="../devis/facture_mensuelle.php?id=<?php echo (int) $fm_mois_courant['id']; ?>" class="btn-secondary"><i class="fas fa-eye" aria-hidden="true"></i> Voir la facture du mois</a>
+                        <?php if (!empty($fm_derniere)): ?>
+                            <a href="../devis/facture_mensuelle.php?id=<?php echo (int) $fm_derniere['id']; ?>" class="btn-secondary"><i class="fas fa-eye" aria-hidden="true"></i> Voir la dernière facture</a>
                         <?php endif; ?>
+                        <a href="bl-factures-archives.php?client=<?php echo (int) $client_b2b_id; ?>" class="btn-secondary"><i class="fas fa-list" aria-hidden="true"></i> Liste des factures</a>
                         <a href="../devis/facture_mensuelle_generer.php?client_b2b_id=<?php echo (int) $client_b2b_id; ?>" class="btn-primary"><i class="fas fa-magic" aria-hidden="true"></i> Générer / mettre à jour la facture</a>
                     </div>
                 </div>
-                <?php if ($nb_bl_a_facturer === 0 && is_array($fm_compte_bl) && ($fm_compte_bl['eligible'] ?? 0) > 0 && ($fm_compte_bl['sans_lien'] ?? 0) === 0): ?>
-                    <p class="form-hint bl-facture-hint" style="margin-top:12px;">
-                        <i class="fas fa-info-circle" aria-hidden="true"></i>
-                        Les <?php echo (int) $fm_compte_bl['eligible']; ?> bon(s) validés (comptabilité) sont <strong>déjà inclus dans une facture mensuelle</strong> (un BL ne peut figurer qu’une fois). Ouvrez la facture via « Voir la facture » ou l’onglet Comptabilité — il n’y a rien à ajouter tant qu’aucun nouveau BL n’est validé.
-                    </p>
-                <?php elseif ($nb_bl_a_facturer === 0 && is_array($fm_compte_bl) && ($fm_compte_bl['eligible'] ?? 0) === 0 && ($fm_compte_bl['brouillon'] ?? 0) > 0): ?>
-                    <p class="form-hint bl-facture-hint" style="margin-top:12px;">
-                        <i class="fas fa-info-circle" aria-hidden="true"></i>
-                        Seuls les BL au statut <strong>Validé (comptabilité)</strong> entrent dans la facture mensuelle. Les brouillons doivent d’abord être validés depuis le détail du bon.
-                    </p>
-                <?php endif; ?>
+                <div class="bl-fm-period-row form-hint" style="margin-top:14px;padding:14px 16px;border-radius:12px;border:1px solid var(--glass-border);background:var(--blanc-neige);">
+                    <strong style="display:block;margin-bottom:8px;"><i class="fas fa-calendar-alt" aria-hidden="true"></i> Période comptable (facultatif)</strong>
+                    <form method="get" action="../devis/facture_mensuelle_generer.php" class="bl-fm-period-form" style="display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px;">
+                        <input type="hidden" name="client_b2b_id" value="<?php echo (int) $client_b2b_id; ?>">
+                        <label style="display:flex;flex-direction:column;gap:4px;font-size:0.88rem;">
+                            Mois
+                            <select name="mois" class="input-field" style="min-width:160px;padding:8px 10px;border-radius:8px;border:1px solid var(--border-input);">
+                                <?php
+                                $m_cur = (int) date('n');
+                                foreach ($mois_sel_fr as $mv => $ml):
+                                ?>
+                                    <option value="<?php echo (int) $mv; ?>"<?php echo $mv === $m_cur ? ' selected' : ''; ?>><?php echo htmlspecialchars($ml); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </label>
+                        <label style="display:flex;flex-direction:column;gap:4px;font-size:0.88rem;">
+                            Année
+                            <select name="annee" class="input-field" style="min-width:100px;padding:8px 10px;border-radius:8px;border:1px solid var(--border-input);">
+                                <?php
+                                $y_cur = (int) date('Y');
+                                for ($yy = $y_cur + 1; $yy >= $y_cur - 3; $yy--):
+                                ?>
+                                    <option value="<?php echo (int) $yy; ?>"<?php echo $yy === $y_cur ? ' selected' : ''; ?>><?php echo (int) $yy; ?></option>
+                                <?php    
+                                endfor;
+                                ?>
+                            </select>
+                        </label>
+                        <button type="submit" class="btn-secondary" style="padding:10px 16px;border-radius:10px;cursor:pointer;border:1px solid var(--border-input);background:var(--blanc);font-weight:600;color:var(--couleur-dominante);">
+                            <i class="fas fa-magic" aria-hidden="true"></i> Générer pour cette période
+                        </button>
+                    </form>
+                </div>
             <?php else: ?>
                 <p class="form-hint bl-facture-bar--warn"><i class="fas fa-database"></i> Factures mensuelles indisponibles : exécutez la migration <code>migrations/migration_admin_b2b_structure.sql</code>.</p>
             <?php endif; ?>
@@ -171,43 +192,57 @@ if (isset($_SESSION['fm_erreur'])) {
                     <span class="bl-empty-state__ring"></span>
                     <i class="fas fa-file-invoice"></i>
                 </div>
-                <h3 class="bl-empty-state__title">Aucun bon de livraison</h3>
-                <p class="bl-empty-state__text">Ce contact n’a pas encore de BL associé.</p>
-                <a href="index.php?tab=bl" class="btn-primary bl-empty-state__btn"><i class="fas fa-arrow-left" aria-hidden="true"></i> Retour</a>
+                <?php if ($nb_bl_fm_archives > 0): ?>
+                    <h3 class="bl-empty-state__title">Aucun BL actif à afficher</h3>
+                    <div class="bl-empty-state__actions" style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center;">
+                        <a href="bl-factures-archives.php?client=<?php echo (int) $client_b2b_id; ?>" class="btn-primary bl-empty-state__btn"><i class="fas fa-list" aria-hidden="true"></i> Liste des factures</a>
+                        <a href="index.php?tab=bl" class="btn-secondary bl-empty-state__btn"><i class="fas fa-arrow-left" aria-hidden="true"></i> Retour comptabilité</a>
+                    </div>
+                <?php else: ?>
+                    <h3 class="bl-empty-state__title">Aucun bon de livraison</h3>
+                    <p class="bl-empty-state__text">Ce contact n’a pas encore de BL hors facture mensuelle, ou tous les BL sont encore en brouillon.</p>
+                    <a href="index.php?tab=bl" class="btn-primary bl-empty-state__btn"><i class="fas fa-arrow-left" aria-hidden="true"></i> Retour</a>
+                <?php endif; ?>
             </div>
         <?php else: ?>
             <div class="bl-list-section">
-                <h2 class="bl-list-section__title"><i class="fas fa-list-ul" aria-hidden="true"></i> Liste des bons de livraison</h2>
-                <p class="bl-list-section__hint"><?php echo (int) $nb_bl; ?> document<?php echo $nb_bl > 1 ? 's' : ''; ?> — cliquez sur « Ouvrir » pour le détail ou « Réajuster » pour modifier.</p>
-                <div class="bl-record-grid" role="list">
+                <h2 id="bl-fiche-bl-list-title" class="bl-list-section__title"><i class="fas fa-list-ul" aria-hidden="true"></i> Liste des bons de livraison</h2>
+                <div class="bl-fiche-bl-table-wrap">
+                    <table class="bl-fiche-bl-table" aria-labelledby="bl-fiche-bl-list-title">
+                        <thead>
+                            <tr>
+                                <th scope="col" class="bl-fiche-bl-table__th"><span class="bl-fiche-bl-table__th-in"><i class="fas fa-file-alt" aria-hidden="true"></i> N° BL</span></th>
+                                <th scope="col" class="bl-fiche-bl-table__th"><span class="bl-fiche-bl-table__th-in"><i class="fas fa-calendar-day" aria-hidden="true"></i> Date</span></th>
+                                <th scope="col" class="bl-fiche-bl-table__th"><span class="bl-fiche-bl-table__th-in"><i class="fas fa-flag" aria-hidden="true"></i> Statut</span></th>
+                                <th scope="col" class="bl-fiche-bl-table__th bl-fiche-bl-table__th--amount"><span class="bl-fiche-bl-table__th-in"><i class="fas fa-coins" aria-hidden="true"></i> Total HT</span></th>
+                                <th scope="col" class="bl-fiche-bl-table__th bl-fiche-bl-table__th--actions"><span class="bl-fiche-bl-table__th-in"><i class="fas fa-bolt" aria-hidden="true"></i> Actions</span></th>
+                            </tr>
+                        </thead>
+                        <tbody>
                     <?php foreach ($bl_list as $b): ?>
                         <?php
                         $bst = $b['statut'] ?? 'brouillon';
                         $bst_label = bl_libelle_statut_court($bst);
                         $bid = (int) $b['id'];
+                        $dt_bl = !empty($b['date_bl']) ? htmlspecialchars((string) $b['date_bl']) : '—';
                         ?>
-                        <article class="bl-record-card" role="listitem">
-                            <div class="bl-record-card__top">
-                                <div class="bl-record-card__ids">
-                                    <h3 class="bl-record-card__num"><?php echo htmlspecialchars($b['numero_bl'] ?? ''); ?></h3>
-                                    <?php if (!empty($b['date_bl'])): ?>
-                                        <p class="bl-record-card__date"><i class="fas fa-calendar-day" aria-hidden="true"></i> <?php echo htmlspecialchars($b['date_bl']); ?></p>
-                                    <?php endif; ?>
-                                </div>
-                                <span class="commande-statut statut-<?php echo htmlspecialchars($bst); ?>"><?php echo htmlspecialchars($bst_label); ?></span>
-                            </div>
-                            <div class="bl-record-card__amount">
-                                <span class="bl-record-card__amount-label">Total HT</span>
-                                <span class="bl-record-card__amount-val"><?php echo number_format((float) ($b['total_ht'] ?? 0), 0, ',', ' '); ?> <small>FCFA</small></span>
-                            </div>
-                            <div class="bl-record-card__actions">
-                                <a href="../devis/bl_voir.php?id=<?php echo $bid; ?>" class="bl-record-card__btn bl-record-card__btn--primary"><i class="fas fa-eye" aria-hidden="true"></i> Ouvrir</a>
-                                <?php if (!bl_est_statut_verrouille($bst)): ?>
-                                <a href="../devis/bl_modifier.php?id=<?php echo $bid; ?>" class="bl-record-card__btn bl-record-card__btn--secondary"><i class="fas fa-edit" aria-hidden="true"></i> Réajuster</a>
-                                <?php endif; ?>
-                            </div>
-                        </article>
+                            <tr class="bl-fiche-bl-table__row">
+                                <td class="bl-fiche-bl-table__td"><strong class="bl-fiche-bl-table__ref"><?php echo htmlspecialchars($b['numero_bl'] ?? ''); ?></strong></td>
+                                <td class="bl-fiche-bl-table__td"><?php echo $dt_bl; ?></td>
+                                <td class="bl-fiche-bl-table__td bl-fiche-bl-table__td--statut"><span class="commande-statut statut-<?php echo htmlspecialchars($bst); ?>"><?php echo htmlspecialchars($bst_label); ?></span></td>
+                                <td class="bl-fiche-bl-table__td bl-fiche-bl-table__td--montant"><?php echo number_format((float) ($b['total_ht'] ?? 0), 0, ',', ' '); ?> <small>FCFA</small></td>
+                                <td class="bl-fiche-bl-table__td bl-fiche-bl-table__td--actions">
+                                    <div class="bl-fiche-bl-table__actions">
+                                        <a href="../devis/bl_voir.php?id=<?php echo $bid; ?>" class="bl-record-card__btn bl-record-card__btn--primary bl-fiche-bl-table__btn"><i class="fas fa-eye" aria-hidden="true"></i> Ouvrir</a>
+                                        <?php if (!bl_est_statut_verrouille($bst)): ?>
+                                        <a href="../devis/bl_modifier.php?id=<?php echo $bid; ?>" class="bl-record-card__btn bl-record-card__btn--secondary bl-fiche-bl-table__btn"><i class="fas fa-edit" aria-hidden="true"></i> Réajuster</a>
+                                        <?php endif; ?>
+                                    </div>
+                                </td>
+                            </tr>
                     <?php endforeach; ?>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         <?php endif; ?>

@@ -24,6 +24,7 @@ if (!in_array($role, ['admin', 'rh'], true)) {
 require_once __DIR__ . '/../../models/model_admin.php';
 require_once __DIR__ . '/../../models/model_employes.php';
 require_once __DIR__ . '/../../models/model_employe_absences.php';
+require_once __DIR__ . '/../../models/model_bulletin_paie.php';
 
 /**
  * Peut recevoir une absence : compte admin actif, pas le rôle « admin ».
@@ -98,6 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $raw_cible = isset($_POST['absence_cible']) ? trim((string) $_POST['absence_cible']) : '';
         $date_a = isset($_POST['date_absence']) ? trim((string) $_POST['date_absence']) : '';
         $motif = isset($_POST['motif']) ? trim((string) $_POST['motif']) : '';
+        $penalite = bp_parse_montant_post($_POST['penalite_montant'] ?? null);
         $nid = false;
 
         if ($date_a === '' || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date_a)) {
@@ -110,7 +112,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!$st || !absences_staff_est_eligible($st)) {
                 $_SESSION['error_message'] = 'Compte invalide ou non éligible (les comptes administrateur ne sont pas proposés).';
             } else {
-                $nid = employe_absence_creer_pour_staff_admin($admin_cible_id, $date_a, $motif, (int) $_SESSION['admin_id']);
+                $nid = employe_absence_creer_pour_staff_admin($admin_cible_id, $date_a, $motif, (int) $_SESSION['admin_id'], $penalite);
             }
         } elseif (preg_match('/^emp-(\d+)$/', $raw_cible, $m)) {
             $emp_id = (int) $m[1];
@@ -118,7 +120,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!absences_fiche_employe_eligible($em)) {
                 $_SESSION['error_message'] = 'Fiche employé invalide ou inactive.';
             } else {
-                $nid = employe_absence_creer_pour_fiche_employe($emp_id, $date_a, $motif, (int) $_SESSION['admin_id']);
+                $nid = employe_absence_creer_pour_fiche_employe($emp_id, $date_a, $motif, (int) $_SESSION['admin_id'], $penalite);
             }
         } else {
             $_SESSION['error_message'] = 'Veuillez choisir une personne dans la liste.';
@@ -306,6 +308,7 @@ $page_title = 'Gestion des absences';
                                 <th scope="col">Type</th>
                                 <th scope="col">Collaborateur</th>
                                 <th scope="col">Motif</th>
+                                <th scope="col">Pénalité</th>
                                 <th scope="col">Statut</th>
                                 <th scope="col">Justificatif</th>
                             </tr>
@@ -328,6 +331,10 @@ $page_title = 'Gestion des absences';
                                         echo $aff !== '' ? htmlspecialchars($aff) : '—';
                                     ?></td>
                                     <td data-label="Motif" class="abs-table__motif"><?php echo htmlspecialchars(mb_strimwidth($a['motif'], 0, 120, '…', 'UTF-8')); ?></td>
+                                    <td data-label="Pénalité" class="abs-table__num"><?php
+                                        $pm = isset($a['penalite_montant']) ? (float) $a['penalite_montant'] : 0.0;
+                                        echo $pm > 0 ? htmlspecialchars(number_format($pm, 0, ',', ' ')) . ' FCFA' : '—';
+                                    ?></td>
                                     <td data-label="Statut">
                                         <?php if (!empty($a['justif_id'])): ?>
                                             <span class="abs-badge abs-badge--ok"><i class="fas fa-check" aria-hidden="true"></i> Justifiée</span>
@@ -406,6 +413,11 @@ $page_title = 'Gestion des absences';
                     <div class="abs-field abs-field--full">
                         <label for="add-motif">Motif <span class="abs-req">*</span></label>
                         <textarea id="add-motif" name="motif" required rows="4" placeholder="Ex. : arrêt maladie, congé sans solde, rendez-vous médical…"></textarea>
+                    </div>
+                    <div class="abs-field">
+                        <label for="add-penalite">Pénalité (FCFA)</label>
+                        <input type="text" id="add-penalite" name="penalite_montant" inputmode="decimal" placeholder="0" value="0">
+                        <p class="abs-muted" style="margin-top:6px;font-size:0.8rem;">Montant optionnel — pour les fiches employés, la RH peut demander une retenue sur salaire depuis la fiche.</p>
                     </div>
                 </div>
                 <div class="abs-form__actions">

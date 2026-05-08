@@ -68,7 +68,7 @@ if ($admin_show_catalogue && !empty($produits)) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tableau de Bord - Administration FOUTA POIDS LOURDS</title>
     <?php require_once __DIR__ . '/../includes/asset_version.php'; ?>
-    <?php include __DIR__ . '/../includes/pwa_meta.php'; ?>
+    <?php $pwa_mode = 'admin'; include __DIR__ . '/../includes/pwa_meta.php'; ?>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/css/admin-dashboard.css<?php echo asset_version_query(); ?>">
     <link rel="stylesheet" href="/css/admin-dashboard-caisse-pages.css<?php echo asset_version_query(); ?>">
@@ -87,10 +87,10 @@ if ($admin_show_catalogue && !empty($produits)) {
                 <h1><i class="fas fa-chart-line" aria-hidden="true"></i> Tableau de bord</h1>
                 <p class="dashboard-subtitle">Vue d’ensemble des commandes et de votre catalogue produits.</p>
             </div>
-            <div class="header-actions">
-                <button type="button" id="btn-install-pwa" class="btn-primary btn-secondary-style"
-                    title="Installer l'application FOUTA POIDS LOURDS sur cet appareil" style="display: none;">
-                    <i class="fas fa-download"></i> Installer l'application
+            <div class="header-actions header-actions--with-pwa">
+                <button type="button" id="btn-install-pwa" class="btn-primary btn-secondary-style dashboard-pwa-install"
+                    title="Installer l’application administration sur cet appareil (PWA)">
+                    <i class="fas fa-download" aria-hidden="true"></i> Installer l’application
                 </button>
                 <button type="button" id="btn-enable-notifications" class="btn-primary btn-secondary-style"
                     title="Recevoir des notifications push pour les nouvelles commandes">
@@ -352,29 +352,48 @@ if ($admin_show_catalogue && !empty($produits)) {
             }
 
             var installBtn = document.getElementById('btn-install-pwa');
-            var deferredPrompt;
+            var deferredPrompt = null;
+            var isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+            var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+                (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
-            if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
-                if (installBtn) installBtn.style.display = 'none';
+            function showInstallBtn() {
+                if (!installBtn || isStandalone) return;
+                installBtn.hidden = false;
+            }
+            function hideInstallBtn() {
+                if (installBtn) installBtn.hidden = true;
+            }
+
+            if (isStandalone) {
+                hideInstallBtn();
+            } else if (isIOS && installBtn) {
+                showInstallBtn();
+                installBtn.setAttribute('title', 'Ajouter le raccourci sur l’écran d’accueil');
+                installBtn.innerHTML = '<i class="fas fa-mobile-screen-button" aria-hidden="true"></i> Ajouter à l’écran d’accueil';
+                installBtn.addEventListener('click', function () {
+                    alert('Sur iPhone / iPad : touchez « Partager » \u25B6 « Sur l’écran d’accueil ».');
+                });
             } else {
+                if (installBtn && !isStandalone) {
+                    installBtn.hidden = false;
+                }
                 window.addEventListener('beforeinstallprompt', function (e) {
                     e.preventDefault();
                     deferredPrompt = e;
-                    if (installBtn) installBtn.style.display = 'inline-flex';
+                    showInstallBtn();
                 });
 
                 if (installBtn) {
                     installBtn.addEventListener('click', function () {
                         if (!deferredPrompt) {
-                            alert(
-                                'L\'installation n\'est pas disponible. Essayez depuis Chrome ou Edge en mode HTTPS.'
-                            );
+                            alert('L’installation n’est pas proposée par le navigateur. Utilisez Chrome ou Edge (HTTPS ou localhost), vérifiez que le site n’est pas déjà installé, puis rechargez la page.');
                             return;
                         }
                         deferredPrompt.prompt();
                         deferredPrompt.userChoice.then(function (choiceResult) {
                             if (choiceResult.outcome === 'accepted') {
-                                installBtn.style.display = 'none';
+                                hideInstallBtn();
                             }
                             deferredPrompt = null;
                         });

@@ -23,38 +23,55 @@ if (!in_array($role, ['admin', 'rh', 'informaticien'], true)) {
 
 require_once __DIR__ . '/../../models/model_admin.php';
 
-$success_message = '';
-$error_message = '';
+if (empty($_SESSION['admin_csrf'])) {
+    $_SESSION['admin_csrf'] = bin2hex(random_bytes(32));
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['admin_id'])) {
     $admin_id = isset($_POST['admin_id']) ? (int) $_POST['admin_id'] : 0;
+    $tok = isset($_POST['csrf_token']) ? (string) $_POST['csrf_token'] : '';
+    if ($tok === '' || !hash_equals((string) ($_SESSION['admin_csrf'] ?? ''), $tok)) {
+        $_SESSION['error_message'] = 'Session expirée ou jeton de sécurité invalide. Réessayez.';
+        header('Location: index.php');
+        exit;
+    }
 
     if ($admin_id > 0) {
         if ($admin_id === (int) $_SESSION['admin_id']) {
-            $error_message = 'Vous ne pouvez pas modifier votre propre compte depuis cette page.';
+            $_SESSION['error_message'] = 'Vous ne pouvez pas modifier ou supprimer votre propre compte depuis cette page.';
         } else {
             if (isset($_POST['toggle_statut'])) {
                 $nouveau_statut = $_POST['nouveau_statut'] ?? '';
-                if (in_array($nouveau_statut, ['actif', 'inactif']) && update_admin_statut($admin_id, $nouveau_statut)) {
-                    $success_message = $nouveau_statut === 'actif' ? 'Compte activé avec succès.' : 'Compte désactivé avec succès.';
+                if (in_array($nouveau_statut, ['actif', 'inactif'], true) && update_admin_statut($admin_id, $nouveau_statut)) {
+                    $_SESSION['success_message'] = $nouveau_statut === 'actif' ? 'Compte activé avec succès.' : 'Compte désactivé avec succès.';
                 } else {
-                    $error_message = 'Erreur lors de la modification du statut.';
+                    $_SESSION['error_message'] = 'Erreur lors de la modification du statut.';
                 }
             } elseif (isset($_POST['definir_role'])) {
                 $nouveau_role = $_POST['nouveau_role'] ?? '';
                 if (in_array($nouveau_role, admin_roles_valides(), true) && update_admin_role($admin_id, $nouveau_role)) {
-                    $success_message = 'Rôle mis à jour avec succès.';
+                    $_SESSION['success_message'] = 'Rôle mis à jour avec succès.';
                 } else {
-                    $error_message = 'Erreur lors de la modification du rôle.';
+                    $_SESSION['error_message'] = 'Erreur lors de la modification du rôle.';
+                }
+            } elseif (isset($_POST['supprimer_compte'])) {
+                $del = delete_admin_account($admin_id);
+                if ($del['ok']) {
+                    $_SESSION['success_message'] = 'Compte supprimé définitivement.';
+                } else {
+                    $_SESSION['error_message'] = $del['error'] ?? 'Suppression impossible.';
                 }
             }
         }
     }
+    header('Location: index.php');
+    exit;
 }
 
 $admins = get_all_admins();
 $total = count($admins);
 $admins_actifs = count(array_filter($admins, function ($a) { return $a['statut'] === 'actif'; }));
+$comptes_csrf = (string) $_SESSION['admin_csrf'];
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -102,14 +119,6 @@ $admins_actifs = count(array_filter($admins, function ($a) { return $a['statut']
         <div class="message error page-comptes-flash" role="alert">
             <i class="fas fa-exclamation-circle" aria-hidden="true"></i> <?php echo htmlspecialchars($_SESSION['error_message']); unset($_SESSION['error_message']); ?>
         </div>
-    <?php endif; ?>
-
-    <?php if ($success_message): ?>
-        <div class="message success page-comptes-flash" role="status"><i class="fas fa-check-circle" aria-hidden="true"></i> <?php echo htmlspecialchars($success_message); ?></div>
-    <?php endif; ?>
-
-    <?php if ($error_message): ?>
-        <div class="message error page-comptes-flash" role="alert"><i class="fas fa-exclamation-circle" aria-hidden="true"></i> <?php echo htmlspecialchars($error_message); ?></div>
     <?php endif; ?>
 
     <div class="users-stats page-comptes-kpis" aria-label="Synthèse des comptes">
@@ -209,6 +218,7 @@ $admins_actifs = count(array_filter($admins, function ($a) { return $a['statut']
                                 </span>
                             <?php elseif ($admin['statut'] === 'actif'): ?>
                                 <form method="post" action="" class="comptes-acces-card__statut-form">
+                                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($comptes_csrf, ENT_QUOTES, 'UTF-8'); ?>">
                                     <input type="hidden" name="admin_id" value="<?php echo (int) $admin['id']; ?>">
                                     <input type="hidden" name="nouveau_statut" value="inactif">
                                     <button type="submit" name="toggle_statut" class="comptes-acces-card__btn comptes-acces-card__btn--deactivate"
@@ -218,6 +228,7 @@ $admins_actifs = count(array_filter($admins, function ($a) { return $a['statut']
                                 </form>
                             <?php else: ?>
                                 <form method="post" action="" class="comptes-acces-card__statut-form">
+                                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($comptes_csrf, ENT_QUOTES, 'UTF-8'); ?>">
                                     <input type="hidden" name="admin_id" value="<?php echo (int) $admin['id']; ?>">
                                     <input type="hidden" name="nouveau_statut" value="actif">
                                     <button type="submit" name="toggle_statut" class="comptes-acces-card__btn comptes-acces-card__btn--activate"
@@ -234,6 +245,7 @@ $admins_actifs = count(array_filter($admins, function ($a) { return $a['statut']
                                 <i class="fas fa-id-badge" aria-hidden="true"></i> Rôle d’accès
                             </p>
                             <form method="post" action="" class="comptes-acces-card__role-form" aria-labelledby="role-heading-<?php echo (int) $admin['id']; ?>">
+                                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($comptes_csrf, ENT_QUOTES, 'UTF-8'); ?>">
                                 <input type="hidden" name="admin_id" value="<?php echo (int) $admin['id']; ?>">
                                 <div class="comptes-acces-card__role-row">
                                     <label for="role-<?php echo (int) $admin['id']; ?>" class="visually-hidden">Choisir le rôle pour <?php echo htmlspecialchars($admin['prenom'] . ' ' . $admin['nom']); ?></label>
@@ -244,12 +256,40 @@ $admins_actifs = count(array_filter($admins, function ($a) { return $a['statut']
                                         </option>
                                         <?php endforeach; ?>
                                     </select>
-                                    <button type="submit" name="definir_role" class="comptes-acces-card__btn comptes-acces-card__btn--save"
-                                            onclick="return confirm('Enregistrer ce rôle pour ce compte ?');">
+                                    <button type="submit" name="definir_role" class="comptes-acces-card__btn comptes-acces-card__btn--save">
                                         <i class="fas fa-floppy-disk" aria-hidden="true"></i> Enregistrer
                                     </button>
                                 </div>
                             </form>
+                            <?php
+                            $delete_confirm_msg = 'Êtes-vous vraiment sûr de vouloir supprimer définitivement le compte de '
+                                . trim(($admin['prenom'] ?? '') . ' ' . ($admin['nom'] ?? ''))
+                                . ' ? Cette action est irréversible : le compte sera effacé de la base et ne pourra pas être récupéré.';
+                            $compte_actif_pour_suppr = ($admin['statut'] ?? '') === 'actif';
+                            ?>
+                            <?php if ($compte_actif_pour_suppr): ?>
+                            <div class="comptes-acces-card__delete-form">
+                                <button type="button"
+                                    class="comptes-acces-card__btn comptes-acces-card__btn--delete"
+                                    disabled
+                                    aria-disabled="true"
+                                    title="Désactivez le compte avant de pouvoir le supprimer">
+                                    <i class="fas fa-trash-alt" aria-hidden="true"></i> Supprimer le compte
+                                </button>
+                            </div>
+                            <?php else: ?>
+                            <form method="post" action="" class="comptes-acces-card__delete-form"
+                                onsubmit='return confirm(<?php echo json_encode(
+                                    $delete_confirm_msg,
+                                    JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT
+                                ); ?>);'>
+                                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($comptes_csrf, ENT_QUOTES, 'UTF-8'); ?>">
+                                <input type="hidden" name="admin_id" value="<?php echo (int) $admin['id']; ?>">
+                                <button type="submit" name="supprimer_compte" class="comptes-acces-card__btn comptes-acces-card__btn--delete">
+                                    <i class="fas fa-trash-alt" aria-hidden="true"></i> Supprimer le compte
+                                </button>
+                            </form>
+                            <?php endif; ?>
                         </div>
                         <?php else: ?>
                         <p class="comptes-acces-card__self-hint">

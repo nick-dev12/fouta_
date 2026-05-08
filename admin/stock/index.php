@@ -14,6 +14,10 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
 
 require_once __DIR__ . '/../includes/require_access.php';
 
+if (empty($_SESSION['admin_csrf'])) {
+    $_SESSION['admin_csrf'] = bin2hex(random_bytes(32));
+}
+
 $success_message = '';
 if (isset($_SESSION['success_message'])) {
     $success_message = $_SESSION['success_message'];
@@ -21,8 +25,13 @@ if (isset($_SESSION['success_message'])) {
 }
 
 require_once __DIR__ . '/../../models/model_categories.php';
+require_once __DIR__ . '/../../models/model_produits.php';
+require_once __DIR__ . '/../../models/model_sous_categories.php';
 $categories = get_all_categories();
 $nb_cat = count($categories);
+$stock_sous_cat_ok = produits_has_column('sous_categorie_id')
+    && function_exists('sous_categories_table_ok')
+    && sous_categories_table_ok();
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -209,30 +218,34 @@ $nb_cat = count($categories);
 
         .stock-cat-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(288px, 1fr));
-            gap: 1.15rem;
+            gap: clamp(0.45rem, 2.2vw, 0.95rem);
+            grid-template-columns: repeat(auto-fill, minmax(0, 250px));
+            justify-content: start;
         }
 
         .stock-cat-card {
             display: flex;
             flex-direction: column;
+            width: 100%;
+            max-width: 250px;
             background: var(--fond-principal);
-            border-radius: var(--stock-radius-sm);
+            border-radius: calc(var(--stock-radius-sm) - 2px);
             overflow: hidden;
-            box-shadow: 0 2px 14px rgba(53, 100, 166, 0.06);
+            box-shadow: 0 1px 10px rgba(53, 100, 166, 0.06);
             transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
             border: 1px solid var(--border-input);
         }
 
         .stock-cat-card:hover {
-            transform: translateY(-4px);
-            box-shadow: var(--ombre-gourmande);
-            border-color: rgba(53, 100, 166, 0.35);
+            transform: translateY(-2px);
+            box-shadow: var(--ombre-douce);
+            border-color: rgba(53, 100, 166, 0.28);
         }
 
         .stock-cat-card__media {
             position: relative;
-            aspect-ratio: 16 / 10;
+            aspect-ratio: 5 / 3;
+            max-height: 120px;
             background: linear-gradient(180deg, var(--fond-secondaire) 0%, var(--blanc-neige) 100%);
             overflow: hidden;
         }
@@ -251,34 +264,34 @@ $nb_cat = count($categories);
             align-items: center;
             justify-content: center;
             color: var(--couleur-dominante);
-            font-size: 2.25rem;
+            font-size: 1.5rem;
             opacity: 0.55;
         }
 
         .stock-cat-card__body {
-            padding: 1.1rem 1.15rem 1.15rem;
+            padding: 0.65rem 0.75rem 0.75rem;
             display: flex;
             flex-direction: column;
             flex: 1;
-            gap: 0.65rem;
+            gap: 0.35rem;
         }
 
         .stock-cat-card__body h3 {
             margin: 0;
-            font-size: 1.05rem;
+            font-size: clamp(0.82rem, 2.8vw, 0.92rem);
             font-weight: 700;
             color: var(--titres);
-            line-height: 1.3;
+            line-height: 1.25;
         }
 
         .stock-cat-card__desc {
             margin: 0;
-            font-size: 0.86rem;
-            line-height: 1.45;
+            font-size: clamp(0.68rem, 2.2vw, 0.76rem);
+            line-height: 1.35;
             color: var(--texte-mute);
             flex: 1;
             display: -webkit-box;
-            -webkit-line-clamp: 3;
+            -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
             overflow: hidden;
         }
@@ -286,23 +299,32 @@ $nb_cat = count($categories);
         .stock-cat-card__actions {
             display: flex;
             flex-wrap: wrap;
-            gap: 0.45rem;
-            margin-top: 0.25rem;
+            gap: clamp(0.25rem, 1.5vw, 0.35rem);
+            margin-top: 0.15rem;
         }
 
         .stock-cat-card__actions a {
-            flex: 1 1 auto;
-            min-width: 6.5rem;
+            flex: 1 1 calc(50% - 0.2rem);
+            min-width: 0;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 0.4rem;
-            padding: 0.5rem 0.65rem;
-            border-radius: 10px;
-            font-size: 0.78rem;
+            gap: 0.25rem;
+            padding: clamp(0.32rem, 1.8vw, 0.42rem) clamp(0.3rem, 1.5vw, 0.45rem);
+            border-radius: 8px;
+            font-size: clamp(0.62rem, 2.4vw, 0.7rem);
             font-weight: 600;
             text-decoration: none;
             transition: background 0.15s, color 0.15s, transform 0.15s;
+        }
+
+        .stock-cat-card__actions a i {
+            font-size: 0.85em;
+        }
+
+        /* Supprimer : pleine largeur sur la 3e ligne */
+        .stock-cat-card__actions .stock-act-del {
+            flex: 1 1 100%;
         }
 
         .stock-act-view {
@@ -338,6 +360,17 @@ $nb_cat = count($categories);
             background: var(--orange);
             color: var(--texte-clair);
             border-color: var(--orange);
+        }
+
+        /* Mobile / petit écran : 2 cartes par ligne, largeur fluide */
+        @media (max-width: 720px) {
+            .stock-cat-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .stock-cat-card {
+                max-width: none;
+            }
         }
 
         .stock-empty {
@@ -400,11 +433,23 @@ $nb_cat = count($categories);
                 <a href="mouvements.php" class="stock-btn stock-btn--ghost">
                     <i class="fas fa-history" aria-hidden="true"></i> Historique des mouvements
                 </a>
+                <?php if ($stock_sous_cat_ok): ?>
+                <a href="sous-categories/index.php" class="stock-btn stock-btn--ghost">
+                    <i class="fas fa-sitemap" aria-hidden="true"></i> Voir les sous-catégories
+                </a>
+                <?php endif; ?>
                 <a href="../categories/ajouter.php" class="stock-btn stock-btn--accent">
                     <i class="fas fa-plus" aria-hidden="true"></i> Nouvelle catégorie
                 </a>
             </div>
         </header>
+
+        <?php if (!empty($_SESSION['produit_form_notice'])): ?>
+        <div class="stock-banner-ok" role="status" style="border-color: var(--border-input); background: var(--bleu-pale);">
+            <i class="fas fa-info-circle" aria-hidden="true"></i>
+            <span><?php echo htmlspecialchars((string) $_SESSION['produit_form_notice'], ENT_QUOTES, 'UTF-8'); ?></span>
+        </div>
+        <?php unset($_SESSION['produit_form_notice']); endif; ?>
 
         <?php
         if (!empty($success_message)) {

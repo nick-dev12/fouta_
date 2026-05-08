@@ -10,6 +10,15 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
 }
 
 require_once __DIR__ . '/../includes/require_access.php';
+require_once __DIR__ . '/../../includes/admin_permissions.php';
+
+$contacts_compta_readonly = (admin_current_role() === 'comptabilite');
+
+if ($contacts_compta_readonly && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $_SESSION['contacts_error'] = 'Les modifications du carnet contacts ne sont pas autorisées pour le profil comptabilité.';
+    header('Location: index.php' . (!empty($_GET['recherche']) ? '?recherche=' . urlencode((string) $_GET['recherche']) : ''));
+    exit;
+}
 
 require_once __DIR__ . '/../../models/model_contacts.php';
 require_once __DIR__ . '/../../models/model_clients_b2b.php';
@@ -85,7 +94,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['import_contacts'])) {
     }
 }
 
-$contacts = get_all_contacts($recherche);
+$contacts = contacts_list_with_compta_stats(get_all_contacts($recherche));
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -98,11 +107,34 @@ $contacts = get_all_contacts($recherche);
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/css/admin-dashboard.css<?php echo asset_version_query(); ?>">
     <style>
-        .contacts-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
-        .contact-card { background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 12px; padding: 16px; }
-        .contact-card-nom { font-weight: 600; color: var(--titres); margin-bottom: 4px; }
-        .contact-card-tel { font-size: 14px; color: #555; }
-        .contact-card-email { font-size: 12px; color: #888; margin-top: 4px; }
+        .contacts-admin-table-wrap { overflow-x: auto; border-radius: 14px; border: 1px solid var(--glass-border); background: var(--glass-bg); box-shadow: var(--glass-shadow); margin-top: 8px; }
+        .contacts-admin-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.88rem; }
+        .contacts-admin-table thead th { padding: 12px 10px; text-align: left; background: linear-gradient(165deg, var(--bleu-principal) 0%, var(--bleu-fonce) 100%); color: var(--texte-clair); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; }
+        .contacts-admin-table tbody td { padding: 11px 10px; border-bottom: 1px solid rgba(53, 100, 166, 0.08); vertical-align: middle; }
+        .contacts-admin-table tbody tr:nth-child(even) td { background: rgba(53, 100, 166, 0.03); }
+        .contacts-admin-table tbody tr:hover td { background: rgba(53, 100, 166, 0.07); }
+        .contacts-admin-table .cnt-num { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; }
+        .contacts-admin-table thead th.cnt-num--payee {
+            background: linear-gradient(165deg, #15803d 0%, #166534 100%);
+            color: #fff;
+        }
+        .contacts-admin-table thead th.cnt-num--due {
+            background: linear-gradient(165deg, var(--orange-fonce) 0%, var(--orange) 100%);
+            color: #fff;
+        }
+        .contacts-admin-table tbody tr:nth-child(even) td.cnt-num--payee { background: rgba(22, 163, 74, 0.1); color: #14532d; }
+        .contacts-admin-table tbody tr:nth-child(odd) td.cnt-num--payee { background: rgba(22, 163, 74, 0.06); color: #14532d; }
+        .contacts-admin-table tbody tr:nth-child(even) td.cnt-num--due { background: rgba(255, 107, 53, 0.12); color: #9a3412; }
+        .contacts-admin-table tbody tr:nth-child(odd) td.cnt-num--due { background: rgba(255, 107, 53, 0.07); color: #9a3412; }
+        .contacts-admin-table tbody tr:hover td.cnt-num--payee { background: rgba(22, 163, 74, 0.2); }
+        .contacts-admin-table tbody tr:hover td.cnt-num--due { background: rgba(255, 107, 53, 0.22); }
+        .contacts-admin-table .cnt-actions { white-space: nowrap; }
+        .contacts-admin-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: flex-end; }
+        .contacts-admin-actions a { display: inline-flex; align-items: center; gap: 4px; padding: 5px 8px; border-radius: 8px; font-size: 0.75rem; font-weight: 600; text-decoration: none; border: 1px solid var(--border-input); background: var(--blanc); color: var(--couleur-dominante); }
+        .contacts-admin-actions a:hover { background: var(--bleu-pale); }
+        .contacts-admin-actions a.cnt-act-primary { background: var(--couleur-dominante); color: #fff; border-color: var(--couleur-dominante); }
+        .contacts-admin-actions a.cnt-act-primary:hover { filter: brightness(1.05); color: #fff; }
+        .contacts-admin-actions a.is-disabled { opacity: 0.45; pointer-events: none; cursor: not-allowed; }
         .modal-actions { display: flex; gap: 12px; margin-top: 20px; }
         .modal-fullscreen { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9999; align-items: center; justify-content: center; padding: 20px; }
         .modal-fullscreen.show { display: flex; }
@@ -130,13 +162,17 @@ $contacts = get_all_contacts($recherche);
     <div class="content-header">
         <h1><i class="fas fa-address-book"></i> Contacts</h1>
         <div class="header-actions">
-            <a href="../users/index.php" class="btn-back"><i class="fas fa-arrow-left"></i> Retour</a>
-            <button type="button" class="btn-primary" id="btn-import-contacts">
-                <i class="fas fa-mobile-alt"></i> Importer depuis le répertoire
-            </button>
-            <button type="button" class="btn-primary" id="btn-add-contact">
-                <i class="fas fa-plus"></i> Ajouter un contact
-            </button>
+            <?php if ($contacts_compta_readonly): ?>
+                <a href="../comptabilite/index.php" class="btn-back"><i class="fas fa-calculator"></i> Comptabilité</a>
+            <?php else: ?>
+                <a href="../users/index.php" class="btn-back"><i class="fas fa-arrow-left"></i> Retour</a>
+                <button type="button" class="btn-primary" id="btn-import-contacts">
+                    <i class="fas fa-mobile-alt"></i> Importer depuis le répertoire
+                </button>
+                <button type="button" class="btn-primary" id="btn-add-contact">
+                    <i class="fas fa-plus"></i> Ajouter un contact
+                </button>
+            <?php endif; ?>
         </div>
     </div>
 
@@ -167,26 +203,57 @@ $contacts = get_all_contacts($recherche);
                 <p>Ajoutez des contacts manuellement ou importez-les depuis votre répertoire téléphonique.</p>
             </div>
         <?php else: ?>
-            <div class="contacts-grid">
-                <?php foreach ($contacts as $c): ?>
-                    <div class="contact-card">
-                        <div class="contact-card-nom"><?php echo htmlspecialchars(trim($c['prenom'] . ' ' . $c['nom'])); ?></div>
-                        <div class="contact-card-tel"><i class="fas fa-phone"></i> <?php echo htmlspecialchars($c['telephone']); ?></div>
-                        <?php if (!empty($c['email'])): ?>
-                            <div class="contact-card-email"><i class="fas fa-envelope"></i> <?php echo htmlspecialchars($c['email']); ?></div>
-                        <?php endif; ?>
-                        <div class="contact-card-actions">
-                            <button type="button" class="btn-modifier-contact btn-edit-contact" data-id="<?php echo (int) $c['id']; ?>"
-                                data-nom="<?php echo htmlspecialchars($c['nom']); ?>"
-                                data-prenom="<?php echo htmlspecialchars($c['prenom'] ?? ''); ?>"
-                                data-telephone="<?php echo htmlspecialchars($c['telephone']); ?>"
-                                data-email="<?php echo htmlspecialchars($c['email'] ?? ''); ?>"
-                                data-type-bl="<?php echo htmlspecialchars(($c['type_client_bl'] ?? 'standard')); ?>">
-                                <i class="fas fa-edit"></i> Modifier
-                            </button>
-                        </div>
-                    </div>
+            <div class="contacts-admin-table-wrap">
+                <table class="contacts-admin-table" id="contacts-admin-list">
+                    <thead>
+                        <tr>
+                            <th scope="col">Contact</th>
+                            <th scope="col">Téléphone</th>
+                            <th scope="col">Email</th>
+                            <th scope="col" class="cnt-num cnt-num--payee">Fact. devis payées</th>
+                            <th scope="col" class="cnt-num cnt-num--due">Fact. devis impayées</th>
+                            <th scope="col" class="cnt-num cnt-num--payee">Fact. BL payées</th>
+                            <th scope="col" class="cnt-num cnt-num--due">Fact. BL non payées</th>
+                            <th scope="col" class="cnt-actions">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                <?php foreach ($contacts as $c):
+                    $co = $c['_compta'] ?? [];
+                    $cid = (int) ($c['id'] ?? 0);
+                    $b2b_id = (int) ($co['b2b_id'] ?? 0);
+                    $href_bl = $b2b_id > 0
+                        ? '../comptabilite/bl-factures-archives.php?client=' . $b2b_id
+                        : '../comptabilite/bl-factures-archives.php';
+                    ?>
+                        <tr>
+                            <td><strong><?php echo htmlspecialchars(trim(($c['prenom'] ?? '') . ' ' . ($c['nom'] ?? ''))); ?></strong></td>
+                            <td><?php echo htmlspecialchars($c['telephone'] ?? '—'); ?></td>
+                            <td><?php echo !empty($c['email']) ? htmlspecialchars((string) $c['email']) : '—'; ?></td>
+                            <td class="cnt-num cnt-num--payee"><?php echo (int) ($co['fd_payees'] ?? 0); ?></td>
+                            <td class="cnt-num cnt-num--due"><?php echo (int) ($co['fd_impayees'] ?? 0); ?></td>
+                            <td class="cnt-num cnt-num--payee"><?php echo (int) ($co['fm_payees'] ?? 0); ?></td>
+                            <td class="cnt-num cnt-num--due"><?php echo (int) ($co['fm_impayees'] ?? 0); ?></td>
+                            <td class="cnt-actions">
+                                <div class="contacts-admin-actions">
+                                    <a href="<?php echo htmlspecialchars($href_bl); ?>" class="cnt-act-primary" title="Archives factures mensuelles BL"><i class="fas fa-file-invoice-dollar" aria-hidden="true"></i> BL</a>
+                                    <a href="../comptabilite/index.php?tab=devis_payes" title="Toutes les factures devis payées (compta)"><i class="fas fa-check-circle" aria-hidden="true"></i> Devis payés</a>
+                                    <?php if (!$contacts_compta_readonly): ?>
+                                    <button type="button" class="btn-modifier-contact btn-edit-contact" style="margin:0;" data-id="<?php echo $cid; ?>"
+                                        data-nom="<?php echo htmlspecialchars($c['nom']); ?>"
+                                        data-prenom="<?php echo htmlspecialchars($c['prenom'] ?? ''); ?>"
+                                        data-telephone="<?php echo htmlspecialchars($c['telephone']); ?>"
+                                        data-email="<?php echo htmlspecialchars($c['email'] ?? ''); ?>"
+                                        data-type-bl="<?php echo htmlspecialchars(($c['type_client_bl'] ?? 'standard')); ?>">
+                                        <i class="fas fa-edit"></i> Modifier
+                                    </button>
+                                    <?php endif; ?>
+                                </div>
+                            </td>
+                        </tr>
                 <?php endforeach; ?>
+                    </tbody>
+                </table>
             </div>
         <?php endif; ?>
     </section>
@@ -350,7 +417,7 @@ $contacts = get_all_contacts($recherche);
                 });
             });
         } else {
-            btnImport.style.display = 'none';
+            if (btnImport) btnImport.style.display = 'none';
         }
     })();
     </script>

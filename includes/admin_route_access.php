@@ -107,10 +107,16 @@ if (!function_exists('admin_route_relative_path')) {
                     || $starts('commercial/');
 
             case 'comptabilite':
-                if ($p === 'comptabilite/index.php' || $p === 'comptabilite/bl-fiche-client.php') {
+                if ($starts('comptabilite/')) {
+                    return true;
+                }
+                if ($p === 'contacts/index.php') {
                     return true;
                 }
                 if ($p === 'commandes/historique-ventes.php') {
+                    return true;
+                }
+                if ($p === 'devis/devis_par_client.php') {
                     return true;
                 }
                 $compta_devis = [
@@ -133,6 +139,7 @@ if (!function_exists('admin_route_relative_path')) {
             case 'caissier':
                 return $p === 'caisse/encaisser-ticket.php'
                     || $p === 'caisse/historique-encaissements.php'
+                    || $p === 'caisse/depenses.php'
                     || $p === 'caisse/post.php';
 
             case 'gestion_stock':

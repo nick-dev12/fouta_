@@ -66,16 +66,28 @@ $total_ht = (float) ($bl['total_ht'] ?? 0);
                 <?php endif; ?>
             </p>
         </div>
-        <div class="header-actions bl-page-header__actions bl-page-header__actions--stack">
+        <div class="header-actions bl-page-header__actions bl-page-header__actions--stack bl-voir-header-actions">
             <?php if ($client_b2b_id > 0): ?>
-                <a href="bl_par_client.php?id=<?php echo $client_b2b_id; ?>" class="btn-secondary"><i class="fas fa-building" aria-hidden="true"></i> Tous les BL du client</a>
+                <a href="bl_par_client.php?id=<?php echo $client_b2b_id; ?>" class="bl-act-btn bl-act-btn--client">
+                    <span class="bl-act-btn__ic" aria-hidden="true"><i class="fas fa-building"></i></span>
+                    <span class="bl-act-btn__label">Tous les BL du client</span>
+                </a>
             <?php endif; ?>
-            <a href="bl_facture.php?id=<?php echo (int) $bl_id; ?>" class="btn-primary" target="_blank" rel="noopener"><i class="fas fa-file-invoice" aria-hidden="true"></i> Facture</a>
+            <a href="bl_facture.php?id=<?php echo (int) $bl_id; ?>" class="bl-act-btn bl-act-btn--facture">
+                <span class="bl-act-btn__ic" aria-hidden="true"><i class="fas fa-file-invoice"></i></span>
+                <span class="bl-act-btn__label">Facture</span>
+            </a>
             <?php if (!bl_est_statut_verrouille($st)): ?>
-            <a href="bl_modifier.php?id=<?php echo (int) $bl_id; ?>" class="btn-secondary"><i class="fas fa-edit" aria-hidden="true"></i> Réajuster</a>
+            <a href="bl_modifier.php?id=<?php echo (int) $bl_id; ?>" class="bl-act-btn bl-act-btn--edit">
+                <span class="bl-act-btn__ic" aria-hidden="true"><i class="fas fa-edit"></i></span>
+                <span class="bl-act-btn__label">Réajuster</span>
+            </a>
             <?php endif; ?>
             <?php if (br_retour_tables_available() && !empty($lignes)): ?>
-            <a href="br_creation.php?bl_id=<?php echo (int) $bl_id; ?>" class="btn-secondary"><i class="fas fa-undo" aria-hidden="true"></i> Bon de retour</a>
+            <a href="br_creation.php?bl_id=<?php echo (int) $bl_id; ?>" class="bl-act-btn bl-act-btn--retour">
+                <span class="bl-act-btn__ic" aria-hidden="true"><i class="fas fa-undo"></i></span>
+                <span class="bl-act-btn__label">Bon de retour</span>
+            </a>
             <?php endif; ?>
         </div>
     </div>
@@ -115,6 +127,19 @@ $total_ht = (float) ($bl['total_ht'] ?? 0);
                     </div>
                 </div>
             </div>
+            <?php if ($st === 'brouillon'): ?>
+            <div class="bl-voir-hero__cta">
+                <form method="post" action="bl_statut.php" class="bl-voir-hero__validate-form">
+                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['admin_csrf']); ?>">
+                    <input type="hidden" name="bl_id" value="<?php echo (int) $bl_id; ?>">
+                    <input type="hidden" name="statut" value="valide">
+                    <button type="submit" class="bl-act-btn bl-act-btn--validate">
+                        <span class="bl-act-btn__ic" aria-hidden="true"><i class="fas fa-check-circle"></i></span>
+                        <span class="bl-act-btn__label">Valider (comptabilité)</span>
+                    </button>
+                </form>
+            </div>
+            <?php endif; ?>
         </div>
 
         <div class="bl-voir-panels">
@@ -217,19 +242,13 @@ $total_ht = (float) ($bl['total_ht'] ?? 0);
 
         <div class="bl-voir-actions" role="group" aria-label="Actions sur le bon de livraison">
             <?php if ($st === 'brouillon'): ?>
-                <form method="post" action="bl_statut.php" class="bl-voir-actions__form">
-                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['admin_csrf']); ?>">
-                    <input type="hidden" name="bl_id" value="<?php echo (int) $bl_id; ?>">
-                    <input type="hidden" name="statut" value="valide">
-                    <button type="submit" class="btn-primary"><i class="fas fa-check-circle" aria-hidden="true"></i> Valider (comptabilité)</button>
-                </form>
-            <?php endif; ?>
-
-            <?php if ($st === 'brouillon'): ?>
                 <form method="post" action="bl_supprimer.php" class="bl-voir-actions__form" onsubmit="return confirm('Supprimer définitivement ce BL ?');">
                     <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['admin_csrf']); ?>">
                     <input type="hidden" name="bl_id" value="<?php echo (int) $bl_id; ?>">
-                    <button type="submit" class="btn-secondary bl-voir-btn-delete"><i class="fas fa-trash" aria-hidden="true"></i> Supprimer</button>
+                    <button type="submit" class="bl-act-btn bl-act-btn--danger">
+                        <span class="bl-act-btn__ic" aria-hidden="true"><i class="fas fa-trash-alt"></i></span>
+                        <span class="bl-act-btn__label">Supprimer</span>
+                    </button>
                 </form>
             <?php endif; ?>
         </div>

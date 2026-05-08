@@ -14,6 +14,10 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
 
 require_once __DIR__ . '/../includes/require_access.php';
 
+if (empty($_SESSION['admin_csrf'])) {
+    $_SESSION['admin_csrf'] = bin2hex(random_bytes(32));
+}
+
 // Récupérer l'ID du produit
 $produit_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
 
@@ -47,10 +51,57 @@ if (isset($result['success']) && $result['success']) {
 // Récupérer les catégories (stock géré via produits.stock)
 require_once __DIR__ . '/../../models/model_categories.php';
 require_once __DIR__ . '/../../models/model_fournisseurs.php';
+require_once __DIR__ . '/../../models/model_sous_categories.php';
 $categories = get_all_categories();
 
 $has_ff_col = produits_has_column('fournisseur_id');
 $fournisseurs_catalogue = $has_ff_col ? get_all_fournisseurs_ordered_by_nom() : [];
+
+$has_prix_achat_col = produits_has_column('prix_achat');
+$has_sous_cat_col = produits_has_column('sous_categorie_id')
+    && function_exists('sous_categories_table_ok')
+    && sous_categories_table_ok();
+$sous_categories_all = $has_sous_cat_col ? get_all_sous_categories_with_categorie_nom() : [];
+$sous_cat_preselect = isset($_GET['sous_categorie_id']) ? (int) $_GET['sous_categorie_id'] : 0;
+$has_ident_col = produits_has_column('identifiant_interne');
+$has_img_etiq_col = produits_has_column('image_etiquette_fpl');
+
+$sous_cat_form_val = 0;
+if ($has_sous_cat_col) {
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && array_key_exists('sous_categorie_id', $_POST)) {
+        $sous_cat_form_val = (int) $_POST['sous_categorie_id'];
+    } elseif ($sous_cat_preselect > 0) {
+        $sous_cat_form_val = $sous_cat_preselect;
+    } else {
+        $sous_cat_form_val = isset($produit['sous_categorie_id']) ? (int) $produit['sous_categorie_id'] : 0;
+    }
+}
+
+$prix_achat_form_val = '';
+if ($has_prix_achat_col) {
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && array_key_exists('prix_achat', $_POST)) {
+        $prix_achat_form_val = trim((string) $_POST['prix_achat']);
+    } else {
+        $pa = $produit['prix_achat'] ?? null;
+        if ($pa !== null && $pa !== '') {
+            $prix_achat_form_val = is_numeric($pa) ? (string) $pa : '';
+        }
+    }
+}
+
+$ref6_form_val = '';
+if ($has_ident_col) {
+    if (isset($_POST['reference_suffix6'])) {
+        $ref6_form_val = preg_replace('/\D/', '', (string) $_POST['reference_suffix6']);
+    } else {
+        $cur = strtoupper(trim((string) ($produit['identifiant_interne'] ?? '')));
+        if (preg_match('/^FPL(\d{3})(\d{6})$/', $cur, $m)) {
+            $ref6_form_val = $m[2];
+        } elseif (preg_match('/^FPL(\d{6})$/', $cur, $m)) {
+            $ref6_form_val = $m[1];
+        }
+    }
+}
 
 $fournisseur_id_form_val = '';
 if (!empty($produit['fournisseur_id'])) {
@@ -112,6 +163,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
         </div>
         <?php endif; ?>
 
+        <?php if (!empty($_SESSION['produit_form_notice'])): ?>
+        <div class="message success" role="status" style="margin-bottom:1rem;">
+            <i class="fas fa-info-circle" aria-hidden="true"></i> <?php echo htmlspecialchars((string) $_SESSION['produit_form_notice'], ENT_QUOTES, 'UTF-8'); ?>
+        </div>
+        <?php unset($_SESSION['produit_form_notice']); endif; ?>
+
         <form method="POST" action="" enctype="multipart/form-data" class="pm-form" id="form-produit-modifier">
         <div class="pm-sections">
             <section class="pm-card" aria-labelledby="pm-sec-info">
@@ -168,7 +225,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
                 <div class="pm-card__body">
             <div class="form-row">
                 <div class="form-group">
-                    <label for="prix">Prix (FCFA)</label>
+                    <label for="prix">Prix de vente (FCFA)</label>
                     <input type="number" id="prix" name="prix" step="0.01" min="0"
                         value="<?php echo htmlspecialchars((string) $produit['prix'], ENT_QUOTES, 'UTF-8'); ?>">
                     <small class="form-hint">Facultatif — vide = 0&nbsp;FCFA.</small>
@@ -180,6 +237,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
                         value="<?php echo $produit['prix_promotion'] ?? ''; ?>">
                 </div>
             </div>
+            <?php if ($has_prix_achat_col): ?>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="prix_achat">Prix d'achat (FCFA)</label>
+                    <input type="number" id="prix_achat" name="prix_achat" step="0.01" min="0"
+                        value="<?php echo htmlspecialchars($prix_achat_form_val, ENT_QUOTES, 'UTF-8'); ?>">
+                    <small class="form-hint">Facultatif.</small>
+                </div>
+            </div>
+            <?php endif; ?>
 
             <div class="form-row">
                 <div class="form-group">
@@ -193,9 +260,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
                     <select id="categorie_id" name="categorie_id" required>
                         <option value="">Sélectionner une catégorie</option>
                         <?php if ($categories && count($categories) > 0): ?>
+                        <?php
+                        $categorie_id_selected = (int) ($produit['categorie_id'] ?? 0);
+                        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['categorie_id'])) {
+                            $categorie_id_selected = (int) $_POST['categorie_id'];
+                        }
+                        ?>
                         <?php foreach ($categories as $cat): ?>
                         <option value="<?php echo $cat['id']; ?>"
-                            <?php echo ($produit['categorie_id'] == $cat['id']) ? 'selected' : ''; ?>>
+                            <?php echo ($categorie_id_selected == (int) $cat['id']) ? 'selected' : ''; ?>>
                             <?php echo htmlspecialchars($cat['nom']); ?>
                         </option>
                         <?php endforeach; ?>
@@ -211,6 +284,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
                     <?php endif; ?>
                 </div>
             </div>
+            <?php if ($has_sous_cat_col): ?>
+            <div class="form-row" id="sous-categorie-field-row">
+                <div class="form-group">
+                    <label for="sous_categorie_id">Sous-catégorie</label>
+                    <select id="sous_categorie_id" name="sous_categorie_id">
+                        <option value="">— Aucune —</option>
+                        <?php foreach ($sous_categories_all as $sc): ?>
+                        <option value="<?php echo (int) $sc['id']; ?>"
+                            data-categorie-id="<?php echo (int) $sc['categorie_id']; ?>"
+                            <?php echo $sous_cat_form_val === (int) $sc['id'] ? 'selected' : ''; ?>>
+                            <?php echo htmlspecialchars($sc['nom']); ?>
+                        </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <small class="form-hint">Affiché seulement si la catégorie possède des sous-catégories. <a href="../stock/index.php">Créer une sous-catégorie</a>.</small>
+                </div>
+            </div>
+            <?php endif; ?>
                 </div>
             </section>
 
@@ -224,20 +315,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
                 </div>
                 <div class="pm-card__body">
             <?php
-            $identifiant_ro = $produit['identifiant_interne'] ?? '';
             $etage_val = isset($_POST['etage']) ? $_POST['etage'] : ($produit['etage'] ?? '');
             $rayon_val = isset($_POST['numero_rayon']) ? $_POST['numero_rayon'] : ($produit['numero_rayon'] ?? '');
             ?>
-            <?php if ($identifiant_ro !== ''): ?>
+            <?php if ($has_ident_col): ?>
             <div class="form-group">
-                <label>Identifiant interne (FPL)</label>
-                <input type="text" readonly value="<?php echo htmlspecialchars($identifiant_ro); ?>"
-                    class="pm-input-readonly">
-                <small class="form-hint">Référence interne unique, non modifiable.</small>
+                <label for="reference_suffix6">6 derniers chiffres de la référence *</label>
+                <?php if (!empty($produit['identifiant_interne'])): ?>
+                <p class="form-hint" style="margin-bottom:8px;">Code actuel : <strong><?php echo htmlspecialchars((string) $produit['identifiant_interne'], ENT_QUOTES, 'UTF-8'); ?></strong></p>
+                <?php endif; ?>
+                <input type="text" id="reference_suffix6" name="reference_suffix6" maxlength="6"
+                    inputmode="numeric" pattern="[0-9]{6}" autocomplete="off" placeholder="Ex. 123456"
+                    value="<?php echo htmlspecialchars($ref6_form_val, ENT_QUOTES, 'UTF-8'); ?>">
+                <small class="form-hint">Format attendu : <strong>FPL</strong> + 3 chiffres (préfixe) + ces 6 chiffres. Anciens codes FPL à 6 chiffres sont pris en charge : le préfixe sera réattribué si besoin.</small>
             </div>
             <?php else: ?>
             <p class="pm-hint">
-                <i class="fas fa-info-circle"></i> L’identifiant <strong>FPLxxxxxx</strong> sera généré après migration de la base de données si absent.
+                <i class="fas fa-info-circle"></i> Référence FPL : activez la colonne <code>identifiant_interne</code> (migrations).
             </p>
             <?php endif; ?>
             <div class="form-row">
@@ -499,6 +593,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
                 <div id="preview-supplementaires" class="image-preview-grid"></div>
                 <small class="form-hint">Formats : JPG, PNG, GIF, WEBP. Vous pouvez retirer toutes les images si besoin.</small>
             </div>
+            <?php if ($has_img_etiq_col):
+                $etiq_cur = trim((string) ($produit['image_etiquette_fpl'] ?? ''));
+                ?>
+            <div class="form-group" style="margin-top: 1.25rem;">
+                <label for="image_etiquette_fpl"><i class="fas fa-tag" aria-hidden="true"></i> Photo pour l’étiquette FPL (optionnel)</label>
+                <p class="form-hint" style="margin-bottom: 10px;">Remplace les pictogrammes sur l’étiquette imprimable (page Ajuster le stock).</p>
+                <?php if ($etiq_cur !== ''): ?>
+                <p class="form-hint" style="margin-bottom:8px;">Image actuelle :</p>
+                <div class="pm-etiquette-fpl-preview-wrap">
+                    <img src="../../upload/<?php echo htmlspecialchars($etiq_cur, ENT_QUOTES, 'UTF-8'); ?>" alt="" class="pm-etiquette-fpl-preview-img" width="200" onerror="this.style.display='none'">
+                </div>
+                <?php endif; ?>
+                <label for="image_etiquette_fpl" class="pm-upload-label" style="margin-top:10px;">
+                    <i class="fas fa-image" aria-hidden="true"></i> <?php echo $etiq_cur !== '' ? 'Remplacer l’image' : 'Choisir une image'; ?>
+                </label>
+                <input type="file" id="image_etiquette_fpl" name="image_etiquette_fpl" accept="image/*" class="pm-file-hidden">
+                <div id="preview-image-etiquette-fpl-mod" class="pm-etiquette-fpl-preview-wrap" aria-live="polite"></div>
+                <small class="form-hint"><?php echo $etiq_cur !== '' ? 'Sans nouveau fichier, l’image actuelle est conservée.' : 'Sans image, les pictogrammes s’affichent sur l’étiquette.'; ?></small>
+            </div>
+            <?php endif; ?>
                 </div>
             </section>
 
@@ -554,6 +668,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
         }
         if (inputSupp) inputSupp.addEventListener('change', function() {
             previewMultipleImages(this, 'preview-supplementaires');
+        });
+    })();
+    (function() {
+        var inp = document.getElementById('image_etiquette_fpl');
+        var box = document.getElementById('preview-image-etiquette-fpl-mod');
+        if (!inp || !box) {
+            return;
+        }
+        inp.addEventListener('change', function () {
+            box.innerHTML = '';
+            var f = inp.files && inp.files[0];
+            if (!f || !f.type.match(/^image\//)) {
+                return;
+            }
+            var reader = new FileReader();
+            reader.onload = function (e) {
+                var im = document.createElement('img');
+                im.src = e.target.result;
+                im.alt = 'Aperçu étiquette FPL';
+                im.className = 'pm-etiquette-fpl-preview-img';
+                box.appendChild(im);
+            };
+            reader.readAsDataURL(f);
         });
     })();
     (function() {
@@ -779,4 +916,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
         }
     })();
     </script>
+    <?php if ($has_sous_cat_col): ?>
+    <script>
+        (function () {
+            var cat = document.getElementById('categorie_id');
+            var sub = document.getElementById('sous_categorie_id');
+            var row = document.getElementById('sous-categorie-field-row');
+            if (!cat || !sub || !row) return;
+
+            function applySousCategorieFiltre() {
+                var cid = String(cat.value || '');
+                var i, o;
+                var countForCat = 0;
+
+                for (i = 0; i < sub.options.length; i++) {
+                    o = sub.options[i];
+                    if (!o.value) {
+                        continue;
+                    }
+                    var match = cid !== '' && o.getAttribute('data-categorie-id') === cid;
+                    o.hidden = !match;
+                    if (match) {
+                        countForCat++;
+                    }
+                }
+
+                var sel = sub.options[sub.selectedIndex];
+                if (sel && sel.value && (cid === '' || sel.getAttribute('data-categorie-id') !== cid)) {
+                    sub.value = '';
+                }
+
+                if (cid === '' || countForCat === 0) {
+                    row.style.display = 'none';
+                    sub.value = '';
+                } else {
+                    row.style.removeProperty('display');
+                    if (sub.options[0] && !sub.options[0].value) {
+                        sub.options[0].hidden = false;
+                    }
+                }
+            }
+
+            cat.addEventListener('change', applySousCategorieFiltre);
+            applySousCategorieFiltre();
+        })();
+    </script>
+    <?php endif; ?>
     <?php include '../includes/footer.php'; ?>

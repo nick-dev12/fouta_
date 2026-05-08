@@ -1,0 +1,610 @@
+/**
+ * Paramètres bulletin de paie — mise en page élégante (icônes colorées, sections structurées)
+ */
+
+/* ——— En-tête page ——— */
+.page-bulletin-paie-params .bpp-hero {
+  display: flex;
+  gap: 1.25rem;
+  align-items: flex-start;
+  margin-bottom: 1.75rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--glass-border, rgba(0, 0, 0, 0.08));
+}
+
+.page-bulletin-paie-params .bpp-hero__icon-wrap {
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(53, 100, 166, 0.12);
+  color: var(--couleur-dominante, #3564a6);
+  font-size: 1.35rem;
+}
+
+.page-bulletin-paie-params .bpp-hero__text {
+  min-width: 0;
+}
+
+.page-bulletin-paie-params .bpp-hero__eyebrow {
+  margin: 0 0 0.35rem;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--couleur-dominante, #3564a6);
+}
+
+.page-bulletin-paie-params .bpp-hero__eyebrow a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.page-bulletin-paie-params .bpp-hero__eyebrow a:hover {
+  text-decoration: underline;
+}
+
+.page-bulletin-paie-params .bpp-hero__title {
+  margin: 0 0 0.5rem;
+  font-family: var(--font-titres, Georgia, serif);
+  font-size: clamp(1.4rem, 2.5vw, 1.85rem);
+  font-weight: 700;
+  color: var(--titres, #0d0d0d);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.page-bulletin-paie-params .bpp-hero__lead {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.6;
+  color: var(--texte-mute, var(--gris-moyen));
+  max-width: 42rem;
+}
+
+.page-bulletin-paie-params .bpp-hero__lead strong {
+  color: var(--titres);
+  font-weight: 700;
+}
+
+/* ——— Grille formulaire ——— */
+.page-bulletin-paie-params .bpp-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.35rem;
+}
+
+/* ——— Carte section ——— */
+.page-bulletin-paie-params .bpp-section {
+  background: var(--glass-bg, #fff);
+  border: 1px solid var(--glass-border, rgba(0, 0, 0, 0.08));
+  border-radius: 18px;
+  padding: 0;
+  overflow: hidden;
+  box-shadow: 0 4px 24px rgba(53, 100, 166, 0.06);
+}
+
+.page-bulletin-paie-params .bpp-section__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1.15rem 1.35rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(250, 252, 254, 0.98));
+}
+
+.page-bulletin-paie-params .bpp-section__head-text {
+  min-width: 0;
+}
+
+.page-bulletin-paie-params .bpp-section__title {
+  margin: 0 0 0.25rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--titres, #0d0d0d);
+  letter-spacing: -0.01em;
+}
+
+.page-bulletin-paie-params .bpp-section__subtitle {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--gris-moyen, #737373);
+  font-weight: 500;
+}
+
+.page-bulletin-paie-params .bpp-section__body {
+  padding: 1.25rem 1.35rem 1.35rem;
+}
+
+.page-bulletin-paie-params .bpp-section__body.bpp-employer-body {
+  padding: 0;
+}
+
+/* Icônes par thème (fond pastel + icône saturée) */
+.page-bulletin-paie-params .bpp-ic {
+  flex-shrink: 0;
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.05rem;
+}
+
+.page-bulletin-paie-params .bpp-ic--employer {
+  background: rgba(53, 100, 166, 0.14);
+  color: #1e4a7a;
+}
+
+.page-bulletin-paie-params .bpp-ic--gains {
+  background: rgba(13, 148, 136, 0.14);
+  color: #0f766e;
+}
+
+.page-bulletin-paie-params .bpp-ic--retenues {
+  background: rgba(225, 29, 72, 0.12);
+  color: #be123c;
+}
+
+.page-bulletin-paie-params .bpp-ic--travail {
+  background: rgba(217, 119, 6, 0.14);
+  color: #b45309;
+}
+
+.page-bulletin-paie-params .bpp-ic--mentions {
+  background: rgba(124, 58, 237, 0.12);
+  color: #6d28d9;
+}
+
+.page-bulletin-paie-params .bpp-ic--info {
+  background: rgba(53, 100, 166, 0.1);
+  color: var(--couleur-dominante, #3564a6);
+}
+
+/* Bandeau thème en haut de carte */
+.page-bulletin-paie-params .bpp-section--employer {
+  border-top: 3px solid rgba(53, 100, 166, 0.55);
+}
+
+/* ——— Bloc employeur (identité + mentions légales) ——— */
+.page-bulletin-paie-params .bpp-employer-body {
+  padding: 0;
+  background:
+    radial-gradient(ellipse 120% 80% at 100% 0%, rgba(53, 100, 166, 0.07), transparent 55%),
+    radial-gradient(ellipse 90% 60% at 0% 100%, rgba(15, 118, 110, 0.05), transparent 50%),
+    linear-gradient(180deg, #fbfcfe 0%, #ffffff 38%);
+}
+
+.page-bulletin-paie-params .bpp-employer-lead {
+  margin: 0;
+  padding: 1.15rem 1.35rem 1rem;
+  font-size: 0.875rem;
+  line-height: 1.62;
+  color: var(--gris-moyen, #737373);
+  border-bottom: 1px solid rgba(53, 100, 166, 0.1);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.page-bulletin-paie-params .bpp-employer-lead strong {
+  color: #1e4a7a;
+  font-weight: 700;
+}
+
+.page-bulletin-paie-params .bpp-employer-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 1.15rem 1.35rem 1.35rem;
+}
+
+.page-bulletin-paie-params .bpp-employer-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  margin-bottom: 1.1rem;
+}
+
+.page-bulletin-paie-params .bpp-field {
+  margin: 0;
+}
+
+.page-bulletin-paie-params .bpp-field__shell {
+  display: flex;
+  align-items: stretch;
+  gap: 0.9rem;
+  padding: 0.95rem 1rem;
+  border-radius: 14px;
+  border: 1px solid rgba(53, 100, 166, 0.14);
+  background: linear-gradient(165deg, #ffffff 0%, rgba(250, 252, 254, 0.98) 100%);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.9) inset,
+    0 4px 18px rgba(53, 100, 166, 0.06);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.page-bulletin-paie-params .bpp-field__shell:hover {
+  border-color: rgba(53, 100, 166, 0.28);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.9) inset,
+    0 8px 28px rgba(53, 100, 166, 0.1);
+}
+
+.page-bulletin-paie-params .bpp-field__shell--top {
+  align-items: flex-start;
+}
+
+.page-bulletin-paie-params .bpp-field--primary .bpp-field__shell {
+  border-color: rgba(53, 100, 166, 0.22);
+  background: linear-gradient(145deg, rgba(53, 100, 166, 0.04) 0%, #ffffff 48%);
+}
+
+.page-bulletin-paie-params .bpp-field--compact .bpp-field__shell {
+  align-items: center;
+}
+
+.page-bulletin-paie-params .bpp-field__ic {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.05rem;
+  background: rgba(53, 100, 166, 0.13);
+  color: #1e4976;
+}
+
+.page-bulletin-paie-params .bpp-field--address .bpp-field__ic {
+  background: rgba(13, 148, 136, 0.14);
+  color: #0d5c52;
+}
+
+.page-bulletin-paie-params .bpp-field__ic--sm {
+  width: 38px;
+  height: 38px;
+  font-size: 0.92rem;
+  border-radius: 10px;
+}
+
+.page-bulletin-paie-params .bpp-field__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.page-bulletin-paie-params .bpp-field__body label {
+  font-weight: 700;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--gris-fonce, #2d2d2d);
+  margin: 0;
+}
+
+.page-bulletin-paie-params .bpp-field__hint {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--gris-moyen, #737373);
+  line-height: 1.4;
+}
+
+.page-bulletin-paie-params .bpp-employer-body .bpp-field__body input[type='text'],
+.page-bulletin-paie-params .bpp-employer-body .bpp-field__body textarea {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  border-radius: 10px;
+  border: 1px solid rgba(53, 100, 166, 0.2);
+  padding: 0.62rem 0.85rem;
+  font-size: 0.94rem;
+  font-weight: 500;
+  color: var(--titres, #0d0d0d);
+  background: #fff;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.page-bulletin-paie-params .bpp-employer-body .bpp-field__body textarea {
+  min-height: 5.5rem;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.page-bulletin-paie-params .bpp-employer-body .bpp-field__body input::placeholder,
+.page-bulletin-paie-params .bpp-employer-body .bpp-field__body textarea::placeholder {
+  color: rgba(115, 115, 115, 0.65);
+  font-weight: 400;
+}
+
+.page-bulletin-paie-params .bpp-employer-body .bpp-field__body input:focus,
+.page-bulletin-paie-params .bpp-employer-body .bpp-field__body textarea:focus {
+  outline: none;
+  border-color: var(--couleur-dominante, #3564a6);
+  box-shadow: 0 0 0 3px rgba(53, 100, 166, 0.14);
+}
+
+.page-bulletin-paie-params .bpp-employer-legal {
+  padding: 1rem 1rem 0.15rem;
+  border-radius: 16px;
+  border: 1px dashed rgba(53, 100, 166, 0.28);
+  background: rgba(53, 100, 166, 0.03);
+}
+
+.page-bulletin-paie-params .bpp-employer-legal__title {
+  margin: 0 0 0.35rem;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #1e4a7a;
+  letter-spacing: -0.01em;
+}
+
+.page-bulletin-paie-params .bpp-employer-legal__title i {
+  opacity: 0.85;
+  font-size: 0.88rem;
+}
+
+.page-bulletin-paie-params .bpp-employer-legal__lead {
+  margin: 0 0 0.85rem;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--gris-moyen, #737373);
+  font-weight: 500;
+}
+
+.page-bulletin-paie-params .bpp-employer-legal-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+}
+
+.page-bulletin-paie-params .bpp-employer-legal .bpp-field__shell {
+  padding: 0.75rem 0.85rem;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+}
+
+.page-bulletin-paie-params .bpp-employer-legal .bpp-field__ic {
+  background: rgba(53, 100, 166, 0.1);
+  color: #274e7d;
+}
+
+.page-bulletin-paie-params .bpp-employer-legal .bpp-field:nth-child(2) .bpp-field__ic {
+  background: rgba(124, 58, 237, 0.1);
+  color: #5b21b6;
+}
+
+.page-bulletin-paie-params .bpp-employer-legal .bpp-field:nth-child(3) .bpp-field__ic {
+  background: rgba(217, 119, 6, 0.12);
+  color: #b45309;
+}
+
+@media (max-width: 900px) {
+  .page-bulletin-paie-params .bpp-employer-legal-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .page-bulletin-paie-params .bpp-employer-layout {
+    padding: 1rem 1.05rem 1.2rem;
+  }
+
+  .page-bulletin-paie-params .bpp-employer-lead {
+    padding: 1rem 1.05rem;
+    font-size: 0.82rem;
+  }
+
+  .page-bulletin-paie-params .bpp-field__shell {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .page-bulletin-paie-params .bpp-field__shell--top {
+    flex-direction: column;
+  }
+
+  .page-bulletin-paie-params .bpp-hero {
+    flex-direction: column;
+  }
+}
+  border-top: 3px solid rgba(13, 148, 136, 0.55);
+}
+
+.page-bulletin-paie-params .bpp-section--retenues {
+  border-top: 3px solid rgba(225, 29, 72, 0.5);
+}
+
+.page-bulletin-paie-params .bpp-section--travail {
+  border-top: 3px solid rgba(217, 119, 6, 0.55);
+}
+
+.page-bulletin-paie-params .bpp-section--mentions {
+  border-top: 3px solid rgba(124, 58, 237, 0.5);
+}
+
+/* Champs texte (autres sections si besoin) */
+.page-bulletin-paie-params .bpp-section__body:not(.bpp-employer-body) input[type='text'],
+.page-bulletin-paie-params .bpp-section__body:not(.bpp-employer-body) textarea {
+  border-radius: 10px;
+  border: 1px solid var(--border-input, rgba(53, 100, 166, 0.2));
+  padding: 0.55rem 0.75rem;
+  font-size: 0.92rem;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.page-bulletin-paie-params .bpp-section__body:not(.bpp-employer-body) input:focus,
+.page-bulletin-paie-params .bpp-section__body:not(.bpp-employer-body) textarea:focus {
+  outline: none;
+  border-color: var(--couleur-dominante, #3564a6);
+  box-shadow: 0 0 0 3px rgba(53, 100, 166, 0.15);
+}
+
+/* Cases à cocher — style chip */
+.page-bulletin-paie-params .bpp-check-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.page-bulletin-paie-params .bpp-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0.65rem 0.85rem;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.07);
+  background: rgba(250, 252, 254, 0.9);
+  cursor: pointer;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--titres);
+  line-height: 1.35;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease,
+    box-shadow 0.12s ease;
+}
+
+.page-bulletin-paie-params .bpp-check:hover {
+  background: #fff;
+  border-color: rgba(53, 100, 166, 0.2);
+  box-shadow: 0 2px 10px rgba(53, 100, 166, 0.08);
+}
+
+.page-bulletin-paie-params .bpp-check.is-checked,
+.page-bulletin-paie-params .bpp-check:has(input:checked) {
+  background: rgba(53, 100, 166, 0.08);
+  border-color: rgba(53, 100, 166, 0.35);
+  color: #1e4a7a;
+}
+
+.page-bulletin-paie-params .bpp-check input {
+  margin-top: 0.2rem;
+  flex-shrink: 0;
+  accent-color: var(--couleur-dominante, #3564a6);
+}
+
+/* Bandeau calcul */
+.page-bulletin-paie-params .bpp-note {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  padding: 1rem 1.2rem;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(53, 100, 166, 0.08), rgba(53, 100, 166, 0.03));
+  border: 1px solid rgba(53, 100, 166, 0.15);
+  font-size: 0.86rem;
+  line-height: 1.55;
+  color: var(--gris-fonce, #2d3748);
+}
+
+.page-bulletin-paie-params .bpp-note strong {
+  color: var(--couleur-dominante, #3564a6);
+}
+
+.page-bulletin-paie-params .bpp-note .bpp-ic {
+  width: 40px;
+  height: 40px;
+  font-size: 0.95rem;
+}
+
+/* Actions */
+.page-bulletin-paie-params .bpp-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 0.25rem;
+}
+
+.page-bulletin-paie-params .bpp-actions .btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  box-shadow: 0 4px 16px rgba(53, 100, 166, 0.25);
+}
+
+.page-bulletin-paie-params .req {
+  color: #c0392b;
+  font-weight: 700;
+}
+
+/* Retenues : grille avec taux % */
+.page-bulletin-paie-params .bpp-section__subtitle--inline {
+  margin: 0 0 1rem;
+  font-size: 0.84rem;
+  line-height: 1.5;
+  color: var(--gris-moyen, #737373);
+}
+
+.page-bulletin-paie-params .bpp-check-grid--retenues {
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.page-bulletin-paie-params .bpp-ret-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem 1.25rem;
+  padding: 0.75rem 1rem;
+  border-radius: 14px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  background: rgba(255, 255, 255, 0.65);
+}
+
+.page-bulletin-paie-params .bpp-ret-row .bpp-check {
+  flex: 1 1 220px;
+}
+
+.page-bulletin-paie-params .bpp-ret-taux {
+  flex: 0 0 140px;
+}
+
+.page-bulletin-paie-params .bpp-ret-taux label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--gris-moyen);
+  margin-bottom: 0.3rem;
+}
+
+.page-bulletin-paie-params .bpp-input-taux {
+  width: 100%;
+  padding: 0.45rem 0.55rem;
+  border-radius: 10px;
+  border: 1px solid var(--border-input, rgba(53, 100, 166, 0.2));
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.page-bulletin-paie-params .bpp-input-taux:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+@media (max-width: 560px) {
+  .page-bulletin-paie-params .bpp-ret-taux {
+    flex: 1 1 100%;
+  }
+}

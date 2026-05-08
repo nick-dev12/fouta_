@@ -74,8 +74,6 @@ if ($client_nom === '') {
     $erreur = 'Le prénom du client est requis.';
 } elseif ($client_telephone === '') {
     $erreur = 'Le téléphone du client est requis.';
-} elseif ($adresse_livraison === '') {
-    $erreur = "L'adresse de livraison est requise.";
 } elseif (empty($items)) {
     $erreur = 'Ajoutez au moins un produit.';
 }
@@ -170,7 +168,9 @@ if (empty($verif_plafond['ok'])) {
     exit;
 }
 
-$res = create_bl_manuel((int) $client['id'], $date_bl, $notes !== '' ? $notes : null, $lignes, (int) $_SESSION['admin_id'], $statut);
+$tva_incl = isset($_POST['inclure_tva']) && (string) $_POST['inclure_tva'] === '1';
+
+$res = create_bl_manuel((int) $client['id'], $date_bl, $notes !== '' ? $notes : null, $lignes, (int) $_SESSION['admin_id'], $statut, $tva_incl);
 
 if (!empty($res['success'])) {
     $_SESSION['success_message'] = 'Bon de livraison ' . ($res['numero_bl'] ?? '') . ' enregistré.';

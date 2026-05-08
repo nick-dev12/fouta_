@@ -81,8 +81,6 @@ if ($client_nom === '') {
     $erreur = 'Le prénom du client est requis.';
 } elseif ($client_telephone === '') {
     $erreur = 'Le téléphone du client est requis.';
-} elseif ($adresse_livraison === '') {
-    $erreur = "L'adresse de livraison est requise.";
 } elseif (empty($items)) {
     $erreur = 'Ajoutez au moins un produit au devis.';
 }
@@ -103,6 +101,7 @@ $infos = [
     'zone_livraison_id' => $zone_livraison_id,
     'frais_livraison' => $frais_livraison,
     'notes' => $notes,
+    'tva_incluse' => isset($_POST['inclure_tva']) && (string) $_POST['inclure_tva'] === '1',
 ];
 
 if (update_devis($devis_id, $items, $infos)) {

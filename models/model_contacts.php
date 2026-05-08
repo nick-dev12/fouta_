@@ -54,7 +54,8 @@ function get_contact_by_telephone($telephone) {
 
 /**
  * Carnet contacts : si aucune ligne avec ce numéro (normalisé), crée le contact.
- * Utilisé lors de la création d'un bon de livraison.
+ * Si le numéro existe déjà, ne fait rien et retourne l'id existant.
+ * Utilisé lors de la création d'un bon de livraison ou d'un devis.
  *
  * @return int|false id du contact existant ou créé
  */
@@ -110,6 +111,124 @@ function get_contact_by_id($id) {
 function contacts_normalize_type_bl($code)
 {
     return (($code ?? '') === 'vip') ? 'vip' : 'standard';
+}
+
+/**
+ * Téléphone normalisé (chiffres uniquement) pour rapprochements devis / B2B.
+ */
+function contacts_normalize_tel_digits($telephone)
+{
+    return preg_replace('/\D+/', '', (string) ($telephone ?? ''));
+}
+
+/**
+ * Enrichit chaque contact avec des compteurs compta (factures devis payées / impayées,
+ * factures mensuelles BL payées / autres statuts) et id client B2B le cas échéant.
+ * Requêtes agrégées pour éviter N× scans.
+ *
+ * @param array<int, array<string, mixed>> $contacts
+ * @return array<int, array<string, mixed>>
+ */
+function contacts_list_with_compta_stats(array $contacts)
+{
+    global $db;
+    if (!$db || empty($contacts)) {
+        return $contacts;
+    }
+
+    $by_tel = [];
+    foreach ($contacts as $c) {
+        $t = contacts_normalize_tel_digits($c['telephone'] ?? '');
+        if ($t === '') {
+            continue;
+        }
+        if (!isset($by_tel[$t])) {
+            $by_tel[$t] = ['fd_payees' => 0, 'fd_impayees' => 0, 'b2b_id' => 0, 'fm_payees' => 0, 'fm_impayees' => 0];
+        }
+    }
+
+    try {
+        $stmt = $db->query('SELECT id, telephone FROM clients_b2b');
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) ?: [] as $r) {
+            $t = contacts_normalize_tel_digits($r['telephone'] ?? '');
+            if ($t !== '' && isset($by_tel[$t])) {
+                $by_tel[$t]['b2b_id'] = (int) $r['id'];
+            }
+        }
+    } catch (PDOException $e) {
+    }
+
+    try {
+        $stmt = $db->query('SELECT fd.payee, d.client_telephone FROM factures_devis fd INNER JOIN devis d ON d.id = fd.devis_id');
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
+            $t = contacts_normalize_tel_digits($row['client_telephone'] ?? '');
+            if ($t === '' || !isset($by_tel[$t])) {
+                continue;
+            }
+            if (!empty($row['payee'])) {
+                $by_tel[$t]['fd_payees']++;
+            } else {
+                $by_tel[$t]['fd_impayees']++;
+            }
+        }
+    } catch (PDOException $e) {
+    }
+
+    require_once __DIR__ . '/model_factures_mensuelles.php';
+    $fmByCid = [];
+    if (function_exists('factures_mensuelles_table_ok') && factures_mensuelles_table_ok()) {
+        try {
+            $stmt = $db->query('SELECT client_b2b_id, statut FROM factures_mensuelles');
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
+                $cid = (int) ($row['client_b2b_id'] ?? 0);
+                if ($cid <= 0) {
+                    continue;
+                }
+                if (!isset($fmByCid[$cid])) {
+                    $fmByCid[$cid] = ['fm_payees' => 0, 'fm_impayees' => 0];
+                }
+                if (($row['statut'] ?? '') === 'payee') {
+                    $fmByCid[$cid]['fm_payees']++;
+                } else {
+                    $fmByCid[$cid]['fm_impayees']++;
+                }
+            }
+        } catch (PDOException $e) {
+        }
+    }
+
+    foreach ($by_tel as $t => &$st) {
+        $st['fm_payees'] = 0;
+        $st['fm_impayees'] = 0;
+        $bid = (int) ($st['b2b_id'] ?? 0);
+        if ($bid > 0 && isset($fmByCid[$bid])) {
+            $st['fm_payees'] = $fmByCid[$bid]['fm_payees'];
+            $st['fm_impayees'] = $fmByCid[$bid]['fm_impayees'];
+        }
+    }
+    unset($st);
+
+    $out = [];
+    foreach ($contacts as $c) {
+        $t = contacts_normalize_tel_digits($c['telephone'] ?? '');
+        $stats = [
+            'fd_payees' => 0,
+            'fd_impayees' => 0,
+            'fm_payees' => 0,
+            'fm_impayees' => 0,
+            'b2b_id' => 0,
+        ];
+        if ($t !== '' && isset($by_tel[$t])) {
+            $stats['fd_payees'] = (int) $by_tel[$t]['fd_payees'];
+            $stats['fd_impayees'] = (int) $by_tel[$t]['fd_impayees'];
+            $stats['fm_payees'] = (int) $by_tel[$t]['fm_payees'];
+            $stats['fm_impayees'] = (int) $by_tel[$t]['fm_impayees'];
+            $stats['b2b_id'] = (int) $by_tel[$t]['b2b_id'];
+        }
+        $c['_compta'] = $stats;
+        $out[] = $c;
+    }
+    return $out;
 }
 
 /**

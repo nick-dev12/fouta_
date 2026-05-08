@@ -45,6 +45,14 @@ $p = $_POST;
 if (empty($p)) {
     $p = $employe;
 }
+$sf_sel = isset($p['statut_familial']) ? trim((string) $p['statut_familial']) : '';
+if ($sf_sel === '' || $sf_sel === null) {
+    $sf_sel = 'non_renseigne';
+}
+$tc_sel = isset($p['type_contrat']) ? trim((string) $p['type_contrat']) : '';
+if ($tc_sel === '' || $tc_sel === null) {
+    $tc_sel = 'non_renseigne';
+}
 
 $upload_public = rtrim(get_request_origin_base_url(), '/') . '/upload/';
 $upload_disk = __DIR__ . '/../../../upload/';
@@ -52,6 +60,10 @@ $curr_ph = trim((string) ($employe['photo_chemin'] ?? ''));
 $curr_ph_ok = $curr_ph !== '' && strpos($curr_ph, '..') === false
     && is_file($upload_disk . str_replace('/', DIRECTORY_SEPARATOR, $curr_ph));
 $photo_field = employe_photo_champ_fichier();
+$contrat_pdf_field = employe_contrat_pdf_champ_fichier();
+$curr_pdf_rel = trim((string) ($employe['contrat_pdf_chemin'] ?? ''));
+$curr_pdf_ok = $curr_pdf_rel !== '' && strpos($curr_pdf_rel, '..') === false
+    && is_file($upload_disk . str_replace('/', DIRECTORY_SEPARATOR, $curr_pdf_rel));
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -80,7 +92,7 @@ $photo_field = employe_photo_champ_fichier();
 
         <form method="post" class="form-add er-modifier-employe-form" style="background: var(--glass-bg, rgba(255,255,255,.7)); padding: 24px; border-radius: 12px;" enctype="multipart/form-data">
             <input type="hidden" name="modifier_employe" value="1">
-            <input type="hidden" name="MAX_FILE_SIZE" value="4194304">
+            <input type="hidden" name="MAX_FILE_SIZE" value="8388608">
             <div class="form-group">
                 <label for="nom">Nom *</label>
                 <input type="text" id="nom" name="nom" required value="<?php echo htmlspecialchars($p['nom'] ?? ''); ?>">
@@ -106,8 +118,48 @@ $photo_field = employe_photo_champ_fichier();
                 <input type="text" id="service" name="service" value="<?php echo htmlspecialchars($p['service'] ?? ''); ?>">
             </div>
             <div class="form-group">
-                <label for="date_embauche">Date d’embauche</label>
+                <label for="categorie_paie">Catégorie / classification (bulletin de paie)</label>
+                <input type="text" id="categorie_paie" name="categorie_paie" maxlength="120"
+                    placeholder="Ex. catégorie conventionnelle, coefficient…"
+                    value="<?php echo htmlspecialchars((string) ($p['categorie_paie'] ?? '')); ?>">
+            </div>
+            <div class="form-group">
+                <label for="salaire_base">Salaire brut / de base habituel (FCFA) <span class="er-opt">(optionnel)</span></label>
+                <input type="text" id="salaire_base" name="salaire_base" inputmode="decimal" autocomplete="off"
+                    placeholder="Utilisé pour le bulletin — modifiable ici uniquement"
+                    value="<?php
+                    $sb = $p['salaire_base'] ?? '';
+                    echo ($sb !== null && $sb !== '') ? htmlspecialchars((string) $sb) : '';
+                    ?>">
+            </div>
+            <div class="form-group">
+                <label for="montant_irpp_mensuel">IRPP mensuel (FCFA) <span class="er-opt">(optionnel)</span></label>
+                <input type="text" id="montant_irpp_mensuel" name="montant_irpp_mensuel" inputmode="decimal" autocomplete="off"
+                    placeholder="Montant d’impôt retenu chaque mois sur le bulletin"
+                    value="<?php
+                    $imir = $p['montant_irpp_mensuel'] ?? '';
+                    echo ($imir !== null && $imir !== '') ? htmlspecialchars((string) $imir) : '';
+                    ?>">
+            </div>
+            <div class="form-group">
+                <label for="date_embauche">Date d’embauche <span class="er-opt">(optionnel)</span></label>
                 <input type="date" id="date_embauche" name="date_embauche" value="<?php echo !empty($p['date_embauche']) ? htmlspecialchars(substr($p['date_embauche'], 0, 10)) : ''; ?>">
+            </div>
+            <div class="form-group">
+                <label for="statut_familial">Statut familial</label>
+                <select id="statut_familial" name="statut_familial">
+                    <?php foreach (employe_statuts_familiaux_choices() as $k => $label): ?>
+                    <option value="<?php echo htmlspecialchars($k); ?>" <?php echo ($sf_sel === $k) ? 'selected' : ''; ?>><?php echo htmlspecialchars($label); ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="type_contrat">Type de contrat</label>
+                <select id="type_contrat" name="type_contrat">
+                    <?php foreach (employe_types_contrat_choices() as $k => $label): ?>
+                    <option value="<?php echo htmlspecialchars($k); ?>" <?php echo ($tc_sel === $k) ? 'selected' : ''; ?>><?php echo htmlspecialchars($label); ?></option>
+                    <?php endforeach; ?>
+                </select>
             </div>
             <div class="form-group">
                 <label for="statut">Statut</label>
@@ -131,6 +183,20 @@ $photo_field = employe_photo_champ_fichier();
             <div class="form-group">
                 <label for="notes">Notes internes</label>
                 <textarea id="notes" name="notes" rows="3"><?php echo htmlspecialchars($p['notes'] ?? ''); ?></textarea>
+            </div>
+            <div class="form-group">
+                <label for="<?php echo htmlspecialchars($contrat_pdf_field); ?>">Contrat (PDF) <span class="er-opt">(optionnel, max 8 Mo)</span></label>
+                <?php if ($curr_pdf_ok): ?>
+                <p style="margin:0 0 8px 0;">
+                    <a href="<?php echo htmlspecialchars($upload_public . $curr_pdf_rel); ?>" target="_blank" rel="noopener noreferrer"><i class="fas fa-file-pdf" aria-hidden="true"></i> Télécharger le contrat actuel</a>
+                </p>
+                <label class="er-opt" style="display:flex;align-items:center;gap:8px;font-weight:500;">
+                    <input type="checkbox" name="retirer_contrat_pdf" value="1">
+                    Retirer le PDF enregistré
+                </label>
+                <?php endif; ?>
+                <input type="file" id="<?php echo htmlspecialchars($contrat_pdf_field); ?>" name="<?php echo htmlspecialchars($contrat_pdf_field); ?>" accept="application/pdf" style="margin-top:8px;">
+                <p class="er-photo-hint" style="margin-top:6px;">PDF uniquement. Laisser vide pour conserver le fichier actuel.</p>
             </div>
             <div class="form-group">
                 <label for="<?php echo htmlspecialchars($photo_field); ?>">Photo de l’employé <span class="er-opt">(optionnel, max 4 Mo)</span></label>

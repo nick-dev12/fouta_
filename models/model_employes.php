@@ -70,8 +70,18 @@ function create_employe($data) {
     global $db;
     try {
         $stmt = $db->prepare('
-            INSERT INTO employes (nom, prenom, email, telephone, poste, service, date_embauche, statut, notes, admin_id, date_creation)
-            VALUES (:nom, :prenom, :email, :telephone, :poste, :service, :date_embauche, :statut, :notes, :admin_id, NOW())
+            INSERT INTO employes (
+                nom, prenom, email, telephone, poste, service, date_embauche, statut, notes,
+                statut_familial, type_contrat, contrat_pdf_chemin,
+                salaire_base, montant_irpp_mensuel, categorie_paie,
+                admin_id, date_creation
+            )
+            VALUES (
+                :nom, :prenom, :email, :telephone, :poste, :service, :date_embauche, :statut, :notes,
+                :statut_familial, :type_contrat, :contrat_pdf_chemin,
+                :salaire_base, :montant_irpp_mensuel, :categorie_paie,
+                :admin_id, NOW()
+            )
         ');
         $ok = $stmt->execute([
             'nom' => trim($data['nom']),
@@ -83,6 +93,12 @@ function create_employe($data) {
             'date_embauche' => !empty($data['date_embauche']) ? $data['date_embauche'] : null,
             'statut' => in_array($data['statut'] ?? 'actif', ['actif', 'inactif', 'suspendu'], true) ? $data['statut'] : 'actif',
             'notes' => $data['notes'] !== '' ? trim($data['notes']) : null,
+            'statut_familial' => array_key_exists('statut_familial', $data) ? $data['statut_familial'] : null,
+            'type_contrat' => array_key_exists('type_contrat', $data) ? $data['type_contrat'] : null,
+            'contrat_pdf_chemin' => array_key_exists('contrat_pdf_chemin', $data) ? $data['contrat_pdf_chemin'] : null,
+            'salaire_base' => array_key_exists('salaire_base', $data) ? $data['salaire_base'] : null,
+            'montant_irpp_mensuel' => array_key_exists('montant_irpp_mensuel', $data) ? $data['montant_irpp_mensuel'] : null,
+            'categorie_paie' => array_key_exists('categorie_paie', $data) ? $data['categorie_paie'] : null,
             'admin_id' => !empty($data['admin_id']) ? (int) $data['admin_id'] : null,
         ]);
         if ($ok) {
@@ -101,7 +117,10 @@ function update_employe($id, $data) {
             UPDATE employes SET
                 nom = :nom, prenom = :prenom, email = :email, telephone = :telephone,
                 poste = :poste, service = :service, date_embauche = :date_embauche,
-                statut = :statut, notes = :notes, admin_id = :admin_id, date_modification = NOW()
+                statut = :statut, notes = :notes,
+                statut_familial = :statut_familial, type_contrat = :type_contrat, contrat_pdf_chemin = :contrat_pdf_chemin,
+                salaire_base = :salaire_base, montant_irpp_mensuel = :montant_irpp_mensuel, categorie_paie = :categorie_paie,
+                admin_id = :admin_id, date_modification = NOW()
             WHERE id = :id
         ');
         return $stmt->execute([
@@ -115,6 +134,12 @@ function update_employe($id, $data) {
             'date_embauche' => !empty($data['date_embauche']) ? $data['date_embauche'] : null,
             'statut' => in_array($data['statut'] ?? 'actif', ['actif', 'inactif', 'suspendu'], true) ? $data['statut'] : 'actif',
             'notes' => $data['notes'] !== '' ? trim($data['notes']) : null,
+            'statut_familial' => array_key_exists('statut_familial', $data) ? $data['statut_familial'] : null,
+            'type_contrat' => array_key_exists('type_contrat', $data) ? $data['type_contrat'] : null,
+            'contrat_pdf_chemin' => array_key_exists('contrat_pdf_chemin', $data) ? $data['contrat_pdf_chemin'] : null,
+            'salaire_base' => array_key_exists('salaire_base', $data) ? $data['salaire_base'] : null,
+            'montant_irpp_mensuel' => array_key_exists('montant_irpp_mensuel', $data) ? $data['montant_irpp_mensuel'] : null,
+            'categorie_paie' => array_key_exists('categorie_paie', $data) ? $data['categorie_paie'] : null,
             'admin_id' => !empty($data['admin_id']) ? (int) $data['admin_id'] : null,
         ]);
     } catch (PDOException $e) {
@@ -137,6 +162,16 @@ function delete_employe($id) {
                 }
             }
         }
+        $contrat_dir = realpath(__DIR__ . '/../upload/employes_contrats/');
+        if ($contrat_dir && is_dir($contrat_dir)) {
+            foreach (glob($contrat_dir . DIRECTORY_SEPARATOR . 'employe_' . $id . '_*.pdf') ?: [] as $g) {
+                if (is_file($g)) {
+                    @unlink($g);
+                }
+            }
+        }
+        require_once __DIR__ . '/model_employe_documents.php';
+        employe_documents_delete_all_files_for_employe($id);
         $stmt = $db->prepare('DELETE FROM employes WHERE id = :id');
         return $stmt->execute(['id' => $id]);
     } catch (PDOException $e) {
@@ -155,6 +190,26 @@ function employe_set_photo_chemin($employe_id, $chemin_relatif) {
     }
     try {
         $stmt = $db->prepare('UPDATE employes SET photo_chemin = :p, date_modification = NOW() WHERE id = :id');
+        return $stmt->execute([
+            'id' => $employe_id,
+            'p' => ($chemin_relatif !== null && trim((string) $chemin_relatif) !== '') ? trim($chemin_relatif) : null,
+        ]);
+    } catch (PDOException $e) {
+        return false;
+    }
+}
+
+/**
+ * PDF du contrat — chemin relatif sous upload/.
+ */
+function employe_set_contrat_pdf_chemin($employe_id, $chemin_relatif) {
+    global $db;
+    $employe_id = (int) $employe_id;
+    if ($employe_id <= 0) {
+        return false;
+    }
+    try {
+        $stmt = $db->prepare('UPDATE employes SET contrat_pdf_chemin = :p, date_modification = NOW() WHERE id = :id');
         return $stmt->execute([
             'id' => $employe_id,
             'p' => ($chemin_relatif !== null && trim((string) $chemin_relatif) !== '') ? trim($chemin_relatif) : null,

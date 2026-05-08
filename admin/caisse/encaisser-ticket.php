@@ -22,6 +22,7 @@ if (empty($_SESSION['admin_csrf'])) {
 }
 
 require_once __DIR__ . '/../../models/model_caisse.php';
+require_once __DIR__ . '/../../models/model_caisse_compta.php';
 require_once __DIR__ . '/../../includes/barcode_caisse_ticket.php';
 
 $flash_ok = '';
@@ -51,15 +52,40 @@ if ($ticket_param > 0) {
 }
 
 $ticket_introuvable = ($numero_search !== '' || $ticket_param > 0) && !$vente;
-$ticket_dec = $vente ? caisse_decomposer_ttc($vente['montant_total'] ?? 0) : null;
+$ticket_recap = $vente ? caisse_vente_recap_fiscal_affichage($vente) : null;
+$ticket_show_tva_row = $ticket_recap && abs((float) ($ticket_recap['tva'] ?? 0)) >= 0.005;
 $ticket_statut = $vente ? caisse_vente_statut($vente) : null;
-$ticket_barcode_src = ($vente && $ticket_dec) ? caisse_ticket_get_barcode_web_path($vente) : '';
-$ticket_barcode_payload = ($vente && $ticket_dec) ? caisse_ticket_valeur_code_barres($vente) : '';
+$ticket_barcode_src = ($vente && $ticket_recap) ? caisse_ticket_get_barcode_web_path($vente) : '';
+$ticket_barcode_payload = ($vente && $ticket_recap) ? caisse_ticket_valeur_code_barres($vente) : '';
 
 $tables_ok = caisse_tables_exist();
 $tickets_non_payes = $tables_ok ? caisse_list_ventes_en_attente_apercu(300) : [];
 $page_title = 'Encaissement des tickets';
 $total_ttc = $vente ? (float) ($vente['montant_total'] ?? 0) : 0;
+
+/** Préremplissage formulaire correction paiement (ticket payé) */
+$corr_prefill = null;
+if ($vente && caisse_vente_statut($vente) === 'paye') {
+    $fmtIn = function ($val) {
+        if ($val === null || $val === '') {
+            return '';
+        }
+        $f = (float) $val;
+        if (abs($f) < 0.005) {
+            return '';
+        }
+        return (string) (int) round($f);
+    };
+    $corr_prefill = [
+        'mode' => (string) ($vente['mode_paiement'] ?? 'especes'),
+        'montant_recu' => $fmtIn($vente['montant_recu'] ?? null),
+        'montant_especes' => $fmtIn($vente['montant_especes'] ?? null),
+        'montant_carte' => $fmtIn($vente['montant_carte'] ?? null),
+        'montant_orange_money' => $fmtIn($vente['montant_orange_money'] ?? null),
+        'montant_wave' => $fmtIn($vente['montant_wave'] ?? null),
+        'notes' => (string) ($vente['notes'] ?? ''),
+    ];
+}
 
 $auto_print = isset($_GET['imprimer']) && $_GET['imprimer'] === '1';
 ?>
@@ -76,7 +102,7 @@ $auto_print = isset($_GET['imprimer']) && $_GET['imprimer'] === '1';
     <link rel="stylesheet" href="/css/admin-caisse-encaisser-ticket.css<?php echo asset_version_query(); ?>">
     <link rel="stylesheet" href="/css/admin-dashboard-caisse-pages.css<?php echo asset_version_query(); ?>">
 </head>
-<body class="admin-caisse-page admin-caisse-encaisser<?php echo ($vente && $ticket_dec) ? ' caisse-modal-open' : ''; ?>">
+<body class="admin-caisse-page admin-caisse-encaisser<?php echo ($vente && $ticket_recap) ? ' caisse-modal-open' : ''; ?>">
 <?php include __DIR__ . '/../includes/nav.php'; ?>
 
 <div class="caisse-page-wrap page-caisse-encaisser">
@@ -85,7 +111,6 @@ $auto_print = isset($_GET['imprimer']) && $_GET['imprimer'] === '1';
             <div class="page-caisse-encaisser__head-text">
                 <p class="page-caisse-encaisser__eyebrow">Caisse magasin</p>
                 <h1 class="caisse-page-title" id="page-encaisser-title"><i class="fas fa-money-bill-wave" aria-hidden="true"></i> <?php echo htmlspecialchars($page_title); ?></h1>
-                <p class="caisse-page-lead">Saisissez un n° de ticket, une <strong>référence 5 chiffres</strong> ou ouvrez un ticket depuis la file d’attente, puis encaissez (TTC).</p>
             </div>
             <div class="caisse-encaisse-toolbar no-print page-caisse-encaisser__toolbar" role="toolbar" aria-label="Actions rapides">
                 <a href="historique-encaissements.php" class="btn-secondary page-caisse-encaisser__toolbar-btn"><i class="fas fa-history" aria-hidden="true"></i> Historique</a>
@@ -118,7 +143,6 @@ $auto_print = isset($_GET['imprimer']) && $_GET['imprimer'] === '1';
     <div class="caisse-encaisseur-search card-style-caisse page-caisse-encaisser__search no-print" aria-label="Recherche d’un ticket">
         <form method="get" action="encaisser-ticket.php" class="caisse-encaisseur-search-form page-caisse-encaisser__search-form">
             <label for="numero_ticket_search"><i class="fas fa-barcode" aria-hidden="true"></i> N° ticket ou référence caisse (5 chiffres)</label>
-            <p class="page-caisse-encaisser__search-hint">Raccourci : les <strong>5 derniers chiffres</strong> du ticket suffisent souvent (scanner ou clavier pavé).</p>
             <div class="caisse-encaisseur-search-row page-caisse-encaisser__search-row">
                 <input type="text" name="numero" id="numero_ticket_search"
                     value="<?php echo htmlspecialchars($numero_search ?: ($vente['numero_ticket'] ?? '')); ?>"
@@ -139,7 +163,6 @@ $auto_print = isset($_GET['imprimer']) && $_GET['imprimer'] === '1';
                 <i class="fas fa-hourglass-half" aria-hidden="true"></i> Tickets non payés
                 <span class="caisse-attente-liste__count"><?php echo count($tickets_non_payes); ?></span>
             </h2>
-            <p class="caisse-attente-liste__hint">Cliquez sur <strong>Ouvrir</strong> pour afficher le ticket et encaisser. Tri : du plus ancien au plus récent.</p>
         </div>
         <?php if (empty($tickets_non_payes)): ?>
         <p class="caisse-attente-liste__empty"><i class="fas fa-check" aria-hidden="true"></i> Aucun ticket en attente d’encaissement.</p>
@@ -181,7 +204,7 @@ $auto_print = isset($_GET['imprimer']) && $_GET['imprimer'] === '1';
     </section>
     <?php endif; ?>
 
-    <?php if ($vente && $ticket_dec): ?>
+    <?php if ($vente && $ticket_recap): ?>
     <div id="caisseTicketViewModal" class="caisse-ticket-view-modal is-open" role="dialog" aria-modal="true" aria-labelledby="caisseTicketViewTitle" aria-hidden="false">
         <div class="caisse-ticket-view-modal__backdrop no-print" data-ticket-view-close tabindex="-1"></div>
         <div class="caisse-ticket-view-modal__panel">
@@ -196,7 +219,6 @@ $auto_print = isset($_GET['imprimer']) && $_GET['imprimer'] === '1';
                     <strong><?php echo htmlspecialchars(caisse_ticket_numero_date_public($vente)); ?></strong>
                     <span><?php echo isset($vente['date_vente']) ? htmlspecialchars(date('d/m/Y H:i', strtotime($vente['date_vente']))) : ''; ?></span>
                 </div>
-                <p class="caisse-ticket-numero-scan-hint">Code à saisir / scanner : <code><?php echo htmlspecialchars($ticket_barcode_payload); ?></code></p>
                 <?php if ($ticket_statut === 'en_attente' && isset($vente['reference']) && (string) $vente['reference'] !== ''): ?>
                 <p class="caisse-ticket-ref-caisse">Ref : <strong><code><?php echo htmlspecialchars((string) $vente['reference']); ?></code></strong></p>
                 <?php endif; ?>
@@ -210,7 +232,7 @@ $auto_print = isset($_GET['imprimer']) && $_GET['imprimer'] === '1';
                 <?php endif; ?>
                 <table class="caisse-ticket-table">
                     <thead>
-                        <tr><th>Article</th><th>Qté</th><th>PU TTC</th><th>Total</th></tr>
+                        <tr><th>Article</th><th>Qté</th><th>PU HT</th><th>Total</th></tr>
                     </thead>
                     <tbody>
                         <?php foreach ($vente['lignes'] as $lg): ?>
@@ -223,14 +245,15 @@ $auto_print = isset($_GET['imprimer']) && $_GET['imprimer'] === '1';
                         <?php endforeach; ?>
                     </tbody>
                 </table>
-                <div class="caisse-ticket-tva-block">
-                    <div class="caisse-ticket-row"><span>Total HT</span><strong><?php echo number_format($ticket_dec['ht'], 0, ',', ' '); ?> FCFA</strong></div>
-                    <div class="caisse-ticket-row"><span>TVA (<?php echo htmlspecialchars((string) CAISSE_TVA_TAUX_POURCENT); ?> %)</span><strong><?php echo number_format($ticket_dec['tva'], 0, ',', ' '); ?> FCFA</strong></div>
-                    <div class="caisse-ticket-row caisse-ticket-row--total"><span>Total TTC</span><strong><?php echo number_format($ticket_dec['ttc'], 0, ',', ' '); ?> FCFA</strong></div>
+                    <div class="caisse-ticket-tva-block">
+                    <div class="caisse-ticket-row"><span>Total HT</span><strong><?php echo number_format($ticket_recap['ht'], 0, ',', ' '); ?> FCFA</strong></div>
+                    <?php if ($ticket_show_tva_row): ?>
+                    <div class="caisse-ticket-row"><span>TVA (<?php echo htmlspecialchars((string) CAISSE_TVA_TAUX_POURCENT); ?> %)</span><strong><?php echo number_format($ticket_recap['tva'], 0, ',', ' '); ?> FCFA</strong></div>
+                    <?php endif; ?>
+                    <div class="caisse-ticket-row caisse-ticket-row--total"><span><?php echo $ticket_show_tva_row ? 'Total TTC' : 'Total à payer'; ?></span><strong><?php echo number_format($ticket_recap['ttc'], 0, ',', ' '); ?> FCFA</strong></div>
                 </div>
                 <?php if ($ticket_barcode_src !== ''): ?>
                 <div class="caisse-ticket-barcode-block">
-                    <p class="caisse-ticket-barcode-label"><i class="fas fa-barcode"></i> Code-barres (Code 128)</p>
                     <div class="caisse-ticket-barcode-wrap">
                         <img src="<?php echo htmlspecialchars($ticket_barcode_src); ?>?v=<?php echo (int) ($vente['id'] ?? 0); ?>"
                             alt="Code-barres ticket <?php echo htmlspecialchars($ticket_barcode_payload); ?>"
@@ -239,23 +262,17 @@ $auto_print = isset($_GET['imprimer']) && $_GET['imprimer'] === '1';
                     <div class="caisse-ticket-barcode-value"><?php echo htmlspecialchars($ticket_barcode_payload); ?></div>
                 </div>
                 <?php endif; ?>
-                <?php if ($ticket_statut === 'paye'):
-                    $mode_tkt = (string) ($vente['mode_paiement'] ?? '');
-                    $lib_mode = [
-                        'especes' => 'Espèces',
-                        'carte' => 'Carte bancaire',
-                        'mobile_money' => 'Mobile money',
-                        'cheque' => 'Chèque',
-                        'mixte' => 'Mixte',
-                        'autre' => 'Autre',
-                    ];
-                ?>
-                <p class="caisse-ticket-pay">Paiement : <strong><?php echo htmlspecialchars($lib_mode[$mode_tkt] ?? $mode_tkt); ?></strong></p>
+                <?php if ($ticket_statut === 'paye'): ?>
+                <p class="caisse-ticket-pay">Paiement : <strong><?php echo htmlspecialchars(caisse_compta_libelle_paiement_ticket($vente)); ?></strong></p>
                 <?php endif; ?>
                 <div class="caisse-ticket-actions no-print">
                     <?php if ($ticket_statut === 'en_attente'): ?>
                     <button type="button" class="btn-primary" id="btnOpenEncaisseModal" <?php echo !$tables_ok ? 'disabled' : ''; ?>>
                         <i class="fas fa-cash-register"></i> Marquer comme payé
+                    </button>
+                    <?php elseif ($ticket_statut === 'paye' && $tables_ok && $corr_prefill): ?>
+                    <button type="button" class="btn-secondary" id="btnOpenCorrigerPaiementModal" <?php echo !$tables_ok ? 'disabled' : ''; ?>>
+                        <i class="fas fa-edit"></i> Corriger le mode de paiement
                     </button>
                     <?php endif; ?>
                     <button type="button" class="btn-secondary" id="btnPrintTicket"><i class="fas fa-print"></i> Imprimer</button>
@@ -265,7 +282,7 @@ $auto_print = isset($_GET['imprimer']) && $_GET['imprimer'] === '1';
         </div>
     </div>
 
-    <?php if ($vente && $ticket_dec && $ticket_statut === 'en_attente'): ?>
+    <?php if ($vente && $ticket_recap && $ticket_statut === 'en_attente'): ?>
     <div id="encaisseFullModal" class="caisse-encaisse-modal" aria-hidden="true" hidden>
         <div class="caisse-encaisse-modal__backdrop" data-caisse-close-modal tabindex="-1"></div>
         <div class="caisse-encaisse-modal__panel" role="dialog" aria-labelledby="encaisseModalTitle" aria-modal="true">
@@ -284,15 +301,16 @@ $auto_print = isset($_GET['imprimer']) && $_GET['imprimer'] === '1';
                 <label for="encaisse_mode_paiement">Mode de paiement</label>
                 <select name="mode_paiement" id="encaisse_mode_paiement" class="caisse-select-pay" required>
                     <option value="especes">Espèces</option>
-                    <option value="mobile_money">Mobile money (Wave, Orange Money…)</option>
+                    <option value="orange_money">Orange Money</option>
+                    <option value="wave">Wave</option>
                     <option value="carte">Carte bancaire</option>
                     <option value="cheque">Chèque</option>
-                    <option value="mixte">Mixte</option>
+                    <option value="mixte">Paiement mixte</option>
                     <option value="autre">Autre</option>
                 </select>
 
                 <div id="encaisseBlocEspeces">
-                    <label for="encaisse_montant_recu">Montant reçu (espèces)</label>
+                    <label for="encaisse_montant_recu" id="encaisse_label_montant_recu">Montant reçu</label>
                     <input type="text" name="montant_recu" id="encaisse_montant_recu" inputmode="decimal" placeholder="Ex. 15000" class="caisse-input-pay" autocomplete="off">
                     <div id="encaisseMonnaieTempsReel" class="caisse-encaisse-monnaie-live" aria-live="polite">
                         <span class="caisse-encaisse-monnaie-live__label">Monnaie à rendre</span>
@@ -301,13 +319,15 @@ $auto_print = isset($_GET['imprimer']) && $_GET['imprimer'] === '1';
                 </div>
 
                 <div id="encaisseBlocMixte" class="caisse-encaisse-bloc-mixte is-hidden">
-                    <p class="caisse-pay-split-title">Répartition du paiement mixte</p>
+                    <p class="caisse-pay-split-title">Répartition (renseigner chaque partie versée)</p>
                     <label for="encaisse_montant_especes">Part espèces</label>
                     <input type="text" name="montant_especes" id="encaisse_montant_especes" inputmode="decimal" placeholder="0" class="caisse-input-pay" value="">
-                    <label for="encaisse_montant_carte">Part carte</label>
+                    <label for="encaisse_montant_carte">Part carte bancaire</label>
                     <input type="text" name="montant_carte" id="encaisse_montant_carte" inputmode="decimal" placeholder="0" class="caisse-input-pay" value="">
-                    <label for="encaisse_montant_mobile">Part mobile money</label>
-                    <input type="text" name="montant_mobile_money" id="encaisse_montant_mobile" inputmode="decimal" placeholder="0" class="caisse-input-pay" value="">
+                    <label for="encaisse_montant_orange">Part Orange Money</label>
+                    <input type="text" name="montant_orange_money" id="encaisse_montant_orange" inputmode="decimal" placeholder="0" class="caisse-input-pay" value="">
+                    <label for="encaisse_montant_wave">Part Wave</label>
+                    <input type="text" name="montant_wave" id="encaisse_montant_wave" inputmode="decimal" placeholder="0" class="caisse-input-pay" value="">
                 </div>
 
                 <label for="encaisse_notes">Note (optionnel)</label>
@@ -317,6 +337,70 @@ $auto_print = isset($_GET['imprimer']) && $_GET['imprimer'] === '1';
                     <button type="button" class="btn-secondary" data-caisse-close-modal>Annuler</button>
                     <button type="submit" class="caisse-btn-valider" <?php echo !$tables_ok ? 'disabled' : ''; ?>>
                         <i class="fas fa-check"></i> Valider le paiement
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <?php if ($vente && $ticket_recap && $ticket_statut === 'paye' && $corr_prefill): ?>
+    <?php $cp = $corr_prefill; ?>
+    <div id="corrigerPaiementModal" class="caisse-encaisse-modal" aria-hidden="true" hidden>
+        <div class="caisse-encaisse-modal__backdrop" data-corriger-close-modal tabindex="-1"></div>
+        <div class="caisse-encaisse-modal__panel" role="dialog" aria-labelledby="corrigerPaiementTitle" aria-modal="true">
+            <div class="caisse-encaisse-modal__head">
+                <h2 id="corrigerPaiementTitle" class="caisse-encaisse-modal__title"><i class="fas fa-edit"></i> Corriger le paiement</h2>
+                <button type="button" class="caisse-encaisse-modal__close" data-corriger-close-modal aria-label="Fermer"><i class="fas fa-times"></i></button>
+            </div>
+            <p class="caisse-encaisse-modal__recap">Total TTC du ticket : <strong><?php echo number_format($total_ttc, 0, ',', ' '); ?> FCFA</strong></p>
+            <p class="caisse-encaisse-modal__hint">En cas d’erreur sur le mode enregistré, ajustez les champs puis enregistrez. Le stock n’est pas modifié.</p>
+
+            <form method="post" action="post.php" class="caisse-pay-form caisse-encaisse-modal__form" id="formCorrigerPaiementTicket"
+                data-total-ttc="<?php echo htmlspecialchars((string) $total_ttc); ?>">
+                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['admin_csrf']); ?>">
+                <input type="hidden" name="caisse_action" value="corriger_paiement_ticket">
+                <input type="hidden" name="vente_id" value="<?php echo (int) ($vente['id'] ?? 0); ?>">
+
+                <label for="corriger_mode_paiement">Mode de paiement</label>
+                <select name="mode_paiement" id="corriger_mode_paiement" class="caisse-select-pay" required>
+                    <option value="especes" <?php echo ($cp['mode'] === 'especes') ? 'selected' : ''; ?>>Espèces</option>
+                    <option value="orange_money" <?php echo ($cp['mode'] === 'orange_money') ? 'selected' : ''; ?>>Orange Money</option>
+                    <option value="wave" <?php echo ($cp['mode'] === 'wave') ? 'selected' : ''; ?>>Wave</option>
+                    <option value="carte" <?php echo ($cp['mode'] === 'carte') ? 'selected' : ''; ?>>Carte bancaire</option>
+                    <option value="cheque" <?php echo ($cp['mode'] === 'cheque') ? 'selected' : ''; ?>>Chèque</option>
+                    <option value="mixte" <?php echo ($cp['mode'] === 'mixte') ? 'selected' : ''; ?>>Paiement mixte</option>
+                    <option value="autre" <?php echo ($cp['mode'] === 'autre') ? 'selected' : ''; ?>>Autre</option>
+                </select>
+
+                <div id="corrigerBlocMontantRecu">
+                    <label for="corriger_montant_recu" id="corriger_label_montant_recu">Montant reçu</label>
+                    <input type="text" name="montant_recu" id="corriger_montant_recu" inputmode="decimal" placeholder="Ex. 15000" class="caisse-input-pay" autocomplete="off" value="<?php echo htmlspecialchars($cp['montant_recu']); ?>">
+                    <div id="corrigerMonnaieTempsReel" class="caisse-encaisse-monnaie-live" aria-live="polite">
+                        <span class="caisse-encaisse-monnaie-live__label">Monnaie à rendre</span>
+                        <span id="corrigerMonnaieValeur" class="caisse-encaisse-monnaie-live__valeur">—</span>
+                    </div>
+                </div>
+
+                <div id="corrigerBlocMixte" class="caisse-encaisse-bloc-mixte is-hidden">
+                    <p class="caisse-pay-split-title">Répartition (chaque partie versée)</p>
+                    <label for="corriger_montant_especes">Part espèces</label>
+                    <input type="text" name="montant_especes" id="corriger_montant_especes" inputmode="decimal" placeholder="0" class="caisse-input-pay" value="<?php echo htmlspecialchars($cp['montant_especes']); ?>">
+                    <label for="corriger_montant_carte">Part carte bancaire</label>
+                    <input type="text" name="montant_carte" id="corriger_montant_carte" inputmode="decimal" placeholder="0" class="caisse-input-pay" value="<?php echo htmlspecialchars($cp['montant_carte']); ?>">
+                    <label for="corriger_montant_orange">Part Orange Money</label>
+                    <input type="text" name="montant_orange_money" id="corriger_montant_orange" inputmode="decimal" placeholder="0" class="caisse-input-pay" value="<?php echo htmlspecialchars($cp['montant_orange_money']); ?>">
+                    <label for="corriger_montant_wave">Part Wave</label>
+                    <input type="text" name="montant_wave" id="corriger_montant_wave" inputmode="decimal" placeholder="0" class="caisse-input-pay" value="<?php echo htmlspecialchars($cp['montant_wave']); ?>">
+                </div>
+
+                <label for="corriger_notes">Note (optionnel)</label>
+                <textarea name="notes_vente" id="corriger_notes" rows="2" class="caisse-textarea-pay" placeholder="Référence…"><?php echo htmlspecialchars($cp['notes']); ?></textarea>
+
+                <div class="caisse-encaisse-modal__actions">
+                    <button type="button" class="btn-secondary" data-corriger-close-modal>Annuler</button>
+                    <button type="submit" class="caisse-btn-valider">
+                        <i class="fas fa-save"></i> Enregistrer la correction
                     </button>
                 </div>
             </form>
@@ -352,31 +436,6 @@ $auto_print = isset($_GET['imprimer']) && $_GET['imprimer'] === '1';
         return tvModal && tvModal.classList.contains('is-open');
     }
 
-    var modal = document.getElementById('encaisseFullModal');
-    var btnOpen = document.getElementById('btnOpenEncaisseModal');
-
-    document.addEventListener('keydown', function (e) {
-        if (e.key !== 'Escape') {
-            return;
-        }
-        if (modal && modal.classList.contains('is-open')) {
-            modal.setAttribute('hidden', 'hidden');
-            modal.classList.remove('is-open');
-            modal.setAttribute('aria-hidden', 'true');
-            if (!ticketViewIsOpen()) {
-                document.body.classList.remove('caisse-modal-open');
-            }
-            return;
-        }
-        if (ticketViewIsOpen()) {
-            window.location.href = 'encaisser-ticket.php';
-        }
-    });
-
-    if (!modal || !btnOpen) {
-        return;
-    }
-
     function parseMontant(s) {
         if (!s || typeof s !== 'string') return NaN;
         var t = s.replace(/\s/g, '').replace(',', '.');
@@ -389,80 +448,200 @@ $auto_print = isset($_GET['imprimer']) && $_GET['imprimer'] === '1';
         return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '\u202f') + '\u00a0FCFA';
     }
 
-    function openModal() {
-        modal.removeAttribute('hidden');
-        modal.classList.add('is-open');
-        modal.setAttribute('aria-hidden', 'false');
-        document.body.classList.add('caisse-modal-open');
-        var recu = document.getElementById('encaisse_montant_recu');
-        if (recu) setTimeout(function () { recu.focus(); }, 50);
+    var modalEncaisse = document.getElementById('encaisseFullModal');
+    var btnOpenEncaisse = document.getElementById('btnOpenEncaisseModal');
+    var modalCorr = document.getElementById('corrigerPaiementModal');
+    var btnOpenCorriger = document.getElementById('btnOpenCorrigerPaiementModal');
+
+    function closeCorrigerModal() {
+        if (!modalCorr) return;
+        modalCorr.setAttribute('hidden', 'hidden');
+        modalCorr.classList.remove('is-open');
+        modalCorr.setAttribute('aria-hidden', 'true');
     }
 
-    function closeModal() {
-        modal.setAttribute('hidden', 'hidden');
-        modal.classList.remove('is-open');
-        modal.setAttribute('aria-hidden', 'true');
-        if (!ticketViewIsOpen()) {
-            document.body.classList.remove('caisse-modal-open');
+    document.addEventListener('keydown', function (e) {
+        if (e.key !== 'Escape') {
+            return;
         }
-    }
-
-    btnOpen.addEventListener('click', openModal);
-    modal.querySelectorAll('[data-caisse-close-modal]').forEach(function (el) {
-        el.addEventListener('click', closeModal);
+        if (modalCorr && modalCorr.classList.contains('is-open')) {
+            closeCorrigerModal();
+            e.preventDefault();
+            return;
+        }
+        if (modalEncaisse && modalEncaisse.classList.contains('is-open')) {
+            modalEncaisse.setAttribute('hidden', 'hidden');
+            modalEncaisse.classList.remove('is-open');
+            modalEncaisse.setAttribute('aria-hidden', 'true');
+            if (!ticketViewIsOpen()) {
+                document.body.classList.remove('caisse-modal-open');
+            }
+            e.preventDefault();
+            return;
+        }
+        if (ticketViewIsOpen()) {
+            window.location.href = 'encaisser-ticket.php';
+        }
     });
 
-    var form = document.getElementById('formEncaisseTicket');
-    var totalTtc = form ? parseFloat(form.getAttribute('data-total-ttc')) : 0;
-    if (isNaN(totalTtc)) totalTtc = 0;
-    var inpRecu = document.getElementById('encaisse_montant_recu');
-    var outMonnaie = document.getElementById('encaisseMonnaieValeur');
-    var selMode = document.getElementById('encaisse_mode_paiement');
-    var blocEsp = document.getElementById('encaisseBlocEspeces');
-    var blocMix = document.getElementById('encaisseBlocMixte');
+    if (modalCorr && btnOpenCorriger) {
+        function openCorrigerModal() {
+            modalCorr.removeAttribute('hidden');
+            modalCorr.classList.add('is-open');
+            modalCorr.setAttribute('aria-hidden', 'false');
+            document.body.classList.add('caisse-modal-open');
+            syncCorrigerPayUi();
+            var sm = document.getElementById('corriger_mode_paiement');
+            var r = document.getElementById('corriger_montant_recu');
+            if (r && sm && sm.value !== 'mixte') {
+                setTimeout(function () { r.focus(); }, 50);
+            }
+        }
+        btnOpenCorriger.addEventListener('click', openCorrigerModal);
+        modalCorr.querySelectorAll('[data-corriger-close-modal]').forEach(function (el) {
+            el.addEventListener('click', closeCorrigerModal);
+        });
 
-    function updateMonnaieLive() {
-        if (!outMonnaie || !selMode) return;
-        if (selMode.value !== 'especes') {
-            outMonnaie.textContent = '—';
-            return;
+        var formCorr = document.getElementById('formCorrigerPaiementTicket');
+        var totalTtcCorr = formCorr ? parseFloat(formCorr.getAttribute('data-total-ttc')) : 0;
+        if (isNaN(totalTtcCorr)) totalTtcCorr = 0;
+        var inpRecuC = document.getElementById('corriger_montant_recu');
+        var outMonnaieC = document.getElementById('corrigerMonnaieValeur');
+        var selModeC = document.getElementById('corriger_mode_paiement');
+        var labRecuC = document.getElementById('corriger_label_montant_recu');
+        var blocRecuC = document.getElementById('corrigerBlocMontantRecu');
+        var blocMixC = document.getElementById('corrigerBlocMixte');
+        var labelsCorriger = {
+            especes: 'Montant reçu (espèces)',
+            orange_money: 'Montant reçu (Orange Money)',
+            wave: 'Montant reçu (Wave)',
+            carte: 'Montant débité / reçu (carte bancaire)',
+            cheque: 'Montant du chèque',
+            autre: 'Montant reçu'
+        };
+        function updateMonnaieCorriger() {
+            if (!outMonnaieC || !selModeC) return;
+            if (selModeC.value === 'mixte') {
+                outMonnaieC.textContent = '—';
+                return;
+            }
+            if (!inpRecuC) return;
+            var recu = parseMontant(inpRecuC.value);
+            if (isNaN(recu)) {
+                outMonnaieC.textContent = '—';
+                return;
+            }
+            if (recu + 1e-6 >= totalTtcCorr) {
+                outMonnaieC.textContent = formatFcfa(Math.max(0, recu - totalTtcCorr));
+                outMonnaieC.className = 'caisse-encaisse-monnaie-live__valeur is-ok';
+            } else {
+                var manque = totalTtcCorr - recu;
+                outMonnaieC.textContent = 'Manque ' + formatFcfa(manque);
+                outMonnaieC.className = 'caisse-encaisse-monnaie-live__valeur is-manque';
+            }
         }
-        if (!inpRecu) return;
-        var recu = parseMontant(inpRecu.value);
-        if (isNaN(recu)) {
-            outMonnaie.textContent = '—';
-            return;
+        function syncCorrigerPayUi() {
+            if (!selModeC || !blocRecuC || !blocMixC) return;
+            var m = selModeC.value;
+            if (m === 'mixte') {
+                blocMixC.classList.remove('is-hidden');
+                if (inpRecuC) inpRecuC.value = '';
+            } else {
+                blocMixC.classList.add('is-hidden');
+            }
+            blocRecuC.style.display = (m === 'mixte') ? 'none' : '';
+            if (labRecuC) {
+                labRecuC.textContent = labelsCorriger[m] || 'Montant reçu';
+            }
+            updateMonnaieCorriger();
         }
-        if (recu + 1e-6 >= totalTtc) {
-            outMonnaie.textContent = formatFcfa(Math.max(0, recu - totalTtc));
-            outMonnaie.className = 'caisse-encaisse-monnaie-live__valeur is-ok';
-        } else {
-            var manque = totalTtc - recu;
-            outMonnaie.textContent = 'Manque ' + formatFcfa(manque);
-            outMonnaie.className = 'caisse-encaisse-monnaie-live__valeur is-manque';
+        if (inpRecuC) inpRecuC.addEventListener('input', updateMonnaieCorriger);
+        if (selModeC) {
+            selModeC.addEventListener('change', syncCorrigerPayUi);
+            syncCorrigerPayUi();
         }
     }
 
-    function toggleModeBlocks() {
-        if (!selMode || !blocEsp || !blocMix) return;
-        var m = selMode.value;
-        if (m === 'mixte') {
-            blocMix.classList.remove('is-hidden');
-        } else {
-            blocMix.classList.add('is-hidden');
+    if (modalEncaisse && btnOpenEncaisse) {
+        function openModalEncaisse() {
+            modalEncaisse.removeAttribute('hidden');
+            modalEncaisse.classList.add('is-open');
+            modalEncaisse.setAttribute('aria-hidden', 'false');
+            document.body.classList.add('caisse-modal-open');
+            var recu = document.getElementById('encaisse_montant_recu');
+            if (recu) setTimeout(function () { recu.focus(); }, 50);
         }
-        if (m === 'especes') {
-            blocEsp.style.display = '';
-        } else {
-            blocEsp.style.display = 'none';
+        function closeModalEncaisse() {
+            modalEncaisse.setAttribute('hidden', 'hidden');
+            modalEncaisse.classList.remove('is-open');
+            modalEncaisse.setAttribute('aria-hidden', 'true');
+            if (!ticketViewIsOpen()) {
+                document.body.classList.remove('caisse-modal-open');
+            }
         }
-        updateMonnaieLive();
-    }
+        btnOpenEncaisse.addEventListener('click', openModalEncaisse);
+        modalEncaisse.querySelectorAll('[data-caisse-close-modal]').forEach(function (el) {
+            el.addEventListener('click', closeModalEncaisse);
+        });
 
-    if (inpRecu) inpRecu.addEventListener('input', updateMonnaieLive);
-    if (selMode) {
-        selMode.addEventListener('change', toggleModeBlocks);
-        toggleModeBlocks();
+        var form = document.getElementById('formEncaisseTicket');
+        var totalTtc = form ? parseFloat(form.getAttribute('data-total-ttc')) : 0;
+        if (isNaN(totalTtc)) totalTtc = 0;
+        var inpRecu = document.getElementById('encaisse_montant_recu');
+        var outMonnaie = document.getElementById('encaisseMonnaieValeur');
+        var selMode = document.getElementById('encaisse_mode_paiement');
+        var labRecu = document.getElementById('encaisse_label_montant_recu');
+        var blocEsp = document.getElementById('encaisseBlocEspeces');
+        var blocMix = document.getElementById('encaisseBlocMixte');
+        var labelsMontantRecu = {
+            especes: 'Montant reçu (espèces)',
+            orange_money: 'Montant reçu (Orange Money)',
+            wave: 'Montant reçu (Wave)',
+            carte: 'Montant débité / reçu (carte bancaire)',
+            cheque: 'Montant du chèque',
+            autre: 'Montant reçu'
+        };
+        function updateMonnaieLive() {
+            if (!outMonnaie || !selMode) return;
+            if (selMode.value === 'mixte') {
+                outMonnaie.textContent = '—';
+                return;
+            }
+            if (!inpRecu) return;
+            var recu = parseMontant(inpRecu.value);
+            if (isNaN(recu)) {
+                outMonnaie.textContent = '—';
+                return;
+            }
+            if (recu + 1e-6 >= totalTtc) {
+                outMonnaie.textContent = formatFcfa(Math.max(0, recu - totalTtc));
+                outMonnaie.className = 'caisse-encaisse-monnaie-live__valeur is-ok';
+            } else {
+                var manque = totalTtc - recu;
+                outMonnaie.textContent = 'Manque ' + formatFcfa(manque);
+                outMonnaie.className = 'caisse-encaisse-monnaie-live__valeur is-manque';
+            }
+        }
+        function toggleModeBlocks() {
+            if (!selMode || !blocEsp || !blocMix) return;
+            var m = selMode.value;
+            if (m === 'mixte') {
+                blocMix.classList.remove('is-hidden');
+                if (inpRecu) inpRecu.value = '';
+            } else {
+                blocMix.classList.add('is-hidden');
+            }
+            blocEsp.style.display = (m === 'mixte') ? 'none' : '';
+            if (labRecu) {
+                labRecu.textContent = labelsMontantRecu[m] || 'Montant reçu';
+            }
+            updateMonnaieLive();
+        }
+        if (inpRecu) inpRecu.addEventListener('input', updateMonnaieLive);
+        if (selMode) {
+            selMode.addEventListener('change', toggleModeBlocks);
+            toggleModeBlocks();
+        }
     }
 })();
 </script>

@@ -13,6 +13,10 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
 
 require_once __DIR__ . '/../includes/require_access.php';
 
+if (empty($_SESSION['admin_csrf'])) {
+    $_SESSION['admin_csrf'] = bin2hex(random_bytes(32));
+}
+
 require_once __DIR__ . '/../../controllers/controller_produits.php';
 $result = process_add_produit();
 
@@ -36,6 +40,16 @@ $categorie_id_prefill = isset($_GET['categorie_id']) ? (int) $_GET['categorie_id
 
 $has_ff_col = produits_has_column('fournisseur_id');
 $fournisseurs_catalogue = $has_ff_col ? get_all_fournisseurs_ordered_by_nom() : [];
+
+require_once __DIR__ . '/../../models/model_sous_categories.php';
+$has_prix_achat_col = produits_has_column('prix_achat');
+$has_sous_cat_col = produits_has_column('sous_categorie_id')
+    && function_exists('sous_categories_table_ok')
+    && sous_categories_table_ok();
+$sous_categories_all = $has_sous_cat_col ? get_all_sous_categories_with_categorie_nom() : [];
+$sous_cat_preselect = isset($_GET['sous_categorie_id']) ? (int) $_GET['sous_categorie_id'] : 0;
+$has_ident_col = produits_has_column('identifiant_interne');
+$has_img_etiq_col = produits_has_column('image_etiquette_fpl');
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -61,7 +75,7 @@ $fournisseurs_catalogue = $has_ff_col ? get_all_fournisseurs_ordered_by_nom() : 
                 <h1 class="pm-title">
                     <i class="fas fa-plus" aria-hidden="true"></i> Ajouter un produit
                 </h1>
-                <p class="pm-subtitle">Même présentation que la fiche modification : informations, tarifs, emplacement puis galerie. L’identifiant <strong>FPL</strong> est créé automatiquement.</p>
+                <p class="pm-subtitle">Même présentation que la fiche modification : informations, tarifs, emplacement puis galerie. La référence <strong>FPL</strong> est attribuée automatiquement à l’enregistrement.</p>
             </div>
             <div class="pm-hero__actions">
                 <?php if ($categorie_id_prefill > 0): ?>
@@ -84,6 +98,11 @@ $fournisseurs_catalogue = $has_ff_col ? get_all_fournisseurs_ordered_by_nom() : 
             </div>
             <?php endif; ?>
 
+            <?php if (!empty($_SESSION['produit_form_notice'])): ?>
+            <div class="message success" role="status" style="margin-bottom:1rem;">
+                <i class="fas fa-info-circle" aria-hidden="true"></i> <?php echo htmlspecialchars((string) $_SESSION['produit_form_notice'], ENT_QUOTES, 'UTF-8'); ?>
+            </div>
+            <?php unset($_SESSION['produit_form_notice']); endif; ?>
             <form method="POST" action="" enctype="multipart/form-data" class="pm-form" id="form-produit-ajouter">
                 <div class="pm-sections">
                     <section class="pm-card" aria-labelledby="pm-sec-info-add">
@@ -137,7 +156,7 @@ $fournisseurs_catalogue = $has_ff_col ? get_all_fournisseurs_ordered_by_nom() : 
                         <div class="pm-card__body">
                             <div class="form-row">
                                 <div class="form-group">
-                                    <label for="prix">Prix (FCFA)</label>
+                                    <label for="prix">Prix de vente (FCFA)</label>
                                     <input type="number" id="prix" name="prix" step="0.01" min="0"
                                         value="<?php echo isset($_POST['prix']) ? htmlspecialchars($_POST['prix']) : ''; ?>">
                                     <small class="form-hint">Facultatif — vide = 0&nbsp;FCFA en base.</small>
@@ -148,6 +167,16 @@ $fournisseurs_catalogue = $has_ff_col ? get_all_fournisseurs_ordered_by_nom() : 
                                         value="<?php echo isset($_POST['prix_promotion']) ? htmlspecialchars($_POST['prix_promotion']) : ''; ?>">
                                 </div>
                             </div>
+                            <?php if ($has_prix_achat_col): ?>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="prix_achat">Prix d'achat (FCFA)</label>
+                                    <input type="number" id="prix_achat" name="prix_achat" step="0.01" min="0"
+                                        value="<?php echo isset($_POST['prix_achat']) ? htmlspecialchars((string) $_POST['prix_achat'], ENT_QUOTES, 'UTF-8') : ''; ?>">
+                                    <small class="form-hint">Facultatif.</small>
+                                </div>
+                            </div>
+                            <?php endif; ?>
                             <div class="form-row">
                                 <div class="form-group">
                                     <label for="stock">Stock *</label>
@@ -176,6 +205,27 @@ $fournisseurs_catalogue = $has_ff_col ? get_all_fournisseurs_ordered_by_nom() : 
                                     <?php endif; ?>
                                 </div>
                             </div>
+                            <?php if ($has_sous_cat_col): ?>
+                            <div class="form-row" id="sous-categorie-field-row">
+                                <div class="form-group">
+                                    <label for="sous_categorie_id">Sous-catégorie</label>
+                                    <select id="sous_categorie_id" name="sous_categorie_id">
+                                        <option value="">— Aucune —</option>
+                                        <?php
+                                        $sc_post = isset($_POST['sous_categorie_id']) ? (int) $_POST['sous_categorie_id'] : $sous_cat_preselect;
+                                        foreach ($sous_categories_all as $sc):
+                                        ?>
+                                        <option value="<?php echo (int) $sc['id']; ?>"
+                                            data-categorie-id="<?php echo (int) $sc['categorie_id']; ?>"
+                                            <?php echo $sc_post === (int) $sc['id'] ? 'selected' : ''; ?>>
+                                            <?php echo htmlspecialchars($sc['nom']); ?>
+                                        </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <small class="form-hint">Affiché seulement si la catégorie possède des sous-catégories. <a href="../stock/index.php">Créer une sous-catégorie</a>.</small>
+                                </div>
+                            </div>
+                            <?php endif; ?>
                         </div>
                     </section>
 
@@ -184,13 +234,21 @@ $fournisseurs_catalogue = $has_ff_col ? get_all_fournisseurs_ordered_by_nom() : 
                             <span class="pm-card__icon" aria-hidden="true"><i class="fas fa-warehouse"></i></span>
                             <div>
                                 <h2 id="pm-sec-ref-add" class="pm-card__title">Référence &amp; emplacement</h2>
-                                <p class="pm-card__hint">Repères entrepôt (identifiant FPL attribué à l’enregistrement)</p>
+                                <p class="pm-card__hint">Référence FPL automatique et repères entrepôt</p>
                             </div>
                         </div>
                         <div class="pm-card__body">
-                            <p class="pm-hint">
-                                <i class="fas fa-barcode" aria-hidden="true"></i> Un code interne <strong>FPLxxxxxx</strong> sera généré automatiquement pour ce produit.
+                            <?php if ($has_ident_col): ?>
+                            <p class="form-hint pm-hint" style="margin:0 0 1rem;">
+                                À l’enregistrement, la référence <strong>FPL</strong> est créée automatiquement :
+                                <strong>3 chiffres</strong> (préfixe) + <strong>6 chiffres</strong> dont les deux premiers sont <strong>00</strong>
+                                et les quatre derniers <strong>aléatoires</strong>. L’unicité est vérifiée (réessai automatique en cas de collision).
                             </p>
+                            <?php else: ?>
+                            <p class="pm-hint">
+                                <i class="fas fa-info-circle" aria-hidden="true"></i> Activez la colonne <code>identifiant_interne</code> (migrations) pour activer la référence FPL automatique sur ce formulaire.
+                            </p>
+                            <?php endif; ?>
                             <div class="form-row">
                                 <div class="form-group">
                                     <label for="etage"><i class="fas fa-warehouse"></i> Étage (entrepôt)</label>
@@ -304,6 +362,18 @@ $fournisseurs_catalogue = $has_ff_col ? get_all_fournisseurs_ordered_by_nom() : 
                                 <div id="preview-images" class="image-preview-accumulator"></div>
                                 <small class="form-hint">Formats : JPG, PNG, GIF, WEBP. Facultatif — vous pouvez ajouter des photos plus tard.</small>
                             </div>
+                            <?php if ($has_img_etiq_col): ?>
+                            <div class="form-group" style="margin-top: 1.25rem;">
+                                <label for="image_etiquette_fpl"><i class="fas fa-tag" aria-hidden="true"></i> Photo pour l’étiquette FPL (optionnel)</label>
+                                <p class="form-hint" style="margin-bottom: 10px;">Affichée sur l’étiquette imprimable depuis <strong>Ajuster le stock</strong> à la place des pictogrammes, si une image est fournie.</p>
+                                <label for="image_etiquette_fpl" class="pm-upload-label">
+                                    <i class="fas fa-image" aria-hidden="true"></i> Choisir une image
+                                </label>
+                                <input type="file" id="image_etiquette_fpl" name="image_etiquette_fpl" accept="image/*" class="pm-file-hidden">
+                                <div id="preview-image-etiquette-fpl" class="pm-etiquette-fpl-preview-wrap" aria-live="polite"></div>
+                                <p id="preview-image-etiquette-fpl-placeholder" class="form-hint" style="margin-top:8px;">Aucun fichier sélectionné — les pictogrammes par défaut seront utilisés sur l’étiquette.</p>
+                            </div>
+                            <?php endif; ?>
                         </div>
                     </section>
 
@@ -326,7 +396,7 @@ $fournisseurs_catalogue = $has_ff_col ? get_all_fournisseurs_ordered_by_nom() : 
                 </button>
             </div>
         </div>
-    </div><!-- .contents-container.pm-page -->
+        </div><!-- .contents-container.pm-page -->
 
     <script>
         (function () {
@@ -402,6 +472,36 @@ $fournisseurs_catalogue = $has_ff_col ? get_all_fournisseurs_ordered_by_nom() : 
                 });
             }
 
+        })();
+        (function () {
+            var inp = document.getElementById('image_etiquette_fpl');
+            var box = document.getElementById('preview-image-etiquette-fpl');
+            var ph = document.getElementById('preview-image-etiquette-fpl-placeholder');
+            if (!inp || !box) {
+                return;
+            }
+            inp.addEventListener('change', function () {
+                box.innerHTML = '';
+                if (ph) {
+                    ph.style.display = '';
+                }
+                var f = inp.files && inp.files[0];
+                if (!f || !f.type.match(/^image\//)) {
+                    return;
+                }
+                if (ph) {
+                    ph.style.display = 'none';
+                }
+                var reader = new FileReader();
+                reader.onload = function (e) {
+                    var im = document.createElement('img');
+                    im.src = e.target.result;
+                    im.alt = 'Aperçu étiquette FPL';
+                    im.className = 'pm-etiquette-fpl-preview-img';
+                    box.appendChild(im);
+                };
+                reader.readAsDataURL(f);
+            });
         })();
         (function () {
             var couleurInput = document.getElementById('couleur-input');
@@ -615,4 +715,50 @@ $fournisseurs_catalogue = $has_ff_col ? get_all_fournisseurs_ordered_by_nom() : 
             }
         })();
     </script>
+    <?php if ($has_sous_cat_col): ?>
+    <script>
+        (function () {
+            var cat = document.getElementById('categorie_id');
+            var sub = document.getElementById('sous_categorie_id');
+            var row = document.getElementById('sous-categorie-field-row');
+            if (!cat || !sub || !row) return;
+
+            function applySousCategorieFiltre() {
+                var cid = String(cat.value || '');
+                var i, o;
+                var countForCat = 0;
+
+                for (i = 0; i < sub.options.length; i++) {
+                    o = sub.options[i];
+                    if (!o.value) {
+                        continue;
+                    }
+                    var match = cid !== '' && o.getAttribute('data-categorie-id') === cid;
+                    o.hidden = !match;
+                    if (match) {
+                        countForCat++;
+                    }
+                }
+
+                var sel = sub.options[sub.selectedIndex];
+                if (sel && sel.value && (cid === '' || sel.getAttribute('data-categorie-id') !== cid)) {
+                    sub.value = '';
+                }
+
+                if (cid === '' || countForCat === 0) {
+                    row.style.display = 'none';
+                    sub.value = '';
+                } else {
+                    row.style.removeProperty('display');
+                    if (sub.options[0] && !sub.options[0].value) {
+                        sub.options[0].hidden = false;
+                    }
+                }
+            }
+
+            cat.addEventListener('change', applySousCategorieFiltre);
+            applySousCategorieFiltre();
+        })();
+    </script>
+    <?php endif; ?>
     <?php include '../includes/footer.php'; ?>

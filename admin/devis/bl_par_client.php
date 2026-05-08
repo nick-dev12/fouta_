@@ -31,7 +31,7 @@ if (!$client) {
     exit;
 }
 
-$bl_list = get_all_bl_for_client_b2b($client_b2b_id);
+$bl_list = get_all_bl_for_client_b2b($client_b2b_id, true);
 $raison = $client['raison_sociale'] ?? '';
 $contact_nom = trim(($client['nom_contact'] ?? '') . ' ' . ($client['prenom_contact'] ?? ''));
 

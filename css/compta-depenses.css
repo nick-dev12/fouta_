@@ -1066,6 +1066,39 @@ body.compta-dep-modal-open {
   max-width: 100%;
 }
 
+.compta-dep-periode-hint {
+  margin: 0 0 14px;
+  font-size: 0.9rem;
+  color: var(--gris-fonce, #4a4a4a);
+}
+
+.compta-dep-item__createur {
+  margin: 0 0 10px;
+  font-size: 0.85rem;
+  color: var(--gris-fonce, #4a4a4a);
+}
+
+.compta-dep-item__createur i {
+  margin-right: 6px;
+  opacity: 0.85;
+}
+
+.compta-dep-filtres-detail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.compta-dep-filtres-detail .compta-dep-filters__field {
+  flex: 1 1 160px;
+  min-width: 140px;
+}
+
+.compta-dep-filtres-detail .compta-dep-filters__field--full {
+  flex: 1 1 220px;
+}
+
 @media (max-width: 768px) {
   .compta-dep-hero--premium .compta-dep-hero__actions {
     width: 100%;

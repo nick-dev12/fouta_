@@ -5,6 +5,7 @@
  */
 
 require_once __DIR__ . '/../models/model_produits.php';
+require_once __DIR__ . '/../models/model_sous_categories.php';
 require_once __DIR__ . '/../includes/barcode_fpl.php';
 
 /**
@@ -271,6 +272,39 @@ function process_add_produit() {
         && $fournisseur_res['fournisseur_id'] === null) {
         $errors[] = 'Le fournisseur sélectionné est invalide.';
     }
+
+    $prix_achat = null;
+    if (produits_has_column('prix_achat')) {
+        $pa_raw = isset($_POST['prix_achat']) ? trim((string) $_POST['prix_achat']) : '';
+        if ($pa_raw !== '') {
+            if (!is_numeric($pa_raw) || (float) $pa_raw < 0) {
+                $errors[] = 'Le prix d\'achat doit être un nombre valide (0 ou plus).';
+            } else {
+                $prix_achat = (float) $pa_raw;
+            }
+        }
+    }
+
+    $sous_categorie_id = null;
+    if (produits_has_column('sous_categorie_id') && function_exists('sous_categories_table_ok') && sous_categories_table_ok()) {
+        $sc_post = isset($_POST['sous_categorie_id']) ? (int) $_POST['sous_categorie_id'] : 0;
+        if ($sc_post > 0) {
+            $row_sc = get_sous_categorie_by_id($sc_post);
+            if (!$row_sc || (int) $row_sc['categorie_id'] !== $categorie_id) {
+                $errors[] = 'La sous-catégorie choisie ne correspond pas à la catégorie du produit.';
+            } else {
+                $sous_categorie_id = $sc_post;
+            }
+        }
+    }
+
+    $identifiant_attribue = null;
+    if (produits_has_column('identifiant_interne')) {
+        $identifiant_attribue = produits_allouer_identifiant_fpl_9_auto(0);
+        if (!$identifiant_attribue) {
+            $errors[] = 'Impossible d\'attribuer une référence interne unique. Réessayez.';
+        }
+    }
     
     // Upload des images : images_produit[] (1ère = principale, reste = galerie)
     // Si lié à un article en stock, on utilise son image si pas d'upload
@@ -290,7 +324,19 @@ function process_add_produit() {
         $all_images = array_merge([$image_principale], $images_supp);
         $images_json = json_encode($all_images);
     }
-    
+
+    $image_etiquette_fpl = null;
+    if (produits_has_column('image_etiquette_fpl')
+        && isset($_FILES['image_etiquette_fpl'])
+        && (int) ($_FILES['image_etiquette_fpl']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
+        $up_et = upload_produit_image($_FILES, 'image_etiquette_fpl');
+        if ($up_et !== false) {
+            $image_etiquette_fpl = $up_et;
+        } else {
+            $errors[] = 'Image étiquette FPL : fichier invalide ou format non autorisé (JPG, PNG, GIF, WEBP).';
+        }
+    }
+
     // Si aucune erreur, créer le produit
     if (empty($errors)) {
         $etage = isset($_POST['etage']) ? trim($_POST['etage']) : '';
@@ -315,6 +361,18 @@ function process_add_produit() {
             'etage' => $etage !== '' ? $etage : null,
             'numero_rayon' => $numero_rayon !== '' ? $numero_rayon : null
         ];
+        if (produits_has_column('prix_achat')) {
+            $data['prix_achat'] = $prix_achat;
+        }
+        if (produits_has_column('sous_categorie_id')) {
+            $data['sous_categorie_id'] = $sous_categorie_id;
+        }
+        if ($identifiant_attribue !== null && produits_has_column('identifiant_interne')) {
+            $data['identifiant_interne'] = $identifiant_attribue;
+        }
+        if (produits_has_column('image_etiquette_fpl')) {
+            $data['image_etiquette_fpl'] = $image_etiquette_fpl;
+        }
         if ($admin_session_id > 0) {
             $data['admin_createur_id'] = $admin_session_id;
         }
@@ -324,6 +382,9 @@ function process_add_produit() {
         if ($produit_id) {
             $success = true;
             $message = 'Produit ajouté avec succès !';
+            if ($identifiant_attribue !== null && $identifiant_attribue !== '') {
+                $message .= ' Référence : ' . $identifiant_attribue . '.';
+            }
             // Générer et sauvegarder le QR code du produit
             generer_qrcode_produit($produit_id);
             generer_barcode_produit_fpl($produit_id);
@@ -498,6 +559,72 @@ function process_update_produit($produit_id) {
         $errors[] = 'Le fournisseur sélectionné est invalide.';
     }
 
+    $prix_achat = null;
+    if (produits_has_column('prix_achat')) {
+        $pa_raw = isset($_POST['prix_achat']) ? trim((string) $_POST['prix_achat']) : '';
+        if ($pa_raw !== '') {
+            if (!is_numeric($pa_raw) || (float) $pa_raw < 0) {
+                $errors[] = 'Le prix d\'achat doit être un nombre valide (0 ou plus).';
+            } else {
+                $prix_achat = (float) $pa_raw;
+            }
+        }
+    }
+
+    $sous_categorie_id = null;
+    if (produits_has_column('sous_categorie_id') && function_exists('sous_categories_table_ok') && sous_categories_table_ok()) {
+        $sc_post = isset($_POST['sous_categorie_id']) ? (int) $_POST['sous_categorie_id'] : 0;
+        if ($sc_post > 0) {
+            $row_sc = get_sous_categorie_by_id($sc_post);
+            if (!$row_sc || (int) $row_sc['categorie_id'] !== $categorie_id) {
+                $errors[] = 'La sous-catégorie choisie ne correspond pas à la catégorie du produit.';
+            } else {
+                $sous_categorie_id = $sc_post;
+            }
+        }
+    }
+
+    $nouvel_identifiant = null;
+    if (produits_has_column('identifiant_interne')) {
+        $ref6 = isset($_POST['reference_suffix6']) ? preg_replace('/\D/', '', (string) $_POST['reference_suffix6']) : '';
+        if (strlen($ref6) !== 6) {
+            $errors[] = 'Indiquez exactement 6 chiffres pour la fin de la référence produit.';
+        } else {
+            $cur = strtoupper(trim((string) ($produit['identifiant_interne'] ?? '')));
+            if (preg_match('/^FPL(\d{3})(\d{6})$/', $cur, $m)) {
+                $nouvel_identifiant = 'FPL' . $m[1] . $ref6;
+            } else {
+                $nouvel_identifiant = produits_allouer_identifiant_fpl_9($ref6, $produit_id);
+            }
+            if (!$nouvel_identifiant) {
+                $errors[] = 'Impossible de déterminer la référence interne.';
+            } elseif (produits_identifiant_interne_existe($nouvel_identifiant, $produit_id)) {
+                $errors[] = 'Cette référence interne est déjà utilisée par un autre produit.';
+            }
+        }
+    }
+
+    $image_etiquette_fpl_courant = '';
+    if (produits_has_column('image_etiquette_fpl')) {
+        $image_etiquette_fpl_courant = trim((string) ($produit['image_etiquette_fpl'] ?? ''));
+    }
+    if (produits_has_column('image_etiquette_fpl')
+        && isset($_FILES['image_etiquette_fpl'])
+        && (int) ($_FILES['image_etiquette_fpl']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
+        $up_et = upload_produit_image($_FILES, 'image_etiquette_fpl');
+        if ($up_et !== false) {
+            if ($image_etiquette_fpl_courant !== '') {
+                $oldp = __DIR__ . '/../upload/' . $image_etiquette_fpl_courant;
+                if (is_file($oldp)) {
+                    @unlink($oldp);
+                }
+            }
+            $image_etiquette_fpl_courant = $up_et;
+        } else {
+            $errors[] = 'Image étiquette FPL : fichier invalide ou format non autorisé (JPG, PNG, GIF, WEBP).';
+        }
+    }
+
     // Récupérer les images existantes
     $all_images = [];
     if (!empty($produit['images'])) {
@@ -555,6 +682,18 @@ function process_update_produit($produit_id) {
             'etage' => $etage !== '' ? $etage : null,
             'numero_rayon' => $numero_rayon !== '' ? $numero_rayon : null
         ];
+        if (produits_has_column('prix_achat')) {
+            $data['prix_achat'] = $prix_achat;
+        }
+        if (produits_has_column('sous_categorie_id')) {
+            $data['sous_categorie_id'] = $sous_categorie_id;
+        }
+        if ($nouvel_identifiant !== null && produits_has_column('identifiant_interne')) {
+            $data['identifiant_interne'] = $nouvel_identifiant;
+        }
+        if (produits_has_column('image_etiquette_fpl')) {
+            $data['image_etiquette_fpl'] = $image_etiquette_fpl_courant !== '' ? $image_etiquette_fpl_courant : null;
+        }
         if ($admin_session_id > 0) {
             $data['admin_dernier_modificateur_id'] = $admin_session_id;
         }
@@ -627,6 +766,13 @@ function process_update_produit($produit_id) {
             foreach ($existing_ids as $eid) {
                 if (!in_array($eid, $kept_ids)) {
                     delete_variante($eid);
+                }
+            }
+            if ($nouvel_identifiant !== null && produits_has_column('identifiant_interne')) {
+                $old_id = strtoupper(trim((string) ($produit['identifiant_interne'] ?? '')));
+                $new_id = strtoupper(trim((string) $nouvel_identifiant));
+                if ($old_id !== $new_id) {
+                    generer_barcode_produit_fpl($produit_id);
                 }
             }
         } else {

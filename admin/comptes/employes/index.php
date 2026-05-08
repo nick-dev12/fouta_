@@ -52,14 +52,17 @@ $fiches_actifs = count(array_filter($fiches, function ($r) {
                 <p class="comptes-lead">Fiches enregistrées dans la table <strong>employes</strong> pour les <strong>absences</strong> et le suivi interne.</p>
             </div>
             <div class="comptes-header-actions page-comptes-hero__actions er-hero-actions">
-                <a href="ajouter.php" class="page-comptes-cta er-btn-primary">
-                    <i class="fas fa-user-plus" aria-hidden="true"></i> Ajouter un employé
+                <a href="ajouter.php" class="er-hero-chip er-hero-chip--add">
+                    <span class="er-hero-chip__ic" aria-hidden="true"><i class="fas fa-user-plus"></i></span>
+                    <span class="er-hero-chip__label">Ajouter un employé</span>
                 </a>
-                <a href="../absences.php" class="page-comptes-cta page-comptes-cta--secondary">
-                    <i class="fas fa-calendar-xmark" aria-hidden="true"></i> Absences
+                <a href="../absences.php" class="er-hero-chip er-hero-chip--absences">
+                    <span class="er-hero-chip__ic" aria-hidden="true"><i class="fas fa-calendar-xmark"></i></span>
+                    <span class="er-hero-chip__label">Absences</span>
                 </a>
-                <a href="../index.php" class="page-comptes-cta page-comptes-cta--ghost">
-                    <i class="fas fa-arrow-left" aria-hidden="true"></i> Comptes d’accès
+                <a href="../index.php" class="er-hero-chip er-hero-chip--comptes">
+                    <span class="er-hero-chip__ic" aria-hidden="true"><i class="fas fa-key"></i></span>
+                    <span class="er-hero-chip__label">Comptes d’accès</span>
                 </a>
             </div>
         </header>
@@ -97,16 +100,50 @@ $fiches_actifs = count(array_filter($fiches, function ($r) {
                 <div class="er-empty__ic" aria-hidden="true"><i class="fas fa-folder-open"></i></div>
                 <h2>Aucune fiche</h2>
                 <p>Ajoutez un employé pour qu’il apparaisse aussi dans les formulaires d’absence.</p>
-                <a href="ajouter.php" class="page-comptes-cta er-btn-primary">Ajouter le premier employé</a>
+                <a href="ajouter.php" class="er-hero-chip er-hero-chip--add">
+                    <span class="er-hero-chip__ic" aria-hidden="true"><i class="fas fa-user-plus"></i></span>
+                    <span class="er-hero-chip__label">Ajouter le premier employé</span>
+                </a>
             </div>
         <?php else: ?>
-            <ul class="er-grid">
+            <div class="er-search-toolbar" id="er-search-toolbar">
+                <div class="er-search-toolbar__inner">
+                    <label class="er-search-field" for="er-search-input">
+                        <span class="er-search-field__ic" aria-hidden="true"><i class="fas fa-search"></i></span>
+                        <input type="search"
+                            id="er-search-input"
+                            class="er-search-field__input"
+                            placeholder="Rechercher par nom, prénom, poste, e-mail ou téléphone…"
+                            autocomplete="off"
+                            spellcheck="false"
+                            aria-describedby="er-search-preview">
+                    </label>
+                    <div class="er-search-preview" id="er-search-preview" aria-live="polite">
+                        <span class="er-search-preview__count" id="er-search-preview-count"></span>
+                        <span class="er-search-preview__hint" id="er-search-preview-hint"></span>
+                    </div>
+                </div>
+            </div>
+            <ul class="er-grid" id="er-employes-grid">
                 <?php foreach ($fiches as $f): ?>
                     <?php
                     $ph_rel = trim((string) ($f['photo_chemin'] ?? ''));
                     $ph_ok = $ph_rel !== '' && strpos($ph_rel, '..') === false && is_file($upload_disk . str_replace('/', DIRECTORY_SEPARATOR, $ph_rel));
+                    $tel_raw = (string) ($f['telephone'] ?? '');
+                    $tel_digits = preg_replace('/\D+/', '', $tel_raw);
+                    $blob_search = mb_strtolower(
+                        trim(
+                            ($f['prenom'] ?? '') . ' '
+                            . ($f['nom'] ?? '') . ' '
+                            . ($f['poste'] ?? '') . ' '
+                            . ($f['email'] ?? '') . ' '
+                            . $tel_raw . ' '
+                            . $tel_digits
+                        ),
+                        'UTF-8'
+                    );
                     ?>
-                    <li class="er-card<?php echo ($f['statut'] ?? '') !== 'actif' ? ' er-card--muted' : ''; ?>">
+                    <li class="er-card<?php echo ($f['statut'] ?? '') !== 'actif' ? ' er-card--muted' : ''; ?>" data-er-search="<?php echo htmlspecialchars($blob_search, ENT_QUOTES, 'UTF-8'); ?>">
                         <div class="er-card__head">
                             <?php if ($ph_ok): ?>
                             <span class="er-card__avatar er-card__avatar--photo" aria-hidden="true">
@@ -130,13 +167,25 @@ $fiches_actifs = count(array_filter($fiches, function ($r) {
                             <p class="er-card__meta"><i class="fas fa-phone" aria-hidden="true"></i> <?php echo htmlspecialchars((string) $f['telephone']); ?></p>
                         <?php endif; ?>
                         <div class="er-card__footer er-card__actions">
-                            <a href="details.php?id=<?php echo (int) $f['id']; ?>" class="er-card__btn er-card__btn--secondary"><i class="fas fa-eye" aria-hidden="true"></i> Détails</a>
-                            <a href="modifier.php?id=<?php echo (int) $f['id']; ?>" class="er-card__btn"><i class="fas fa-pen" aria-hidden="true"></i> Modifier</a>
+                            <a href="details.php?id=<?php echo (int) $f['id']; ?>" class="er-card-action er-card-action--details">
+                                <span class="er-card-action__ic" aria-hidden="true"><i class="fas fa-eye"></i></span>
+                                <span class="er-card-action__label">Détails</span>
+                            </a>
+                            <a href="modifier.php?id=<?php echo (int) $f['id']; ?>" class="er-card-action er-card-action--edit">
+                                <span class="er-card-action__ic" aria-hidden="true"><i class="fas fa-pen"></i></span>
+                                <span class="er-card-action__label">Modifier</span>
+                            </a>
                         </div>
                     </li>
                 <?php endforeach; ?>
             </ul>
+            <div class="er-search-no-results" id="er-search-no-results" hidden>
+                <div class="er-search-no-results__ic" aria-hidden="true"><i class="fas fa-magnifying-glass"></i></div>
+                <p class="er-search-no-results__title">Aucun employé ne correspond</p>
+                <p class="er-search-no-results__text">Essayez un autre terme ou effacez la recherche.</p>
+            </div>
         <?php endif; ?>
     </div>
+    <script src="/js/admin-employes-index-search.js<?php echo asset_version_query(); ?>"></script>
 </body>
 </html>

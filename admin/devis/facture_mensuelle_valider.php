@@ -35,12 +35,12 @@ $facture_mensuelle_id = (int) ($_POST['facture_mensuelle_id'] ?? 0);
 require_once __DIR__ . '/../../models/model_factures_mensuelles.php';
 
 if ($facture_mensuelle_id <= 0 || !valider_facture_mensuelle($facture_mensuelle_id)) {
-    $_SESSION['fm_erreur'] = 'Validation impossible (facture introuvable ou déjà validée).';
+    $_SESSION['fm_erreur'] = 'Validation impossible (facture introuvable ou déjà traitée).';
     $redir_id = $facture_mensuelle_id > 0 ? $facture_mensuelle_id : 0;
     header('Location: ' . ($redir_id > 0 ? 'facture_mensuelle.php?id=' . $redir_id : 'index.php?tab=bl'));
     exit;
 }
 
-$_SESSION['success_message'] = 'Facture HT validée.';
+$_SESSION['success_message'] = 'Facture enregistrée comme payée (comptabilité).';
 header('Location: facture_mensuelle.php?id=' . $facture_mensuelle_id);
 exit;

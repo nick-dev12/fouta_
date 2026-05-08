@@ -3,6 +3,7 @@
  * Bons de livraison (HT) + lignes
  */
 require_once __DIR__ . '/../conn/conn.php';
+require_once __DIR__ . '/../includes/fiscal_tva.php';
 
 function bl_tables_available() {
     global $db;
@@ -12,6 +13,28 @@ function bl_tables_available() {
     }
     try {
         $db->query('SELECT 1 FROM bons_livraison LIMIT 1');
+        $ok = true;
+    } catch (PDOException $e) {
+        $ok = false;
+    }
+    return $ok;
+}
+
+/**
+ * Colonnes TVA sur bons_livraison (migration add_devis_bl_factures_tva)
+ */
+function bl_tva_columns_ok() {
+    global $db;
+    static $ok = null;
+    if ($ok !== null) {
+        return $ok;
+    }
+    $ok = false;
+    if (!bl_tables_available() || !$db) {
+        return false;
+    }
+    try {
+        $db->query('SELECT tva_incluse, taux_tva_pourcent FROM bons_livraison LIMIT 1');
         $ok = true;
     } catch (PDOException $e) {
         $ok = false;
@@ -176,14 +199,33 @@ function get_all_bl_with_clients() {
 
 /**
  * Clients B2B ayant au moins un bon de livraison (pour l’onglet BL : liste par contact)
+ *
+ * nb_bl : BL non rattachés à une facture mensuelle (en cours — hors archivage facture).
+ * dernier_bl_date : dernier BL parmi ceux-là uniquement.
+ *
+ * @return list<array<string, mixed>>
  */
 function get_clients_b2b_avec_bl() {
     global $db;
     if (!bl_tables_available()) {
         return [];
     }
+    require_once __DIR__ . '/model_factures_mensuelles.php';
+    $fm_ok = factures_mensuelles_table_ok();
     try {
-        $stmt = $db->query('
+        if ($fm_ok) {
+            $stmt = $db->query('
+            SELECT c.id, c.raison_sociale, c.nom_contact, c.prenom_contact, c.telephone, c.email, c.adresse,
+                   COUNT(DISTINCT CASE WHEN fmb.bl_id IS NULL THEN b.id END) AS nb_bl,
+                   MAX(CASE WHEN fmb.bl_id IS NULL THEN b.date_creation END) AS dernier_bl_date
+            FROM clients_b2b c
+            INNER JOIN bons_livraison b ON b.client_b2b_id = c.id
+            LEFT JOIN facture_mensuelle_bl fmb ON fmb.bl_id = b.id
+            GROUP BY c.id, c.raison_sociale, c.nom_contact, c.prenom_contact, c.telephone, c.email, c.adresse
+            ORDER BY c.raison_sociale ASC
+            ');
+        } else {
+            $stmt = $db->query('
             SELECT c.id, c.raison_sociale, c.nom_contact, c.prenom_contact, c.telephone, c.email, c.adresse,
                    COUNT(b.id) AS nb_bl,
                    MAX(b.date_creation) AS dernier_bl_date
@@ -191,7 +233,8 @@ function get_clients_b2b_avec_bl() {
             INNER JOIN bons_livraison b ON b.client_b2b_id = c.id
             GROUP BY c.id, c.raison_sociale, c.nom_contact, c.prenom_contact, c.telephone, c.email, c.adresse
             ORDER BY c.raison_sociale ASC
-        ');
+            ');
+        }
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     } catch (PDOException $e) {
         error_log('[get_clients_b2b_avec_bl] ' . $e->getMessage());
@@ -201,8 +244,11 @@ function get_clients_b2b_avec_bl() {
 
 /**
  * Tous les BL d’un client B2B (liste détaillée)
+ *
+ * @param bool $exclure_bl_lies_facture_mensuelle Si true : exclut les BL déjà rattachés à une facture mensuelle
+ *        (y compris brouillon) — ils n’apparaissent plus sur la fiche « active » comptabilité.
  */
-function get_all_bl_for_client_b2b($client_b2b_id) {
+function get_all_bl_for_client_b2b($client_b2b_id, $exclure_bl_lies_facture_mensuelle = false) {
     global $db;
     if (!bl_tables_available()) {
         return [];
@@ -211,15 +257,26 @@ function get_all_bl_for_client_b2b($client_b2b_id) {
     if ($client_b2b_id <= 0) {
         return [];
     }
+    $exclure = (bool) $exclure_bl_lies_facture_mensuelle;
+    if ($exclure) {
+        require_once __DIR__ . '/model_factures_mensuelles.php';
+        $exclure = factures_mensuelles_table_ok();
+    }
     try {
-        $stmt = $db->prepare('
+        $sql = '
             SELECT b.*, c.raison_sociale, c.telephone AS client_telephone, c.email AS client_email,
                    b.statut AS bl_statut
             FROM bons_livraison b
             INNER JOIN clients_b2b c ON b.client_b2b_id = c.id
             WHERE b.client_b2b_id = :cid
-            ORDER BY b.date_creation DESC
-        ');
+        ';
+        if ($exclure) {
+            $sql .= ' AND NOT EXISTS (
+                SELECT 1 FROM facture_mensuelle_bl fmb WHERE fmb.bl_id = b.id
+            )';
+        }
+        $sql .= ' ORDER BY b.date_creation DESC';
+        $stmt = $db->prepare($sql);
         $stmt->execute(['cid' => $client_b2b_id]);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
         foreach ($rows as $i => $r) {
@@ -364,22 +421,46 @@ function create_bl_from_devis($devis_id, $admin_id) {
     }
     $total_ht += (float) ($devis['frais_livraison'] ?? 0);
 
+    $total_ht = round($total_ht, 2);
+    $tva_bl = bl_tva_columns_ok() && devis_tva_columns_ok() && !empty($devis['tva_incluse']);
+    $taux_bl = bl_tva_columns_ok() && devis_tva_columns_ok() && isset($devis['taux_tva_pourcent']) && (float) $devis['taux_tva_pourcent'] > 0
+        ? (float) $devis['taux_tva_pourcent']
+        : fiscal_taux_tva_pourcent();
+
     $numero = generate_numero_bl();
     try {
         $db->beginTransaction();
-        $stmt = $db->prepare('
+        if (bl_tva_columns_ok()) {
+            $stmt = $db->prepare('
+            INSERT INTO bons_livraison (numero_bl, client_b2b_id, devis_id, admin_createur_id, statut, date_bl, total_ht, tva_incluse, taux_tva_pourcent, notes, date_creation)
+            VALUES (:numero_bl, :client_b2b_id, :devis_id, :admin_id, :statut, CURDATE(), :total_ht, :tva_incluse, :taux_tva_pourcent, :notes, NOW())
+        ');
+            $stmt->execute([
+                'numero_bl' => $numero,
+                'client_b2b_id' => (int) $client['id'],
+                'devis_id' => $devis_id,
+                'admin_id' => $admin_id ? (int) $admin_id : null,
+                'statut' => 'brouillon',
+                'total_ht' => $total_ht,
+                'tva_incluse' => $tva_bl ? 1 : 0,
+                'taux_tva_pourcent' => $taux_bl,
+                'notes' => 'Issu du devis ' . $devis['numero_devis'],
+            ]);
+        } else {
+            $stmt = $db->prepare('
             INSERT INTO bons_livraison (numero_bl, client_b2b_id, devis_id, admin_createur_id, statut, date_bl, total_ht, notes, date_creation)
             VALUES (:numero_bl, :client_b2b_id, :devis_id, :admin_id, :statut, CURDATE(), :total_ht, :notes, NOW())
         ');
-        $stmt->execute([
-            'numero_bl' => $numero,
-            'client_b2b_id' => (int) $client['id'],
-            'devis_id' => $devis_id,
-            'admin_id' => $admin_id ? (int) $admin_id : null,
-            'statut' => 'brouillon',
-            'total_ht' => round($total_ht, 2),
-            'notes' => 'Issu du devis ' . $devis['numero_devis'],
-        ]);
+            $stmt->execute([
+                'numero_bl' => $numero,
+                'client_b2b_id' => (int) $client['id'],
+                'devis_id' => $devis_id,
+                'admin_id' => $admin_id ? (int) $admin_id : null,
+                'statut' => 'brouillon',
+                'total_ht' => $total_ht,
+                'notes' => 'Issu du devis ' . $devis['numero_devis'],
+            ]);
+        }
         $bl_id = (int) $db->lastInsertId();
 
         $ins = $db->prepare('
@@ -447,8 +528,9 @@ function bl_totaux_ht_lignes_manuel($lignes)
 /**
  * Création manuelle d'un BL avec lignes
  * @param array $lignes [['produit_id'=>, 'designation'=>, 'quantite'=>, 'prix_unitaire_ht'=>], ...]
+ * @param bool $tva_incluse Facture BL : total TTC (HT + TVA) si true
  */
-function create_bl_manuel($client_b2b_id, $date_bl, $notes, $lignes, $admin_id, $statut = 'brouillon') {
+function create_bl_manuel($client_b2b_id, $date_bl, $notes, $lignes, $admin_id, $statut = 'brouillon', $tva_incluse = false) {
     global $db;
     if (!bl_tables_available()) {
         return ['success' => false, 'message' => 'Tables BL absentes.'];
@@ -492,21 +574,42 @@ function create_bl_manuel($client_b2b_id, $date_bl, $notes, $lignes, $admin_id, 
     }
 
     $numero = generate_numero_bl();
+    $total_ht = round($total_ht, 2);
+    $tva_flag = bl_tva_columns_ok() ? (bool) $tva_incluse : false;
+    $taux_tva_stocke = fiscal_taux_tva_pourcent();
     try {
         $db->beginTransaction();
-        $stmt = $db->prepare('
+        if (bl_tva_columns_ok()) {
+            $stmt = $db->prepare('
+            INSERT INTO bons_livraison (numero_bl, client_b2b_id, devis_id, admin_createur_id, statut, date_bl, total_ht, tva_incluse, taux_tva_pourcent, notes, date_creation)
+            VALUES (:numero_bl, :client_b2b_id, NULL, :admin_id, :statut, :date_bl, :total_ht, :tva_incluse, :taux_tva_pourcent, :notes, NOW())
+        ');
+            $stmt->execute([
+                'numero_bl' => $numero,
+                'client_b2b_id' => $client_b2b_id,
+                'admin_id' => $admin_id ? (int) $admin_id : null,
+                'statut' => $statut,
+                'date_bl' => $date_bl ?: date('Y-m-d'),
+                'total_ht' => $total_ht,
+                'tva_incluse' => $tva_flag ? 1 : 0,
+                'taux_tva_pourcent' => $taux_tva_stocke,
+                'notes' => $notes !== '' ? $notes : null,
+            ]);
+        } else {
+            $stmt = $db->prepare('
             INSERT INTO bons_livraison (numero_bl, client_b2b_id, devis_id, admin_createur_id, statut, date_bl, total_ht, notes, date_creation)
             VALUES (:numero_bl, :client_b2b_id, NULL, :admin_id, :statut, :date_bl, :total_ht, :notes, NOW())
         ');
-        $stmt->execute([
-            'numero_bl' => $numero,
-            'client_b2b_id' => $client_b2b_id,
-            'admin_id' => $admin_id ? (int) $admin_id : null,
-            'statut' => $statut,
-            'date_bl' => $date_bl ?: date('Y-m-d'),
-            'total_ht' => round($total_ht, 2),
-            'notes' => $notes !== '' ? $notes : null,
-        ]);
+            $stmt->execute([
+                'numero_bl' => $numero,
+                'client_b2b_id' => $client_b2b_id,
+                'admin_id' => $admin_id ? (int) $admin_id : null,
+                'statut' => $statut,
+                'date_bl' => $date_bl ?: date('Y-m-d'),
+                'total_ht' => $total_ht,
+                'notes' => $notes !== '' ? $notes : null,
+            ]);
+        }
         $bl_id = (int) $db->lastInsertId();
 
         $ins = $db->prepare('

@@ -24,8 +24,32 @@ if ($facture_bl_statut_libelle !== '') {
         $facture_bl_meta_color = '#856404';
     }
 }
+$facture_est_payee = isset($facture_est_payee)
+    ? (bool) $facture_est_payee
+    : (!empty($facture['payee']));
+if (!isset($facture_numero_affichage) || (string) $facture_numero_affichage === '') {
+    $facture_numero_affichage = ($facture_est_payee && !empty($facture['numero_reference_fpl']))
+        ? (string) $facture['numero_reference_fpl']
+        : (string) ($facture['numero_facture'] ?? '');
+} else {
+    $facture_numero_affichage = (string) $facture_numero_affichage;
+}
+$facture_afficher_marquer_payee = !empty($facture_afficher_marquer_payee);
+$facture_csrf_token = isset($facture_csrf_token) ? (string) $facture_csrf_token : '';
+$facture_page_flash_success = isset($facture_page_flash_success) ? (string) $facture_page_flash_success : '';
+$facture_page_flash_error = isset($facture_page_flash_error) ? (string) $facture_page_flash_error : '';
 require_once __DIR__ . '/site_url.php';
-$facture_og_title = 'Facture ' . htmlspecialchars($facture['numero_facture'] ?? '') . ' - FOUTA POIDS LOURDS';
+require_once __DIR__ . '/fiscal_tva.php';
+$facture_tva_incluse = isset($facture_tva_incluse) ? (bool) $facture_tva_incluse : (!empty($facture['tva_incluse']));
+$facture_fiscal_ht = isset($facture_fiscal_ht) ? $facture_fiscal_ht : ($facture['montant_ht'] ?? null);
+$facture_fiscal_ht = ($facture_fiscal_ht !== null && $facture_fiscal_ht !== '') ? (float) $facture_fiscal_ht : null;
+$facture_fiscal_tva = isset($facture_fiscal_tva) ? $facture_fiscal_tva : ($facture['montant_tva'] ?? null);
+$facture_fiscal_tva = ($facture_fiscal_tva !== null && $facture_fiscal_tva !== '') ? (float) $facture_fiscal_tva : null;
+$facture_fiscal_taux = isset($facture_fiscal_taux) && (float) $facture_fiscal_taux > 0
+    ? (float) $facture_fiscal_taux
+    : ((isset($facture['taux_tva_pourcent']) && (float) $facture['taux_tva_pourcent'] > 0) ? (float) $facture['taux_tva_pourcent'] : fiscal_taux_tva_pourcent());
+$facture_afficher_detail_tva = $facture_tva_incluse && $facture_fiscal_ht !== null && $facture_fiscal_tva !== null;
+$facture_og_title = 'Facture ' . htmlspecialchars($facture_numero_affichage) . ' - FOUTA POIDS LOURDS';
 $facture_og_desc = 'Facture FOUTA POIDS LOURDS - ' . ($entreprise_nom ?? 'FOUTA POIDS LOURDS') . ' - Montant : ' . number_format($facture['montant_total'] ?? 0, 0, ',', ' ') . ' CFA';
 $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
 ?>
@@ -171,6 +195,64 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
             font-size: 16px;
             color: #3564a6;
             margin-top: 8px;
+        }
+
+        .facture-payee-mention {
+            font-size: 15px;
+            font-weight: 700;
+            color: #1b5e20;
+            margin-top: 6px;
+            letter-spacing: 0.02em;
+        }
+
+        .facture-flash-bar {
+            max-width: 918px;
+            margin: 0 auto 14px;
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .facture-flash-bar--success {
+            background: #e8f5e9;
+            border: 1px solid #1b5e20;
+            color: #1b5e20;
+        }
+
+        .facture-flash-bar--error {
+            background: #ffebee;
+            border: 1px solid #c62828;
+            color: #6a1b1b;
+        }
+
+        .facture-actions form.facture-form-marquer-paye {
+            display: inline-flex;
+            margin: 0;
+        }
+
+        .facture-actions .btn-marquer-paye {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 18px;
+            border-radius: 10px;
+            border: none;
+            background: #1b5e20;
+            color: #fff;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        .facture-actions .btn-marquer-paye:hover {
+            background: #2e7d32;
+        }
+
+        .facture-summary .solde-row.facture-solde-paye-row span {
+            color: #1b5e20;
+            font-weight: 700;
         }
 
         .facture-billing {
@@ -664,6 +746,12 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
 </head>
 
 <body>
+    <?php if ($facture_page_flash_success !== ''): ?>
+        <div class="facture-flash-bar facture-flash-bar--success" role="status"><?php echo htmlspecialchars($facture_page_flash_success); ?></div>
+    <?php endif; ?>
+    <?php if ($facture_page_flash_error !== ''): ?>
+        <div class="facture-flash-bar facture-flash-bar--error" role="alert"><?php echo htmlspecialchars($facture_page_flash_error); ?></div>
+    <?php endif; ?>
     <?php if (empty($is_public)): ?>
         <?php
         $back_url = $facture_back_url ?? ('details.php?id=' . (int) ($facture['commande_id'] ?? $facture['devis_id'] ?? 0));
@@ -672,6 +760,15 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
         <div class="facture-actions facture-actions-top">
             <a href="<?php echo htmlspecialchars($back_url); ?>"><i class="fas fa-arrow-left"></i> <?php echo htmlspecialchars($back_label); ?></a>
             <a href="javascript:window.print();"><i class="fas fa-print"></i> Imprimer</a>
+            <?php if ($facture_afficher_marquer_payee): ?>
+                <form method="post" action="" class="facture-form-marquer-paye"
+                    onsubmit='return confirm("Confirmer le paiement ? La facture passera au num\u00e9ro FPL et sera retir\u00e9e des devis \u00e0 suivre.");'>
+                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($facture_csrf_token, ENT_QUOTES, 'UTF-8'); ?>">
+                    <button type="submit" name="marquer_facture_payee" value="1" class="btn-marquer-paye">
+                        <i class="fas fa-check-circle" aria-hidden="true"></i> Marquer comme payé
+                    </button>
+                </form>
+            <?php endif; ?>
             <?php if (!empty($whatsapp_url)): ?>
                 <a href="<?php echo htmlspecialchars($whatsapp_url); ?>" target="_blank" rel="noopener noreferrer"
                     class="btn-whatsapp">
@@ -718,7 +815,11 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
             <div class="facture-meta">
                 <div class="facture-meta-kv">
                     <div class="label">FACTURE</div>
-                    <div class="value"><?php echo htmlspecialchars($facture['numero_facture']); ?></div>
+                    <div class="value"><?php echo htmlspecialchars($facture_numero_affichage); ?></div>
+                    <?php if ($facture_est_payee && !empty($facture['numero_facture']) && $facture['numero_facture'] !== $facture_numero_affichage): ?>
+                    <div class="label" style="margin-top:6px;opacity:0.85;">Ancien n°</div>
+                    <div class="value" style="font-size:11px;font-weight:600;color:#666;"><?php echo htmlspecialchars((string) $facture['numero_facture']); ?></div>
+                    <?php endif; ?>
                 </div>
                 <div class="facture-meta-kv">
                     <div class="label">DATE</div>
@@ -731,8 +832,11 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
                 </div>
                 <?php endif; ?>
                 <div class="facture-meta-kv facture-meta-kv--total">
-                    <div class="label">SOLDE DÛ</div>
+                    <div class="label"><?php echo $facture_est_payee ? 'MONTANT' : 'SOLDE DÛ'; ?></div>
                     <div class="solde">XOF <?php echo number_format($facture['montant_total'], 2, ',', ' '); ?> CFA</div>
+                    <?php if ($facture_est_payee): ?>
+                        <div class="facture-payee-mention">Payé</div>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
@@ -755,9 +859,9 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
                 <thead>
                     <tr>
                         <th>ARTICLE</th>
-                        <th>PRIX</th>
+                        <th>PRIX<?php echo $facture_afficher_detail_tva ? ' (HT)' : ''; ?></th>
                         <th>QTÉ</th>
-                        <th>MONTANT</th>
+                        <th>MONTANT<?php echo $facture_afficher_detail_tva ? ' (HT)' : ''; ?></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -790,6 +894,30 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
                 }
                 $frais_livraison = (float) ($commande['frais_livraison'] ?? 0);
                 ?>
+                <?php if ($facture_afficher_detail_tva): ?>
+                <div class="row">
+                    <span>SOUS-TOTAL PRODUITS (HT)</span>
+                    <span><?php echo number_format($sous_total_produits, 2, ',', ' '); ?> CFA</span>
+                </div>
+                <?php if ($frais_livraison > 0): ?>
+                <div class="row">
+                    <span>FRAIS DE LIVRAISON (HT)</span>
+                    <span><?php echo number_format($frais_livraison, 2, ',', ' '); ?> CFA</span>
+                </div>
+                <?php endif; ?>
+                <div class="row">
+                    <span>TOTAL HT</span>
+                    <span><?php echo number_format($facture_fiscal_ht, 2, ',', ' '); ?> CFA</span>
+                </div>
+                <div class="row facture-row-tva">
+                    <span>TVA (<?php echo number_format($facture_fiscal_taux, 2, ',', ' '); ?> %)</span>
+                    <span><?php echo number_format($facture_fiscal_tva, 2, ',', ' '); ?> CFA</span>
+                </div>
+                <div class="row">
+                    <span>TOTAL TTC</span>
+                    <span><?php echo number_format($facture['montant_total'], 2, ',', ' '); ?> CFA</span>
+                </div>
+                <?php else: ?>
                 <?php if ($frais_livraison > 0): ?>
                 <div class="row">
                     <span>SOUS-TOTAL PRODUITS</span>
@@ -804,10 +932,18 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
                     <span>TOTAL</span>
                     <span><?php echo number_format($facture['montant_total'], 2, ',', ' '); ?> CFA</span>
                 </div>
+                <?php endif; ?>
+                <?php if ($facture_est_payee): ?>
+                <div class="row solde-row facture-solde-paye-row">
+                    <span>Payé</span>
+                    <span>XOF <?php echo number_format($facture['montant_total'], 2, ',', ' '); ?> CFA</span>
+                </div>
+                <?php else: ?>
                 <div class="row solde-row">
                     <span>SOLDE DÛ</span>
                     <span>XOF <?php echo number_format($facture['montant_total'], 2, ',', ' '); ?> CFA</span>
                 </div>
+                <?php endif; ?>
                 <?php if ($facture_bl_statut_libelle !== '' && in_array($facture_bl_statut_code, ['valide', 'paye'], true)): ?>
                 <div class="facture-reglement-row facture-reglement-row--paye">
                     <span>STATUT (BL)</span>

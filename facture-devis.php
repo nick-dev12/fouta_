@@ -54,4 +54,36 @@ $entreprise_email = 'info@foutapoidslourds.com';
 
 $is_public = true;
 $whatsapp_url = '';
+
+require_once __DIR__ . '/includes/fiscal_tva.php';
+
+$facture_tva_incluse = array_key_exists('tva_incluse', $facture)
+    ? !empty($facture['tva_incluse'])
+    : (devis_tva_columns_ok() && !empty($devis['tva_incluse']));
+$facture_fiscal_ht = null;
+$facture_fiscal_tva = null;
+$facture_fiscal_taux = null;
+if ($facture_tva_incluse) {
+    if (function_exists('factures_devis_fiscal_columns_ok') && factures_devis_fiscal_columns_ok()
+        && isset($facture['montant_ht'])
+        && $facture['montant_ht'] !== null
+        && $facture['montant_ht'] !== '') {
+        $facture_fiscal_ht = (float) $facture['montant_ht'];
+        $facture_fiscal_tva = isset($facture['montant_tva']) ? (float) $facture['montant_tva'] : 0.0;
+        $facture_fiscal_taux = (isset($facture['taux_tva_pourcent']) && (float) $facture['taux_tva_pourcent'] > 0)
+            ? (float) $facture['taux_tva_pourcent']
+            : fiscal_taux_tva_pourcent();
+    }
+    if ($facture_fiscal_ht === null) {
+        $net = devis_calcul_net_ht((int) $facture['devis_id']);
+        $ttp = (isset($devis['taux_tva_pourcent']) && (float) $devis['taux_tva_pourcent'] > 0)
+            ? (float) $devis['taux_tva_pourcent']
+            : null;
+        $f = fiscal_decomposer_net_ht($net, true, $ttp);
+        $facture_fiscal_ht = $f['montant_ht'];
+        $facture_fiscal_tva = $f['montant_tva'];
+        $facture_fiscal_taux = $ttp ?? fiscal_taux_tva_pourcent();
+    }
+}
+
 require __DIR__ . '/includes/facture_content.php';

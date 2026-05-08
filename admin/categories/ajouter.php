@@ -70,13 +70,6 @@ if (isset($result['success']) && $result['success']) {
             font-family: inherit;
         }
 
-        .form-group input[type="color"] {
-            max-width: 120px;
-            height: 48px;
-            padding: 4px;
-            cursor: pointer;
-        }
-
         .form-group input:focus,
         .form-group textarea:focus {
             outline: none;
@@ -147,15 +140,6 @@ if (isset($result['success']) && $result['success']) {
                 <label for="description">Description</label>
                 <textarea id="description" name="description" 
                           placeholder="Description de la catégorie (optionnel)"><?php echo isset($_POST['description']) ? htmlspecialchars($_POST['description']) : ''; ?></textarea>
-            </div>
-
-            <div class="form-group">
-                <label for="couleur_etiquette">Couleur étiquette stock FPL</label>
-                <input type="color" id="couleur_etiquette" name="couleur_etiquette"
-                    value="<?php echo htmlspecialchars(isset($_POST['couleur_etiquette']) && preg_match('/^#[0-9A-Fa-f]{6}$/', trim($_POST['couleur_etiquette'])) ? trim($_POST['couleur_etiquette']) : '#1e3a5f'); ?>">
-                <small style="color: #666; font-size: 12px; display: block; margin-top: 5px;">
-                    Par défaut, le même bleu foncé déclenche une couleur d’accent automatique selon la catégorie (synonymes + palette). Changez la pastille couleur pour figer une teinte précise pour toute la catégorie.
-                </small>
             </div>
 
             <div class="form-group">

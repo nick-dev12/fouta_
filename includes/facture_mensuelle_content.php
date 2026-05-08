@@ -9,17 +9,15 @@
  *   $date_facture_aff, $entreprise_*
  *   $is_public (bool), $whatsapp_url (optionnel)
  *   $facture_back_url, $facture_back_label
- *   $fm_show_validate (bool), $facture_mensuelle_id (int), $admin_csrf_token (string)
- *   $notes_facture (string, optionnel) — texte bloc paiement
- *   $fm_flash_success (string, optionnel) — message après validation
- *   $facture_show_client_zone (bool, optionnel) — zone « Client » en bas
- *   $fm_statut (string, optionnel) — brouillon | validee | payee
- *   Une FM « validée » est affichée comme une facture réglée (même rendu que payee).
+ *   $fm_show_validate (bool), $fm_show_marquer_paye (bool, optionnel), $facture_mensuelle_id (int), $admin_csrf_token (string)
+ *   $fm_statut (string, optionnel) — brouillon | validee (impayée) | payee
+ *   Payée = paiement enregistré ; validee = ancien flux ou impayée jusqu’au paiement.
  */
 $adresse_livraison = $adresse_livraison ?? '';
 $facture_show_client_zone = !empty($facture_show_client_zone);
 $fm_statut = isset($fm_statut) ? (string) $fm_statut : '';
-$fm_affiche_comme_reglee = in_array($fm_statut, ['validee', 'payee'], true);
+$fm_affiche_comme_reglee = ($fm_statut === 'payee');
+$fm_show_marquer_paye = !empty($fm_show_marquer_paye);
 $notes_facture = $notes_facture ?? 'Montants exprimés en HT (hors TVA), conformément aux bons de livraison référencés.';
 $detail_bls = isset($detail_bls) && is_array($detail_bls) ? $detail_bls : [];
 $fm_flash_success = $fm_flash_success ?? null;
@@ -429,6 +427,16 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
             color: #15803d;
         }
 
+        .facture-statut-badge--brouillon {
+            background: rgba(53, 100, 166, 0.15);
+            color: #2d5690;
+        }
+
+        .facture-statut-badge--impayee {
+            background: rgba(255, 107, 53, 0.18);
+            color: #c2410c;
+        }
+
         .facture-statut-badge--validee {
             background: rgba(53, 100, 166, 0.15);
             color: #2d5690;
@@ -444,6 +452,30 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
             font-weight: 700;
             background: rgba(22, 163, 74, 0.12);
             color: #166534;
+        }
+
+        .facture-paiement-badge--impaye {
+            background: rgba(255, 107, 53, 0.14);
+            color: #c2410c;
+        }
+
+        .facture-btn-marquer-paye {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: #3564a6;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        .facture-btn-marquer-paye:hover {
+            background: #2d5690;
         }
 
         .facture-meta-statuts {
@@ -770,10 +802,17 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
             <a href="<?php echo htmlspecialchars($back_url); ?>"><i class="fas fa-arrow-left"></i> <?php echo htmlspecialchars($back_label); ?></a>
             <a href="javascript:window.print();"><i class="fas fa-print"></i> Imprimer</a>
             <?php if (!empty($fm_show_validate) && !empty($facture_mensuelle_id) && !empty($admin_csrf_token)): ?>
-                <form method="post" action="facture_mensuelle_valider.php" onsubmit="return confirm('Valider cette facture HT ?');">
+                <form method="post" action="facture_mensuelle_valider.php" onsubmit="return confirm('Marquer cette facture comme payée ?');">
                     <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($admin_csrf_token); ?>">
                     <input type="hidden" name="facture_mensuelle_id" value="<?php echo (int) $facture_mensuelle_id; ?>">
-                    <button type="submit" class="facture-btn-validate"><i class="fas fa-check-circle"></i> Valider (comptabilité)</button>
+                    <button type="submit" class="facture-btn-validate"><i class="fas fa-check-circle"></i> Marquer comme payé</button>
+                </form>
+            <?php endif; ?>
+            <?php if (!empty($fm_show_marquer_paye) && !empty($facture_mensuelle_id) && !empty($admin_csrf_token)): ?>
+                <form method="post" action="facture_mensuelle_marquer_payee.php" onsubmit="return confirm('Confirmer l’enregistrement du paiement pour cette facture ?');">
+                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($admin_csrf_token); ?>">
+                    <input type="hidden" name="facture_mensuelle_id" value="<?php echo (int) $facture_mensuelle_id; ?>">
+                    <button type="submit" class="facture-btn-marquer-paye"><i class="fas fa-sack-dollar"></i> Enregistrer le paiement</button>
                 </form>
             <?php endif; ?>
             <?php if (!empty($whatsapp_url)): ?>
@@ -833,10 +872,22 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
                     <div class="value"><?php echo htmlspecialchars($date_facture_aff); ?></div>
                 </div>
                 <?php if (!empty($statut_fm_label)): ?>
+                    <?php
+                    $fm_badge_extra = '';
+                    if ($fm_statut === 'payee') {
+                        $fm_badge_extra = ' facture-statut-badge--payee';
+                    } elseif ($fm_statut === 'validee') {
+                        $fm_badge_extra = ' facture-statut-badge--impayee';
+                    } elseif ($fm_statut === 'brouillon') {
+                        $fm_badge_extra = ' facture-statut-badge--brouillon';
+                    }
+                    ?>
                     <div class="facture-meta-statuts">
-                        <span class="facture-statut-badge <?php echo $fm_affiche_comme_reglee ? 'facture-statut-badge--payee' : ($fm_statut === 'brouillon' ? 'facture-statut-badge--validee' : ''); ?>"><?php echo htmlspecialchars($statut_fm_label); ?></span>
-                        <?php if ($fm_affiche_comme_reglee): ?>
+                        <span class="facture-statut-badge<?php echo $fm_badge_extra; ?>"><?php echo htmlspecialchars($statut_fm_label); ?></span>
+                        <?php if ($fm_statut === 'payee'): ?>
                             <span class="facture-paiement-badge"><i class="fas fa-check-circle" style="margin-right:4px;"></i>Paiement : réglé</span>
+                        <?php elseif ($fm_statut === 'validee'): ?>
+                            <span class="facture-paiement-badge facture-paiement-badge--impaye"><i class="fas fa-clock" style="margin-right:4px;"></i>Paiement : en attente</span>
                         <?php endif; ?>
                     </div>
                 <?php endif; ?>

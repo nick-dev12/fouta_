@@ -67,8 +67,10 @@ $st = $facture_fm['statut'] ?? 'brouillon';
 $fm_statut = $st;
 if ($st === 'brouillon') {
     $statut_fm_label = 'Brouillon';
-} elseif ($st === 'validee' || $st === 'payee') {
+} elseif ($st === 'payee') {
     $statut_fm_label = 'Payée';
+} elseif ($st === 'validee') {
+    $statut_fm_label = 'Impayée';
 } else {
     $statut_fm_label = $st;
 }
@@ -89,16 +91,11 @@ $entreprise_email = 'info@foutapoidslourds.com';
 
 $is_public = false;
 
-$__role_fm = admin_normalize_role_for_route($_SESSION['admin_role'] ?? 'admin');
-if ($__role_fm === 'comptabilite') {
-    $facture_back_url = '../comptabilite/bl-fiche-client.php?id=' . (int) $facture_fm['client_b2b_id'];
-    $facture_back_label = 'Retour fiche client (comptabilité)';
-} else {
-    $facture_back_url = 'bl_par_client.php?id=' . (int) $facture_fm['client_b2b_id'];
-    $facture_back_label = 'Retour aux BL du client';
-}
+$facture_back_url = '../comptabilite/index.php?tab=bl';
+$facture_back_label = 'Retour aux BL du client';
 
 $fm_show_validate = ($st === 'brouillon') && admin_can_comptabilite();
+$fm_show_marquer_paye = ($st === 'validee') && admin_can_comptabilite();
 $facture_mensuelle_id = $facture_id;
 $admin_csrf_token = $_SESSION['admin_csrf'];
 

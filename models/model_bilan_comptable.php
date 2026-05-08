@@ -148,12 +148,12 @@ function bilan_comptable_collecter_donnees($date_debut, $date_fin, $limit_detail
     }
 
     $caisse_liste = [];
-    $caisse_totaux = ['total_ttc' => 0.0, 'nb' => 0, 'par_mode' => []];
+    $caisse_totaux = ['total_ttc' => 0.0, 'nb' => 0, 'par_canal' => []];
     if (function_exists('caisse_tables_exist') && caisse_tables_exist()) {
         $caisse_liste = caisse_compta_get_ventes_filtrees([
             'date_debut' => $d1,
             'date_fin' => $d2,
-            'mode_paiement' => '',
+            'canal' => '',
             'admin_id' => 0,
             'q' => '',
             'limit' => $lim_caisse,

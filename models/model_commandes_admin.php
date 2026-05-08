@@ -443,6 +443,31 @@ function get_all_commandes_vendues() {
 }
 
 /**
+ * Somme CA (montant_total) des commandes vendues (livrée + payée) entre deux dates (date de commande).
+ */
+function commandes_ca_vendues_somme_entre_dates($date_debut, $date_fin)
+{
+    global $db;
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $date_debut) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $date_fin)) {
+        return 0.0;
+    }
+    try {
+        $stmt = $db->prepare("
+            SELECT COALESCE(SUM(montant_total), 0) AS s
+            FROM commandes
+            WHERE statut IN ('livree', 'paye')
+            AND DATE(date_commande) >= :d1 AND DATE(date_commande) <= :d2
+        ");
+        $stmt->execute(['d1' => $date_debut, 'd2' => $date_fin]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row ? (float) ($row['s'] ?? 0) : 0.0;
+    } catch (PDOException $e) {
+        error_log('[commandes_ca_vendues_somme_entre_dates] ' . $e->getMessage());
+        return 0.0;
+    }
+}
+
+/**
  * Statistiques pour des commandes déjà limitées aux statuts livrée / payée
  * @param array $commandes
  * @return array{nb:int,ca_total:float,ca_livree:float,ca_paye:float}

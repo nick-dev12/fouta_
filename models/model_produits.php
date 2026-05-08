@@ -59,6 +59,115 @@ function generate_next_identifiant_interne_produit() {
 }
 
 /**
+ * Indique si un identifiant interne est déjà utilisé
+ */
+function produits_identifiant_interne_existe($code, $exclude_produit_id = 0)
+{
+    global $db;
+    if (!produits_has_column('identifiant_interne') || !$db) {
+        return false;
+    }
+    $exclude_produit_id = (int) $exclude_produit_id;
+    $code = strtoupper(trim((string) $code));
+    try {
+        $stmt = $db->prepare('SELECT id FROM produits WHERE UPPER(TRIM(identifiant_interne)) = :c LIMIT 1');
+        $stmt->execute(['c' => $code]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) {
+            return false;
+        }
+        if ($exclude_produit_id > 0 && (int) $row['id'] === $exclude_produit_id) {
+            return false;
+        }
+        return true;
+    } catch (PDOException $e) {
+        return true;
+    }
+}
+
+/**
+ * Prochain préfixe à 3 chiffres pour les codes FPL + 9 chiffres (001–999)
+ */
+function produits_prochain_prefix_3_chiffres()
+{
+    global $db;
+    if (!$db || !produits_has_column('identifiant_interne')) {
+        return '001';
+    }
+    $maxPref = 0;
+    try {
+        $stmt = $db->query("
+            SELECT identifiant_interne FROM produits
+            WHERE identifiant_interne REGEXP '^FPL[0-9]{9}$'
+        ");
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $c = strtoupper(trim((string) ($row['identifiant_interne'] ?? '')));
+            if (preg_match('/^FPL(\d{3})(\d{6})$/', $c, $m)) {
+                $maxPref = max($maxPref, (int) $m[1]);
+            }
+        }
+    } catch (PDOException $e) {
+        return '001';
+    }
+    $next = $maxPref + 1;
+    if ($next > 999) {
+        $next = 1;
+    }
+    return str_pad((string) $next, 3, '0', STR_PAD_LEFT);
+}
+
+/**
+ * Construit FPL + 3 chiffres auto + 6 chiffres saisis, en garantissant l'unicité
+ * @return string|null ex. FPL001123456
+ */
+function produits_allouer_identifiant_fpl_9($suffix6, $exclude_produit_id = 0)
+{
+    $suffix6 = preg_replace('/\D/', '', (string) $suffix6);
+    if (strlen($suffix6) > 6) {
+        $suffix6 = substr($suffix6, -6);
+    }
+    $suffix6 = str_pad($suffix6, 6, '0', STR_PAD_LEFT);
+    $exclude_produit_id = (int) $exclude_produit_id;
+
+    $prefixBase = (int) produits_prochain_prefix_3_chiffres();
+    if ($prefixBase <= 0) {
+        $prefixBase = 1;
+    }
+    for ($delta = 0; $delta < 999; $delta++) {
+        $p = ($prefixBase + $delta - 1) % 999 + 1;
+        $pref = str_pad((string) $p, 3, '0', STR_PAD_LEFT);
+        $full = 'FPL' . $pref . $suffix6;
+        if (!produits_identifiant_interne_existe($full, $exclude_produit_id)) {
+            return $full;
+        }
+    }
+    return null;
+}
+
+/**
+ * Alloue un identifiant FPL 9 chiffres avec suffixe automatique : « 00 » + 4 chiffres aléatoires,
+ * et préfixe 3 chiffres comme {@see produits_allouer_identifiant_fpl_9}. Réessaie si collision.
+ *
+ * @return string|null ex. FPL001004523
+ */
+function produits_allouer_identifiant_fpl_9_auto($exclude_produit_id = 0)
+{
+    if (!produits_has_column('identifiant_interne')) {
+        return null;
+    }
+    $exclude_produit_id = (int) $exclude_produit_id;
+    $max_attempts = 100;
+    for ($attempt = 0; $attempt < $max_attempts; $attempt++) {
+        $suffix6 = '00' . str_pad((string) random_int(0, 9999), 4, '0', STR_PAD_LEFT);
+        $code = produits_allouer_identifiant_fpl_9($suffix6, $exclude_produit_id);
+        if ($code !== null && $code !== '') {
+            return $code;
+        }
+    }
+    return null;
+}
+
+/**
  * Récupère tous les produits
  * @param string $statut Filtrer par statut (optionnel)
  * @return array|false Tableau des produits ou False en cas d'erreur
@@ -160,6 +269,61 @@ function get_produits_by_categorie($categorie_id)
 }
 
 /**
+ * Produits rattachés à une sous-catégorie (admin : tous statuts).
+ * @param int $sous_categorie_id
+ * @return array<int, array<string, mixed>>
+ */
+function get_produits_by_sous_categorie_id($sous_categorie_id)
+{
+    global $db;
+
+    if (!produits_has_column('sous_categorie_id')) {
+        return [];
+    }
+    $sous_categorie_id = (int) $sous_categorie_id;
+    if ($sous_categorie_id <= 0) {
+        return [];
+    }
+
+    try {
+        $stmt = $db->prepare("
+            SELECT p.*, c.nom as categorie_nom
+            FROM produits p
+            LEFT JOIN categories c ON p.categorie_id = c.id
+            WHERE p.sous_categorie_id = :sid
+            ORDER BY p.date_creation DESC, p.id DESC
+        ");
+        $stmt->execute(['sid' => $sous_categorie_id]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (PDOException $e) {
+        return [];
+    }
+}
+
+/**
+ * @param int $sous_categorie_id
+ * @return int
+ */
+function count_produits_by_sous_categorie_id($sous_categorie_id)
+{
+    global $db;
+    if (!produits_has_column('sous_categorie_id')) {
+        return 0;
+    }
+    $sous_categorie_id = (int) $sous_categorie_id;
+    if ($sous_categorie_id <= 0) {
+        return 0;
+    }
+    try {
+        $stmt = $db->prepare('SELECT COUNT(*) FROM produits WHERE sous_categorie_id = :sid');
+        $stmt->execute(['sid' => $sous_categorie_id]);
+        return (int) $stmt->fetchColumn();
+    } catch (PDOException $e) {
+        return 0;
+    }
+}
+
+/**
  * Récupère un produit par son ID
  * @param int $id L'ID du produit
  * @return array|false Les données du produit ou False si non trouvé
@@ -196,7 +360,7 @@ function get_produit_by_identifiant_interne($code, $only_actif = false)
         return false;
     }
     $code = strtoupper(trim((string) $code));
-    if (!preg_match('/^FPL\d{6}$/', $code)) {
+    if (!preg_match('/^FPL(\d{6}|\d{9})$/', $code)) {
         return false;
     }
 
@@ -418,7 +582,7 @@ function search_produits($recherche, $offset = 0, $limit = 20)
     if (produits_has_column('identifiant_interne') && preg_match('/^\d{5}$/', $t)) {
         return get_produits_by_identifiant_suffix_5_chiffres($t, $offset, $limit, true);
     }
-    if (produits_has_column('identifiant_interne') && preg_match('/^FPL\d{6}$/i', $t)) {
+    if (produits_has_column('identifiant_interne') && preg_match('/^FPL(\d{6}|\d{9})$/i', $t)) {
         $p = get_produit_by_identifiant_interne(strtoupper($t), true);
         return $p ? [$p] : [];
     }
@@ -463,7 +627,7 @@ function count_search_produits($recherche)
     if (produits_has_column('identifiant_interne') && preg_match('/^\d{5}$/', $t)) {
         return count_produits_by_identifiant_suffix_5_chiffres($t, true);
     }
-    if (produits_has_column('identifiant_interne') && preg_match('/^FPL\d{6}$/i', $t)) {
+    if (produits_has_column('identifiant_interne') && preg_match('/^FPL(\d{6}|\d{9})$/i', $t)) {
         $p = get_produit_by_identifiant_interne(strtoupper($t), true);
         return $p ? 1 : 0;
     }
@@ -506,7 +670,7 @@ function search_produits_with_filters($recherche = '', $prix_min = null, $prix_m
             if (produits_has_column('identifiant_interne') && preg_match('/^\d{5}$/', $tr)) {
                 $conditions[] = 'p.identifiant_interne IS NOT NULL AND TRIM(p.identifiant_interne) != \'\' AND ' . produits_sql_identifiant_suffix_5_expr('p') . ' = :suffix5';
                 $params['suffix5'] = $tr;
-            } elseif (produits_has_column('identifiant_interne') && preg_match('/^FPL\d{6}$/i', $tr)) {
+            } elseif (produits_has_column('identifiant_interne') && preg_match('/^FPL(\d{6}|\d{9})$/i', $tr)) {
                 $conditions[] = 'UPPER(TRIM(p.identifiant_interne)) = :ident_exact';
                 $params['ident_exact'] = strtoupper($tr);
             } else {
@@ -586,7 +750,7 @@ function count_search_produits_with_filters($recherche = '', $prix_min = null, $
             if (produits_has_column('identifiant_interne') && preg_match('/^\d{5}$/', $tr)) {
                 $conditions[] = 'identifiant_interne IS NOT NULL AND TRIM(identifiant_interne) != \'\' AND ' . produits_sql_identifiant_suffix_5_expr('') . ' = :suffix5';
                 $params['suffix5'] = $tr;
-            } elseif (produits_has_column('identifiant_interne') && preg_match('/^FPL\d{6}$/i', $tr)) {
+            } elseif (produits_has_column('identifiant_interne') && preg_match('/^FPL(\d{6}|\d{9})$/i', $tr)) {
                 $conditions[] = 'UPPER(TRIM(identifiant_interne)) = :ident_exact';
                 $params['ident_exact'] = strtoupper($tr);
             } else {
@@ -884,6 +1048,23 @@ function create_produit($data)
             $vals .= ", :admin_createur_id";
             $params['admin_createur_id'] = (int) $data['admin_createur_id'];
         }
+        if (produits_has_column('prix_achat')) {
+            $cols .= ", prix_achat";
+            $vals .= ", :prix_achat";
+            $params['prix_achat'] = array_key_exists('prix_achat', $data) ? $data['prix_achat'] : null;
+        }
+        if (produits_has_column('sous_categorie_id')) {
+            $cols .= ", sous_categorie_id";
+            $vals .= ", :sous_categorie_id";
+            $scid = $data['sous_categorie_id'] ?? null;
+            $params['sous_categorie_id'] = ($scid !== null && (int) $scid > 0) ? (int) $scid : null;
+        }
+        if (produits_has_column('image_etiquette_fpl')) {
+            $cols .= ", image_etiquette_fpl";
+            $vals .= ", :image_etiquette_fpl";
+            $ief = $data['image_etiquette_fpl'] ?? null;
+            $params['image_etiquette_fpl'] = ($ief !== null && $ief !== '') ? trim((string) $ief) : null;
+        }
         $with_extras = isset($data['couleurs']) || isset($data['taille']);
         if ($with_extras) {
             $cols .= ", couleurs, taille";
@@ -967,6 +1148,24 @@ function update_produit($id, $data)
         if (produits_has_column('admin_dernier_modificateur_id') && !empty($data['admin_dernier_modificateur_id'])) {
             $sets .= ", admin_dernier_modificateur_id = :admin_dernier_modificateur_id";
             $params['admin_dernier_modificateur_id'] = (int) $data['admin_dernier_modificateur_id'];
+        }
+        if (produits_has_column('prix_achat')) {
+            $sets .= ", prix_achat = :prix_achat";
+            $params['prix_achat'] = array_key_exists('prix_achat', $data) ? $data['prix_achat'] : null;
+        }
+        if (produits_has_column('sous_categorie_id')) {
+            $sets .= ", sous_categorie_id = :sous_categorie_id";
+            $scid = $data['sous_categorie_id'] ?? null;
+            $params['sous_categorie_id'] = ($scid !== null && (int) $scid > 0) ? (int) $scid : null;
+        }
+        if (produits_has_column('image_etiquette_fpl') && array_key_exists('image_etiquette_fpl', $data)) {
+            $sets .= ", image_etiquette_fpl = :image_etiquette_fpl";
+            $ief = $data['image_etiquette_fpl'];
+            $params['image_etiquette_fpl'] = ($ief !== null && $ief !== '') ? trim((string) $ief) : null;
+        }
+        if (produits_has_column('identifiant_interne') && array_key_exists('identifiant_interne', $data) && $data['identifiant_interne'] !== null && $data['identifiant_interne'] !== '') {
+            $sets .= ", identifiant_interne = :identifiant_interne";
+            $params['identifiant_interne'] = trim((string) $data['identifiant_interne']);
         }
         $with_extras = isset($data['couleurs']) || isset($data['taille']);
         if ($with_extras) {

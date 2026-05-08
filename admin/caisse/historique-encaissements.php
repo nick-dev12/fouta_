@@ -58,7 +58,7 @@ $caissier_id = isset($_GET['caissier_id']) ? (int) $_GET['caissier_id'] : 0;
 $q = isset($_GET['q']) ? trim((string) $_GET['q']) : '';
 
 $lignes = [];
-$totaux = ['total_ttc' => 0.0, 'nb' => 0, 'par_mode' => []];
+$totaux = ['total_ttc' => 0.0, 'nb' => 0, 'par_canal' => []];
 if ($tables_ok) {
     $lignes = caisse_encaissements_historique_fetch([
         'date_debut' => $d1,
@@ -142,10 +142,11 @@ $is_defaut_jour = ($d1 === $today && $d2 === $today && $mode === '' && $caissier
                     <select name="mode_paiement" id="hist_mode" class="caisse-search-select">
                         <option value="">Tous</option>
                         <option value="especes" <?php echo $mode === 'especes' ? 'selected' : ''; ?>>Espèces</option>
-                        <option value="mobile_money" <?php echo $mode === 'mobile_money' ? 'selected' : ''; ?>>Mobile money</option>
+                        <option value="orange_money" <?php echo $mode === 'orange_money' ? 'selected' : ''; ?>>Orange Money</option>
+                        <option value="wave" <?php echo $mode === 'wave' ? 'selected' : ''; ?>>Wave</option>
                         <option value="carte" <?php echo $mode === 'carte' ? 'selected' : ''; ?>>Carte</option>
                         <option value="cheque" <?php echo $mode === 'cheque' ? 'selected' : ''; ?>>Chèque</option>
-                        <option value="mixte" <?php echo $mode === 'mixte' ? 'selected' : ''; ?>>Mixte</option>
+                        <option value="mixte" <?php echo $mode === 'mixte' ? 'selected' : ''; ?>>Paiement mixte</option>
                         <option value="autre" <?php echo $mode === 'autre' ? 'selected' : ''; ?>>Autre</option>
                     </select>
                 </div>
@@ -197,7 +198,7 @@ $is_defaut_jour = ($d1 === $today && $d2 === $today && $mode === '' && $caissier
                     <?php foreach ($lignes as $row):
                         $idv = (int) ($row['id'] ?? 0);
                         $d_enc = $row['date_encaissement'] ?? $row['date_vente'] ?? '';
-                        $lib_m = caisse_compta_libelle_mode($row['mode_paiement'] ?? '');
+                        $lib_m = caisse_compta_libelle_paiement_ticket($row);
                         $nom_v = trim(($row['vendeur_prenom'] ?? '') . ' ' . ($row['vendeur_nom'] ?? ''));
                         $nom_c = trim(($row['encaiss_prenom'] ?? '') . ' ' . ($row['encaiss_nom'] ?? ''));
                         if ($nom_c === '' && !empty($row['caissier_id'])) {

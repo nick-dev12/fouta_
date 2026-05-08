@@ -145,6 +145,16 @@ if ($etiquette_fpl_ready) {
 $barcode_abs_et = ($barcode_url !== '' && strpos($barcode_url, 'http') === 0)
     ? $barcode_url
     : ($origin_et . (strpos((string) $barcode_url, '/') === 0 ? $barcode_url : '/' . ltrim((string) $barcode_url, '/')));
+$fpl_etiq_photo_abs = '';
+if (produits_has_column('image_etiquette_fpl')) {
+    $rel_et = trim((string) ($produit['image_etiquette_fpl'] ?? ''));
+    if ($rel_et !== '' && preg_match('#^produits/[a-zA-Z0-9_.-]+$#', $rel_et)) {
+        $fs_et = __DIR__ . '/../../upload/' . $rel_et;
+        if (is_file($fs_et)) {
+            $fpl_etiq_photo_abs = $origin_et . '/upload/' . str_replace('\\', '/', $rel_et) . '?v=' . (int) filemtime($fs_et);
+        }
+    }
+}
 $success_message = '';
 if (isset($_SESSION['success_message'])) {
     $success_message = $_SESSION['success_message'];
@@ -390,6 +400,11 @@ if (isset($_SESSION['success_message'])) {
                         <div class="fpl-etiq__divider" aria-hidden="true"></div>
                         <div class="fpl-etiq__col-right">
                             <div class="fpl-etiq__photo-box">
+                                <?php if ($fpl_etiq_photo_abs !== ''): ?>
+                                <div class="fpl-etiq__photo-strip fpl-etiq__photo-strip--image">
+                                    <img src="<?php echo htmlspecialchars($fpl_etiq_photo_abs, ENT_QUOTES, 'UTF-8'); ?>" alt="" class="fpl-etiq__photo-produit" width="232" height="90">
+                                </div>
+                                <?php else: ?>
                                 <div class="fpl-etiq__photo-strip fpl-etiq__photo-strip--icons-only" role="list" aria-label="Pictogrammes poids lourds">
                                     <?php for ($__etiq_vi = 0; $__etiq_vi < 4; $__etiq_vi++):
                                         $__badge = fpl_etiquette_thumb_vehicle_badge($__etiq_vi, 28);
@@ -401,6 +416,7 @@ if (isset($_SESSION['success_message'])) {
                                     </div>
                                     <?php endfor; ?>
                                 </div>
+                                <?php endif; ?>
                             </div>
                             <div class="fpl-etiq__barcode-line">
                                 <img src="<?php echo htmlspecialchars($barcode_abs_et, ENT_QUOTES, 'UTF-8'); ?>?v=<?php echo (int) $barcode_ver_et; ?>"

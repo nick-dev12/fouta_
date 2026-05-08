@@ -1,11 +1,15 @@
 /**
- * Service Worker PWA - Installation comme application
- * Permet l'installation du site sur l'écran d'accueil (mobile/desktop)
+ * Service Worker PWA — installation et mode application
+ * Fetch : réseau direct (pas de stratégie cache pour éviter données périmées admin/vitrine).
  */
-self.addEventListener('install', function(event) {
+self.addEventListener('install', function () {
     self.skipWaiting();
 });
 
-self.addEventListener('activate', function(event) {
+self.addEventListener('activate', function (event) {
     event.waitUntil(self.clients.claim());
+});
+
+self.addEventListener('fetch', function (event) {
+    event.respondWith(fetch(event.request));
 });
