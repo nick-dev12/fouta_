@@ -1,6 +1,6 @@
 <?php
 /**
- * Manifest PWA vitrine — icônes = logo du site (/image/) si présent.
+ * Manifest PWA vitrine — icônes = /icons/* générées depuis image/logo_pwa_fpl.png, ou replis logo site / logo_pwa_fpl.
  * Évite manifest.json statique avec chemins d’icônes absents ou incorrects.
  */
 declare(strict_types=1);
@@ -32,8 +32,8 @@ if (is_file($icon192_fs) && is_file($icon512_fs)) {
         $icon192 = $base . $logo_uri;
         $icon512 = $base . $logo_uri;
     } else {
-        $icon192 = $base . '/image/logo-fpl.png';
-        $icon512 = $base . '/image/logo-fpl.png';
+        $icon192 = $base . '/image/logo_pwa_fpl.png';
+        $icon512 = $base . '/image/logo_pwa_fpl.png';
     }
     $logo_mime = 'image/png';
     if (isset($logo_uri) && $logo_uri !== '') {
@@ -51,7 +51,7 @@ $manifest = [
     'short_name' => 'FOUTA POIDS LOURDS',
     'description' => 'Boutique en ligne FOUTA POIDS LOURDS',
     'id' => $base ? $base . '/' : '/',
-    'start_url' => $base . '/index.php',
+    'start_url' => $base . '/user/connexion.php',
     'scope' => $base ? ($base . '/') : '/',
     'display' => 'standalone',
     'orientation' => 'portrait-primary',

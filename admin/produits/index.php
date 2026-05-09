@@ -95,7 +95,9 @@ if (!empty($produits)) {
             <div class="dashboard-hero-text">
                 <p class="dashboard-eyebrow">Catalogue boutique</p>
                 <h1 id="page-produits-title"><i class="fas fa-box" aria-hidden="true"></i> Liste des produits</h1>
-                <p class="dashboard-subtitle">Gérez le catalogue, les stocks et les tarifs. Recherchez par nom, code <strong>FPL</strong> ou les <strong>5 derniers chiffres</strong> du numéro (caisse).</p>
+                <p class="dashboard-subtitle">Gérez le catalogue, les stocks et les tarifs. Recherchez par nom, code
+                    <strong>FPL</strong> ou les <strong>5 derniers chiffres</strong> du numéro (caisse).
+                </p>
                 <div class="page-produits-hero__actions">
                     <a href="ajouter.php" class="btn-primary page-produits-hero__btn">
                         <i class="fas fa-upload" aria-hidden="true"></i> Publier un produit
@@ -110,121 +112,128 @@ if (!empty($produits)) {
             </div>
         <?php endif; ?>
 
-    <section class="produits-section page-produits-section" aria-labelledby="produits-section-heading">
-        <div class="section-title page-produits-section__head">
-            <h2 id="produits-section-heading"><i class="fas fa-th-large" aria-hidden="true"></i> Tous les produits <span class="page-produits-count">(<?php echo count($produits); ?>)</span></h2>
-        </div>
+        <section class="produits-section page-produits-section" aria-labelledby="produits-section-heading">
+            <div class="section-title page-produits-section__head">
+                <h2 id="produits-section-heading"><i class="fas fa-th-large" aria-hidden="true"></i> Tous les produits
+                    <span class="page-produits-count">(<?php echo count($produits); ?>)</span>
+                </h2>
+            </div>
 
-        <form method="GET" action="" class="admin-filters-bar page-produits-filters">
-            <div class="admin-filter-field">
-                <label for="recherche">Recherche</label>
-                <input type="text" id="recherche" name="recherche"
-                    placeholder="Nom, FPL000151 ou 5 chiffres (ex. 00151)…"
-                    value="<?php echo htmlspecialchars($recherche); ?>" autocomplete="off" inputmode="search">
-            </div>
-            <div class="admin-filter-field">
-                <label for="categorie_id">Catégorie</label>
-                <select id="categorie_id" name="categorie_id">
-                    <option value="0">Toutes les catégories</option>
-                    <?php foreach ($categories as $categorie): ?>
-                        <option value="<?php echo (int) $categorie['id']; ?>" <?php echo $categorie_id === (int) $categorie['id'] ? 'selected' : ''; ?>>
-                            <?php echo htmlspecialchars($categorie['nom']); ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <div class="admin-filter-actions">
-                <button type="submit" class="btn-primary">
-                    <i class="fas fa-search"></i> Filtrer
-                </button>
-                <a href="index.php" class="btn-filter-reset">
-                    <i class="fas fa-rotate-left"></i>&nbsp;Réinitialiser
-                </a>
-            </div>
-        </form>
+            <form method="GET" action="" class="admin-filters-bar page-produits-filters">
+                <div class="admin-filter-field">
+                    <label for="recherche">Recherche</label>
+                    <input type="text" id="recherche" name="recherche"
+                        placeholder="Nom, FPL000151 ou 5 chiffres (ex. 00151)…"
+                        value="<?php echo htmlspecialchars($recherche); ?>" autocomplete="off" inputmode="search">
+                </div>
+                <div class="admin-filter-field">
+                    <label for="categorie_id">Catégorie</label>
+                    <select id="categorie_id" name="categorie_id">
+                        <option value="0">Toutes les catégories</option>
+                        <?php foreach ($categories as $categorie): ?>
+                            <option value="<?php echo (int) $categorie['id']; ?>" <?php echo $categorie_id === (int) $categorie['id'] ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($categorie['nom']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="admin-filter-actions">
+                    <button type="submit" class="btn-primary">
+                        <i class="fas fa-search"></i> Filtrer
+                    </button>
+                    <a href="index.php" class="btn-filter-reset">
+                        <i class="fas fa-rotate-left"></i>&nbsp;Réinitialiser
+                    </a>
+                </div>
+            </form>
 
-        <?php if (empty($produits)): ?>
-            <div class="empty-state page-produits-empty">
-                <div class="page-produits-empty__icon" aria-hidden="true"><i class="fas fa-box-open"></i></div>
-                <p class="page-produits-empty__title">Aucun produit à afficher</p>
-                <p class="page-produits-empty__hint">Élargissez la recherche, choisissez « Toutes les catégories » ou <a href="index.php">réinitialisez les filtres</a>. Vous pouvez aussi ajouter un produit.</p>
-                <a href="ajouter.php" class="btn-primary page-produits-empty__cta">
-                    <i class="fas fa-upload" aria-hidden="true"></i> Publier un produit
-                </a>
-            </div>
-        <?php else: ?>
-            <ul class="produits-grid page-produits-grid" role="list">
-                <?php foreach ($produits as $produit): ?>
-                    <li class="produit-card produit-card--admin produit-card-linkable"
-                        data-href="modifier.php?id=<?php echo (int) $produit['id']; ?>" role="listitem">
-                        <?php
-                        $statut_class = 'statut-actif';
-                        if ($produit['statut'] == 'inactif') {
-                            $statut_class = 'statut-inactif';
-                        } elseif ($produit['statut'] == 'rupture_stock') {
-                            $statut_class = 'statut-rupture';
-                        }
-                        $statut_label = ucfirst(str_replace('_', ' ', (string) ($produit['statut'] ?? '')));
-                        ?>
-                        <span class="statut-badge produit-card__statut <?php echo $statut_class; ?>"><?php echo htmlspecialchars($statut_label, ENT_QUOTES, 'UTF-8'); ?></span>
-                        <div class="produit-card-media">
+            <?php if (empty($produits)): ?>
+                <div class="empty-state page-produits-empty">
+                    <div class="page-produits-empty__icon" aria-hidden="true"><i class="fas fa-box-open"></i></div>
+                    <p class="page-produits-empty__title">Aucun produit à afficher</p>
+                    <p class="page-produits-empty__hint">Élargissez la recherche, choisissez « Toutes les catégories » ou <a
+                            href="index.php">réinitialisez les filtres</a>. Vous pouvez aussi ajouter un produit.</p>
+                    <a href="ajouter.php" class="btn-primary page-produits-empty__cta">
+                        <i class="fas fa-upload" aria-hidden="true"></i> Publier un produit
+                    </a>
+                </div>
+            <?php else: ?>
+                <ul class="produits-grid page-produits-grid" role="list">
+                    <?php foreach ($produits as $produit): ?>
+                        <li class="produit-card produit-card--admin produit-card-linkable"
+                            data-href="modifier.php?id=<?php echo (int) $produit['id']; ?>" role="listitem">
                             <?php
-                            $img_principale = '';
-                            if (!empty($produit['image_principale'])) {
-                                $img_principale = trim((string) $produit['image_principale']);
+                            $statut_class = 'statut-actif';
+                            if ($produit['statut'] == 'inactif') {
+                                $statut_class = 'statut-inactif';
+                            } elseif ($produit['statut'] == 'rupture_stock') {
+                                $statut_class = 'statut-rupture';
                             }
-                            if ($img_principale !== ''):
+                            $statut_label = ucfirst(str_replace('_', ' ', (string) ($produit['statut'] ?? '')));
                             ?>
-                            <img src="/upload/<?php echo htmlspecialchars($img_principale, ENT_QUOTES, 'UTF-8'); ?>"
-                                alt="<?php echo htmlspecialchars((string) ($produit['nom'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
-                                class="produit-card-image"
-                                onerror="this.onerror=null;var w=document.createElement('div');w.className='produit-card-media-placeholder';w.setAttribute('role','img');w.setAttribute('aria-label','Sans image');w.innerHTML='<i class=\'fas fa-truck\' aria-hidden=\'true\'></i>';this.replaceWith(w);"
-                                width="300" height="300" loading="lazy" decoding="async">
-                            <?php else: ?>
-                            <div class="produit-card-media-placeholder" role="img" aria-label="Pas d'image">
-                                <i class="fas fa-truck" aria-hidden="true"></i>
-                            </div>
-                            <?php endif; ?>
-                        </div>
-                        <div class="produit-card-body">
-                            <h3 class="produit-card-nom"><?php echo htmlspecialchars((string) ($produit['nom'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></h3>
-                            <p class="produit-card-categorie">
-                                <i class="fas fa-tag" aria-hidden="true"></i>
-                                <?php echo htmlspecialchars((string) ($produit['categorie_nom'] ?? 'Sans catégorie'), ENT_QUOTES, 'UTF-8'); ?>
-                            </p>
-                            <p class="produit-card-prix">
-                                <?php echo number_format((float) ($produit['prix'] ?? 0), 0, ',', ' '); ?>
-                                <span class="prix-unite">FCFA</span>
-                                <?php if (!empty($produit['prix_promotion'])): ?>
-                                    <span class="prix-promo">
-                                        (Promo: <?php echo number_format((float) $produit['prix_promotion'], 0, ',', ' '); ?> FCFA)
-                                    </span>
+                            <span
+                                class="statut-badge produit-card__statut <?php echo $statut_class; ?>"><?php echo htmlspecialchars($statut_label, ENT_QUOTES, 'UTF-8'); ?></span>
+                            <div class="produit-card-media">
+                                <?php
+                                $img_principale = '';
+                                if (!empty($produit['image_principale'])) {
+                                    $img_principale = trim((string) $produit['image_principale']);
+                                }
+                                if ($img_principale !== ''):
+                                    ?>
+                                    <img src="/upload/<?php echo htmlspecialchars($img_principale, ENT_QUOTES, 'UTF-8'); ?>"
+                                        alt="<?php echo htmlspecialchars((string) ($produit['nom'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                                        class="produit-card-image"
+                                        onerror="this.onerror=null;var w=document.createElement('div');w.className='produit-card-media-placeholder';w.setAttribute('role','img');w.setAttribute('aria-label','Sans image');w.innerHTML='<i class=\'fas fa-truck\' aria-hidden=\'true\'></i>';this.replaceWith(w);"
+                                        width="300" height="300" loading="lazy" decoding="async">
+                                <?php else: ?>
+                                    <div class="produit-card-media-placeholder" role="img" aria-label="Pas d'image">
+                                        <i class="fas fa-truck" aria-hidden="true"></i>
+                                    </div>
                                 <?php endif; ?>
-                            </p>
-                            <p class="produit-card-stock">
-                                <i class="fas fa-cubes" aria-hidden="true"></i>
-                                <span class="produit-card-stock__label">Stock</span>
-                                <span class="stock-value"><?php echo $produit['stock']; ?></span>
-                            </p>
-                            <div class="produit-card-actions produit-card-actions--admin">
-                                <a href="ajuster-stock.php?id=<?php echo $produit['id']; ?>" class="btn-card btn-stock"
-                                    title="Ajuster le stock">
-                                    <i class="fas fa-boxes-stacked" aria-hidden="true"></i> Stock
-                                </a>
-                                <a href="modifier.php?id=<?php echo $produit['id']; ?>" class="btn-card btn-edit">
-                                    <i class="fas fa-edit" aria-hidden="true"></i> Modifier
-                                </a>
-                                <a href="supprimer.php?id=<?php echo $produit['id']; ?>" class="btn-card btn-delete"
-                                    onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce produit ?');">
-                                    <i class="fas fa-trash" aria-hidden="true"></i> Supprimer
-                                </a>
                             </div>
-                        </div>
-                    </li>
-                <?php endforeach; ?>
-            </ul>
-        <?php endif; ?>
-    </section>
+                            <div class="produit-card-body">
+                                <h3 class="produit-card-nom">
+                                    <?php echo htmlspecialchars((string) ($produit['nom'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>
+                                </h3>
+                                <p class="produit-card-categorie">
+                                    <i class="fas fa-tag" aria-hidden="true"></i>
+                                    <?php echo htmlspecialchars((string) ($produit['categorie_nom'] ?? 'Sans catégorie'), ENT_QUOTES, 'UTF-8'); ?>
+                                </p>
+                                <p class="produit-card-prix">
+                                    <?php echo number_format((float) ($produit['prix'] ?? 0), 0, ',', ' '); ?>
+                                    <span class="prix-unite">FCFA</span>
+                                    <?php if (!empty($produit['prix_promotion'])): ?>
+                                        <span class="prix-promo">
+                                            (Promo: <?php echo number_format((float) $produit['prix_promotion'], 0, ',', ' '); ?>
+                                            FCFA)
+                                        </span>
+                                    <?php endif; ?>
+                                </p>
+                                <p class="produit-card-stock">
+                                    <i class="fas fa-cubes" aria-hidden="true"></i>
+                                    <span class="produit-card-stock__label">Stock</span>
+                                    <span class="stock-value"><?php echo $produit['stock']; ?></span>
+                                </p>
+                                <div class="produit-card-actions produit-card-actions--admin">
+                                    <a href="ajuster-stock.php?id=<?php echo $produit['id']; ?>" class="btn-card btn-stock"
+                                        title="Ajuster le stock">
+                                        <i class="fas fa-boxes-stacked" aria-hidden="true"></i> Stock
+                                    </a>
+                                    <a href="modifier.php?id=<?php echo $produit['id']; ?>" class="btn-card btn-edit">
+                                        <i class="fas fa-edit" aria-hidden="true"></i> Modifier
+                                    </a>
+                                    <a href="supprimer.php?id=<?php echo $produit['id']; ?>" class="btn-card btn-delete"
+                                        onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce produit ?');">
+                                        <i class="fas fa-trash" aria-hidden="true"></i> Supprimer
+                                    </a>
+                                </div>
+                            </div>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+            <?php endif; ?>
+        </section>
 
     </div><!-- .page-produits-admin -->
 

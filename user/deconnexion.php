@@ -4,6 +4,7 @@
  * Programmation procédurale uniquement
  */
 
+require_once __DIR__ . '/../includes/session_user.php';
 session_start();
 
 // Supprimer les tokens FCM du client avant déconnexion
@@ -28,8 +29,8 @@ if (ini_get("session.use_cookies")) {
 // Finalement, détruire la session
 session_destroy();
 
-// Rediriger vers la page d'accueil du site
-header('Location: /index.php');
+// Rediriger vers la page de connexion
+header('Location: /user/connexion.php');
 exit;
 
 ?>

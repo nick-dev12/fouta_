@@ -4,6 +4,7 @@
  * Programmation procédurale uniquement
  */
 
+require_once __DIR__ . '/includes/session_user.php';
 session_start();
 
 // Vérifier si l'utilisateur est connecté

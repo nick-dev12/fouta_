@@ -4,6 +4,7 @@
  * POST: token, type (user|admin)
  */
 
+require_once __DIR__ . '/../includes/session_user.php';
 session_start();
 header('Content-Type: application/json; charset=utf-8');
 

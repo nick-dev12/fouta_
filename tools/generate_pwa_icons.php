@@ -1,6 +1,6 @@
 <?php
 /**
- * Génère les PNG carrés pour la PWA à partir de image/logo-fpl.png
+ * Génère les PNG carrés pour la PWA à partir de image/logo_pwa_fpl.png
  * (recadrage centré « cover », transparence conservée).
  *
  * Usage : php tools/generate_pwa_icons.php
@@ -9,7 +9,7 @@
 declare(strict_types=1);
 
 $root = dirname(__DIR__);
-$srcPath = $root . DIRECTORY_SEPARATOR . 'image' . DIRECTORY_SEPARATOR . 'logo-fpl.png';
+$srcPath = $root . DIRECTORY_SEPARATOR . 'image' . DIRECTORY_SEPARATOR . 'logo_pwa_fpl.png';
 $outDir = $root . DIRECTORY_SEPARATOR . 'icons';
 
 if (!extension_loaded('gd')) {
@@ -91,5 +91,5 @@ foreach ($sizes as $filename => $px) {
 }
 
 imagedestroy($src);
-echo "+ Icônes PWA générées dans /icons/ à partir de image/logo-fpl.png\n";
+echo "+ Icônes PWA générées dans /icons/ à partir de image/logo_pwa_fpl.png\n";
 exit(0);

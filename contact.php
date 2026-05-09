@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/includes/session_user.php';
 session_start();
 
 $message_envoye = false;

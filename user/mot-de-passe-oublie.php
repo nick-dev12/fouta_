@@ -4,6 +4,7 @@
  * Utilise PHPMailer pour l'envoi d'emails côté serveur
  */
 
+require_once __DIR__ . '/../includes/session_user.php';
 session_start();
 
 if (isset($_SESSION['user_id'])) {

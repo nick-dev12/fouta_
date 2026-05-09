@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/includes/session_user.php';
 session_start();
 if (file_exists(__DIR__ . '/controllers/controller_commerce_users.php')) {
     require_once __DIR__ . '/controllers/controller_commerce_users.php';

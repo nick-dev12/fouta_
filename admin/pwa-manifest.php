@@ -27,8 +27,8 @@ if (is_file($icon192_fs) && is_file($icon512_fs)) {
         $icon192 = $base . $logo_uri;
         $icon512 = $base . $logo_uri;
     } else {
-        $icon192 = $base . '/image/logo-fpl.png';
-        $icon512 = $base . '/image/logo-fpl.png';
+        $icon192 = $base . '/image/logo_pwa_fpl.png';
+        $icon512 = $base . '/image/logo_pwa_fpl.png';
     }
     $logo_mime = 'image/png';
     if (isset($logo_uri) && $logo_uri !== '') {

@@ -4,6 +4,7 @@
  * Accessible à tous (connectés ou non)
  */
 
+require_once __DIR__ . '/includes/session_user.php';
 session_start();
 
 require_once __DIR__ . '/controllers/controller_commandes_personnalisees.php';

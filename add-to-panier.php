@@ -3,6 +3,7 @@
  * Traitement de l'ajout direct au panier depuis les cartes produits
  * Redirige vers la page d'origine ou le panier avec un message
  */
+require_once __DIR__ . '/includes/session_user.php';
 session_start();
 
 require_once __DIR__ . '/controllers/controller_panier.php';
