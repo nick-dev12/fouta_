@@ -528,9 +528,6 @@ $h_benefice = $h_gains_total - $h_depenses_ttc;
             <p class="dashboard-eyebrow">Finance &amp; suivi</p>
             <h1><i class="fas fa-calculator" aria-hidden="true"></i> Comptabilité</h1>
         </div>
-        <div class="compta-hub-bilan-cta">
-            <a href="bilan.php" class="compta-btn compta-btn--bilan"><i class="fas fa-scale-balanced" aria-hidden="true"></i> Bilan comptable &amp; export CSV</a>
-        </div>
     </div>
 
     <div class="compta-synthese-hub" aria-label="Synthèse gains et charges">
@@ -1232,10 +1229,6 @@ $h_benefice = $h_gains_total - $h_depenses_ttc;
                 <div class="compta-hero__copy">
                     <p class="compta-caisse-eyebrow">Caisse magasin · TTC · <?php echo htmlspecialchars($c_caisse_periode_label); ?></p>
                     <h2 class="compta-hero__title" id="compta-caisse-hero-title">Caisse magasin</h2>
-                    <p class="compta-hero__lead">Consultez les <strong>ventes enregistrées à la caisse</strong> (montants <strong>TTC</strong> par ticket). Filtre période : <strong>jour</strong>, <strong>semaine</strong> ou <strong>plage</strong> ; dates en <strong>jour · mois · année</strong>. Par défaut : <strong>journée en cours</strong>.</p>
-                    <div class="compta-hero__actions compta-caisse-hero__actions">
-                        <a href="../caisse/index.php" class="compta-btn compta-btn--primary"><i class="fas fa-cash-register" aria-hidden="true"></i> Ouvrir la caisse</a>
-                    </div>
                 </div>
             </div>
 

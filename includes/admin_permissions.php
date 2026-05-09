@@ -47,7 +47,7 @@ if (!function_exists('admin_current_role')) {
 
     function admin_can_rh() {
         $r = admin_current_role();
-        return $r === 'admin' || $r === 'rh' || $r === 'informaticien';
+        return $r === 'rh' || $r === 'informaticien';
     }
 
     /**

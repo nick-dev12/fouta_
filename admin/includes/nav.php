@@ -102,16 +102,19 @@ include __DIR__ . '/../../includes/pwa_admin_boot.php';
                 <span class="menu-item-icon" aria-hidden="true"><i class="fas fa-box"></i></span>
                 <span class="menu-item-text">Produits</span>
             </a>
+            <?php if ($admin_role === 'informaticien'): ?>
             <a href="<?php echo $admin_nav_base; ?>commandes/index.php"
                 class="menu-item mi-commandes<?php echo ($is_commandes && ($current_page == 'index.php' || $current_page == 'livrees.php' || $current_page == 'annulees.php' || $current_page == 'details.php' || $current_page == 'historique-ventes.php')) ? ' active' : ''; ?>">
                 <span class="menu-item-icon" aria-hidden="true"><i class="fas fa-shopping-cart"></i></span>
                 <span class="menu-item-text">Commandes</span>
             </a>
+            <?php endif; ?>
             <a href="<?php echo $admin_nav_base; ?>contacts/index.php"
                 class="menu-item mi-contacts<?php echo $is_contacts ? ' active' : ''; ?>">
                 <span class="menu-item-icon" aria-hidden="true"><i class="fas fa-address-book"></i></span>
                 <span class="menu-item-text">Contacts</span>
             </a>
+            <?php if ($admin_role === 'informaticien'): ?>
             <a href="<?php echo $admin_nav_base; ?>users/index.php"
                 class="menu-item mi-clients<?php echo $is_users ? ' active' : ''; ?>">
                 <span class="menu-item-icon" aria-hidden="true"><i class="fas fa-store"></i></span>
@@ -127,6 +130,7 @@ include __DIR__ . '/../../includes/pwa_admin_boot.php';
                 <span class="menu-item-icon" aria-hidden="true"><i class="fas fa-cog"></i></span>
                 <span class="menu-item-text">Paramètres</span>
             </a>
+            <?php endif; ?>
             <?php if ($admin_role === 'informaticien'): ?>
             <a href="<?php echo $admin_nav_base; ?>caisse/index.php"
                 class="menu-item mi-caisse<?php echo ($is_caisse && $current_page === 'index.php') ? ' active' : ''; ?>">

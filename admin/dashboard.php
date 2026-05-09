@@ -20,6 +20,8 @@ require_once __DIR__ . '/../models/model_commandes_personnalisees.php';
 require_once __DIR__ . '/../models/model_produits.php';
 require_once __DIR__ . '/../models/model_categories.php';
 
+$dashboard_show_commandes = (admin_current_role() === 'informaticien');
+
 $recherche = trim($_GET['recherche'] ?? '');
 $categorie_id = isset($_GET['categorie_id']) ? (int) $_GET['categorie_id'] : 0;
 $admin_show_catalogue = admin_can_gestion_boutique();
@@ -85,7 +87,7 @@ if ($admin_show_catalogue && !empty($produits)) {
             <div class="dashboard-hero-text">
                 <p class="dashboard-eyebrow">Administration</p>
                 <h1><i class="fas fa-chart-line" aria-hidden="true"></i> Tableau de bord</h1>
-                <p class="dashboard-subtitle">Vue d’ensemble des commandes et de votre catalogue produits.</p>
+                <p class="dashboard-subtitle">Vue d'ensemble <?php echo $dashboard_show_commandes ? 'des commandes et ' : ''; ?>de votre catalogue produits.</p>
             </div>
             <div class="header-actions header-actions--with-pwa">
                 <button type="button" id="btn-install-pwa" class="btn-primary btn-secondary-style dashboard-pwa-install"
@@ -124,15 +126,25 @@ if ($admin_show_catalogue && !empty($produits)) {
             </div>
             <?php
         }
-        // Récupérer les statistiques des commandes
-        $total_commandes = count_commandes_by_statut();
-        $commandes_perso_en_attente = count_commandes_personnalisees_by_statut('en_attente');
-        $en_attente = count_commandes_by_statut('en_attente');
-        $prise_en_charge = count_commandes_by_statut('prise_en_charge');
-        $livraison_en_cours = count_commandes_by_statut('livraison_en_cours');
+        // Statistiques commandes (informaticien uniquement : le rôle admin n'y a pas accès)
+        $total_commandes = 0;
+        $commandes_perso_en_attente = 0;
+        $en_attente = 0;
+        $prise_en_charge = 0;
+        $livraison_en_cours = 0;
+        if ($dashboard_show_commandes) {
+            $total_commandes = count_commandes_by_statut();
+            $commandes_perso_en_attente = count_commandes_personnalisees_by_statut('en_attente');
+            $en_attente = count_commandes_by_statut('en_attente');
+            $prise_en_charge = count_commandes_by_statut('prise_en_charge');
+            $livraison_en_cours = count_commandes_by_statut('livraison_en_cours');
+        } else {
+            $commandes_perso_en_attente = count_commandes_personnalisees_by_statut('en_attente');
+        }
         ?>
 
         <!-- Statistiques des commandes -->
+        <?php if ($dashboard_show_commandes): ?>
         <div class="stats-grid" role="region" aria-label="Statistiques des commandes">
             <div class="stat-card stat-card--total">
                 <div class="stat-card-icon" aria-hidden="true"><i class="fas fa-shopping-bag"></i></div>
@@ -163,9 +175,10 @@ if ($admin_show_catalogue && !empty($produits)) {
                 </div>
             </div>
         </div>
+        <?php endif; ?>
 
         <!-- Lien rapide vers les commandes -->
-        <?php if ($en_attente > 0 || $prise_en_charge > 0): ?>
+        <?php if ($dashboard_show_commandes && ($en_attente > 0 || $prise_en_charge > 0)): ?>
             <div class="alert-box alert-box--dashboard">
                 <p>
                     <i class="fas fa-exclamation-circle"></i>

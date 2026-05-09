@@ -66,11 +66,15 @@ if (!function_exists('admin_route_relative_path')) {
             if ($p === '' || $p === 'dashboard.php' || $p === 'login.php' || $p === 'logout.php') {
                 return true;
             }
-            if ($p === 'profil.php' || $p === 'inscription-admin.php' || $p === 'parametres.php' || $p === 'test-notification.php') {
+            if ($p === 'profil.php' || $p === 'inscription-admin.php' || $p === 'test-notification.php') {
                 return true;
             }
+            // Paramètres + sous-pages : réservé à l’informaticien (rôle admin exclu)
+            if ($p === 'parametres.php' || strpos($p, 'parametres/') === 0) {
+                return $r === 'informaticien';
+            }
             if ($r === 'admin') {
-                $interdits = ['caisse/', 'zones-livraison/'];
+                $interdits = ['caisse/', 'zones-livraison/', 'commandes/', 'users/', 'comptes/'];
                 foreach ($interdits as $prefix) {
                     if (strpos($p, $prefix) === 0) {
                         return false;
