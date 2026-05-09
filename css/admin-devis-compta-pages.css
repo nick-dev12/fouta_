@@ -27,6 +27,96 @@
   color: #00695c;
 }
 
+/* En-tête : pas de hauteur imposée, s’adapte au contenu (surtout mobile) */
+.page-devis-admin .content-header.dashboard-hero.page-devis-hero {
+  min-height: 0;
+  align-items: flex-start;
+}
+
+.page-devis-admin .page-devis-hero .dashboard-hero-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.page-devis-admin .page-devis-hero .dashboard-subtitle {
+  max-width: none;
+}
+
+@media (max-width: 768px) {
+  .page-devis-admin .content-header.dashboard-hero.page-devis-hero {
+    padding: 18px 20px;
+    gap: 12px;
+    border-radius: 16px;
+  }
+
+  .page-devis-admin .page-devis-hero .dashboard-eyebrow {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    margin-bottom: 6px;
+  }
+
+  .page-devis-admin .page-devis-hero .dashboard-hero-text h1 {
+    font-size: clamp(1.05rem, 3.6vw, 1.35rem);
+    line-height: 1.22;
+    margin-bottom: 6px;
+  }
+
+  .page-devis-admin .page-devis-hero .dashboard-hero-text h1 i {
+    margin-right: 8px;
+    font-size: 0.9em;
+  }
+
+  .page-devis-admin .page-devis-hero .dashboard-subtitle {
+    font-size: 13px;
+    line-height: 1.42;
+    font-weight: 500;
+  }
+}
+
+@media (max-width: 600px) {
+  .page-devis-admin .content-header.dashboard-hero.page-devis-hero {
+    padding: 12px 14px;
+    gap: 8px;
+    border-radius: 14px;
+    margin-bottom: 14px;
+  }
+
+  .page-devis-admin .page-devis-hero .dashboard-eyebrow {
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    margin-bottom: 4px;
+  }
+
+  .page-devis-admin .page-devis-hero .dashboard-hero-text h1 {
+    font-size: clamp(1rem, 4.2vw, 1.15rem);
+    line-height: 1.2;
+    margin-bottom: 4px;
+  }
+
+  .page-devis-admin .page-devis-hero .dashboard-hero-text h1 i {
+    margin-right: 6px;
+  }
+
+  .page-devis-admin .page-devis-hero .dashboard-subtitle {
+    font-size: 12px;
+    line-height: 1.38;
+  }
+}
+
+@media (max-width: 400px) {
+  .page-devis-admin .content-header.dashboard-hero.page-devis-hero {
+    padding: 10px 12px;
+  }
+
+  .page-devis-admin .page-devis-hero .dashboard-hero-text h1 {
+    font-size: 0.95rem;
+  }
+
+  .page-devis-admin .page-devis-hero .dashboard-subtitle {
+    font-size: 11px;
+  }
+}
+
 .page-devis-admin .content-section.page-devis-section {
   background: var(--fond-principal);
   border: 1px solid var(--border-input);
@@ -148,6 +238,95 @@
 
 .page-compta-admin .page-compta-hero .dashboard-eyebrow {
   color: #1b5e20;
+}
+
+/* En-tête compta : hauteur au contenu, typo fluide sur mobile */
+.page-compta-admin .content-header.dashboard-hero.page-compta-hero {
+  min-height: 0;
+  align-items: flex-start;
+}
+
+.page-compta-admin .page-compta-hero .dashboard-hero-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.page-compta-admin .page-compta-hero .dashboard-subtitle {
+  max-width: none;
+}
+
+@media (max-width: 768px) {
+  .page-compta-admin .content-header.dashboard-hero.page-compta-hero {
+    padding: 18px 20px;
+    gap: 12px;
+    border-radius: 16px;
+  }
+
+  .page-compta-admin .page-compta-hero .dashboard-eyebrow {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    margin-bottom: 6px;
+  }
+
+  .page-compta-admin .page-compta-hero .dashboard-hero-text h1 {
+    font-size: clamp(1.05rem, 3.6vw, 1.4rem);
+    line-height: 1.22;
+    margin-bottom: 6px;
+  }
+
+  .page-compta-admin .page-compta-hero .dashboard-hero-text h1 i {
+    margin-right: 8px;
+    font-size: 0.9em;
+  }
+
+  .page-compta-admin .page-compta-hero .dashboard-subtitle {
+    font-size: 13px;
+    line-height: 1.42;
+  }
+}
+
+@media (max-width: 600px) {
+  .page-compta-admin .content-header.dashboard-hero.page-compta-hero {
+    padding: 12px 14px;
+    gap: 8px;
+    border-radius: 14px;
+    margin-bottom: 14px;
+  }
+
+  .page-compta-admin .page-compta-hero .dashboard-eyebrow {
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    margin-bottom: 4px;
+  }
+
+  .page-compta-admin .page-compta-hero .dashboard-hero-text h1 {
+    font-size: clamp(1rem, 4.2vw, 1.15rem);
+    line-height: 1.2;
+    margin-bottom: 4px;
+  }
+
+  .page-compta-admin .page-compta-hero .dashboard-hero-text h1 i {
+    margin-right: 6px;
+  }
+
+  .page-compta-admin .page-compta-hero .dashboard-subtitle {
+    font-size: 12px;
+    line-height: 1.38;
+  }
+}
+
+@media (max-width: 400px) {
+  .page-compta-admin .content-header.dashboard-hero.page-compta-hero {
+    padding: 10px 12px;
+  }
+
+  .page-compta-admin .page-compta-hero .dashboard-hero-text h1 {
+    font-size: 0.95rem;
+  }
+
+  .page-compta-admin .page-compta-hero .dashboard-subtitle {
+    font-size: 11px;
+  }
 }
 
 .page-compta-admin .compta-synthese-hub {

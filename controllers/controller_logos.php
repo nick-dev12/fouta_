@@ -4,6 +4,7 @@
  * Programmation procédurale uniquement
  */
 
+require_once __DIR__ . '/../includes/fouta_upload_limits.php';
 require_once __DIR__ . '/../models/model_logos.php';
 
 /**
@@ -21,7 +22,7 @@ function upload_logo_image($file, $field = 'image') {
         mkdir($upload_dir, 0755, true);
     }
     $allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-    $max_size = 2 * 1024 * 1024; // 2MB
+    $max_size = FOUTA_UPLOAD_IMAGE_MAX_BYTES;
     $info = $file[$field];
     if (!in_array($info['type'], $allowed) || $info['size'] > $max_size) {
         return false;
@@ -44,7 +45,7 @@ function process_add_logo() {
     }
     $image = upload_logo_image($_FILES, 'image');
     if (!$image) {
-        return ['success' => false, 'message' => 'Veuillez sélectionner une image valide (JPG, PNG, GIF, WebP, max 2 Mo).'];
+        return ['success' => false, 'message' => 'Veuillez sélectionner une image valide (JPG, PNG, GIF, WebP, max 30 Mo).'];
     }
     $ordre = isset($_POST['ordre']) ? (int) $_POST['ordre'] : 0;
     $id = create_logo($image, $ordre, 'actif');

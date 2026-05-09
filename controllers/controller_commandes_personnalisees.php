@@ -4,6 +4,7 @@
  * Programmation procédurale uniquement
  */
 
+require_once __DIR__ . '/../includes/fouta_upload_limits.php';
 require_once __DIR__ . '/../models/model_commandes_personnalisees.php';
 
 /**
@@ -75,6 +76,10 @@ function validate_commande_personnalisee_image($file) {
     $file_size = isset($file['size']) ? (int) $file['size'] : 0;
     if ($file_size <= 0) {
         return ['success' => false, 'message' => 'Le fichier image est invalide.', 'mime' => '', 'extension' => ''];
+    }
+
+    if ($file_size > FOUTA_UPLOAD_IMAGE_MAX_BYTES) {
+        return ['success' => false, 'message' => 'L\'image est trop volumineuse. Taille maximale : 30 Mo.', 'mime' => '', 'extension' => ''];
     }
 
     $mime_type = get_commande_personnalisee_image_mime_type($file['tmp_name'] ?? '');

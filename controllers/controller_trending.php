@@ -4,6 +4,7 @@
  * Programmation procédurale uniquement
  */
 
+require_once __DIR__ . '/../includes/fouta_upload_limits.php';
 require_once __DIR__ . '/../models/model_trending.php';
 
 /**
@@ -97,10 +98,9 @@ function upload_trending_image($file) {
         return ['success' => false, 'filename' => null, 'message' => 'Type de fichier non autorisé. Formats acceptés: JPEG, JPG, PNG, GIF, WEBP'];
     }
     
-    // Vérifier la taille (max 50MB pour permettre les images 4K)
-    $max_size = 50 * 1024 * 1024; // 50MB
+    $max_size = FOUTA_UPLOAD_IMAGE_MAX_BYTES;
     if ($file['size'] > $max_size) {
-        return ['success' => false, 'filename' => null, 'message' => 'Le fichier est trop volumineux. Taille maximale: 50MB'];
+        return ['success' => false, 'filename' => null, 'message' => 'Le fichier est trop volumineux. Taille maximale : 30 Mo'];
     }
     
     // Générer un nom de fichier unique

@@ -12,6 +12,8 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
     exit;
 }
 
+require_once __DIR__ . '/../../includes/fouta_upload_limits.php';
+
 // Récupérer la configuration actuelle
 require_once __DIR__ . '/../../models/model_trending.php';
 $config = get_trending_config();
@@ -81,7 +83,7 @@ if (isset($_SESSION['success_message'])) {
 
         <div class="form-add-container param-form-container">
             <form method="POST" action="" enctype="multipart/form-data" class="form-add">
-                <input type="hidden" name="MAX_FILE_SIZE" value="52428800">
+                <input type="hidden" name="MAX_FILE_SIZE" value="<?php echo (int) FOUTA_UPLOAD_IMAGE_MAX_BYTES; ?>">
                 <div class="form-group">
                     <label for="label">
                         <i class="fas fa-tag"></i> Label (petit texte)
@@ -123,7 +125,7 @@ if (isset($_SESSION['success_message'])) {
 
                 <div class="form-group">
                     <label for="image"><i class="fas fa-image"></i> Image</label>
-                    <small class="form-help">Formats acceptés: JPEG, JPG, PNG, GIF, WEBP (max 50MB - Images 4K acceptées)</small>
+                    <small class="form-help">Formats acceptés: JPEG, JPG, PNG, GIF, WEBP (max <?php echo (int) (FOUTA_UPLOAD_IMAGE_MAX_BYTES / (1024 * 1024)); ?> Mo)</small>
                     
                     <?php if (!empty($config['image'])): ?>
                         <div class="current-image">

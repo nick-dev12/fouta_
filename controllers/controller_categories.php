@@ -4,6 +4,7 @@
  * Programmation procédurale uniquement
  */
 
+require_once __DIR__ . '/../includes/fouta_upload_limits.php';
 require_once __DIR__ . '/../models/model_categories.php';
 
 /**
@@ -24,7 +25,7 @@ function upload_categorie_image($file) {
     }
     
     $allowed_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-    $max_size = 5 * 1024 * 1024; // 5MB
+    $max_size = FOUTA_UPLOAD_IMAGE_MAX_BYTES;
     
     $file_info = $file['image'];
     

@@ -12,6 +12,8 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
     exit;
 }
 
+require_once __DIR__ . '/../../includes/fouta_upload_limits.php';
+
 // Récupérer la configuration actuelle
 require_once __DIR__ . '/../../models/model_section4.php';
 $config = get_section4_config();
@@ -83,7 +85,7 @@ if (isset($_SESSION['success_message'])) {
 
         <div class="form-add-container param-form-container">
             <form method="POST" action="" enctype="multipart/form-data" class="form-add">
-                <input type="hidden" name="MAX_FILE_SIZE" value="52428800">
+                <input type="hidden" name="MAX_FILE_SIZE" value="<?php echo (int) FOUTA_UPLOAD_IMAGE_MAX_BYTES; ?>">
                 <div class="form-group">
                     <label for="titre">
                         <i class="fas fa-heading"></i> Titre principal <span class="optional">(optionnel)</span>
@@ -119,7 +121,7 @@ if (isset($_SESSION['success_message'])) {
 
                 <div class="form-group">
                     <label for="image_fond"><i class="fas fa-image"></i> Image de fond <span class="optional">(optionnel)</span></label>
-                    <small class="form-help">Formats acceptés: JPEG, JPG, PNG, GIF, WEBP (max 50MB). Laissez vide pour conserver l'image actuelle ou enregistrer sans image.</small>
+                    <small class="form-help">Formats acceptés: JPEG, JPG, PNG, GIF, WEBP (max <?php echo (int) (FOUTA_UPLOAD_IMAGE_MAX_BYTES / (1024 * 1024)); ?> Mo). Laissez vide pour conserver l'image actuelle ou enregistrer sans image.</small>
 
                     <?php if (!empty($config['image_fond'])): ?>
                         <div class="current-image">

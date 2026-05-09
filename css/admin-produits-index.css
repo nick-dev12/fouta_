@@ -18,6 +18,22 @@
   margin-bottom: 20px;
 }
 
+/* En-tête liste produits : hauteur au contenu + mobile */
+.page-produits-admin .content-header.dashboard-hero.page-produits-hero {
+  min-height: 0;
+  align-items: flex-start;
+}
+
+.page-produits-admin .page-produits-hero .dashboard-hero-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: none;
+}
+
+.page-produits-admin .page-produits-hero .dashboard-subtitle {
+  max-width: none;
+}
+
 .page-produits-hero::after {
   content: "";
   position: absolute;
@@ -489,18 +505,94 @@
   }
 }
 
+@media (max-width: 768px) {
+  .page-produits-admin .content-header.dashboard-hero.page-produits-hero {
+    padding: 18px 20px;
+    gap: 12px;
+    border-radius: 16px;
+  }
+
+  .page-produits-admin .page-produits-hero .dashboard-eyebrow {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    margin-bottom: 6px;
+  }
+
+  .page-produits-admin .page-produits-hero .dashboard-hero-text h1 {
+    font-size: clamp(1.05rem, 3.6vw, 1.45rem);
+    line-height: 1.22;
+    margin-bottom: 6px;
+  }
+
+  .page-produits-admin .page-produits-hero .dashboard-hero-text h1 i {
+    margin-right: 8px;
+    font-size: 0.9em;
+  }
+
+  .page-produits-admin .page-produits-hero .dashboard-subtitle {
+    font-size: 13px;
+    line-height: 1.42;
+  }
+
+  .page-produits-hero__actions {
+    margin-top: 12px;
+    gap: 10px;
+  }
+
+  .page-produits-hero__actions .page-produits-hero__btn,
+  .page-produits-admin .page-produits-hero__btn {
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+
+  .page-produits-hero::after {
+    width: 90px;
+    height: 90px;
+    right: -12px;
+  }
+}
+
 @media (max-width: 640px) {
   .page-produits-admin {
     padding: 0 12px 32px;
   }
 
+  .page-produits-admin .content-header.dashboard-hero.page-produits-hero {
+    padding: 12px 14px;
+    gap: 8px;
+    border-radius: 14px;
+    margin-bottom: 16px;
+  }
+
+  .page-produits-admin .page-produits-hero .dashboard-eyebrow {
+    font-size: 9px;
+    margin-bottom: 4px;
+  }
+
+  .page-produits-admin .page-produits-hero .dashboard-hero-text h1 {
+    font-size: clamp(1rem, 4vw, 1.15rem);
+    margin-bottom: 4px;
+  }
+
+  .page-produits-admin .page-produits-hero .dashboard-subtitle {
+    font-size: 12px;
+    line-height: 1.38;
+  }
+
   .page-produits-hero__actions {
     width: 100%;
+    margin-top: 10px;
   }
 
   .page-produits-hero__actions .page-produits-hero__btn {
     width: 100%;
     justify-content: center;
+    padding: 10px 14px;
+    font-size: 12px;
+  }
+
+  .page-produits-hero::after {
+    display: none;
   }
 
   .page-produits-filters .admin-filter-actions {
@@ -524,6 +616,20 @@
 
   .page-produits-admin .produit-card-actions--admin .btn-card {
     font-size: 0.8rem;
+  }
+}
+
+@media (max-width: 400px) {
+  .page-produits-admin .content-header.dashboard-hero.page-produits-hero {
+    padding: 10px 12px;
+  }
+
+  .page-produits-admin .page-produits-hero .dashboard-hero-text h1 {
+    font-size: 0.95rem;
+  }
+
+  .page-produits-admin .page-produits-hero .dashboard-subtitle {
+    font-size: 11px;
   }
 }
 

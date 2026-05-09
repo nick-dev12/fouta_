@@ -90,25 +90,28 @@ if ($admin_show_catalogue && !empty($produits)) {
                 <p class="dashboard-subtitle">Vue d'ensemble <?php echo $dashboard_show_commandes ? 'des commandes et ' : ''; ?>de votre catalogue produits.</p>
             </div>
             <div class="header-actions header-actions--with-pwa">
-                <button type="button" id="btn-install-pwa" class="btn-primary btn-secondary-style dashboard-pwa-install"
+                <button type="button" id="btn-install-pwa" class="btn-primary btn-secondary-style dashboard-hero-action dashboard-hero-action--pwa dashboard-pwa-install"
                     title="Installer l’application administration sur cet appareil (PWA)">
-                    <i class="fas fa-download" aria-hidden="true"></i> Installer l’application
+                    <span class="dashboard-hero-action__ic" aria-hidden="true"><i class="fas fa-download"></i></span>
+                    <span class="dashboard-hero-action__txt">Installer l’application</span>
                 </button>
-                <button type="button" id="btn-enable-notifications" class="btn-primary btn-secondary-style"
+                <button type="button" id="btn-enable-notifications" class="btn-primary btn-secondary-style dashboard-hero-action dashboard-hero-action--notify"
                     title="Recevoir des notifications push pour les nouvelles commandes">
-                    <i class="fas fa-bell"></i> Activer les notifications
+                    <span class="dashboard-hero-action__ic" aria-hidden="true"><i class="fas fa-bell"></i></span>
+                    <span class="dashboard-hero-action__txt">Activer les notifications</span>
                 </button>
-                <!-- <a href="test-notification.php" class="btn-primary btn-secondary-style" title="Envoyer une notification de test sur cet ordinateur">
-                    <i class="fas fa-paper-plane"></i> Test notification
+                <!-- <a href="test-notification.php" class="btn-primary btn-secondary-style dashboard-hero-action" ...>
                 </a> -->
                 <?php if (admin_can_zones_livraison()): ?>
-                <a href="zones-livraison/index.php" class="btn-primary btn-secondary-style">
-                    <i class="fas fa-truck"></i> Zones de livraison
+                <a href="zones-livraison/index.php" class="btn-primary btn-secondary-style dashboard-hero-action dashboard-hero-action--zones">
+                    <span class="dashboard-hero-action__ic" aria-hidden="true"><i class="fas fa-truck"></i></span>
+                    <span class="dashboard-hero-action__txt">Zones de livraison</span>
                 </a>
                 <?php endif; ?>
                 <?php if (admin_can_gestion_boutique()): ?>
-                <a href="produits/ajouter.php" class="btn-primary">
-                    <i class="fas fa-plus"></i> Nouveau Produit
+                <a href="produits/ajouter.php" class="btn-primary dashboard-hero-action dashboard-hero-action--product">
+                    <span class="dashboard-hero-action__ic" aria-hidden="true"><i class="fas fa-plus"></i></span>
+                    <span class="dashboard-hero-action__txt">Nouveau Produit</span>
                 </a>
                 <?php endif; ?>
             </div>
@@ -338,6 +341,28 @@ if ($admin_show_catalogue && !empty($produits)) {
     </script>
     <script src="/js/firebase-notifications.js"></script>
     <script>
+        /**
+         * PWA admin : beforeinstallprompt doit être écouté tout de suite.
+         * S’il est enregistré seulement dans DOMContentLoaded, l’événement peut être manqué → clic sans effet.
+         */
+        (function () {
+            window.__foutaAdminDeferredInstallPrompt = null;
+
+            window.addEventListener('beforeinstallprompt', function (e) {
+                e.preventDefault();
+                window.__foutaAdminDeferredInstallPrompt = e;
+                document.dispatchEvent(new CustomEvent('fouta:installprompt'));
+            });
+
+            window.addEventListener('appinstalled', function () {
+                window.__foutaAdminDeferredInstallPrompt = null;
+                var b = document.getElementById('btn-install-pwa');
+                if (b) {
+                    b.hidden = true;
+                }
+            });
+        })();
+
         document.addEventListener('DOMContentLoaded', function () {
             document.querySelectorAll('.produit-card-linkable').forEach(function(card) {
                 card.addEventListener('click', function(event) {
@@ -365,7 +390,6 @@ if ($admin_show_catalogue && !empty($produits)) {
             }
 
             var installBtn = document.getElementById('btn-install-pwa');
-            var deferredPrompt = null;
             var isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
             var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
                 (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -383,7 +407,14 @@ if ($admin_show_catalogue && !empty($produits)) {
             } else if (isIOS && installBtn) {
                 showInstallBtn();
                 installBtn.setAttribute('title', 'Ajouter le raccourci sur l’écran d’accueil');
-                installBtn.innerHTML = '<i class="fas fa-mobile-screen-button" aria-hidden="true"></i> Ajouter à l’écran d’accueil';
+                var icIos = installBtn.querySelector('.dashboard-hero-action__ic');
+                var txtIos = installBtn.querySelector('.dashboard-hero-action__txt');
+                if (icIos) {
+                    icIos.innerHTML = '<i class="fas fa-mobile-screen-button" aria-hidden="true"></i>';
+                }
+                if (txtIos) {
+                    txtIos.textContent = 'Ajouter à l’écran d’accueil';
+                }
                 installBtn.addEventListener('click', function () {
                     alert('Sur iPhone / iPad : touchez « Partager » \u25B6 « Sur l’écran d’accueil ».');
                 });
@@ -391,24 +422,42 @@ if ($admin_show_catalogue && !empty($produits)) {
                 if (installBtn && !isStandalone) {
                     installBtn.hidden = false;
                 }
-                window.addEventListener('beforeinstallprompt', function (e) {
-                    e.preventDefault();
-                    deferredPrompt = e;
+                if (window.__foutaAdminDeferredInstallPrompt) {
+                    showInstallBtn();
+                }
+                document.addEventListener('fouta:installprompt', function () {
                     showInstallBtn();
                 });
 
                 if (installBtn) {
                     installBtn.addEventListener('click', function () {
-                        if (!deferredPrompt) {
-                            alert('L’installation n’est pas proposée par le navigateur. Utilisez Chrome ou Edge (HTTPS ou localhost), vérifiez que le site n’est pas déjà installé, puis rechargez la page.');
+                        var dp = window.__foutaAdminDeferredInstallPrompt;
+                        if (!dp) {
+                            alert(
+                                'Installation : le navigateur ne propose pas encore le raccourci.\n\n' +
+                                '• Attendez quelques secondes après le chargement (service worker), puis réessayez.\n' +
+                                '• Chrome / Edge : menu ⋮ → « Installer l’application… » ou icône dans la barre d’adresse.\n' +
+                                '• Utilisez HTTPS ou localhost.'
+                            );
                             return;
                         }
-                        deferredPrompt.prompt();
-                        deferredPrompt.userChoice.then(function (choiceResult) {
+                        try {
+                            dp.prompt();
+                        } catch (e) {
+                            window.__foutaAdminDeferredInstallPrompt = null;
+                            alert(
+                                'Impossible d’afficher la fenêtre d’installation (événement expiré ou navigateur).\n\n' +
+                                'Rechargez la page puis réessayez, ou installez depuis le menu du navigateur (⋮).'
+                            );
+                            return;
+                        }
+                        dp.userChoice.then(function (choiceResult) {
                             if (choiceResult.outcome === 'accepted') {
                                 hideInstallBtn();
                             }
-                            deferredPrompt = null;
+                            window.__foutaAdminDeferredInstallPrompt = null;
+                        }).catch(function () {
+                            window.__foutaAdminDeferredInstallPrompt = null;
                         });
                     });
                 }

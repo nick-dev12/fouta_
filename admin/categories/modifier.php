@@ -13,6 +13,7 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
 }
 
 require_once __DIR__ . '/../includes/require_access.php';
+require_once __DIR__ . '/../../includes/fouta_upload_limits.php';
 
 // Récupérer l'ID de la catégorie
 $categorie_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
@@ -198,7 +199,7 @@ if (isset($result['success']) && $result['success']) {
                     </div>
                 <?php endif; ?>
                 <input type="file" id="image" name="image" accept="image/*">
-                <small style="color: #666; font-size: 12px; display: block; margin-top: 5px;">Formats acceptés: JPG, PNG, GIF, WEBP (max 5MB)</small>
+                <small style="color: #666; font-size: 12px; display: block; margin-top: 5px;">Formats acceptés: JPG, PNG, GIF, WEBP (max <?php echo (int) (FOUTA_UPLOAD_IMAGE_MAX_BYTES / (1024 * 1024)); ?> Mo)</small>
             </div>
 
             <button type="submit" class="btn-primary">

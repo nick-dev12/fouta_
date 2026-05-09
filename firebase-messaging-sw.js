@@ -9,6 +9,12 @@ self.addEventListener('activate', function(event) {
     event.waitUntil(self.clients.claim());
 });
 
+/* Requis pour les critères PWA : si ce SW remplace sw.js (ex. après activation FCM),
+ * sans fetch le navigateur peut ne plus proposer l’installation. */
+self.addEventListener('fetch', function(event) {
+    event.respondWith(fetch(event.request));
+});
+
 importScripts('https://www.gstatic.com/firebasejs/12.9.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/12.9.0/firebase-messaging-compat.js');
 

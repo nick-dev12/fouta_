@@ -46,8 +46,10 @@ $__scope = $__b === '' ? '/' : $__b . '/';
     if (window.__foutaAdminPwaSw) return;
     window.__foutaAdminPwaSw = true;
     if ('serviceWorker' in navigator) {
-        window.addEventListener('load', function () {
-            navigator.serviceWorker.register(swUrl, { scope: scope }).catch(function () {});
+        navigator.serviceWorker.register(swUrl, { scope: scope }).catch(function (err) {
+            if (typeof console !== 'undefined' && console.warn) {
+                console.warn('[PWA admin] Service worker:', err);
+            }
         });
     }
 })();

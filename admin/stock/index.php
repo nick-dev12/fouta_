@@ -362,6 +362,50 @@ $stock_sous_cat_ok = produits_has_column('sous_categorie_id')
             border-color: var(--orange);
         }
 
+        /* Mobile : hero compact, actions en colonne pleine largeur */
+        @media (max-width: 768px) {
+            .stock-hero {
+                min-height: 0;
+                align-items: stretch;
+                padding: 1.1rem 1.15rem;
+                gap: 0.85rem;
+                margin-bottom: 1rem;
+            }
+
+            .stock-hero__title-wrap {
+                width: 100%;
+            }
+
+            .stock-hero h1 {
+                font-size: clamp(1.05rem, 3.8vw, 1.45rem);
+                gap: 0.5rem;
+                margin: 0 0 0.28rem;
+            }
+
+            .stock-hero h1 i {
+                font-size: 1em;
+            }
+
+            .stock-hero__badge {
+                font-size: 0.75rem;
+                padding: 0.28rem 0.65rem;
+            }
+
+            .stock-hero__actions {
+                width: 100%;
+                flex-direction: column;
+                align-items: stretch;
+                gap: 0.5rem;
+            }
+
+            .stock-btn {
+                width: 100%;
+                justify-content: center;
+                padding: 0.62rem 0.9rem;
+                font-size: 0.82rem;
+            }
+        }
+
         /* Mobile / petit écran : 2 cartes par ligne, largeur fluide */
         @media (max-width: 720px) {
             .stock-cat-grid {
@@ -402,16 +446,33 @@ $stock_sous_cat_ok = produits_has_column('sous_categorie_id')
 
         @media (max-width: 640px) {
             .stock-hero {
-                padding: 1.25rem;
+                padding: 0.85rem 1rem;
+                gap: 0.65rem;
+                border-radius: 14px;
             }
 
-            .stock-hero__actions {
-                width: 100%;
+            .stock-hero h1 {
+                font-size: clamp(1rem, 4.2vw, 1.2rem);
+            }
+
+            .stock-hero__badge {
+                font-size: 0.72rem;
             }
 
             .stock-btn {
-                flex: 1 1 auto;
-                justify-content: center;
+                padding: 0.55rem 0.8rem;
+                font-size: 0.78rem;
+            }
+        }
+
+        @media (max-width: 400px) {
+            .stock-hero {
+                padding: 0.75rem 0.85rem;
+            }
+
+            .stock-hero h1 {
+                font-size: 0.95rem;
+                flex-wrap: wrap;
             }
         }
     </style>

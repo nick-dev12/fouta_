@@ -15,6 +15,8 @@ if (empty($_SESSION['admin_csrf'])) {
     $_SESSION['admin_csrf'] = bin2hex(random_bytes(32));
 }
 
+require_once __DIR__ . '/../../includes/fouta_upload_limits.php';
+
 require_once __DIR__ . '/../../models/model_logos.php';
 require_once __DIR__ . '/../../models/model_fournisseurs.php';
 
@@ -328,7 +330,7 @@ if (isset($_GET['edit']) && !empty($_GET['edit'])) {
                         <input type="file" id="image" name="image" accept="image/jpeg,image/jpg,image/png,image/gif,image/webp" onchange="previewLogo(this)">
                     </div>
                     <small style="display: block; color: #666; font-size: 12px; margin-top: 5px;">
-                        JPG, PNG, GIF, WebP (max 2 Mo)
+                        JPG, PNG, GIF, WebP (max <?php echo (int) (FOUTA_UPLOAD_IMAGE_MAX_BYTES / (1024 * 1024)); ?> Mo)
                     </small>
                     <div id="logoPreview" class="logo-preview-box">
                         <?php if ($logo_to_edit && !empty($logo_to_edit['image'])): ?>
