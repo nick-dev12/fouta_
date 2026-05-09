@@ -13,6 +13,7 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
 }
 
 require_once __DIR__ . '/../includes/require_access.php';
+require_once __DIR__ . '/../../includes/fouta_upload_limits.php';
 
 // Traiter le formulaire
 require_once __DIR__ . '/../../controllers/controller_categories.php';
@@ -129,6 +130,7 @@ if (isset($result['success']) && $result['success']) {
         <?php endif; ?>
         
         <form method="POST" action="" enctype="multipart/form-data">
+            <input type="hidden" name="MAX_FILE_SIZE" value="<?php echo (int) FOUTA_UPLOAD_IMAGE_MAX_BYTES; ?>">
             <div class="form-group">
                 <label for="nom">Nom de la catégorie *</label>
                 <input type="text" id="nom" name="nom" required
@@ -145,7 +147,7 @@ if (isset($result['success']) && $result['success']) {
             <div class="form-group">
                 <label for="image">Image de la catégorie (optionnel)</label>
                 <input type="file" id="image" name="image" accept="image/*">
-                <small style="color: #666; font-size: 12px; display: block; margin-top: 5px;">Formats acceptés: JPG, PNG, GIF, WEBP (max 5MB)</small>
+                <small style="color: #666; font-size: 12px; display: block; margin-top: 5px;">Formats acceptés: JPG, PNG, GIF, WEBP (max <?php echo (int) fouta_upload_image_max_mo_int(); ?> Mo)</small>
             </div>
 
             <button type="submit" class="btn-primary">

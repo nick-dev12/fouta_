@@ -1,12 +1,10 @@
 <?php
+/**
+ * Inscription commerçants (formulaire avec photo).
+ */
+require_once __DIR__ . '/../includes/fouta_upload_limits.php';
 
-
-
-// Inclusion du fichier de connexion à la BDD
-
-
-// Déclaration d'un tableau pour stocker les erreurs
-$erreurs = ''; // Initialisez un tableau pour stocker les erreurs
+$erreurs = '';
 
 if (file_exists(__DIR__ . '/../controllers/controller_commerce_users.php')) {
   require_once __DIR__ . '/../controllers/controller_commerce_users.php';
@@ -44,6 +42,7 @@ if (file_exists(__DIR__ . '/../controllers/controller_commerce_users.php')) {
     <div class="formulaire1">
       <img id="img" src="../image/auth-image.png" alt="">
       <form method="post" action="" enctype="multipart/form-data">
+        <input type="hidden" name="MAX_FILE_SIZE" value="<?php echo (int) FOUTA_UPLOAD_IMAGE_MAX_BYTES; ?>">
         <h3>Compte commerçants</h3>
         <?php if (isset($erreurs)): ?>
           <div class="erreur">

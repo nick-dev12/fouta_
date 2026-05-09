@@ -45,7 +45,7 @@ function process_add_logo() {
     }
     $image = upload_logo_image($_FILES, 'image');
     if (!$image) {
-        return ['success' => false, 'message' => 'Veuillez sélectionner une image valide (JPG, PNG, GIF, WebP, max 30 Mo).'];
+        return ['success' => false, 'message' => 'Veuillez sélectionner une image valide (JPG, PNG, GIF, WebP, max ' . fouta_upload_image_max_mo_int() . ' Mo).'];
     }
     $ordre = isset($_POST['ordre']) ? (int) $_POST['ordre'] : 0;
     $id = create_logo($image, $ordre, 'actif');

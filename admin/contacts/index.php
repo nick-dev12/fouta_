@@ -13,6 +13,14 @@ require_once __DIR__ . '/../includes/require_access.php';
 require_once __DIR__ . '/../../includes/admin_permissions.php';
 
 $contacts_compta_readonly = (admin_current_role() === 'comptabilite');
+$contacts_restricted_admin = admin_is_restricted_admin_account();
+
+if ($contacts_restricted_admin && $_SERVER['REQUEST_METHOD'] === 'POST'
+    && (isset($_POST['add_contact']) || isset($_POST['import_contacts']))) {
+    $_SESSION['contacts_error'] = 'L’ajout et l’import de contacts ne sont pas disponibles pour ce profil.';
+    header('Location: index.php' . (!empty($_GET['recherche']) ? '?recherche=' . urlencode((string) $_GET['recherche']) : ''));
+    exit;
+}
 
 if ($contacts_compta_readonly && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $_SESSION['contacts_error'] = 'Les modifications du carnet contacts ne sont pas autorisées pour le profil comptabilité.';
@@ -164,6 +172,8 @@ $contacts = contacts_list_with_compta_stats(get_all_contacts($recherche));
         <div class="header-actions">
             <?php if ($contacts_compta_readonly): ?>
                 <a href="../comptabilite/index.php" class="btn-back"><i class="fas fa-calculator"></i> Comptabilité</a>
+            <?php elseif ($contacts_restricted_admin): ?>
+                <a href="../dashboard.php" class="btn-back"><i class="fas fa-arrow-left"></i> Tableau de bord</a>
             <?php else: ?>
                 <a href="../users/index.php" class="btn-back"><i class="fas fa-arrow-left"></i> Retour</a>
                 <button type="button" class="btn-primary" id="btn-import-contacts">

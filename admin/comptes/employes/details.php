@@ -12,7 +12,7 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
 require_once __DIR__ . '/../../includes/require_access.php';
 
 $role = $_SESSION['admin_role'] ?? '';
-if (!in_array($role, ['admin', 'rh'], true)) {
+if (!in_array($role, ['admin', 'rh', 'informaticien'], true)) {
     header('Location: ../../dashboard.php');
     exit;
 }
@@ -1618,7 +1618,7 @@ $titre = htmlspecialchars(trim(($f['prenom'] ?? '') . ' ' . ($f['nom'] ?? ''))) 
                             <form class="er-documents__form er-docs-modal__form" method="post" action="details.php?id=<?php echo (int) $id; ?>" enctype="multipart/form-data">
                                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
                                 <input type="hidden" name="ajouter_document" value="1">
-                                <input type="hidden" name="MAX_FILE_SIZE" value="10485760">
+                                <input type="hidden" name="MAX_FILE_SIZE" value="<?php echo (int) FOUTA_UPLOAD_IMAGE_MAX_BYTES; ?>">
                                 <div class="er-documents__field">
                                     <label for="document_nature">Nature du document <span class="req">*</span></label>
                                     <input type="text" name="document_nature" id="document_nature" required maxlength="255"
@@ -1635,7 +1635,7 @@ $titre = htmlspecialchars(trim(($f['prenom'] ?? '') . ' ' . ($f['nom'] ?? ''))) 
                                         <label for="document_fichier" class="er-docs-modal__file-fake">
                                             <span class="er-docs-modal__file-fake-icon"><i class="fas fa-cloud-upload-alt" aria-hidden="true"></i></span>
                                             <span class="er-docs-modal__file-fake-text"><strong>Parcourir</strong> ou déposer sur la zone</span>
-                                            <span class="er-docs-modal__file-fake-sub">PDF, JPEG, PNG, WebP · 10 Mo max</span>
+                                            <span class="er-docs-modal__file-fake-sub">PDF, JPEG, PNG, WebP · <?php echo (int) (EMPLOYE_DOCUMENT_UPLOAD_MAX_BYTES / (1024 * 1024)); ?> Mo max</span>
                                         </label>
                                     </div>
                                     <span class="er-documents__hint">Le fichier n’est pas envoyé tant que vous ne cliquez pas sur « Enregistrer ».</span>

@@ -7,6 +7,8 @@
 require_once __DIR__ . '/includes/session_user.php';
 session_start();
 
+require_once __DIR__ . '/includes/fouta_upload_limits.php';
+
 require_once __DIR__ . '/controllers/controller_commandes_personnalisees.php';
 require_once __DIR__ . '/models/model_zones_livraison.php';
 $result = process_commande_personnalisee();
@@ -267,6 +269,7 @@ $seo_canonical = $base . '/commande-personnalisee.php';
         <?php endif; ?>
 
         <form method="POST" action="" class="form-commande-perso" enctype="multipart/form-data">
+            <input type="hidden" name="MAX_FILE_SIZE" value="<?php echo (int) FOUTA_UPLOAD_IMAGE_MAX_BYTES; ?>">
             <div class="form-row">
                 <div class="form-group">
                     <label for="nom"><i class="fas fa-user"></i> Nom *</label>
@@ -355,7 +358,7 @@ $seo_canonical = $base . '/commande-personnalisee.php';
                         accept=".jpg,.jpeg,.png,.webp,.gif,image/jpeg,image/png,image/webp,image/gif">
                     <p class="upload-help">
                         Ajoutez une photo d'inspiration si vous en avez une.
-                        <strong>Formats acceptés :</strong> JPG, PNG, WEBP, GIF.
+                        <strong>Formats acceptés :</strong> JPG, PNG, WEBP, GIF (max <?php echo (int) (FOUTA_UPLOAD_IMAGE_MAX_BYTES / (1024 * 1024)); ?> Mo).
                     </p>
                     <div class="preview-reference" id="preview-reference">
                         <img id="preview-reference-image" src="" alt="Prévisualisation de l'image sélectionnée">

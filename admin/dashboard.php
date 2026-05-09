@@ -108,7 +108,7 @@ if ($admin_show_catalogue && !empty($produits)) {
                     <span class="dashboard-hero-action__txt">Zones de livraison</span>
                 </a>
                 <?php endif; ?>
-                <?php if (admin_can_gestion_boutique()): ?>
+                <?php if (admin_can_gestion_boutique() && !admin_is_restricted_admin_account()): ?>
                 <a href="produits/ajouter.php" class="btn-primary dashboard-hero-action dashboard-hero-action--product">
                     <span class="dashboard-hero-action__ic" aria-hidden="true"><i class="fas fa-plus"></i></span>
                     <span class="dashboard-hero-action__txt">Nouveau Produit</span>
@@ -258,9 +258,11 @@ if ($admin_show_catalogue && !empty($produits)) {
                 <div class="empty-state">
                     <i class="fas fa-box-open"></i>
                     <p>Aucun produit enregistré pour le moment.</p>
+                    <?php if (!admin_is_restricted_admin_account()): ?>
                     <a href="produits/ajouter.php" class="btn-primary">
                         <i class="fas fa-plus"></i> Ajouter le premier produit
                     </a>
+                    <?php endif; ?>
                 </div>
             <?php else: ?>
                 <!-- Grille de produits -->

@@ -11,12 +11,13 @@ require_once __DIR__ . '/../models/model_employe_prets.php';
 require_once __DIR__ . '/../models/model_employe_conges.php';
 require_once __DIR__ . '/../models/model_bulletin_paie.php';
 require_once __DIR__ . '/../models/model_employe_transport.php';
+require_once __DIR__ . '/../includes/fouta_upload_limits.php';
 
-define('EMPLOYE_PHOTO_UPLOAD_MAX_BYTES', 4 * 1024 * 1024);
+define('EMPLOYE_PHOTO_UPLOAD_MAX_BYTES', FOUTA_UPLOAD_IMAGE_MAX_BYTES);
 define('EMPLOYE_PHOTO_FIELD', 'photo_employe');
 define('EMPLOYE_CONTRAT_PDF_UPLOAD_MAX_BYTES', 8 * 1024 * 1024);
 define('EMPLOYE_CONTRAT_PDF_FIELD', 'contrat_pdf');
-define('EMPLOYE_DOCUMENT_UPLOAD_MAX_BYTES', 10 * 1024 * 1024);
+define('EMPLOYE_DOCUMENT_UPLOAD_MAX_BYTES', FOUTA_UPLOAD_IMAGE_MAX_BYTES);
 define('EMPLOYE_DOCUMENT_FIELD', 'document_fichier');
 
 function employe_statuts_familiaux_autorises() {
@@ -158,7 +159,8 @@ function employe_document_inspect_joint($file) {
     }
     $size = isset($file['size']) ? (int) $file['size'] : 0;
     if ($size <= 0 || $size > EMPLOYE_DOCUMENT_UPLOAD_MAX_BYTES) {
-        return ['ok' => false, 'msg' => 'Le document doit faire au plus 10 Mo.'];
+        $doc_mo = (int) (EMPLOYE_DOCUMENT_UPLOAD_MAX_BYTES / (1024 * 1024));
+        return ['ok' => false, 'msg' => 'Le document doit faire au plus ' . $doc_mo . ' Mo.'];
     }
     $tmp = isset($file['tmp_name']) ? (string) $file['tmp_name'] : '';
     $mime = employe_photo_mime_detect($tmp);
@@ -839,13 +841,17 @@ function employe_photo_inspect_joint($file) {
     if ($code === UPLOAD_ERR_NO_FILE) {
         return $empty;
     }
+    if ($code === UPLOAD_ERR_INI_SIZE || $code === UPLOAD_ERR_FORM_SIZE) {
+        return ['ok' => false, 'msg' => fouta_upload_image_err_ini_ou_limite(), 'ext' => ''];
+    }
     if ($code !== UPLOAD_ERR_OK) {
         return ['ok' => false, 'msg' => 'Le téléversement de la photo a échoué. Réessayez.', 'ext' => ''];
     }
 
     $size = isset($file['size']) ? (int) $file['size'] : 0;
     if ($size <= 0 || $size > EMPLOYE_PHOTO_UPLOAD_MAX_BYTES) {
-        return ['ok' => false, 'msg' => 'La photo doit faire au plus 4 Mo.', 'ext' => ''];
+        $mo = (int) (EMPLOYE_PHOTO_UPLOAD_MAX_BYTES / (1024 * 1024));
+        return ['ok' => false, 'msg' => 'La photo doit faire au plus ' . $mo . ' Mo.', 'ext' => ''];
     }
 
     $tmp = isset($file['tmp_name']) ? (string) $file['tmp_name'] : '';

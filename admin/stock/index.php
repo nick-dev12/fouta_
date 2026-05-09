@@ -13,8 +13,7 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
 }
 
 require_once __DIR__ . '/../includes/require_access.php';
-
-if (empty($_SESSION['admin_csrf'])) {
+require_once __DIR__ . '/../../includes/admin_permissions.php';
     $_SESSION['admin_csrf'] = bin2hex(random_bytes(32));
 }
 
@@ -494,14 +493,16 @@ $stock_sous_cat_ok = produits_has_column('sous_categorie_id')
                 <a href="mouvements.php" class="stock-btn stock-btn--ghost">
                     <i class="fas fa-history" aria-hidden="true"></i> Historique des mouvements
                 </a>
-                <?php if ($stock_sous_cat_ok): ?>
+                <?php if ($stock_sous_cat_ok && !admin_is_restricted_admin_account()): ?>
                 <a href="sous-categories/index.php" class="stock-btn stock-btn--ghost">
                     <i class="fas fa-sitemap" aria-hidden="true"></i> Voir les sous-catégories
                 </a>
                 <?php endif; ?>
+                <?php if (!admin_is_restricted_admin_account()): ?>
                 <a href="../categories/ajouter.php" class="stock-btn stock-btn--accent">
                     <i class="fas fa-plus" aria-hidden="true"></i> Nouvelle catégorie
                 </a>
+                <?php endif; ?>
             </div>
         </header>
 
@@ -529,10 +530,14 @@ $stock_sous_cat_ok = produits_has_column('sous_categorie_id')
             <div class="stock-empty">
                 <i class="fas fa-tags" aria-hidden="true"></i>
                 <h3>Aucune catégorie</h3>
-                <p>Créez une première catégorie pour organiser vos produits et le stock.</p>
+                <p><?php echo admin_is_restricted_admin_account()
+                    ? 'Aucune catégorie n’est encore définie.'
+                    : 'Créez une première catégorie pour organiser vos produits et le stock.'; ?></p>
+                <?php if (!admin_is_restricted_admin_account()): ?>
                 <a href="../categories/ajouter.php" class="stock-btn stock-btn--accent">
                     <i class="fas fa-plus" aria-hidden="true"></i> Ajouter une catégorie
                 </a>
+                <?php endif; ?>
             </div>
             <?php else: ?>
             <div class="stock-cat-grid">

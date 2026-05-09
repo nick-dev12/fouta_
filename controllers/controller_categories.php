@@ -89,7 +89,8 @@ function process_add_categorie() {
     if (isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
         $image = upload_categorie_image($_FILES);
         if (!$image) {
-            $errors[] = 'Erreur lors de l\'upload de l\'image.';
+            $errors[] = 'Erreur lors de l\'upload de l\'image (formats JPG, PNG, GIF, WEBP — max '
+                . (int) (FOUTA_UPLOAD_IMAGE_MAX_BYTES / (1024 * 1024)) . ' Mo).';
         }
     }
     

@@ -303,6 +303,7 @@ if (isset($_GET['edit']) && !empty($_GET['edit'])) {
             </div>
 
             <form method="POST" action="" enctype="multipart/form-data" id="logoForm">
+                <input type="hidden" name="MAX_FILE_SIZE" value="<?php echo (int) FOUTA_UPLOAD_IMAGE_MAX_BYTES; ?>">
                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['admin_csrf']); ?>">
                 <?php if ($logo_to_edit): ?>
                 <input type="hidden" name="logo_id" value="<?php echo (int) $logo_to_edit['id']; ?>">

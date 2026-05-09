@@ -79,7 +79,7 @@ function validate_commande_personnalisee_image($file) {
     }
 
     if ($file_size > FOUTA_UPLOAD_IMAGE_MAX_BYTES) {
-        return ['success' => false, 'message' => 'L\'image est trop volumineuse. Taille maximale : 30 Mo.', 'mime' => '', 'extension' => ''];
+        return ['success' => false, 'message' => 'L\'image est trop volumineuse. Taille maximale : ' . fouta_upload_image_max_mo_int() . ' Mo.', 'mime' => '', 'extension' => ''];
     }
 
     $mime_type = get_commande_personnalisee_image_mime_type($file['tmp_name'] ?? '');

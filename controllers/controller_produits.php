@@ -7,13 +7,15 @@
 require_once __DIR__ . '/../models/model_produits.php';
 require_once __DIR__ . '/../models/model_sous_categories.php';
 require_once __DIR__ . '/../includes/barcode_fpl.php';
+require_once __DIR__ . '/../includes/fouta_upload_limits.php';
 
 /**
  * Génère et sauvegarde le QR code d'un produit (pointant vers stock-info.php)
  * @param int $produit_id ID du produit
  * @return bool True si succès
  */
-function generer_qrcode_produit($produit_id) {
+function generer_qrcode_produit($produit_id)
+{
     if (!file_exists(__DIR__ . '/../vendor/autoload.php')) {
         return false;
     }
@@ -28,8 +30,8 @@ function generer_qrcode_produit($produit_id) {
     $file = $dir . 'produit_' . (int) $produit_id . '.png';
     try {
         $qro = new \chillerlan\QRCode\QROptions([
-            'outputType'   => \chillerlan\QRCode\Output\QROutputInterface::GDIMAGE_PNG,
-            'scale'        => 10,
+            'outputType' => \chillerlan\QRCode\Output\QROutputInterface::GDIMAGE_PNG,
+            'scale' => 10,
             'outputBase64' => false,
         ]);
         $qr = new \chillerlan\QRCode\QRCode($qro);
@@ -50,37 +52,82 @@ require_once __DIR__ . '/../includes/stock_alertes_notifications.php';
  * @param string $field_name Le nom du champ
  * @return string|false Le nom du fichier ou False en cas d'erreur
  */
-function upload_produit_image($file, $field_name = 'image') {
-    if (!isset($file[$field_name]) || $file[$field_name]['error'] !== UPLOAD_ERR_OK) {
+function upload_produit_image($file, $field_name = 'image', &$out_error = null)
+{
+    if ($out_error !== null) {
+        $out_error = null;
+    }
+
+    if (!isset($file[$field_name]) || !is_array($file[$field_name])) {
         return false;
     }
-    
+
+    $file_info = $file[$field_name];
+    $code = isset($file_info['error']) ? (int) $file_info['error'] : UPLOAD_ERR_NO_FILE;
+
+    if ($code === UPLOAD_ERR_NO_FILE) {
+        return false;
+    }
+
+    if ($code === UPLOAD_ERR_INI_SIZE || $code === UPLOAD_ERR_FORM_SIZE) {
+        if ($out_error !== null) {
+            $out_error = fouta_upload_image_err_ini_ou_limite();
+        }
+        return false;
+    }
+
+    if ($code !== UPLOAD_ERR_OK) {
+        if ($out_error !== null) {
+            $out_error = 'Échec du téléversement de l’image.';
+        }
+        return false;
+    }
+
+    $size = isset($file_info['size']) ? (int) $file_info['size'] : 0;
+    if ($size <= 0) {
+        if ($out_error !== null) {
+            $out_error = 'Fichier image invalide.';
+        }
+        return false;
+    }
+
+    if ($size > FOUTA_UPLOAD_IMAGE_MAX_BYTES) {
+        if ($out_error !== null) {
+            $out_error = 'Image trop volumineuse (max. ' . fouta_upload_image_max_mo_int() . ' Mo).';
+        }
+        return false;
+    }
+
     $upload_dir = __DIR__ . '/../upload/produits/';
-    
+
     // Créer le dossier s'il n'existe pas
     if (!file_exists($upload_dir)) {
         mkdir($upload_dir, 0777, true);
     }
-    
+
     $allowed_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-    
-    $file_info = $file[$field_name];
-    
+
     // Vérifier le type
-    if (!in_array($file_info['type'], $allowed_types)) {
+    if (!in_array($file_info['type'], $allowed_types, true)) {
+        if ($out_error !== null) {
+            $out_error = 'Format non autorisé (JPG, PNG, GIF, WEBP).';
+        }
         return false;
     }
-    
+
     // Générer un nom unique
     $extension = pathinfo($file_info['name'], PATHINFO_EXTENSION);
     $filename = uniqid('produit_', true) . '.' . $extension;
     $filepath = $upload_dir . $filename;
-    
+
     // Déplacer le fichier
     if (move_uploaded_file($file_info['tmp_name'], $filepath)) {
         return 'produits/' . $filename;
     }
-    
+
+    if ($out_error !== null) {
+        $out_error = 'Impossible d’enregistrer l’image sur le serveur.';
+    }
     return false;
 }
 
@@ -90,14 +137,23 @@ function upload_produit_image($file, $field_name = 'image') {
  * @param string $field_name Le nom du champ (ex: images_supplementaires)
  * @return array Tableau des chemins des images uploadées
  */
-function upload_produit_images_multiples($files, $field_name = 'images_supplementaires') {
+function upload_produit_images_multiples($files, $field_name = 'images_supplementaires', &$first_error = null)
+{
     $uploaded = [];
+    $collect_err = func_num_args() > 2;
+    if ($collect_err) {
+        $first_error = null;
+    }
     if (!isset($files[$field_name]) || !is_array($files[$field_name]['name'])) {
         return $uploaded;
     }
-    
+
     $count = count($files[$field_name]['name']);
     for ($i = 0; $i < $count; $i++) {
+        $one_err = isset($files[$field_name]['error'][$i]) ? (int) $files[$field_name]['error'][$i] : UPLOAD_ERR_NO_FILE;
+        if ($one_err === UPLOAD_ERR_NO_FILE) {
+            continue;
+        }
         $file = [
             'name' => $files[$field_name]['name'][$i],
             'type' => $files[$field_name]['type'][$i],
@@ -106,9 +162,16 @@ function upload_produit_images_multiples($files, $field_name = 'images_supplemen
             'size' => $files[$field_name]['size'][$i]
         ];
         $fake_files = [$field_name => $file];
-        $path = upload_produit_image($fake_files, $field_name);
+        $row_err = null;
+        $path = upload_produit_image($fake_files, $field_name, $row_err);
         if ($path) {
             $uploaded[] = $path;
+        } elseif ($row_err !== null && $row_err !== '') {
+            $uploaded = [];
+            if ($collect_err) {
+                $first_error = $row_err;
+            }
+            break;
         }
     }
     return $uploaded;
@@ -119,7 +182,8 @@ function upload_produit_images_multiples($files, $field_name = 'images_supplemen
  *
  * @return string|null Valeur conservée ou null si vide après trim.
  */
-function produits_normalize_nom_fournisseur_from_post(array $post) {
+function produits_normalize_nom_fournisseur_from_post(array $post)
+{
     $s = isset($post['nom_fournisseur']) ? trim((string) $post['nom_fournisseur']) : '';
     if ($s === '') {
         return null;
@@ -139,7 +203,8 @@ function produits_normalize_nom_fournisseur_from_post(array $post) {
  *
  * @return array{fournisseur_id: int|null, nom_fournisseur: string|null}
  */
-function produits_resolve_fournisseur_from_post(array $post) {
+function produits_resolve_fournisseur_from_post(array $post)
+{
     if (!function_exists('produits_has_column') || !produits_has_column('fournisseur_id')) {
         $nom = produits_normalize_nom_fournisseur_from_post($post);
         return ['fournisseur_id' => null, 'nom_fournisseur' => $nom];
@@ -160,15 +225,16 @@ function produits_resolve_fournisseur_from_post(array $post) {
  * Traite l'ajout d'un nouveau produit
  * @return array Tableau avec 'success' (bool) et 'message' (string)
  */
-function process_add_produit() {
+function process_add_produit()
+{
     $errors = [];
     $success = false;
     $message = '';
-    
+
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         return ['success' => false, 'message' => ''];
     }
-    
+
     // Récupération et validation des données (stock géré via produits.stock)
     $nom = isset($_POST['nom']) ? trim($_POST['nom']) : '';
     $description = isset($_POST['description']) ? trim($_POST['description']) : '';
@@ -190,7 +256,7 @@ function process_add_produit() {
         $raw = trim($_POST['couleurs']);
         $decoded = json_decode($raw, true);
         if (is_array($decoded) && !empty($decoded)) {
-            $valid = array_values(array_unique(array_filter($decoded, function($c) {
+            $valid = array_values(array_unique(array_filter($decoded, function ($c) {
                 return is_string($c) && preg_match('/^#[0-9A-Fa-f]{6}$/', $c);
             })));
             $couleurs = !empty($valid) ? json_encode($valid) : null;
@@ -206,8 +272,12 @@ function process_add_produit() {
             $dec = json_decode($raw, true);
             $poids = (is_array($dec) && !empty($dec)) ? $raw : null;
             if (!$poids && $raw) {
-                $arr = array_map(function($x) { return ['v' => trim($x), 's' => 0]; }, array_filter(explode(',', $raw)));
-                $arr = array_filter($arr, function($x) { return !empty($x['v']) && $x['v'] !== '[]'; });
+                $arr = array_map(function ($x) {
+                    return ['v' => trim($x), 's' => 0];
+                }, array_filter(explode(',', $raw)));
+                $arr = array_filter($arr, function ($x) {
+                    return !empty($x['v']) && $x['v'] !== '[]';
+                });
                 $poids = !empty($arr) ? json_encode(array_values($arr)) : null;
             }
         }
@@ -218,18 +288,22 @@ function process_add_produit() {
             $dec = json_decode($raw, true);
             $taille = (is_array($dec) && !empty($dec)) ? $raw : null;
             if (!$taille && $raw) {
-                $arr = array_map(function($x) { return ['v' => trim($x), 's' => 0]; }, array_filter(explode(',', $raw)));
-                $arr = array_filter($arr, function($x) { return !empty($x['v']) && $x['v'] !== '[]'; });
+                $arr = array_map(function ($x) {
+                    return ['v' => trim($x), 's' => 0];
+                }, array_filter(explode(',', $raw)));
+                $arr = array_filter($arr, function ($x) {
+                    return !empty($x['v']) && $x['v'] !== '[]';
+                });
                 $taille = !empty($arr) ? json_encode(array_values($arr)) : null;
             }
         }
     }
-    
+
     // Validation
     if (empty($nom)) {
         $errors[] = 'Le nom du produit est obligatoire.';
     }
-    
+
     if ($prix_raw === '') {
         $prix = 0.0;
     } elseif (!is_numeric($prix_raw)) {
@@ -255,21 +329,23 @@ function process_add_produit() {
     if ($stock < 0) {
         $errors[] = 'Le stock ne peut pas être négatif.';
     }
-    
+
     if ($categorie_id <= 0) {
         $errors[] = 'Veuillez sélectionner une catégorie.';
     }
-    
+
     // Vérifier que la catégorie existe
     if ($categorie_id > 0 && !get_categorie_by_id($categorie_id)) {
         $errors[] = 'La catégorie sélectionnée n\'existe pas.';
     }
 
     $fid_sent = isset($_POST['fournisseur_id']) ? trim((string) $_POST['fournisseur_id']) : '';
-    if ($fid_sent !== ''
+    if (
+        $fid_sent !== ''
         && (int) $fid_sent > 0
         && produits_has_column('fournisseur_id')
-        && $fournisseur_res['fournisseur_id'] === null) {
+        && $fournisseur_res['fournisseur_id'] === null
+    ) {
         $errors[] = 'Le fournisseur sélectionné est invalide.';
     }
 
@@ -305,19 +381,23 @@ function process_add_produit() {
             $errors[] = 'Impossible d\'attribuer une référence interne unique. Réessayez.';
         }
     }
-    
+
     // Upload des images : images_produit[] (1ère = principale, reste = galerie)
     // Si lié à un article en stock, on utilise son image si pas d'upload
     $image_principale = null;
     $images_supp = [];
     if (isset($_FILES['images_produit']) && is_array($_FILES['images_produit']['name'])) {
-        $uploaded = upload_produit_images_multiples($_FILES, 'images_produit');
+        $img_err = null;
+        $uploaded = upload_produit_images_multiples($_FILES, 'images_produit', $img_err);
+        if ($img_err !== null && $img_err !== '') {
+            $errors[] = $img_err;
+        }
         if (!empty($uploaded)) {
             $image_principale = $uploaded[0];
             $images_supp = array_slice($uploaded, 1);
         }
     }
-    
+
     // Construire le tableau images (principale + supplémentaires) en JSON
     $images_json = null;
     if ($image_principale) {
@@ -326,14 +406,19 @@ function process_add_produit() {
     }
 
     $image_etiquette_fpl = null;
-    if (produits_has_column('image_etiquette_fpl')
+    if (
+        produits_has_column('image_etiquette_fpl')
         && isset($_FILES['image_etiquette_fpl'])
-        && (int) ($_FILES['image_etiquette_fpl']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
-        $up_et = upload_produit_image($_FILES, 'image_etiquette_fpl');
+        && (int) ($_FILES['image_etiquette_fpl']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK
+    ) {
+        $up_et_err = null;
+        $up_et = upload_produit_image($_FILES, 'image_etiquette_fpl', $up_et_err);
         if ($up_et !== false) {
             $image_etiquette_fpl = $up_et;
         } else {
-            $errors[] = 'Image étiquette FPL : fichier invalide ou format non autorisé (JPG, PNG, GIF, WEBP).';
+            $errors[] = ($up_et_err !== null && $up_et_err !== '')
+                ? ('Image étiquette FPL : ' . $up_et_err)
+                : 'Image étiquette FPL : fichier invalide ou format non autorisé (JPG, PNG, GIF, WEBP).';
         }
     }
 
@@ -378,7 +463,7 @@ function process_add_produit() {
         }
 
         $produit_id = create_produit($data);
-        
+
         if ($produit_id) {
             $success = true;
             $message = 'Produit ajouté avec succès !';
@@ -396,10 +481,10 @@ function process_add_produit() {
             $nb_variantes = count($variantes_nom);
             for ($i = 0; $i < $nb_variantes; $i++) {
                 $vn = trim($variantes_nom[$i] ?? '');
-                $vp = isset($variantes_prix[$i]) && is_numeric($variantes_prix[$i]) ? (float)$variantes_prix[$i] : 0;
+                $vp = isset($variantes_prix[$i]) && is_numeric($variantes_prix[$i]) ? (float) $variantes_prix[$i] : 0;
                 if ($vn !== '' && $vp > 0) {
                     $vimg = null;
-                    if ($variantes_files && isset($variantes_files['name'][$i]) && (int)($variantes_files['error'][$i] ?? 4) === UPLOAD_ERR_OK) {
+                    if ($variantes_files && isset($variantes_files['name'][$i]) && (int) ($variantes_files['error'][$i] ?? 4) === UPLOAD_ERR_OK) {
                         $f = [
                             'name' => $variantes_files['name'][$i],
                             'type' => $variantes_files['type'][$i] ?? '',
@@ -410,8 +495,9 @@ function process_add_produit() {
                         $fake = ['image' => $f];
                         $vimg = upload_produit_image($fake, 'image');
                     }
-                    $vpromo = isset($variantes_prix_promo[$i]) && is_numeric($variantes_prix_promo[$i]) && (float)$variantes_prix_promo[$i] > 0 ? (float)$variantes_prix_promo[$i] : null;
-                    if ($vpromo !== null && $vpromo >= $vp) $vpromo = null;
+                    $vpromo = isset($variantes_prix_promo[$i]) && is_numeric($variantes_prix_promo[$i]) && (float) $variantes_prix_promo[$i] > 0 ? (float) $variantes_prix_promo[$i] : null;
+                    if ($vpromo !== null && $vpromo >= $vp)
+                        $vpromo = null;
                     create_variante([
                         'produit_id' => $produit_id,
                         'nom' => $vn,
@@ -427,7 +513,7 @@ function process_add_produit() {
             $errors[] = 'Une erreur est survenue lors de l\'ajout du produit.';
         }
     }
-    
+
     if ($success) {
         return ['success' => true, 'message' => $message];
     } else {
@@ -441,21 +527,22 @@ function process_add_produit() {
  * @param int $produit_id L'ID du produit à modifier
  * @return array Tableau avec 'success' (bool) et 'message' (string)
  */
-function process_update_produit($produit_id) {
+function process_update_produit($produit_id)
+{
     $errors = [];
     $success = false;
     $message = '';
-    
+
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         return ['success' => false, 'message' => ''];
     }
-    
+
     // Vérifier que le produit existe
     $produit = get_produit_by_id($produit_id);
     if (!$produit) {
         return ['success' => false, 'message' => 'Produit introuvable.'];
     }
-    
+
     // Récupération et validation des données (stock géré via produits.stock)
     $nom = isset($_POST['nom']) ? trim($_POST['nom']) : '';
     $description = isset($_POST['description']) ? trim($_POST['description']) : '';
@@ -477,7 +564,7 @@ function process_update_produit($produit_id) {
         $raw = trim($_POST['couleurs']);
         $decoded = json_decode($raw, true);
         if (is_array($decoded) && !empty($decoded)) {
-            $valid = array_values(array_unique(array_filter($decoded, function($c) {
+            $valid = array_values(array_unique(array_filter($decoded, function ($c) {
                 return is_string($c) && preg_match('/^#[0-9A-Fa-f]{6}$/', $c);
             })));
             $couleurs = !empty($valid) ? json_encode($valid) : null;
@@ -493,8 +580,12 @@ function process_update_produit($produit_id) {
             $dec = json_decode($raw, true);
             $poids = (is_array($dec) && !empty($dec)) ? $raw : null;
             if (!$poids && $raw) {
-                $arr = array_map(function($x) { return ['v' => trim($x), 's' => 0]; }, array_filter(explode(',', $raw)));
-                $arr = array_filter($arr, function($x) { return !empty($x['v']) && $x['v'] !== '[]'; });
+                $arr = array_map(function ($x) {
+                    return ['v' => trim($x), 's' => 0];
+                }, array_filter(explode(',', $raw)));
+                $arr = array_filter($arr, function ($x) {
+                    return !empty($x['v']) && $x['v'] !== '[]';
+                });
                 $poids = !empty($arr) ? json_encode(array_values($arr)) : null;
             }
         }
@@ -505,18 +596,22 @@ function process_update_produit($produit_id) {
             $dec = json_decode($raw, true);
             $taille = (is_array($dec) && !empty($dec)) ? $raw : null;
             if (!$taille && $raw) {
-                $arr = array_map(function($x) { return ['v' => trim($x), 's' => 0]; }, array_filter(explode(',', $raw)));
-                $arr = array_filter($arr, function($x) { return !empty($x['v']) && $x['v'] !== '[]'; });
+                $arr = array_map(function ($x) {
+                    return ['v' => trim($x), 's' => 0];
+                }, array_filter(explode(',', $raw)));
+                $arr = array_filter($arr, function ($x) {
+                    return !empty($x['v']) && $x['v'] !== '[]';
+                });
                 $taille = !empty($arr) ? json_encode(array_values($arr)) : null;
             }
         }
     }
-    
+
     // Validation (identique à l'ajout)
     if (empty($nom)) {
         $errors[] = 'Le nom du produit est obligatoire.';
     }
-    
+
     if ($prix_raw === '') {
         $prix = 0.0;
     } elseif (!is_numeric($prix_raw)) {
@@ -542,7 +637,7 @@ function process_update_produit($produit_id) {
     if ($stock < 0) {
         $errors[] = 'Le stock ne peut pas être négatif.';
     }
-    
+
     if ($categorie_id <= 0) {
         $errors[] = 'Veuillez sélectionner une catégorie.';
     }
@@ -552,10 +647,12 @@ function process_update_produit($produit_id) {
     }
 
     $fid_sent_upd = isset($_POST['fournisseur_id']) ? trim((string) $_POST['fournisseur_id']) : '';
-    if ($fid_sent_upd !== ''
+    if (
+        $fid_sent_upd !== ''
         && (int) $fid_sent_upd > 0
         && produits_has_column('fournisseur_id')
-        && $fournisseur_res['fournisseur_id'] === null) {
+        && $fournisseur_res['fournisseur_id'] === null
+    ) {
         $errors[] = 'Le fournisseur sélectionné est invalide.';
     }
 
@@ -608,10 +705,13 @@ function process_update_produit($produit_id) {
     if (produits_has_column('image_etiquette_fpl')) {
         $image_etiquette_fpl_courant = trim((string) ($produit['image_etiquette_fpl'] ?? ''));
     }
-    if (produits_has_column('image_etiquette_fpl')
+    if (
+        produits_has_column('image_etiquette_fpl')
         && isset($_FILES['image_etiquette_fpl'])
-        && (int) ($_FILES['image_etiquette_fpl']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
-        $up_et = upload_produit_image($_FILES, 'image_etiquette_fpl');
+        && (int) ($_FILES['image_etiquette_fpl']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK
+    ) {
+        $up_et_err = null;
+        $up_et = upload_produit_image($_FILES, 'image_etiquette_fpl', $up_et_err);
         if ($up_et !== false) {
             if ($image_etiquette_fpl_courant !== '') {
                 $oldp = __DIR__ . '/../upload/' . $image_etiquette_fpl_courant;
@@ -621,7 +721,9 @@ function process_update_produit($produit_id) {
             }
             $image_etiquette_fpl_courant = $up_et;
         } else {
-            $errors[] = 'Image étiquette FPL : fichier invalide ou format non autorisé (JPG, PNG, GIF, WEBP).';
+            $errors[] = ($up_et_err !== null && $up_et_err !== '')
+                ? ('Image étiquette FPL : ' . $up_et_err)
+                : 'Image étiquette FPL : fichier invalide ou format non autorisé (JPG, PNG, GIF, WEBP).';
         }
     }
 
@@ -636,27 +738,31 @@ function process_update_produit($produit_id) {
     if (empty($all_images) && !empty($produit['image_principale'])) {
         $all_images = [$produit['image_principale']];
     }
-    
+
     // Images à conserver (envoyées par le formulaire - celles non supprimées par l'utilisateur)
     $images_to_keep = [];
     if (isset($_POST['images_to_keep']) && is_array($_POST['images_to_keep'])) {
         $images_to_keep = array_values(array_filter(array_map('trim', $_POST['images_to_keep'])));
     }
-    
+
     // Upload des images supplémentaires (nouvelles)
     $images_supp = [];
     if (isset($_FILES['images_supplementaires']) && is_array($_FILES['images_supplementaires']['name'])) {
-        $images_supp = upload_produit_images_multiples($_FILES, 'images_supplementaires');
+        $sup_err = null;
+        $images_supp = upload_produit_images_multiples($_FILES, 'images_supplementaires', $sup_err);
+        if ($sup_err !== null && $sup_err !== '') {
+            $errors[] = $sup_err;
+        }
     }
-    
+
     // Construire le tableau final : images conservées + nouvelles
     $final_images = array_merge($images_to_keep, $images_supp);
     $final_images = array_values(array_unique($final_images));
-    
+
     $image_principale = !empty($final_images) ? $final_images[0] : null;
     $images_json = !empty($final_images) ? json_encode($final_images) : null;
     $removed_images = array_diff($all_images, $images_to_keep);
-    
+
     // Si aucune erreur, mettre à jour le produit
     if (empty($errors)) {
         $etage = isset($_POST['etage']) ? trim($_POST['etage']) : '';
@@ -724,10 +830,12 @@ function process_update_produit($produit_id) {
             for ($i = 0; $i < count($variantes_nom); $i++) {
                 $vn = isset($variantes_nom[$i]) ? trim($variantes_nom[$i]) : '';
                 $vp = isset($variantes_prix[$i]) && is_numeric($variantes_prix[$i]) ? (float) $variantes_prix[$i] : 0;
-                if (empty($vn) || $vp <= 0) continue;
+                if (empty($vn) || $vp <= 0)
+                    continue;
                 $vid = isset($variantes_id[$i]) ? (int) $variantes_id[$i] : 0;
                 $vpromo = isset($variantes_prix_promo[$i]) && is_numeric($variantes_prix_promo[$i]) && $variantes_prix_promo[$i] > 0 ? (float) $variantes_prix_promo[$i] : null;
-                if ($vpromo && $vp > 0 && $vpromo >= $vp) $vpromo = null;
+                if ($vpromo && $vp > 0 && $vpromo >= $vp)
+                    $vpromo = null;
                 $vimg = null;
                 if (isset($_FILES['variantes_image']) && is_array($_FILES['variantes_image']['name']) && isset($_FILES['variantes_image']['name'][$i]) && $_FILES['variantes_image']['error'][$i] === UPLOAD_ERR_OK) {
                     $fake = [
@@ -779,7 +887,7 @@ function process_update_produit($produit_id) {
             $errors[] = 'Une erreur est survenue lors de la modification du produit.';
         }
     }
-    
+
     if ($success) {
         return ['success' => true, 'message' => $message];
     } else {
@@ -793,18 +901,19 @@ function process_update_produit($produit_id) {
  * @param int $produit_id L'ID du produit à supprimer
  * @return array Tableau avec 'success' (bool) et 'message' (string)
  */
-function process_delete_produit($produit_id) {
+function process_delete_produit($produit_id)
+{
     // Vérifier que le produit existe
     $produit = get_produit_by_id($produit_id);
     if (!$produit) {
         return ['success' => false, 'message' => 'Produit introuvable.'];
     }
-    
+
     // Supprimer l'image si elle existe
     if ($produit['image_principale'] && file_exists(__DIR__ . '/../upload/' . $produit['image_principale'])) {
         @unlink(__DIR__ . '/../upload/' . $produit['image_principale']);
     }
-    
+
     // Supprimer le produit
     if (delete_produit($produit_id)) {
         return ['success' => true, 'message' => 'Produit supprimé avec succès !'];
@@ -820,7 +929,8 @@ function process_delete_produit($produit_id) {
  * @param int $produit_id ID du produit
  * @return array ['success' => bool, 'message' => string]
  */
-function process_ajuster_stock_produit($produit_id) {
+function process_ajuster_stock_produit($produit_id)
+{
     if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !isset($_POST['ajuster_stock'])) {
         return ['success' => false, 'message' => ''];
     }
@@ -877,4 +987,3 @@ function process_ajuster_stock_produit($produit_id) {
 }
 
 ?>
-

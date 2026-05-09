@@ -160,6 +160,7 @@ if (isset($result['success']) && $result['success']) {
         <?php endif; ?>
         
         <form method="POST" action="" enctype="multipart/form-data">
+            <input type="hidden" name="MAX_FILE_SIZE" value="<?php echo (int) FOUTA_UPLOAD_IMAGE_MAX_BYTES; ?>">
             <div class="form-group">
                 <label for="nom">Nom de la catégorie *</label>
                 <input type="text" id="nom" name="nom" required

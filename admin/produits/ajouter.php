@@ -12,6 +12,7 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
 }
 
 require_once __DIR__ . '/../includes/require_access.php';
+require_once __DIR__ . '/../../includes/fouta_upload_limits.php';
 
 if (empty($_SESSION['admin_csrf'])) {
     $_SESSION['admin_csrf'] = bin2hex(random_bytes(32));
@@ -104,6 +105,7 @@ $has_img_etiq_col = produits_has_column('image_etiquette_fpl');
             </div>
             <?php unset($_SESSION['produit_form_notice']); endif; ?>
             <form method="POST" action="" enctype="multipart/form-data" class="pm-form" id="form-produit-ajouter">
+                <input type="hidden" name="MAX_FILE_SIZE" value="<?php echo (int) FOUTA_UPLOAD_IMAGE_MAX_BYTES; ?>">
                 <div class="pm-sections">
                     <section class="pm-card" aria-labelledby="pm-sec-info-add">
                         <div class="pm-card__head">
@@ -360,7 +362,7 @@ $has_img_etiq_col = produits_has_column('image_etiquette_fpl');
                                 <input type="file" id="images_produit" name="images_produit[]" accept="image/*" multiple
                                     class="pm-file-hidden">
                                 <div id="preview-images" class="image-preview-accumulator"></div>
-                                <small class="form-hint">Formats : JPG, PNG, GIF, WEBP. Facultatif — vous pouvez ajouter des photos plus tard.</small>
+                                <small class="form-hint">Formats : JPG, PNG, GIF, WEBP · max <?php echo (int) fouta_upload_image_max_mo_int(); ?> Mo par fichier. Facultatif — vous pouvez ajouter des photos plus tard.</small>
                             </div>
                             <?php if ($has_img_etiq_col): ?>
                             <div class="form-group" style="margin-top: 1.25rem;">
@@ -372,6 +374,7 @@ $has_img_etiq_col = produits_has_column('image_etiquette_fpl');
                                 <input type="file" id="image_etiquette_fpl" name="image_etiquette_fpl" accept="image/*" class="pm-file-hidden">
                                 <div id="preview-image-etiquette-fpl" class="pm-etiquette-fpl-preview-wrap" aria-live="polite"></div>
                                 <p id="preview-image-etiquette-fpl-placeholder" class="form-hint" style="margin-top:8px;">Aucun fichier sélectionné — les pictogrammes par défaut seront utilisés sur l’étiquette.</p>
+                                <small class="form-hint">JPG, PNG, GIF, WEBP · max <?php echo (int) fouta_upload_image_max_mo_int(); ?> Mo.</small>
                             </div>
                             <?php endif; ?>
                         </div>

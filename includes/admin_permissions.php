@@ -23,6 +23,14 @@ if (!function_exists('admin_current_role')) {
     }
 
     /**
+     * Compte au rôle ENUM « admin » (périmètre restreint, sans commandes/caisse/comptes, etc.).
+     * Pas de raccourcis « créer » catalogue / devis / contacts…
+     */
+    function admin_is_restricted_admin_account() {
+        return admin_current_role() === 'admin';
+    }
+
+    /**
      * Zones de livraison : tous les rôles sauf le rôle « admin » (compte restreint)
      */
     function admin_can_zones_livraison() {

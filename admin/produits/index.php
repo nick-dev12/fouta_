@@ -13,6 +13,7 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
 }
 
 require_once __DIR__ . '/../includes/require_access.php';
+require_once __DIR__ . '/../../includes/admin_permissions.php';
 
 // Afficher le message de succès s'il existe
 $success_message = '';
@@ -95,13 +96,16 @@ if (!empty($produits)) {
             <div class="dashboard-hero-text">
                 <p class="dashboard-eyebrow">Catalogue boutique</p>
                 <h1 id="page-produits-title"><i class="fas fa-box" aria-hidden="true"></i> Liste des produits</h1>
-                <p class="dashboard-subtitle">Gérez le catalogue, les stocks et les tarifs. Recherchez par nom, code
-                    <strong>FPL</strong> ou les <strong>5 derniers chiffres</strong> du numéro (caisse).
-                </p>
+                <p class="dashboard-subtitle"><?php echo admin_is_restricted_admin_account()
+                    ? 'Consultez la liste des produits et utilisez les filtres de recherche.'
+                    : 'Gérez le catalogue, les stocks et les tarifs. Recherchez par nom, code
+                    <strong>FPL</strong> ou les <strong>5 derniers chiffres</strong> du numéro (caisse).'; ?></p>
                 <div class="page-produits-hero__actions">
+                    <?php if (!admin_is_restricted_admin_account()): ?>
                     <a href="ajouter.php" class="btn-primary page-produits-hero__btn">
                         <i class="fas fa-upload" aria-hidden="true"></i> Publier un produit
                     </a>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
@@ -152,10 +156,12 @@ if (!empty($produits)) {
                     <div class="page-produits-empty__icon" aria-hidden="true"><i class="fas fa-box-open"></i></div>
                     <p class="page-produits-empty__title">Aucun produit à afficher</p>
                     <p class="page-produits-empty__hint">Élargissez la recherche, choisissez « Toutes les catégories » ou <a
-                            href="index.php">réinitialisez les filtres</a>. Vous pouvez aussi ajouter un produit.</p>
+                            href="index.php">réinitialisez les filtres</a>.<?php echo admin_is_restricted_admin_account() ? '' : ' Vous pouvez aussi ajouter un produit.'; ?></p>
+                    <?php if (!admin_is_restricted_admin_account()): ?>
                     <a href="ajouter.php" class="btn-primary page-produits-empty__cta">
                         <i class="fas fa-upload" aria-hidden="true"></i> Publier un produit
                     </a>
+                    <?php endif; ?>
                 </div>
             <?php else: ?>
                 <ul class="produits-grid page-produits-grid" role="list">

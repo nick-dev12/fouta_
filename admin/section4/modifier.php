@@ -221,6 +221,7 @@ if (isset($_SESSION['success_message'])) {
 
         <div class="form-container">
             <form method="POST" action="" enctype="multipart/form-data">
+                <input type="hidden" name="MAX_FILE_SIZE" value="<?php echo (int) FOUTA_UPLOAD_IMAGE_MAX_BYTES; ?>">
                 <div class="form-group">
                     <label for="titre">
                         <i class="fas fa-heading"></i> Titre principal

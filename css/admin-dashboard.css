@@ -695,7 +695,7 @@ body {
   }
 
   .dashboard-page .admin-filter-field {
-    flex: 1 1 100%;
+    flex: 0 0 auto;
     min-width: 0;
   }
 
@@ -803,7 +803,7 @@ body {
   }
 
   .dashboard-page .admin-filter-field {
-    flex: 1 1 auto;
+    flex: 0 0 auto;
   }
 
   .dashboard-page .admin-filter-field label {
@@ -1313,6 +1313,14 @@ body {
   .admin-filters-bar {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  /* En colonne, flex-basis 200px / grow s’appliquent sur la hauteur → champs énormes */
+  .admin-filters-bar .admin-filter-field {
+    flex: 0 0 auto;
+    min-height: 0;
+    width: 100%;
+    max-width: 100%;
   }
 
   .admin-filter-actions {

@@ -12,7 +12,7 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
 require_once __DIR__ . '/../../includes/require_access.php';
 
 $role = $_SESSION['admin_role'] ?? '';
-if (!in_array($role, ['admin', 'rh'], true)) {
+if (!in_array($role, ['admin', 'rh', 'informaticien'], true)) {
     header('Location: ../../dashboard.php');
     exit;
 }
@@ -75,7 +75,7 @@ $p = $_POST;
         <form method="post" action="ajouter.php" class="er-form-card" enctype="multipart/form-data">
             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
             <input type="hidden" name="creer_employe_rh_simple" value="1">
-            <input type="hidden" name="MAX_FILE_SIZE" value="8388608">
+            <input type="hidden" name="MAX_FILE_SIZE" value="<?php echo (int) FOUTA_UPLOAD_IMAGE_MAX_BYTES; ?>">
 
             <div class="er-form-grid">
                 <?php
@@ -147,7 +147,7 @@ $p = $_POST;
                     <p class="er-photo-hint">Fichier PDF uniquement.</p>
                 </div>
                 <div class="er-field er-field--full er-photo-field">
-                    <label for="photo_employe">Photo de l’employé <span class="er-opt">(optionnel, max 4 Mo)</span></label>
+                    <label for="photo_employe">Photo de l’employé <span class="er-opt">(optionnel, max <?php echo (int) (EMPLOYE_PHOTO_UPLOAD_MAX_BYTES / (1024 * 1024)); ?> Mo)</span></label>
                     <input type="file" id="photo_employe" name="photo_employe" accept="image/jpeg,image/png,image/webp,image/gif">
                     <p class="er-photo-hint">JPG, PNG, WEBP ou GIF. Une prévisualisation s’affiche ci-dessous une fois choisie.</p>
                     <div class="er-photo-preview-wrap" id="photoPreviewWrap" hidden>

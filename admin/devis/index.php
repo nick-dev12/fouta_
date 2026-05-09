@@ -149,11 +149,13 @@ $devis_page_has_alert = isset($_SESSION['success_message']) || !empty($error_dev
         </div>
 
         <div id="panel-devis" class="tab-panel-devis-bl <?php echo $tab_devis_active ? 'is-active' : ''; ?>" role="tabpanel" aria-labelledby="tab-btn-devis" <?php echo $tab_devis_active ? '' : 'hidden'; ?>>
+        <?php if (!admin_is_restricted_admin_account()): ?>
         <div class="admin-devis-bl-panel-actions">
             <button type="button" class="btn-primary" id="btn-nouveau-devis" aria-label="Créer un devis">
                 <i class="fas fa-plus-circle"></i> Nouveau devis
             </button>
         </div>
+        <?php endif; ?>
         <?php if (empty($devis_clients_groupes)): ?>
             <div class="empty-state page-devis-empty">
                 <div class="page-devis-empty__ic" aria-hidden="true"><i class="fas fa-file-invoice"></i></div>
@@ -240,11 +242,13 @@ $devis_page_has_alert = isset($_SESSION['success_message']) || !empty($error_dev
         <?php if (!$bl_tables_ok): ?>
             <p class="message error page-devis-message page-devis-b2b-migration"><i class="fas fa-database" aria-hidden="true"></i> Tables BL absentes : exécutez la migration <code>migrations/migration_admin_b2b_structure.sql</code>.</p>
         <?php else: ?>
+        <?php if (!admin_is_restricted_admin_account()): ?>
         <div class="admin-devis-bl-panel-actions">
             <button type="button" class="btn-secondary" id="btn-nouveau-bl" aria-label="Créer un bon de livraison">
                 <i class="fas fa-truck-loading"></i> Nouveau BL
             </button>
         </div>
+        <?php endif; ?>
         <?php if (empty($bl_clients_list)): ?>
             <div class="bl-empty-state" role="status">
                 <div class="bl-empty-state__visual" aria-hidden="true">

@@ -9,7 +9,7 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
 require_once __DIR__ . '/../../includes/require_access.php';
 
 $role = $_SESSION['admin_role'] ?? '';
-if (!in_array($role, ['admin', 'rh'], true)) {
+if (!in_array($role, ['admin', 'rh', 'informaticien'], true)) {
     header('Location: ../../dashboard.php');
     exit;
 }
@@ -92,7 +92,7 @@ $curr_pdf_ok = $curr_pdf_rel !== '' && strpos($curr_pdf_rel, '..') === false
 
         <form method="post" class="form-add er-modifier-employe-form" style="background: var(--glass-bg, rgba(255,255,255,.7)); padding: 24px; border-radius: 12px;" enctype="multipart/form-data">
             <input type="hidden" name="modifier_employe" value="1">
-            <input type="hidden" name="MAX_FILE_SIZE" value="8388608">
+            <input type="hidden" name="MAX_FILE_SIZE" value="<?php echo (int) FOUTA_UPLOAD_IMAGE_MAX_BYTES; ?>">
             <div class="form-group">
                 <label for="nom">Nom *</label>
                 <input type="text" id="nom" name="nom" required value="<?php echo htmlspecialchars($p['nom'] ?? ''); ?>">
@@ -199,7 +199,7 @@ $curr_pdf_ok = $curr_pdf_rel !== '' && strpos($curr_pdf_rel, '..') === false
                 <p class="er-photo-hint" style="margin-top:6px;">PDF uniquement. Laisser vide pour conserver le fichier actuel.</p>
             </div>
             <div class="form-group">
-                <label for="<?php echo htmlspecialchars($photo_field); ?>">Photo de l’employé <span class="er-opt">(optionnel, max 4 Mo)</span></label>
+                <label for="<?php echo htmlspecialchars($photo_field); ?>">Photo de l’employé <span class="er-opt">(optionnel, max <?php echo (int) (EMPLOYE_PHOTO_UPLOAD_MAX_BYTES / (1024 * 1024)); ?> Mo)</span></label>
                 <?php if ($curr_ph_ok): ?>
                     <p class="er-photo-modifier-actuelle">Photo actuelle :</p>
                     <div class="er-photo-modifier-thumb">

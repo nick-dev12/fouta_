@@ -36,7 +36,7 @@ function upload_slider_image($file_input_name, $current_image = null) {
     }
     
     if ($file['size'] > FOUTA_UPLOAD_IMAGE_MAX_BYTES) {
-        $_SESSION['upload_error'] = 'Le fichier est trop volumineux. Taille maximale : 30 Mo';
+        $_SESSION['upload_error'] = 'Le fichier est trop volumineux. Taille maximale : ' . fouta_upload_image_max_mo_int() . ' Mo';
         return false;
     }
     
@@ -98,7 +98,7 @@ function process_add_slide() {
                 $errors[] = $_SESSION['upload_error'];
                 unset($_SESSION['upload_error']);
             } else {
-                $errors[] = 'Erreur lors de l\'upload de l\'image. Vérifiez que le fichier est au format JPEG, JPG, PNG, GIF, WEBP ou AVIF et ne dépasse pas 30 Mo.';
+                $errors[] = 'Erreur lors de l\'upload de l\'image. Vérifiez que le fichier est au format JPEG, JPG, PNG, GIF, WEBP ou AVIF et ne dépasse pas ' . fouta_upload_image_max_mo_int() . ' Mo.';
             }
         }
     }
@@ -170,7 +170,7 @@ function process_update_slide($slide_id) {
                 $errors[] = $_SESSION['upload_error'];
                 unset($_SESSION['upload_error']);
             } else {
-                $errors[] = 'Erreur lors de l\'upload de l\'image. Vérifiez que le fichier est au format JPEG, JPG, PNG, GIF, WEBP ou AVIF et ne dépasse pas 30 Mo.';
+                $errors[] = 'Erreur lors de l\'upload de l\'image. Vérifiez que le fichier est au format JPEG, JPG, PNG, GIF, WEBP ou AVIF et ne dépasse pas ' . fouta_upload_image_max_mo_int() . ' Mo.';
             }
             // Garder l'ancienne image en cas d'erreur
             $image = $current_slide['image'];

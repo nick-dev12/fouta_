@@ -15,8 +15,8 @@ $role = $_SESSION['admin_role'] ?? '';
 if ($role === 'utilisateur') {
     $role = 'gestion_stock';
 }
-if (!in_array($role, ['admin', 'rh'], true)) {
-    $_SESSION['error_message'] = 'Accès réservé aux administrateurs ou aux RH.';
+if (!in_array($role, ['admin', 'rh', 'informaticien'], true)) {
+    $_SESSION['error_message'] = 'Accès réservé aux administrateurs, aux RH ou aux informaticiens.';
     header('Location: ../dashboard.php');
     exit;
 }
@@ -25,6 +25,7 @@ require_once __DIR__ . '/../../models/model_admin.php';
 require_once __DIR__ . '/../../models/model_employes.php';
 require_once __DIR__ . '/../../models/model_employe_absences.php';
 require_once __DIR__ . '/../../models/model_bulletin_paie.php';
+require_once __DIR__ . '/../../includes/fouta_upload_limits.php';
 
 /**
  * Peut recevoir une absence : compte admin actif, pas le rôle « admin ».
@@ -59,7 +60,11 @@ if (!is_dir($upload_dir)) {
 /**
  * @return array{0:?string,1:?string,2:?string}|string Erreur message string
  */
-function absences_traiter_upload_justif(array $file, $max_bytes = 5242880) {
+function absences_traiter_upload_justif(array $file, $max_bytes = null) {
+    if ($max_bytes === null) {
+        $max_bytes = FOUTA_UPLOAD_IMAGE_MAX_BYTES;
+    }
+    $max_bytes = (int) $max_bytes;
     if (($file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
         return [null, null, null];
     }
@@ -70,7 +75,8 @@ function absences_traiter_upload_justif(array $file, $max_bytes = 5242880) {
         return 'Fichier invalide.';
     }
     if (($file['size'] ?? 0) > $max_bytes) {
-        return 'Le fichier dépasse la taille maximale autorisée (5 Mo).';
+        $mo = (int) ($max_bytes / (1024 * 1024));
+        return 'Le fichier dépasse la taille maximale autorisée (' . $mo . ' Mo).';
     }
     $allowed = [
         'image/jpeg' => 'jpg',
@@ -442,6 +448,7 @@ $page_title = 'Gestion des absences';
             </div>
             <form class="abs-form" method="post" action="absences.php" enctype="multipart/form-data">
                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
+                <input type="hidden" name="MAX_FILE_SIZE" value="<?php echo (int) FOUTA_UPLOAD_IMAGE_MAX_BYTES; ?>">
                 <input type="hidden" name="action" value="justify_absence">
                 <div class="abs-form__grid abs-form__grid--split">
                     <div class="abs-field">
@@ -484,7 +491,7 @@ $page_title = 'Gestion des absences';
                         <label for="justify-file">Joindre une image</label>
                         <div class="abs-filezone">
                             <input type="file" id="justify-file" name="justif_fichier" accept="image/jpeg,image/png,image/webp" class="abs-file-input">
-                            <p class="abs-filezone__hint">JPEG, PNG ou WebP — max. 5 Mo</p>
+                            <p class="abs-filezone__hint">JPEG, PNG ou WebP — max. <?php echo (int) fouta_upload_image_max_mo_int(); ?> Mo</p>
                         </div>
                         <div id="justify-preview" class="abs-preview abs-preview--hidden" aria-live="polite">
                             <p class="abs-preview__label">Prévisualisation</p>

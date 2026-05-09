@@ -84,7 +84,7 @@ function upload_section4_image($file) {
     
     $max_size = FOUTA_UPLOAD_IMAGE_MAX_BYTES;
     if ($file['size'] > $max_size) {
-        return ['success' => false, 'filename' => null, 'message' => 'Le fichier est trop volumineux. Taille maximale : 30 Mo'];
+        return ['success' => false, 'filename' => null, 'message' => 'Le fichier est trop volumineux. Taille maximale : ' . fouta_upload_image_max_mo_int() . ' Mo'];
     }
     
     // Générer un nom de fichier unique

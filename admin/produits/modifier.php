@@ -13,6 +13,7 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
 }
 
 require_once __DIR__ . '/../includes/require_access.php';
+require_once __DIR__ . '/../../includes/fouta_upload_limits.php';
 
 if (empty($_SESSION['admin_csrf'])) {
     $_SESSION['admin_csrf'] = bin2hex(random_bytes(32));
@@ -170,6 +171,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
         <?php unset($_SESSION['produit_form_notice']); endif; ?>
 
         <form method="POST" action="" enctype="multipart/form-data" class="pm-form" id="form-produit-modifier">
+        <input type="hidden" name="MAX_FILE_SIZE" value="<?php echo (int) FOUTA_UPLOAD_IMAGE_MAX_BYTES; ?>">
         <div class="pm-sections">
             <section class="pm-card" aria-labelledby="pm-sec-info">
                 <div class="pm-card__head">
@@ -591,7 +593,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
                 <input type="file" id="images_supplementaires" name="images_supplementaires[]" accept="image/*" multiple
                     class="pm-file-hidden" onchange="previewMultipleImages(this, 'preview-supplementaires')">
                 <div id="preview-supplementaires" class="image-preview-grid"></div>
-                <small class="form-hint">Formats : JPG, PNG, GIF, WEBP. Vous pouvez retirer toutes les images si besoin.</small>
+                <small class="form-hint">Formats : JPG, PNG, GIF, WEBP · max <?php echo (int) fouta_upload_image_max_mo_int(); ?> Mo par fichier. Vous pouvez retirer toutes les images si besoin.</small>
             </div>
             <?php if ($has_img_etiq_col):
                 $etiq_cur = trim((string) ($produit['image_etiquette_fpl'] ?? ''));
@@ -610,7 +612,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
                 </label>
                 <input type="file" id="image_etiquette_fpl" name="image_etiquette_fpl" accept="image/*" class="pm-file-hidden">
                 <div id="preview-image-etiquette-fpl-mod" class="pm-etiquette-fpl-preview-wrap" aria-live="polite"></div>
-                <small class="form-hint"><?php echo $etiq_cur !== '' ? 'Sans nouveau fichier, l’image actuelle est conservée.' : 'Sans image, les pictogrammes s’affichent sur l’étiquette.'; ?></small>
+                <small class="form-hint"><?php echo $etiq_cur !== '' ? 'Sans nouveau fichier, l’image actuelle est conservée.' : 'Sans image, les pictogrammes s’affichent sur l’étiquette.'; ?> JPG, PNG, GIF, WEBP · max <?php echo (int) fouta_upload_image_max_mo_int(); ?> Mo.</small>
             </div>
             <?php endif; ?>
                 </div>
