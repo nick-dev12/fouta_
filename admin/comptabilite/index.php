@@ -314,7 +314,7 @@ if (function_exists('get_factures_devis_payees_avec_devis')) {
 }
 $nb_devis_payes = count($factures_devis_payees_list);
 
-$is_admin_role = in_array(($_SESSION['admin_role'] ?? ''), ['admin', 'informaticien'], true);
+$is_admin_role = in_array(($_SESSION['admin_role'] ?? ''), ['admin', 'informaticien', 'developpeur'], true);
 
 /* Filtre période — onglet Ventes (commandes vendues = livrée ou payée, selon date de commande) */
 $v_periode = isset($_GET['v_periode']) ? trim((string) $_GET['v_periode']) : 'jour';

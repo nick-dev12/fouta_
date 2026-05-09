@@ -19,7 +19,7 @@ $__ar = $_SESSION['admin_role'] ?? '';
 if ($__ar === 'utilisateur') {
     $__ar = 'gestion_stock';
 }
-if (!in_array($__ar, ['admin', 'rh'], true)) {
+if (!in_array($__ar, ['admin', 'rh', 'informaticien', 'developpeur'], true)) {
     header('Location: ../dashboard.php');
     exit;
 }

@@ -84,7 +84,7 @@ $montant_total_a_traiter = array_sum(array_column($commandes, 'montant_total'));
                 <p class="dashboard-subtitle">Suivez les commandes en cours (hors livrées, payées et annulées), le montant à encaisser et ouvrez une fiche pour agir.</p>
                 <?php endif; ?>
                 <div class="page-commandes-hero__actions">
-                    <?php if (in_array($_SESSION['admin_role'] ?? '', ['admin', 'informaticien'], true) && $active_tab === 'traitement'): ?>
+                    <?php if (in_array($_SESSION['admin_role'] ?? '', ['admin', 'informaticien', 'developpeur'], true) && $active_tab === 'traitement'): ?>
                     <a href="historique-ventes.php" class="btn-primary page-commandes-hero__btn">
                         <i class="fas fa-chart-line" aria-hidden="true"></i> Historique &amp; comptabilité
                     </a>

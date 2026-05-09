@@ -211,7 +211,8 @@
   color: #7a5400;
 }
 
-.page-employe-activite .ea-identity-card .role-badge.role-informaticien {
+.page-employe-activite .ea-identity-card .role-badge.role-informaticien,
+.page-employe-activite .ea-identity-card .role-badge.role-developpeur {
   background: rgba(53, 100, 166, 0.22);
   color: #0d2744;
 }

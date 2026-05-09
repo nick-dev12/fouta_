@@ -37,6 +37,7 @@ if (!function_exists('admin_route_relative_path')) {
             case 'admin':
                 return 'dashboard.php';
             case 'informaticien':
+            case 'developpeur':
                 return 'dashboard.php';
             case 'commercial_general':
                 return 'devis/index.php';
@@ -62,16 +63,18 @@ if (!function_exists('admin_route_relative_path')) {
         $r = admin_normalize_role_for_route($role);
         $p = $relativePath;
 
-        if ($r === 'admin' || $r === 'informaticien') {
+        $acces_sans_restriction = ($r === 'informaticien' || $r === 'developpeur');
+
+        if ($r === 'admin' || $acces_sans_restriction) {
             if ($p === '' || $p === 'dashboard.php' || $p === 'login.php' || $p === 'logout.php') {
                 return true;
             }
             if ($p === 'profil.php' || $p === 'inscription-admin.php' || $p === 'test-notification.php') {
                 return true;
             }
-            // Paramètres + sous-pages : réservé à l’informaticien (rôle admin exclu)
+            // Paramètres + sous-pages : informaticien / développeur (rôle admin exclu)
             if ($p === 'parametres.php' || strpos($p, 'parametres/') === 0) {
-                return $r === 'informaticien';
+                return $acces_sans_restriction;
             }
             if ($r === 'admin') {
                 $interdits = ['caisse/', 'zones-livraison/', 'commandes/', 'users/', 'comptes/'];
@@ -81,7 +84,7 @@ if (!function_exists('admin_route_relative_path')) {
                     }
                 }
             }
-            // Informaticien : accès complet y compris caisse et zones de livraison
+            // Informaticien / développeur : accès complet y compris caisse et zones de livraison
             return true;
         }
 

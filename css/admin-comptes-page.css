@@ -711,7 +711,8 @@
   color: #1a1208;
 }
 
-.comptes-acces-card__head .role-badge.role-informaticien {
+.comptes-acces-card__head .role-badge.role-informaticien,
+.comptes-acces-card__head .role-badge.role-developpeur {
   background: rgba(53, 100, 166, 0.35);
   color: #0d1f33;
 }

@@ -12,7 +12,7 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
 require_once __DIR__ . '/../../includes/require_access.php';
 
 $role = $_SESSION['admin_role'] ?? '';
-if (!in_array($role, ['admin', 'rh', 'informaticien'], true)) {
+if (!in_array($role, ['admin', 'rh', 'informaticien', 'developpeur'], true)) {
     header('Location: ../../dashboard.php');
     exit;
 }

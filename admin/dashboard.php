@@ -20,7 +20,7 @@ require_once __DIR__ . '/../models/model_commandes_personnalisees.php';
 require_once __DIR__ . '/../models/model_produits.php';
 require_once __DIR__ . '/../models/model_categories.php';
 
-$dashboard_show_commandes = (admin_current_role() === 'informaticien');
+$dashboard_show_commandes = in_array(admin_current_role(), ['informaticien', 'developpeur'], true);
 
 $recherche = trim($_GET['recherche'] ?? '');
 $categorie_id = isset($_GET['categorie_id']) ? (int) $_GET['categorie_id'] : 0;
@@ -129,7 +129,7 @@ if ($admin_show_catalogue && !empty($produits)) {
             </div>
             <?php
         }
-        // Statistiques commandes (informaticien uniquement : le rôle admin n'y a pas accès)
+        // Statistiques commandes (informaticien / développeur : le rôle admin restreint n'y a pas accès)
         $total_commandes = 0;
         $commandes_perso_en_attente = 0;
         $en_attente = 0;
@@ -345,7 +345,6 @@ if ($admin_show_catalogue && !empty($produits)) {
     <script>
         /**
          * PWA admin : beforeinstallprompt doit être écouté tout de suite.
-         * S’il est enregistré seulement dans DOMContentLoaded, l’événement peut être manqué → clic sans effet.
          */
         (function () {
             window.__foutaAdminDeferredInstallPrompt = null;
@@ -364,6 +363,105 @@ if ($admin_show_catalogue && !empty($produits)) {
                 }
             });
         })();
+
+        function foutaAdminPwaIsStandalone() {
+            try {
+                return window.matchMedia('(display-mode: standalone)').matches ||
+                    window.matchMedia('(display-mode: fullscreen)').matches ||
+                    window.matchMedia('(display-mode: minimal-ui)').matches ||
+                    window.navigator.standalone === true;
+            } catch (e) {
+                return window.navigator.standalone === true;
+            }
+        }
+
+        /** iPhone, iPad, iPod — y compris UA récents et iPadOS « desktop ». */
+        function foutaAdminPwaIsIosLike() {
+            var ua = navigator.userAgent || '';
+            if (/iPad|iPhone|iPod/i.test(ua)) {
+                return true;
+            }
+            if (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) {
+                return true;
+            }
+            if (/Macintosh/i.test(ua) && /Mobile\/[^\s]+/i.test(ua)) {
+                return true;
+            }
+            return false;
+        }
+
+        function foutaAdminPwaRemoveHelp() {
+            var o = document.getElementById('fouta-pwa-help-overlay');
+            if (o && o.parentNode) {
+                o.parentNode.removeChild(o);
+            }
+            document.body.style.overflow = '';
+        }
+
+        function foutaAdminPwaShowHelp(mode) {
+            foutaAdminPwaRemoveHelp();
+            var wrap = document.createElement('div');
+            wrap.id = 'fouta-pwa-help-overlay';
+            wrap.className = 'fouta-pwa-help-overlay';
+            wrap.setAttribute('role', 'dialog');
+            wrap.setAttribute('aria-modal', 'true');
+            wrap.setAttribute('aria-labelledby', 'fouta-pwa-help-title');
+
+            var title = mode === 'ios'
+                ? 'Ajouter sur l’écran d’accueil (iPhone / iPad)'
+                : 'Installer l’application (Android)';
+            var bodyHtml;
+            if (mode === 'ios') {
+                bodyHtml =
+                    '<ol class="fouta-pwa-help-steps">' +
+                    '<li>Touchez <strong>Partager</strong> ' +
+                    '<span class="fouta-pwa-help-hint">(carré avec flèche vers le haut)</span> en bas de l’écran ou dans la barre d’adresse.</li>' +
+                    '<li>Choisissez <strong>« Sur l’écran d’accueil »</strong> ou ' +
+                    '<strong>« Ajouter à l’écran d’accueil »</strong>, puis validez avec <strong>Ajouter</strong>.</li>' +
+                    '<li>L’icône <strong>FPL Admin</strong> apparaîtra comme un raccourci application.</li>' +
+                    '</ol>' +
+                    '<p class="fouta-pwa-help-note">Avec Chrome sur iOS, le bouton Partager est souvent dans la barre du bas.</p>';
+            } else {
+                bodyHtml =
+                    '<ol class="fouta-pwa-help-steps">' +
+                    '<li>Ouvrez cette page dans <strong>Google Chrome</strong> si possible.</li>' +
+                    '<li>Touchez le menu <strong>⋮</strong> en haut à droite.</li>' +
+                    '<li>Choisissez <strong>« Installer l’application »</strong>, ' +
+                    '<strong>« Ajouter à l’écran d’accueil »</strong> ou l’équivalent proposé par votre navigateur.</li>' +
+                    '</ol>' +
+                    '<p class="fouta-pwa-help-note">Si rien n’apparaît : attendez 10–15 s après le chargement, actualisez, ou vérifiez que le site est bien en HTTPS. ' +
+                    'Certains navigateurs intégrés (Facebook, etc.) ne proposent pas l’installation : ouvrez le lien dans Chrome.</p>';
+            }
+
+            wrap.innerHTML =
+                '<div class="fouta-pwa-help-dialog">' +
+                '<button type="button" class="fouta-pwa-help-close" data-fouta-pwa-close aria-label="Fermer">&times;</button>' +
+                '<h2 id="fouta-pwa-help-title">' + title + '</h2>' +
+                bodyHtml +
+                '<button type="button" class="btn-primary fouta-pwa-help-btn-ok" data-fouta-pwa-close>Fermer</button>' +
+                '</div>';
+
+            document.body.appendChild(wrap);
+            document.body.style.overflow = 'hidden';
+
+            function closeHelp() {
+                foutaAdminPwaRemoveHelp();
+            }
+            wrap.querySelectorAll('[data-fouta-pwa-close]').forEach(function (el) {
+                el.addEventListener('click', closeHelp);
+            });
+            wrap.addEventListener('click', function (ev) {
+                if (ev.target === wrap) {
+                    closeHelp();
+                }
+            });
+            document.addEventListener('keydown', function onEsc(ev) {
+                if (ev.key === 'Escape') {
+                    document.removeEventListener('keydown', onEsc);
+                    closeHelp();
+                }
+            });
+        }
 
         document.addEventListener('DOMContentLoaded', function () {
             document.querySelectorAll('.produit-card-linkable').forEach(function(card) {
@@ -392,22 +490,16 @@ if ($admin_show_catalogue && !empty($produits)) {
             }
 
             var installBtn = document.getElementById('btn-install-pwa');
-            var isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-            var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-                (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-
-            function showInstallBtn() {
-                if (!installBtn || isStandalone) return;
-                installBtn.hidden = false;
-            }
-            function hideInstallBtn() {
-                if (installBtn) installBtn.hidden = true;
+            if (!installBtn) {
+                return;
             }
 
-            if (isStandalone) {
-                hideInstallBtn();
-            } else if (isIOS && installBtn) {
-                showInstallBtn();
+            if (foutaAdminPwaIsStandalone()) {
+                installBtn.hidden = true;
+                return;
+            }
+
+            if (foutaAdminPwaIsIosLike()) {
                 installBtn.setAttribute('title', 'Ajouter le raccourci sur l’écran d’accueil');
                 var icIos = installBtn.querySelector('.dashboard-hero-action__ic');
                 var txtIos = installBtn.querySelector('.dashboard-hero-action__txt');
@@ -417,53 +509,50 @@ if ($admin_show_catalogue && !empty($produits)) {
                 if (txtIos) {
                     txtIos.textContent = 'Ajouter à l’écran d’accueil';
                 }
-                installBtn.addEventListener('click', function () {
-                    alert('Sur iPhone / iPad : touchez « Partager » \u25B6 « Sur l’écran d’accueil ».');
-                });
-            } else {
-                if (installBtn && !isStandalone) {
+            }
+
+            installBtn.hidden = false;
+
+            document.addEventListener('fouta:installprompt', function () {
+                if (!foutaAdminPwaIsStandalone()) {
                     installBtn.hidden = false;
                 }
-                if (window.__foutaAdminDeferredInstallPrompt) {
-                    showInstallBtn();
-                }
-                document.addEventListener('fouta:installprompt', function () {
-                    showInstallBtn();
-                });
+            });
 
-                if (installBtn) {
-                    installBtn.addEventListener('click', function () {
-                        var dp = window.__foutaAdminDeferredInstallPrompt;
-                        if (!dp) {
-                            alert(
-                                'Installation : le navigateur ne propose pas encore le raccourci.\n\n' +
-                                '• Attendez quelques secondes après le chargement (service worker), puis réessayez.\n' +
-                                '• Chrome / Edge : menu ⋮ → « Installer l’application… » ou icône dans la barre d’adresse.\n' +
-                                '• Utilisez HTTPS ou localhost.'
-                            );
-                            return;
-                        }
-                        try {
-                            dp.prompt();
-                        } catch (e) {
-                            window.__foutaAdminDeferredInstallPrompt = null;
-                            alert(
-                                'Impossible d’afficher la fenêtre d’installation (événement expiré ou navigateur).\n\n' +
-                                'Rechargez la page puis réessayez, ou installez depuis le menu du navigateur (⋮).'
-                            );
-                            return;
-                        }
-                        dp.userChoice.then(function (choiceResult) {
-                            if (choiceResult.outcome === 'accepted') {
-                                hideInstallBtn();
-                            }
-                            window.__foutaAdminDeferredInstallPrompt = null;
-                        }).catch(function () {
-                            window.__foutaAdminDeferredInstallPrompt = null;
-                        });
-                    });
+            installBtn.addEventListener('click', function (ev) {
+                ev.preventDefault();
+                if (foutaAdminPwaIsStandalone()) {
+                    return;
                 }
-            }
+
+                if (foutaAdminPwaIsIosLike()) {
+                    foutaAdminPwaShowHelp('ios');
+                    return;
+                }
+
+                var dp = window.__foutaAdminDeferredInstallPrompt;
+                if (dp && typeof dp.prompt === 'function') {
+                    try {
+                        dp.prompt();
+                        var pr = dp.userChoice;
+                        if (pr && typeof pr.then === 'function') {
+                            pr.then(function (choiceResult) {
+                                if (choiceResult && choiceResult.outcome === 'accepted') {
+                                    installBtn.hidden = true;
+                                }
+                                window.__foutaAdminDeferredInstallPrompt = null;
+                            }).catch(function () {
+                                window.__foutaAdminDeferredInstallPrompt = null;
+                            });
+                        }
+                    } catch (err) {
+                        window.__foutaAdminDeferredInstallPrompt = null;
+                        foutaAdminPwaShowHelp('android');
+                    }
+                } else {
+                    foutaAdminPwaShowHelp('android');
+                }
+            });
         });
     </script>
     <?php include __DIR__ . '/../includes/admin_stock_alerte_popup.php'; ?>

@@ -33,6 +33,7 @@ $is_comptes = strpos($current_dir, '/comptes') !== false;
 $is_commercial_hub = strpos($current_dir, '/commercial') !== false;
 $is_comptabilite_hub = strpos($current_dir, '/comptabilite') !== false;
 $admin_role = admin_normalize_role_for_route($_SESSION['admin_role'] ?? 'admin');
+$admin_nav_is_tech_full = ($admin_role === 'informaticien' || $admin_role === 'developpeur');
 
 include __DIR__ . '/../../includes/pwa_admin_boot.php';
 
@@ -76,7 +77,7 @@ include __DIR__ . '/../../includes/pwa_admin_boot.php';
         </div>
         <nav class="sidebar-menu" aria-label="Navigation principale">
             <div class="sidebar-menu__main">
-            <?php if ($admin_role === 'admin' || $admin_role === 'informaticien'): ?>
+            <?php if ($admin_role === 'admin' || $admin_nav_is_tech_full): ?>
             <a href="<?php echo $admin_nav_base; ?>dashboard.php"
                 class="menu-item mi-dashboard<?php echo $current_page == 'dashboard.php' ? ' active' : ''; ?>">
                 <span class="menu-item-icon" aria-hidden="true"><i class="fas fa-home"></i></span>
@@ -102,7 +103,7 @@ include __DIR__ . '/../../includes/pwa_admin_boot.php';
                 <span class="menu-item-icon" aria-hidden="true"><i class="fas fa-box"></i></span>
                 <span class="menu-item-text">Produits</span>
             </a>
-            <?php if ($admin_role === 'informaticien'): ?>
+            <?php if ($admin_nav_is_tech_full): ?>
             <a href="<?php echo $admin_nav_base; ?>commandes/index.php"
                 class="menu-item mi-commandes<?php echo ($is_commandes && ($current_page == 'index.php' || $current_page == 'livrees.php' || $current_page == 'annulees.php' || $current_page == 'details.php' || $current_page == 'historique-ventes.php')) ? ' active' : ''; ?>">
                 <span class="menu-item-icon" aria-hidden="true"><i class="fas fa-shopping-cart"></i></span>
@@ -114,7 +115,7 @@ include __DIR__ . '/../../includes/pwa_admin_boot.php';
                 <span class="menu-item-icon" aria-hidden="true"><i class="fas fa-address-book"></i></span>
                 <span class="menu-item-text">Contacts</span>
             </a>
-            <?php if ($admin_role === 'informaticien'): ?>
+            <?php if ($admin_nav_is_tech_full): ?>
             <a href="<?php echo $admin_nav_base; ?>users/index.php"
                 class="menu-item mi-clients<?php echo $is_users ? ' active' : ''; ?>">
                 <span class="menu-item-icon" aria-hidden="true"><i class="fas fa-store"></i></span>
@@ -130,8 +131,6 @@ include __DIR__ . '/../../includes/pwa_admin_boot.php';
                 <span class="menu-item-icon" aria-hidden="true"><i class="fas fa-cog"></i></span>
                 <span class="menu-item-text">Paramètres</span>
             </a>
-            <?php endif; ?>
-            <?php if ($admin_role === 'informaticien'): ?>
             <a href="<?php echo $admin_nav_base; ?>caisse/index.php"
                 class="menu-item mi-caisse<?php echo ($is_caisse && $current_page === 'index.php') ? ' active' : ''; ?>">
                 <span class="menu-item-icon" aria-hidden="true"><i class="fas fa-cash-register"></i></span>

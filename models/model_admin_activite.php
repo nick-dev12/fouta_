@@ -46,6 +46,7 @@ function admin_activite_types_pour_role($role) {
                 'caisse_tickets_bureau',
             ];
         case 'informaticien':
+        case 'developpeur':
             return [
                 'commandes_creees',
                 'commandes_traitees',

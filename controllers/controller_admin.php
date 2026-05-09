@@ -87,7 +87,7 @@ function process_admin_inscription() {
 
     // Si un admin est connecté, il doit avoir le rôle admin pour ajouter des comptes
     $admin_connecte = isset($_SESSION['admin_id']) && isset($_SESSION['admin_role']);
-    if ($admin_connecte && !in_array($_SESSION['admin_role'] ?? '', ['admin', 'informaticien'], true)) {
+    if ($admin_connecte && !in_array($_SESSION['admin_role'] ?? '', ['admin', 'informaticien', 'developpeur'], true)) {
         $errors[] = 'Vous n\'avez pas les droits pour ajouter des comptes.';
     }
 

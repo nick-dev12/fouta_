@@ -14,7 +14,7 @@ require_once __DIR__ . '/../includes/require_access.php';
 require_once dirname(__DIR__, 2) . '/includes/admin_route_access.php';
 $role = admin_normalize_role_for_route($_SESSION['admin_role'] ?? '');
 
-if ($role === 'commercial_general' || $role === 'admin' || $role === 'informaticien') {
+if ($role === 'commercial_general' || $role === 'admin' || $role === 'informaticien' || $role === 'developpeur') {
     header('Location: ../devis/index.php', true, 302);
     exit;
 }
