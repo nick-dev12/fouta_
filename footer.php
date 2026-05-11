@@ -18,7 +18,7 @@
                 </li>
                 <li class="li footer_list_item">
                     <i class="fas fa-map-marker-alt"></i>
-                    <span>Rond point ZAC MBAO, Dakar</span>
+                    <span>Rond point Zack Mbao, Dakar</span>
                 </li>
                 <li class="li footer_list_item">
                     <i class="fas fa-envelope"></i>
