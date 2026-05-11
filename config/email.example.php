@@ -3,36 +3,30 @@
  * Configuration email - PHPMailer / SMTP
  * Copiez ce fichier en config/email.php et modifiez les valeurs
  * NE JAMAIS committer config/email.php (ajoutez-le à .gitignore)
+ *
+ * Hébergeur : SSL/TLS (port 465 = implicit SSL / SMTPS)
  */
 
 return [
-    // Méthode d'envoi : 'smtp', 'sendmail', ou 'mail' (fonction mail() PHP)
     'method' => 'smtp',
 
-    // Configuration SMTP - SSL/TLS recommandé (port 465)
     'smtp' => [
-        'host' => 'sugar-paper.com',
+        'host' => 'mail.foutapoidslourds.com',
         'port' => 465,
         'encryption' => 'ssl',
-        'username' => 'service@sugar-paper.com',
-        'password' => 'VOTRE_MOT_DE_PASSE',
+        'username' => 'no-replay@foutapoidslourds.com',
+        'password' => 'VOTRE_MOT_DE_PASSE_ICI',
         'timeout' => 30,
-        'verify_ssl' => false,
+        // Si le certificat du serveur ne correspond pas au nom (hébergement mutualisé), passer à true uniquement si nécessaire :
+        'verify_ssl' => true,
     ],
 
-    // Expéditeur par défaut
     'from' => [
-        'email' => 'service@sugar-paper.com',
+        'email' => 'no-replay@foutapoidslourds.com',
         'name' => 'FOUTA POIDS LOURDS',
     ],
 
-    // Email de contact (destinataire des messages du formulaire contact)
     'contact_email' => 'info@foutapoidslourds.com',
 
-    // Mode debug : true pour afficher les erreurs SMTP
     'debug' => false,
-
-    // URL du site pour les liens dans les emails (optionnel)
-    // Si défini ici, surcharge config/site.php. Ex: 'https://sugar-paper.com'
-    // 'site_url' => 'https://sugar-paper.com',
 ];

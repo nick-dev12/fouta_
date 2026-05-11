@@ -84,7 +84,7 @@ if (file_exists(__DIR__ . '/models/model_categories.php')) {
         order: 4;
     }
 
-    /* Barre de recherche avec filtres */
+    /* Barre de recherche */
     .nav-search-wrapper {
         display: flex;
         flex: 1;
@@ -114,111 +114,6 @@ if (file_exists(__DIR__ . '/models/model_categories.php')) {
 
     .nav-lang-wrap .gtranslate-dropdown-mount {
         min-width: 0;
-    }
-
-    .nav-search-filters-panel {
-        position: absolute;
-        top: 100%;
-        left: 0;
-        right: 0;
-        margin-top: 10px;
-        background: var(--blanc);
-        border-radius: 14px;
-        box-shadow: var(--glass-shadow);
-        padding: 20px;
-        z-index: 10001;
-        display: none;
-        border: 1px solid var(--border-input);
-    }
-
-    .nav-search-filters-panel.show {
-        display: block;
-    }
-
-    .nav-search-filters-panel h4 {
-        font-size: 14px;
-        color: var(--titres);
-        margin-bottom: 15px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .nav-search-filters-panel h4 i {
-        color: var(--couleur-dominante);
-    }
-
-    .nav-search-filters-row {
-        display: flex;
-        gap: 12px;
-        flex-wrap: wrap;
-        margin-bottom: 15px;
-    }
-
-    .nav-search-filters-row:last-of-type {
-        margin-bottom: 0;
-    }
-
-    .nav-search-filters-group {
-        flex: 1;
-        min-width: 120px;
-    }
-
-    .nav-search-filters-group label {
-        display: block;
-        font-size: 12px;
-        font-weight: 600;
-        color: var(--texte-fonce);
-        margin-bottom: 6px;
-    }
-
-    .nav-search-filters-group input,
-    .nav-search-filters-group select {
-        width: 100%;
-        padding: 10px 12px;
-        border: 2px solid var(--border-input);
-        border-radius: 8px;
-        font-size: 14px;
-    }
-
-    .nav-search-filters-group input:focus,
-    .nav-search-filters-group select:focus {
-        outline: none;
-        border-color: var(--couleur-dominante);
-    }
-
-    .nav-search-filters-actions {
-        display: flex;
-        gap: 10px;
-        margin-top: 15px;
-    }
-
-    .nav-search-filters-actions button {
-        padding: 10px 18px;
-        border: none;
-        border-radius: 8px;
-        font-size: 14px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.3s;
-    }
-
-    .nav-search-filters-actions .btn-apply {
-        background: var(--couleur-dominante);
-        color: var(--texte-clair);
-    }
-
-    .nav-search-filters-actions .btn-apply:hover {
-        background: var(--couleur-dominante-hover);
-    }
-
-    .nav-search-filters-actions .btn-reset {
-        background: var(--blanc);
-        color: var(--texte-fonce);
-    }
-
-    .nav-search-filters-actions .btn-reset:hover {
-        background: var(--blanc-neige);
     }
 
     .nav-search-btn {
@@ -467,12 +362,6 @@ if (file_exists(__DIR__ . '/models/model_categories.php')) {
         .nav-lang-wrap {
             flex-shrink: 0;
         }
-
-        .nav-search-filters-panel {
-            left: 0;
-            right: 0;
-            padding: 15px;
-        }
     }
 
     @media (max-width: 480px) {
@@ -577,57 +466,6 @@ if (file_exists(__DIR__ . '/models/model_categories.php')) {
         </form>
         <div class="nav-lang-wrap" role="navigation" aria-label="Langue du site">
             <div id="gtranslate_dropdown_nav" class="gtranslate-dropdown-mount"></div>
-        </div>
-        <div class="nav-search-filters-panel" id="nav-filters-panel">
-            <h4><i class="fa-solid fa-filter"></i> Filtres</h4>
-            <div class="nav-search-filters-row">
-                <div class="nav-search-filters-group">
-                    <label for="filter-prix-min">Prix min (FCFA)</label>
-                    <input type="number" id="filter-prix-min" name="prix_min" placeholder="0" min="0" step="100"
-                        value="<?php echo isset($_GET['prix_min']) ? htmlspecialchars($_GET['prix_min']) : ''; ?>">
-                </div>
-                <div class="nav-search-filters-group">
-                    <label for="filter-prix-max">Prix max (FCFA)</label>
-                    <input type="number" id="filter-prix-max" name="prix_max" placeholder="Aucune limite" min="0"
-                        step="100"
-                        value="<?php echo isset($_GET['prix_max']) ? htmlspecialchars($_GET['prix_max']) : ''; ?>">
-                </div>
-            </div>
-            <div class="nav-search-filters-row">
-                <div class="nav-search-filters-group" style="flex: 1;">
-                    <label for="filter-categorie">Catégorie</label>
-                    <select id="filter-categorie" name="categorie">
-                        <option value="">Toutes les catégories</option>
-                        <?php if (!empty($categories_menu)): ?>
-                            <?php foreach ($categories_menu as $cat): ?>
-                                <option value="<?php echo $cat['id']; ?>" <?php echo (isset($_GET['categorie']) && $_GET['categorie'] == $cat['id']) ? 'selected' : ''; ?>>
-                                    <?php echo htmlspecialchars($cat['nom']); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
-                    </select>
-                </div>
-            </div>
-            <div class="nav-search-filters-row">
-                <div class="nav-search-filters-group" style="flex: 1;">
-                    <label for="filter-tri">Trier par</label>
-                    <select id="filter-tri" name="tri">
-                        <option value="">Plus récents</option>
-                        <option value="prix_asc" <?php echo (isset($_GET['tri']) && $_GET['tri'] == 'prix_asc') ? 'selected' : ''; ?>>Prix
-                            croissant</option>
-                        <option value="prix_desc" <?php echo (isset($_GET['tri']) && $_GET['tri'] == 'prix_desc') ? 'selected' : ''; ?>>Prix
-                            décroissant</option>
-                        <option value="nom" <?php echo (isset($_GET['tri']) && $_GET['tri'] == 'nom') ? 'selected' : ''; ?>>Nom A-Z
-                        </option>
-                    </select>
-                </div>
-            </div>
-            <div class="nav-search-filters-actions">
-                <button type="button" class="btn-apply" onclick="appliquerFiltres()"><i class="fa-solid fa-check"></i>
-                    Appliquer</button>
-                <button type="button" class="btn-reset" onclick="reinitialiserFiltres()"><i
-                        class="fa-solid fa-rotate-left"></i> Réinitialiser</button>
-            </div>
         </div>
     </div>
     <script>
@@ -891,58 +729,6 @@ if (file_exists(__DIR__ . '/models/model_categories.php')) {
             });
         })();
 
-        document.addEventListener('DOMContentLoaded', function () {
-            var panel = document.getElementById('nav-filters-panel');
-            var toggles = document.querySelectorAll('[data-nav-filters-toggle]');
-            if (!panel || toggles.length === 0) {
-                return;
-            }
-
-            toggles.forEach(function (toggle) {
-                toggle.addEventListener('click', function (e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    var open = !panel.classList.contains('show');
-                    panel.classList.toggle('show', open);
-                    toggles.forEach(function (t) {
-                        t.classList.toggle('active', open);
-                        t.setAttribute('aria-expanded', open ? 'true' : 'false');
-                    });
-                });
-            });
-
-            document.addEventListener('click', function (e) {
-                if (!panel.classList.contains('show')) return;
-                var t = e.target;
-                if (t.closest('[data-nav-filters-toggle]') || t.closest('#nav-filters-panel')) return;
-                panel.classList.remove('show');
-                toggles.forEach(function (tg) {
-                    tg.classList.remove('active');
-                    tg.setAttribute('aria-expanded', 'false');
-                });
-            });
-        });
-
-        function appliquerFiltres() {
-            document.getElementById('nav-prix-min').value = document.getElementById('filter-prix-min').value;
-            document.getElementById('nav-prix-max').value = document.getElementById('filter-prix-max').value;
-            document.getElementById('nav-categorie').value = document.getElementById('filter-categorie').value;
-            document.getElementById('nav-tri').value = document.getElementById('filter-tri').value;
-            document.getElementById('nav-search-form').submit();
-        }
-
-        function reinitialiserFiltres() {
-            document.getElementById('filter-prix-min').value = '';
-            document.getElementById('filter-prix-max').value = '';
-            document.getElementById('filter-categorie').value = '';
-            document.getElementById('filter-tri').value = '';
-            document.getElementById('nav-prix-min').value = '';
-            document.getElementById('nav-prix-max').value = '';
-            document.getElementById('nav-categorie').value = '';
-            document.getElementById('nav-tri').value = '';
-            document.getElementById('nav-search').value = '';
-            document.getElementById('nav-search-form').submit();
-        }
     </script>
 </nav>
 
@@ -1005,12 +791,6 @@ if (file_exists(__DIR__ . '/models/model_categories.php')) {
         </button>
     </div>
     <div class="section1-right">
-        <button type="button" class="nav-action-btn nav-action-btn--filters" data-nav-filters-toggle
-            aria-expanded="false" aria-controls="nav-filters-panel" aria-label="Filtres de recherche"
-            title="Filtrer par prix, catégorie, tri">
-            <i class="fa-solid fa-sliders"></i>
-            <span>Filtres</span>
-        </button>
         <a href="/nouveautes.php" class="nav-action-btn nav-btn-nouveautes">
             <i class="fa-solid fa-gift"></i>
             <span>NOUVEAUTÉS</span>

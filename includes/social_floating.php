@@ -1,7 +1,7 @@
 <?php
 /**
  * Boutons réseaux sociaux en position fixe (bas à droite)
- * WhatsApp, Instagram, Facebook
+ * WhatsApp, LinkedIn, Facebook, TikTok
  */
 
 $social_config = [];
@@ -10,8 +10,9 @@ if (file_exists(__DIR__ . '/../config/social.php')) {
 }
 
 $whatsapp = $social_config['whatsapp'] ?? '';
-$instagram = $social_config['instagram'] ?? '';
+$linkedin = $social_config['linkedin'] ?? '';
 $facebook = $social_config['facebook'] ?? '';
+$tiktok = $social_config['tiktok'] ?? '';
 
 // WhatsApp : format wa.me/CODE_PAYS_NUMERO (sans + ni espaces)
 $whatsapp_url = '';
@@ -28,14 +29,19 @@ if (!empty($whatsapp)) {
         <i class="fab fa-whatsapp"></i>
     </a>
     <?php endif; ?>
-    <?php if (!empty($instagram)): ?>
-    <a href="<?php echo htmlspecialchars($instagram); ?>" target="_blank" rel="noopener noreferrer" class="social-floating-btn social-instagram" title="Suivez-nous sur Instagram">
-        <i class="fab fa-instagram"></i>
+    <?php if (!empty($linkedin)): ?>
+    <a href="<?php echo htmlspecialchars($linkedin); ?>" target="_blank" rel="noopener noreferrer" class="social-floating-btn social-linkedin" title="FOUTA POIDS LOURDS sur LinkedIn">
+        <i class="fab fa-linkedin-in"></i>
     </a>
     <?php endif; ?>
     <?php if (!empty($facebook)): ?>
     <a href="<?php echo htmlspecialchars($facebook); ?>" target="_blank" rel="noopener noreferrer" class="social-floating-btn social-facebook" title="Suivez-nous sur Facebook">
         <i class="fab fa-facebook-f"></i>
+    </a>
+    <?php endif; ?>
+    <?php if (!empty($tiktok)): ?>
+    <a href="<?php echo htmlspecialchars($tiktok); ?>" target="_blank" rel="noopener noreferrer" class="social-floating-btn social-tiktok" title="FOUTA POIDS LOURDS sur TikTok">
+        <i class="fab fa-tiktok"></i>
     </a>
     <?php endif; ?>
 </div>

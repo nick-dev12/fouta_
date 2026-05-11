@@ -44,13 +44,13 @@
     background: #20bd5a;
 }
 
-/* Instagram - dégradé */
-.social-instagram {
-    background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+/* LinkedIn */
+.social-linkedin {
+    background: #0a66c2;
 }
 
-.social-instagram:hover {
-    background: linear-gradient(45deg, #f5a042 0%, #e87a4a 25%, #e02d4d 50%, #d02a6e 75%, #c01d96 100%);
+.social-linkedin:hover {
+    background: #094d92;
 }
 
 /* Facebook - bleu */
@@ -60,6 +60,15 @@
 
 .social-facebook:hover {
     background: #166fe5;
+}
+
+/* TikTok */
+.social-tiktok {
+    background: #000000;
+}
+
+.social-tiktok:hover {
+    background: #1a1a1a;
 }
 
 @media (max-width: 600px) {

@@ -23,8 +23,8 @@ function get_section4_config() {
         if (!$config) {
             return [
                 'id' => 0,
-                'titre' => 'Bienvenue au Sugar Paper',
-                'texte' => 'Tous les produits a petit prix',
+                'titre' => 'Bienvenue à FOUTA POIDS LOURDS',
+                'texte' => 'Pièces détachées poids lourds — qualité et disponibilité',
                 'image_fond' => 'market.png',
                 'statut' => 'actif',
                 'date_modification' => date('Y-m-d H:i:s')
@@ -37,8 +37,8 @@ function get_section4_config() {
     } catch (PDOException $e) {
         return [
             'id' => 0,
-            'titre' => 'Bienvenue au Sugar Paper',
-            'texte' => 'Tous les produits a petit prix',
+            'titre' => 'Bienvenue à FOUTA POIDS LOURDS',
+            'texte' => 'Pièces détachées poids lourds — qualité et disponibilité',
             'image_fond' => 'market.png',
             'statut' => 'actif',
             'date_modification' => date('Y-m-d H:i:s')

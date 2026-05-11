@@ -258,22 +258,23 @@ $seo_canonical = $base . '/';
         require_once __DIR__ . '/models/model_slider.php';
         $slides_result = get_all_slides('actif'); // Récupérer uniquement les slides actifs
         $slides = is_array($slides_result) ? $slides_result : [];
+        $slides = array_values(array_filter($slides, function ($s) {
+            return !empty($s['image']) && is_string($s['image']);
+        }));
     }
     ?>
 
+    <?php if (!empty($slides)): ?>
     <div class="slider-area owl-carousel">
-        <?php if (empty($slides)): ?>
-
-        <?php else: ?>
         <?php foreach ($slides as $slide): ?>
         <div class="slider-item">
             <img src="/upload/slider/<?php echo htmlspecialchars($slide['image']); ?>"
-                alt="<?php echo htmlspecialchars($slide['titre']); ?>" onerror="this.src='/image/produit1.jpg'">
+                alt="<?php echo htmlspecialchars($slide['titre'] ?? ''); ?>" onerror="this.src='/image/produit1.jpg'">
 
         </div>
         <?php endforeach; ?>
-        <?php endif; ?>
     </div>
+    <?php endif; ?>
 
     <?php if (isset($_GET['added']) && $_GET['added'] == '1'): ?>
     <div class="commande-perso-success"
@@ -509,8 +510,8 @@ $seo_canonical = $base . '/';
     <?php
     // Récupérer la configuration de la section4
     $section4_config = [
-        'titre' => 'Bienvenue chez FOUTA POIDS LOURDS',
-        'texte' => 'Tous les produits a petit prix',
+        'titre' => 'Bienvenue à FOUTA POIDS LOURDS',
+        'texte' => 'Pièces détachées poids lourds — qualité et disponibilité',
         'image_fond' => 'market.png',
         'statut' => 'actif'
     ];
@@ -527,6 +528,15 @@ $seo_canonical = $base . '/';
     $section4_actif = ($section4_config['statut'] ?? 'actif') === 'actif';
     $section4_titre = trim($section4_config['titre'] ?? '');
     $section4_texte = trim($section4_config['texte'] ?? '');
+    if ($section4_titre !== '' && stripos($section4_titre, 'sugar') !== false) {
+        $section4_titre = 'Bienvenue à FOUTA POIDS LOURDS';
+    }
+    if ($section4_texte !== '' && (
+        stripos($section4_texte, 'sugar') !== false
+        || stripos($section4_texte, 'petit prix') !== false
+    )) {
+        $section4_texte = 'Pièces détachées poids lourds — qualité professionnelle et disponibilité.';
+    }
 
     // Chemin de l'image de fond
     $image_fond_path = '/image/market.png';
@@ -910,6 +920,7 @@ $seo_canonical = $base . '/';
         // Nouveaux produits et Produits populaires : Owl désactivé, toujours en mode flex-wrap
 
 
+        if ($('.slider-area').length && $('.slider-area .slider-item').length) {
         $('.slider-area').owlCarousel({
             items: 1,
             loop: true,
@@ -925,6 +936,7 @@ $seo_canonical = $base . '/';
                 '<i class="fa-solid fa-chevron-right"></i>'
             ]
         });
+        }
         var carousel2 = $('.carousel2').owlCarousel();
         $('.owl-next2').click(function() {
             carousel2.trigger('next.owl.carousel');

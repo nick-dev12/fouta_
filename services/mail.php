@@ -127,7 +127,7 @@ function mail_send($to, $subject, $body, $isHtml = true) {
  */
 function mail_send_contact($nom, $email, $sujet, $message) {
     $config = mail_get_config();
-    $contact = $config['contact_email'] ?? 'service@sugarpaper.com';
+    $contact = $config['contact_email'] ?? 'info@foutapoidslourds.com';
 
     $body = "<p><strong>De :</strong> " . htmlspecialchars($nom) . " &lt;" . htmlspecialchars($email) . "&gt;</p>";
     $body .= "<p><strong>Sujet :</strong> " . htmlspecialchars($sujet) . "</p>";
@@ -150,7 +150,7 @@ function mail_send_contact($nom, $email, $sujet, $message) {
  */
 function mail_send_reset_link($email, $reset_link, $type = 'user') {
     $is_admin = ($type === 'admin');
-    $sujet = 'Réinitialisation de votre mot de passe - Sugar Paper';
+    $sujet = 'Réinitialisation de votre mot de passe - FOUTA POIDS LOURDS';
 
     $body = '<div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto;">';
     $body .= '<h2 style="color: #918a44;">Réinitialisation du mot de passe</h2>';

@@ -5,12 +5,12 @@
  */
 
 return [
-    // Numéro WhatsApp avec indicatif pays (sans + ni espaces) - ex: 221338700070 pour Sénégal
-    'whatsapp' => '221338700070',
+    // Numéro WhatsApp avec indicatif pays (sans + ni espaces)
+    'whatsapp' => '221773938484',
 
-    // URL du profil Instagram
-    'instagram' => 'https://www.instagram.com/sugarpaper1/',
+    'linkedin' => 'https://www.linkedin.com/company/fouta-poids-lourds/',
 
-    // URL de la page Facebook
-    'facebook' => 'https://web.facebook.com/sugarpaper.sn/',
+    'facebook' => 'https://www.facebook.com/Fouta.Poids.Lourds/',
+
+    'tiktok' => 'https://www.tiktok.com/@fouta.poids.lourds',
 ];
