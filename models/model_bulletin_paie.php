@@ -120,7 +120,7 @@ function bp_colonnes_bulletin_montants_disponibles() {
  * @return list<string>
  */
 function bp_retenues_codes_taux_brut() {
-    return ['trimf', 'ipres_rg', 'ipres_cadre', 'css'];
+    return ['ipres_rg', 'ipres_cadre', 'css'];
 }
 
 /**
@@ -128,7 +128,6 @@ function bp_retenues_codes_taux_brut() {
  */
 function bp_retenues_taux_defaut() {
     return [
-        'trimf' => 0.0,
         'ipres_rg' => 0.0,
         'ipres_cadre' => 0.0,
         'css' => 0.0,

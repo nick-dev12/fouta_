@@ -259,7 +259,7 @@ $titre_page = 'Bulletin de paie — ' . trim(($em['prenom'] ?? '') . ' ' . ($em[
                                 $ret_code = (string) ($row['code'] ?? '');
                                 $pct = $row['pourcent'] ?? null;
                                 $pct_txt = '—';
-                                if ($ret_code !== 'irpp' && $ret_code !== 'ipres' && $pct !== null && $pct !== '' && is_numeric($pct)) {
+                                if ($ret_code !== 'irpp' && $ret_code !== 'trimf' && $ret_code !== 'ipres' && $pct !== null && $pct !== '' && is_numeric($pct)) {
                                     $pct_txt = number_format((float) $pct, 2, ',', ' ') . ' %';
                                 }
                                 ?>

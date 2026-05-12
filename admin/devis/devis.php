@@ -287,11 +287,11 @@ $devis_page_has_alert = isset($_SESSION['success_message']) || !empty($error_dev
                                         <input type="text" id="client_nom" name="client_nom" required
                                             value="<?php echo htmlspecialchars($devis_post['client_nom'] ?? ''); ?>">
                                     </div>
-                                    <div class="form-group">
-                                        <label for="client_prenom">Prénom <span class="required">*</span></label>
-                                        <input type="text" id="client_prenom" name="client_prenom" required
-                                            value="<?php echo htmlspecialchars($devis_post['client_prenom'] ?? ''); ?>">
-                                    </div>
+                                <div class="form-group">
+                                    <label for="client_prenom">Prénom <span class="optional">(optionnel)</span></label>
+                                    <input type="text" id="client_prenom" name="client_prenom"
+                                        value="<?php echo htmlspecialchars($devis_post['client_prenom'] ?? ''); ?>">
+                                </div>
                                 </div>
                                 <div class="form-group">
                                     <label for="client_telephone">Téléphone <span class="required">*</span></label>

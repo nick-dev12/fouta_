@@ -78,6 +78,9 @@ $p = $_POST;
             <input type="hidden" name="MAX_FILE_SIZE" value="<?php echo (int) FOUTA_UPLOAD_IMAGE_MAX_BYTES; ?>">
 
             <div class="er-form-grid">
+                <div class="er-form-section er-form-section--full">
+                    <h2 class="er-form-section__title"><i class="fas fa-id-card" aria-hidden="true"></i> Identité</h2>
+                </div>
                 <?php
                 $sf_sel = isset($p['statut_familial']) ? trim((string) $p['statut_familial']) : '';
                 if ($sf_sel === '') {
@@ -98,9 +101,18 @@ $p = $_POST;
                     <input type="text" id="prenom" name="prenom" required autocomplete="given-name" placeholder="Ex. : Aminata"
                         value="<?php echo htmlspecialchars($p['prenom'] ?? ''); ?>">
                 </div>
+                <div class="er-field er-field--full">
+                    <label for="poste">Fonction <span class="er-req">*</span></label>
+                    <input type="text" id="poste" name="poste" required placeholder="Ex. : Magasinier, Comptable, Chauffeur…"
+                        value="<?php echo htmlspecialchars($p['poste'] ?? ''); ?>">
+                </div>
+
+                <div class="er-form-section er-form-section--full">
+                    <h2 class="er-form-section__title"><i class="fas fa-address-book" aria-hidden="true"></i> Coordonnées</h2>
+                </div>
                 <div class="er-field">
                     <label for="telephone">Téléphone</label>
-                    <input type="text" id="telephone" name="telephone" autocomplete="tel" inputmode="tel" placeholder="+33 … ou 06 …"
+                    <input type="text" id="telephone" name="telephone" autocomplete="tel" inputmode="tel" placeholder="+221 …"
                         value="<?php echo htmlspecialchars($p['telephone'] ?? ''); ?>">
                 </div>
                 <div class="er-field">
@@ -120,26 +132,36 @@ $p = $_POST;
                     </select>
                 </div>
                 <div class="er-field">
+                    <label for="date_embauche">Date d’embauche <span class="er-opt">(optionnel)</span></label>
+                    <input type="date" id="date_embauche" name="date_embauche"
+                        value="<?php echo !empty($p['date_embauche']) ? htmlspecialchars(substr((string) $p['date_embauche'], 0, 10)) : ''; ?>">
+                </div>
+
+                <div class="er-form-section er-form-section--full">
+                    <h2 class="er-form-section__title"><i class="fas fa-coins" aria-hidden="true"></i> Rémunération &amp; fiscalité (bulletin)</h2>
+                    <p class="er-form-section__lead">Ces montants préremplissent ou alimentent le <strong>bulletin de paie</strong> lorsqu’ils sont renseignés.</p>
+                </div>
+                <div class="er-field">
                     <label for="salaire_base">Salaire brut (FCFA) <span class="er-opt">(optionnel)</span></label>
                     <input type="text" id="salaire_base" name="salaire_base" inputmode="decimal" autocomplete="off"
-                        placeholder="Préremplit le bulletin de paie"
+                        placeholder="Base mensuelle"
                         value="<?php echo htmlspecialchars($p['salaire_base'] ?? ''); ?>">
                 </div>
                 <div class="er-field">
                     <label for="montant_irpp_mensuel">IRPP mensuel (FCFA) <span class="er-opt">(optionnel)</span></label>
                     <input type="text" id="montant_irpp_mensuel" name="montant_irpp_mensuel" inputmode="decimal" autocomplete="off"
-                        placeholder="Impôt sur le revenu retenu chaque mois"
+                        placeholder="Impôt sur le revenu"
                         value="<?php echo htmlspecialchars($p['montant_irpp_mensuel'] ?? ''); ?>">
                 </div>
                 <div class="er-field">
-                    <label for="date_embauche">Date d’embauche <span class="er-opt">(optionnel)</span></label>
-                    <input type="date" id="date_embauche" name="date_embauche"
-                        value="<?php echo !empty($p['date_embauche']) ? htmlspecialchars(substr((string) $p['date_embauche'], 0, 10)) : ''; ?>">
+                    <label for="montant_trimf_mensuel">TRIMF mensuel (FCFA) <span class="er-opt">(optionnel)</span></label>
+                    <input type="text" id="montant_trimf_mensuel" name="montant_trimf_mensuel" inputmode="decimal" autocomplete="off"
+                        placeholder="Taxe REP. / TRIMF"
+                        value="<?php echo htmlspecialchars($p['montant_trimf_mensuel'] ?? ''); ?>">
                 </div>
-                <div class="er-field er-field--full">
-                    <label for="poste">Fonction <span class="er-req">*</span></label>
-                    <input type="text" id="poste" name="poste" required placeholder="Ex. : Magasinier, Comptable, Chauffeur…"
-                        value="<?php echo htmlspecialchars($p['poste'] ?? ''); ?>">
+
+                <div class="er-form-section er-form-section--full">
+                    <h2 class="er-form-section__title"><i class="fas fa-paperclip" aria-hidden="true"></i> Pièces jointes</h2>
                 </div>
                 <div class="er-field er-field--full">
                     <label for="contrat_pdf">Contrat (PDF) <span class="er-opt">(optionnel, max 8 Mo)</span></label>

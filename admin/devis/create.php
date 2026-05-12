@@ -63,10 +63,13 @@ if (!empty($_POST['lignes']) && is_array($_POST['lignes'])) {
 }
 
 $erreur = null;
-if (empty($client_nom)) $erreur = 'Le nom du client est requis.';
-elseif (empty($client_prenom)) $erreur = 'Le prénom du client est requis.';
-elseif (empty($client_telephone)) $erreur = 'Le téléphone du client est requis.';
-elseif (empty($items)) $erreur = 'Ajoutez au moins un produit au devis.';
+if (empty($client_nom)) {
+    $erreur = 'Le nom du client est requis.';
+} elseif (empty($client_telephone)) {
+    $erreur = 'Le téléphone du client est requis.';
+} elseif (empty($items)) {
+    $erreur = 'Ajoutez au moins un produit au devis.';
+}
 
 if ($erreur) {
     $_SESSION['devis_erreur'] = $erreur;

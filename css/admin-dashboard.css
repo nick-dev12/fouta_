@@ -5396,11 +5396,14 @@ body {
 /* ---------- Comptabilité — hub (admin/comptabilite/index.php) — variables.css ---------- */
 .page-compta-admin {
   width: 100%;
-  max-width: 1200px;
-  margin: 0 auto;
+  max-width: 100%;
+  margin: 0;
   display: flex;
   flex-direction: column;
+  align-items: stretch;
   gap: 0;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .page-compta-admin .content-header.dashboard-hero {
@@ -5408,9 +5411,13 @@ body {
 }
 
 .page-compta-section.content-section.compta-page {
+  width: 100%;
   max-width: 100%;
-  margin-left: auto;
-  margin-right: auto;
+  margin-left: 0;
+  margin-right: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+  box-sizing: border-box;
   background: linear-gradient(
     180deg,
     var(--fond-principal) 0%,
@@ -5446,6 +5453,14 @@ body {
   max-width: 1180px;
   margin-left: auto;
   margin-right: auto;
+}
+
+/* Hub compta : une seule largeur = celle de main.admin-content (pas de seconde boîte à 1180/1200px) */
+.page-compta-admin .compta-page {
+  width: 100%;
+  max-width: 100%;
+  margin-left: 0;
+  margin-right: 0;
 }
 
 .compta-intro {

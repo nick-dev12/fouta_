@@ -25,6 +25,10 @@ $out = [];
 foreach ($resultats as $r) {
     $nom_complet = trim(($r['prenom'] ?? '') . ' ' . ($r['nom'] ?? ''));
     $tcode = (($r['type_client_bl'] ?? '') === 'vip') ? 'vip' : 'standard';
+    $pl = (float) ($r['plafond_bl_cumul_ht'] ?? 0);
+    $type_libelle = ($pl > 0)
+        ? ('Plafond BL max : ' . number_format($pl, 0, ',', ' ') . ' FCFA')
+        : pct_label_type($tcode);
     $out[] = [
         'id' => (int) $r['id'],
         'source' => $r['source'] ?? 'user',
@@ -34,7 +38,8 @@ foreach ($resultats as $r) {
         'telephone' => $r['telephone'] ?? '',
         'email' => $r['email'] ?? '',
         'type_client_bl' => $tcode,
-        'type_libelle' => pct_label_type($tcode),
+        'plafond_bl_cumul_ht' => $pl,
+        'type_libelle' => $type_libelle,
     ];
 }
 

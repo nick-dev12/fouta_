@@ -1,6 +1,6 @@
 <?php
 /**
- * Page logos partenaires + onglet fournisseurs
+ * Page logos partenaires, marques et fournisseurs
  * Programmation procédurale uniquement
  */
 
@@ -19,11 +19,30 @@ require_once __DIR__ . '/../../includes/fouta_upload_limits.php';
 
 require_once __DIR__ . '/../../models/model_logos.php';
 require_once __DIR__ . '/../../models/model_fournisseurs.php';
+require_once __DIR__ . '/../../models/model_marques.php';
 
 $logos = get_all_logos(null);
 $fournisseurs = get_all_fournisseurs_ordered_by_nom();
+$marques = marques_table_ok() ? get_all_marques_ordered_by_nom() : [];
 
-$active_tab = (isset($_GET['tab']) && $_GET['tab'] === 'fournisseurs') ? 'fournisseurs' : 'logos';
+$tab_get = isset($_GET['tab']) ? (string) $_GET['tab'] : 'logos';
+$active_tab = in_array($tab_get, ['logos', 'marques', 'fournisseurs'], true) ? $tab_get : 'logos';
+
+$fournisseur_to_edit = null;
+if (isset($_GET['edit_fournisseur']) && ctype_digit((string) $_GET['edit_fournisseur'])) {
+    $fournisseur_to_edit = get_fournisseur_by_id((int) $_GET['edit_fournisseur']);
+    if ($fournisseur_to_edit) {
+        $active_tab = 'fournisseurs';
+    }
+}
+
+$marque_to_edit = null;
+if (isset($_GET['edit_marque']) && ctype_digit((string) $_GET['edit_marque'])) {
+    $marque_to_edit = marques_table_ok() ? get_marque_by_id((int) $_GET['edit_marque']) : null;
+    if ($marque_to_edit) {
+        $active_tab = 'marques';
+    }
+}
 $error_message = '';
 $success_message = '';
 
@@ -39,9 +58,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!parametres_logos_verify_csrf($token)) {
         $error_message = 'Session expirée ou jeton de sécurité invalide. Rechargez la page.';
-        if (isset($_POST['redirect_tab']) && $_POST['redirect_tab'] === 'fournisseurs') {
-            $active_tab = 'fournisseurs';
+        if (isset($_POST['redirect_tab']) && in_array((string) $_POST['redirect_tab'], ['fournisseurs', 'marques'], true)) {
+            $active_tab = (string) $_POST['redirect_tab'];
         }
+    } elseif (!empty($_POST['update_fournisseur'])) {
+        require_once __DIR__ . '/../../controllers/controller_fournisseurs.php';
+        $result = process_admin_update_fournisseur();
+        if (isset($result['success']) && $result['success']) {
+            $_SESSION['success_message'] = $result['message'];
+            header('Location: logos.php?tab=fournisseurs');
+            exit;
+        }
+        $error_message = isset($result['message']) ? $result['message'] : 'Erreur.';
+        $active_tab = 'fournisseurs';
     } elseif (!empty($_POST['add_fournisseur'])) {
         require_once __DIR__ . '/../../controllers/controller_fournisseurs.php';
         $result = process_admin_add_fournisseur();
@@ -52,6 +81,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $error_message = isset($result['message']) ? $result['message'] : 'Erreur.';
         $active_tab = 'fournisseurs';
+    } elseif (!empty($_POST['update_marque'])) {
+        require_once __DIR__ . '/../../controllers/controller_marques.php';
+        $result = process_admin_update_marque();
+        if (isset($result['success']) && $result['success']) {
+            $_SESSION['success_message'] = $result['message'];
+            header('Location: logos.php?tab=marques');
+            exit;
+        }
+        $error_message = isset($result['message']) ? $result['message'] : 'Erreur.';
+        $active_tab = 'marques';
+    } elseif (!empty($_POST['add_marque'])) {
+        require_once __DIR__ . '/../../controllers/controller_marques.php';
+        $result = process_admin_add_marque();
+        if (isset($result['success']) && $result['success']) {
+            $_SESSION['success_message'] = $result['message'];
+            header('Location: logos.php?tab=marques');
+            exit;
+        }
+        $error_message = isset($result['message']) ? $result['message'] : 'Erreur.';
+        $active_tab = 'marques';
     } else {
         require_once __DIR__ . '/../../controllers/controller_logos.php';
 
@@ -85,6 +134,28 @@ $logo_to_edit = null;
 if (isset($_GET['edit']) && !empty($_GET['edit'])) {
     $logo_to_edit = get_logo_by_id((int) $_GET['edit']);
 }
+
+$fv_fn_nom = '';
+$fv_fn_tel = '';
+$fv_fn_mail = '';
+if ($active_tab === 'fournisseurs' && $_SERVER['REQUEST_METHOD'] === 'POST'
+    && (!empty($_POST['add_fournisseur']) || !empty($_POST['update_fournisseur']))) {
+    $fv_fn_nom = (string) ($_POST['fournisseur_nom'] ?? '');
+    $fv_fn_tel = (string) ($_POST['fournisseur_telephone'] ?? '');
+    $fv_fn_mail = (string) ($_POST['fournisseur_email'] ?? '');
+} elseif ($fournisseur_to_edit) {
+    $fv_fn_nom = (string) ($fournisseur_to_edit['nom'] ?? '');
+    $fv_fn_tel = (string) ($fournisseur_to_edit['telephone'] ?? '');
+    $fv_fn_mail = (string) ($fournisseur_to_edit['email'] ?? '');
+}
+
+$fv_mq_nom = '';
+if ($active_tab === 'marques' && $_SERVER['REQUEST_METHOD'] === 'POST'
+    && (!empty($_POST['add_marque']) || !empty($_POST['update_marque']))) {
+    $fv_mq_nom = (string) ($_POST['marque_nom'] ?? '');
+} elseif ($marque_to_edit) {
+    $fv_mq_nom = (string) ($marque_to_edit['nom'] ?? '');
+}
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -93,7 +164,7 @@ if (isset($_GET['edit']) && !empty($_GET['edit'])) {
     <?php include __DIR__ . '/../../includes/favicon.php'; ?>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Logos &amp; fournisseurs - Administration</title>
+    <title>Logos, marques &amp; fournisseurs - Administration</title>
     <?php require_once __DIR__ . '/../../includes/asset_version.php'; ?>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/css/admin-dashboard.css<?php echo asset_version_query(); ?>">
@@ -111,12 +182,12 @@ if (isset($_GET['edit']) && !empty($_GET['edit'])) {
         .logos-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 25px; }
         .logos-header h2 { margin: 0; font-size: 24px; color: var(--titres); }
         .logos-header p { margin: 5px 0 0; color: var(--texte-fonce); font-size: 14px; }
-        .btn-add-logo, .btn-add-fournisseur {
+        .btn-add-logo, .btn-add-fournisseur, .btn-add-marque {
             display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px;
             background: var(--couleur-dominante); color: #fff; border: none; border-radius: 10px;
             font-weight: 600; cursor: pointer; font-size: 14px; transition: all 0.3s;
         }
-        .btn-add-logo:hover, .btn-add-fournisseur:hover { background: var(--couleur-dominante-hover); transform: translateY(-2px); }
+        .btn-add-logo:hover, .btn-add-fournisseur:hover, .btn-add-marque:hover { background: var(--couleur-dominante-hover); transform: translateY(-2px); }
         .logos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 20px; }
         .logo-card { background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; align-items: center; padding: 20px; }
         .logo-card-preview { width: 120px; height: 120px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.5); border-radius: 10px; margin-bottom: 12px; }
@@ -177,6 +248,9 @@ if (isset($_GET['edit']) && !empty($_GET['edit'])) {
         <nav class="logos-page-nav" aria-label="Sections">
             <a href="logos.php" class="<?php echo $active_tab === 'logos' ? 'is-active' : ''; ?>">
                 <i class="fas fa-image"></i> Logos partenaires
+            </a>
+            <a href="logos.php?tab=marques" class="<?php echo $active_tab === 'marques' ? 'is-active' : ''; ?>">
+                <i class="fas fa-tag"></i> Marques
             </a>
             <a href="logos.php?tab=fournisseurs" class="<?php echo $active_tab === 'fournisseurs' ? 'is-active' : ''; ?>">
                 <i class="fas fa-truck-field"></i> Fournisseurs
@@ -249,6 +323,51 @@ if (isset($_GET['edit']) && !empty($_GET['edit'])) {
             <?php endif; ?>
         </div>
 
+        <div id="panel-marques" class="tab-panel <?php echo $active_tab === 'marques' ? 'is-active' : ''; ?>">
+            <div class="logos-header">
+                <div>
+                    <h2><i class="fas fa-tag"></i> Marques</h2>
+                    <p>Référentiel des marques (distinctions produits, étiquetage, etc.)</p>
+                </div>
+                <button type="button" class="btn-add-marque" onclick="openMarqueModal()">
+                    <i class="fas fa-plus"></i> Ajouter une marque
+                </button>
+            </div>
+            <?php if (!marques_table_ok()): ?>
+            <div class="message error" style="margin-bottom:20px;">
+                <i class="fas fa-database"></i>
+                Table <code>marques</code> absente. Exécutez <code>migrations/run_create_marques.php</code>.
+            </div>
+            <?php elseif (empty($marques)): ?>
+            <div class="empty-state">
+                <i class="fas fa-tag"></i>
+                <h3>Aucune marque</h3>
+                <p>Ajoutez une marque pour structurer votre catalogue</p>
+            </div>
+            <?php else: ?>
+            <div class="fournisseur-list-wrap">
+                <table class="fournisseur-table">
+                    <thead>
+                        <tr>
+                            <th>Nom</th>
+                            <th>Créé le</th>
+                            <th style="width:120px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($marques as $m): ?>
+                        <tr>
+                            <td><?php echo htmlspecialchars($m['nom']); ?></td>
+                            <td><?php echo htmlspecialchars($m['date_creation'] ?? ''); ?></td>
+                            <td><a href="logos.php?tab=marques&amp;edit_marque=<?php echo (int) $m['id']; ?>" class="btn-edit" style="text-decoration:none;"><i class="fas fa-edit"></i> Modifier</a></td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+            <?php endif; ?>
+        </div>
+
         <div id="panel-fournisseurs" class="tab-panel <?php echo $active_tab === 'fournisseurs' ? 'is-active' : ''; ?>">
             <div class="logos-header">
                 <div>
@@ -272,14 +391,20 @@ if (isset($_GET['edit']) && !empty($_GET['edit'])) {
                     <thead>
                         <tr>
                             <th>Nom</th>
+                            <th>Téléphone</th>
+                            <th>E-mail</th>
                             <th>Créé le</th>
+                            <th style="width:120px;">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php foreach ($fournisseurs as $f): ?>
                         <tr>
                             <td><?php echo htmlspecialchars($f['nom']); ?></td>
+                            <td><?php echo htmlspecialchars(isset($f['telephone']) ? (string) $f['telephone'] : ''); ?></td>
+                            <td><?php echo htmlspecialchars(isset($f['email']) ? (string) $f['email'] : ''); ?></td>
                             <td><?php echo htmlspecialchars($f['date_creation'] ?? ''); ?></td>
+                            <td><a href="logos.php?tab=fournisseurs&amp;edit_fournisseur=<?php echo (int) $f['id']; ?>" class="btn-edit" style="text-decoration:none;"><i class="fas fa-edit"></i> Modifier</a></td>
                         </tr>
                         <?php endforeach; ?>
                     </tbody>
@@ -359,14 +484,24 @@ if (isset($_GET['edit']) && !empty($_GET['edit'])) {
         </div>
     </div>
 
-    <!-- Modal fournisseur (panneau absolute) -->
+    <!-- Modal fournisseur -->
     <div class="fournisseur-modal-overlay" id="fournisseurModal" role="dialog" aria-modal="true" aria-labelledby="fournisseurModalTitle">
         <div class="fournisseur-modal-wrap">
             <div class="fournisseur-modal-panel">
                 <button type="button" class="fournisseur-modal-close" onclick="closeFournisseurModal()" aria-label="Fermer">
                     <i class="fas fa-times"></i>
                 </button>
-                <h3 id="fournisseurModalTitle"><i class="fas fa-plus-circle"></i> Nouveau fournisseur</h3>
+                <h3 id="fournisseurModalTitle">
+                    <i class="fas fa-<?php echo $fournisseur_to_edit ? 'edit' : 'plus-circle'; ?>"></i>
+                    <?php echo $fournisseur_to_edit ? 'Modifier le fournisseur' : 'Nouveau fournisseur'; ?>
+                </h3>
+
+                <?php if (!fournisseurs_contact_columns_ok()): ?>
+                <div class="message error" style="margin-bottom: 16px;">
+                    <i class="fas fa-database"></i>
+                    Exécutez <code>migrations/run_add_fournisseurs_telephone_email.php</code> pour activer téléphone et e-mail.
+                </div>
+                <?php endif; ?>
 
                 <?php if (!empty($error_message) && $active_tab === 'fournisseurs'): ?>
                 <div class="message error" style="margin-bottom: 16px;">
@@ -375,19 +510,79 @@ if (isset($_GET['edit']) && !empty($_GET['edit'])) {
                 </div>
                 <?php endif; ?>
 
-                <form method="POST" action="logos.php?tab=fournisseurs" id="formAddFournisseur">
+                <form method="POST" action="logos.php?tab=fournisseurs" id="formFournisseur">
                     <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['admin_csrf']); ?>">
-                    <input type="hidden" name="add_fournisseur" value="1">
                     <input type="hidden" name="redirect_tab" value="fournisseurs">
+                    <?php if ($fournisseur_to_edit): ?>
+                    <input type="hidden" name="update_fournisseur" value="1">
+                    <input type="hidden" name="fournisseur_id" value="<?php echo (int) $fournisseur_to_edit['id']; ?>">
+                    <?php else: ?>
+                    <input type="hidden" name="add_fournisseur" value="1">
+                    <?php endif; ?>
                     <div class="form-group">
                         <label for="fournisseur_nom">Nom du fournisseur *</label>
                         <input type="text" id="fournisseur_nom" name="fournisseur_nom" required maxlength="255"
                             placeholder="Raison sociale ou nom commercial"
-                            value="<?php echo (isset($_POST['fournisseur_nom']) && $active_tab === 'fournisseurs') ? htmlspecialchars($_POST['fournisseur_nom']) : ''; ?>">
+                            value="<?php echo htmlspecialchars($fv_fn_nom); ?>">
+                    </div>
+                    <div class="form-group">
+                        <label for="fournisseur_telephone">Téléphone</label>
+                        <input type="text" id="fournisseur_telephone" name="fournisseur_telephone" maxlength="40"
+                            placeholder="Ex. +221 77 …"
+                            value="<?php echo htmlspecialchars($fv_fn_tel); ?>">
+                    </div>
+                    <div class="form-group">
+                        <label for="fournisseur_email">Adresse e-mail</label>
+                        <input type="email" id="fournisseur_email" name="fournisseur_email" maxlength="255"
+                            placeholder="contact@fournisseur.com"
+                            value="<?php echo htmlspecialchars($fv_fn_mail); ?>">
                     </div>
                     <div class="form-actions" style="margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
                         <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Enregistrer</button>
                         <button type="button" class="btn-cancel" onclick="closeFournisseurModal()"><i class="fas fa-times"></i> Annuler</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal marque -->
+    <div class="fournisseur-modal-overlay" id="marqueModal" role="dialog" aria-modal="true" aria-labelledby="marqueModalTitle">
+        <div class="fournisseur-modal-wrap">
+            <div class="fournisseur-modal-panel">
+                <button type="button" class="fournisseur-modal-close" onclick="closeMarqueModal()" aria-label="Fermer">
+                    <i class="fas fa-times"></i>
+                </button>
+                <h3 id="marqueModalTitle">
+                    <i class="fas fa-<?php echo $marque_to_edit ? 'edit' : 'plus-circle'; ?>"></i>
+                    <?php echo $marque_to_edit ? 'Modifier la marque' : 'Nouvelle marque'; ?>
+                </h3>
+
+                <?php if (!empty($error_message) && $active_tab === 'marques'): ?>
+                <div class="message error" style="margin-bottom: 16px;">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <span><?php echo htmlspecialchars($error_message); ?></span>
+                </div>
+                <?php endif; ?>
+
+                <form method="POST" action="logos.php?tab=marques" id="formMarque">
+                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['admin_csrf']); ?>">
+                    <input type="hidden" name="redirect_tab" value="marques">
+                    <?php if ($marque_to_edit): ?>
+                    <input type="hidden" name="update_marque" value="1">
+                    <input type="hidden" name="marque_id" value="<?php echo (int) $marque_to_edit['id']; ?>">
+                    <?php else: ?>
+                    <input type="hidden" name="add_marque" value="1">
+                    <?php endif; ?>
+                    <div class="form-group">
+                        <label for="marque_nom">Nom de la marque *</label>
+                        <input type="text" id="marque_nom" name="marque_nom" required maxlength="255"
+                            placeholder="Nom commercial de la marque"
+                            value="<?php echo htmlspecialchars($fv_mq_nom); ?>">
+                    </div>
+                    <div class="form-actions" style="margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Enregistrer</button>
+                        <button type="button" class="btn-cancel" onclick="closeMarqueModal()"><i class="fas fa-times"></i> Annuler</button>
                     </div>
                 </form>
             </div>
@@ -428,8 +623,20 @@ if (isset($_GET['edit']) && !empty($_GET['edit'])) {
         function closeFournisseurModal() {
             document.getElementById('fournisseurModal').classList.remove('is-open');
             document.body.style.overflow = 'auto';
-            var f = document.getElementById('formAddFournisseur');
-            if (f) { f.reset(); }
+            window.location.href = 'logos.php?tab=fournisseurs';
+        }
+
+        function openMarqueModal() {
+            document.getElementById('marqueModal').classList.add('is-open');
+            document.body.style.overflow = 'hidden';
+            var inp = document.getElementById('marque_nom');
+            if (inp && !inp.value) { setTimeout(function() { inp.focus(); }, 50); }
+        }
+
+        function closeMarqueModal() {
+            document.getElementById('marqueModal').classList.remove('is-open');
+            document.body.style.overflow = 'auto';
+            window.location.href = 'logos.php?tab=marques';
         }
 
         function previewLogo(input) {
@@ -453,8 +660,20 @@ if (isset($_GET['edit']) && !empty($_GET['edit'])) {
         document.addEventListener('DOMContentLoaded', function() { openLogoModal(); });
         <?php endif; ?>
 
+        <?php if ($fournisseur_to_edit): ?>
+        document.addEventListener('DOMContentLoaded', function() { openFournisseurModal(); });
+        <?php endif; ?>
+
+        <?php if ($marque_to_edit): ?>
+        document.addEventListener('DOMContentLoaded', function() { openMarqueModal(); });
+        <?php endif; ?>
+
         <?php if ($active_tab === 'fournisseurs' && !empty($error_message)): ?>
         document.addEventListener('DOMContentLoaded', function() { openFournisseurModal(); });
+        <?php endif; ?>
+
+        <?php if ($active_tab === 'marques' && !empty($error_message)): ?>
+        document.addEventListener('DOMContentLoaded', function() { openMarqueModal(); });
         <?php endif; ?>
     </script>
 </body>

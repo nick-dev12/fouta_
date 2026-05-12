@@ -97,25 +97,11 @@ if (isset($_SESSION['success_message'])) {
                 <div class="parametre-card__body">
                     <div class="parametre-card__head">
                         <div class="parametre-icon" aria-hidden="true"><i class="fas fa-images"></i></div>
-                        <h3 class="parametre-title">Logos Partenaires</h3>
+                        <h3 class="parametre-title">Logos, marques &amp; fournisseurs</h3>
                     </div>
                     <a href="parametres/logos.php" class="parametre-link">
                         <span class="parametre-link__txt"><i class="fas fa-pen-to-square" aria-hidden="true"></i> Gérer
-                            les logos</span>
-                        <i class="fas fa-chevron-right parametre-link__chev" aria-hidden="true"></i>
-                    </a>
-                </div>
-            </article>
-
-            <article class="parametre-card parametre-card--types-bl" role="listitem">
-                <div class="parametre-card__body">
-                    <div class="parametre-card__head">
-                        <div class="parametre-icon" aria-hidden="true"><i class="fas fa-truck-loading"></i></div>
-                        <h3 class="parametre-title">Types clients &amp; plafonds BL</h3>
-                    </div>
-                    <a href="parametres/types_client_bl.php" class="parametre-link">
-                        <span class="parametre-link__txt"><i class="fas fa-sliders-h" aria-hidden="true"></i> Configurer
-                            Standard / VIP</span>
+                            logos, marques &amp; fournisseurs</span>
                         <i class="fas fa-chevron-right parametre-link__chev" aria-hidden="true"></i>
                     </a>
                 </div>

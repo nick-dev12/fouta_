@@ -81,8 +81,8 @@ $client_telephone = $bl['client_telephone'] ?? '';
 $adresse_livraison = $bl['client_adresse'] ?? '';
 
 $entreprise_nom = 'FOUTA POIDS LOURDS';
-$entreprise_rc = 'SN.DKR.2022.A.702';
-$entreprise_ninea = '009116684';
+$entreprise_rc = 'SN.DKR.2019.M.28414';
+$entreprise_ninea = '006705654/2A2';
 $entreprise_adresse = 'Rond point Zack Mbao, Dakar';
 $entreprise_tel1 = '338700070';
 $entreprise_tel2 = '';

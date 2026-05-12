@@ -41,14 +41,16 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #444; background: #f5f5f5; padding: 20px; }
-        .facture-container { max-width: 918px; margin: 0 auto; background: #fff; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        .facture-container { width: 210mm; min-height: 297mm; max-width: 210mm; margin: 0 auto; background: #fff; box-shadow: 0 4px 20px rgba(0,0,0,0.1); position: relative; display: flex; flex-direction: column; }
+        .facture-sheet-body { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }
+        .facture-footer-wrapper { margin-top: auto; flex-shrink: 0; display: flex; flex-direction: column; }
         .facture-banner-top { height: 60px; background: linear-gradient(135deg, rgba(53,100,166,0.25), rgba(45,86,144,0.2)); }
         .facture-header { display: flex; justify-content: space-between; align-items: flex-start; padding: 30px 45px 25px; border-bottom: 1px solid #eee; }
         .facture-entreprise { display: flex; align-items: flex-start; gap: 20px; }
         .facture-logo { width: 100px; height: 100px; border: 2px solid #3564a6; border-radius: 50%; overflow: hidden; flex-shrink: 0; }
         .facture-logo img { width: 100%; height: 100%; object-fit: cover; }
         .facture-entreprise-info h1 { font-size: 28px; font-weight: 700; color: #000; margin-bottom: 8px; }
-        .facture-entreprise-info p { font-size: 12px; color: #666; margin-bottom: 4px; }
+        .facture-entreprise-info p { font-size: 10px; color: #666; margin-bottom: 4px; }
         .facture-meta { text-align: right; }
         .facture-meta .label { font-size: 11px; font-weight: 700; color: #888; text-transform: uppercase; margin-bottom: 4px; }
         .facture-meta .value { font-size: 18px; font-weight: 700; color: #000; }
@@ -58,14 +60,41 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
         .facture-billing .client-name { font-size: 18px; font-weight: 700; color: #000; margin-bottom: 4px; }
         .facture-billing .client-tel { font-size: 14px; color: #444; }
         .facture-table { width: 100%; border-collapse: collapse; }
-        .facture-table th { background: #3564a6; color: #fff; font-size: 12px; font-weight: 700; padding: 14px 20px; text-align: left; }
-        .facture-table td { padding: 14px 20px; font-size: 14px; border-bottom: 1px solid #f0f0f0; }
+        .facture-table th { background: #3564a6; color: #fff; font-size: 13px; font-weight: 700; padding: 14px 20px; text-align: left; }
+        .facture-table td { padding: 14px 20px; font-size: 13px; border-bottom: 1px solid #f0f0f0; }
         .facture-footer-section { display: flex; justify-content: space-between; padding: 25px 45px 30px; gap: 40px; }
-        .facture-summary .row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px; }
-        .facture-summary .total { font-weight: 700; font-size: 16px; padding-top: 12px; border-top: 2px solid #3564a6; margin-top: 8px; }
-        .facture-summary .solde-row { background: rgba(53,100,166,0.12); padding: 12px 16px; margin-top: 12px; border-radius: 6px; font-weight: 700; font-size: 16px; }
-        .facture-banner-bottom { height: 40px; background: linear-gradient(135deg, rgba(53,100,166,0.3), rgba(45,86,144,0.2)); }
+        .facture-summary .row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 13px; }
+        .facture-summary .total { font-weight: 700; font-size: 13px; padding-top: 12px; border-top: 2px solid #3564a6; margin-top: 8px; }
+        .facture-summary .solde-row { background: rgba(53,100,166,0.12); padding: 12px 16px; margin-top: 12px; border-radius: 6px; font-weight: 700; font-size: 13px; }
+        .facture-banner-bottom { height: 20px; background: linear-gradient(135deg, rgba(53,100,166,0.3), rgba(45,86,144,0.2)); }
         .facture-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin: 20px 0; }
+
+        .facture-footer-entreprise {
+            padding: 16px 32px;
+            background: linear-gradient(135deg, rgba(53, 100, 166, 0.08) 0%, rgba(45, 86, 144, 0.05) 100%);
+            border-top: 2px solid #3564a6;
+            margin-top: 0;
+        }
+
+        .facture-footer-entreprise-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            font-size: 11px;
+            color: #444;
+            line-height: 1.5;
+        }
+
+        .facture-footer-entreprise-col {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .facture-footer-entreprise-col strong {
+            color: #3564a6;
+            font-weight: 700;
+        }
         .facture-actions a { display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; background: #3564a6; color: #fff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px; }
         .facture-actions a:hover { background: #2d5690; }
         .facture-actions a.btn-whatsapp { background: #25D366; }
@@ -75,7 +104,54 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
         .facture-desc p { font-size: 14px; line-height: 1.6; color: #333; white-space: pre-wrap; }
         .facture-payment h3 { font-size: 14px; font-weight: 700; margin-bottom: 10px; color: #000; }
         .facture-payment p { font-size: 13px; color: #666; }
-        @media print { .facture-actions { display: none !important; } }
+        @media print {
+            .facture-actions { display: none !important; }
+
+            @page {
+                size: A4 portrait;
+                margin: 0 10mm;
+            }
+
+            .facture-sheet-body {
+                flex: 1 1 auto !important;
+                display: flex !important;
+                flex-direction: column !important;
+                min-height: 0 !important;
+            }
+
+            .facture-footer-wrapper {
+                margin-top: auto !important;
+                flex-shrink: 0 !important;
+                display: flex !important;
+                flex-direction: column !important;
+            }
+
+            .facture-footer-entreprise {
+                position: static !important;
+                padding: 10px 20px !important;
+                font-size: 9px !important;
+                background: #f8f9fa !important;
+                border-top: 1px solid #3564a6 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            .facture-footer-entreprise-grid {
+                font-size: 9px !important;
+            }
+
+            .facture-table th { font-size: 12px !important; }
+            .facture-table td { font-size: 13px !important; }
+
+            .facture-container {
+                width: 100% !important;
+                max-width: 100% !important;
+                min-height: 297mm !important;
+                display: flex !important;
+                flex-direction: column !important;
+                height: auto !important;
+            }
+        }
     </style>
 </head>
 <body>
@@ -96,6 +172,7 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
     <?php endif; ?>
 
     <div class="facture-container">
+        <div class="facture-sheet-body">
         <div class="facture-banner-top"></div>
         <div class="facture-header">
             <div class="facture-entreprise">
@@ -203,8 +280,26 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
                 </div>
             </div>
         </div>
+        </div>
 
-        <div class="facture-banner-bottom"></div>
+        <div class="facture-footer-wrapper">
+            <div class="facture-footer-entreprise">
+                <div class="facture-footer-entreprise-grid">
+                    <div class="facture-footer-entreprise-col">
+                        <div><strong>Siège Social :</strong> Rond-Point Zac Mbao</div>
+                        <div><strong>Succursale :</strong> 106, Rue Marsat x Blaise Diagne</div>
+                        <div><strong>RCCM :</strong> SN.DKR.2019.M.28414</div>
+                        <div><strong>NINEA :</strong> 006705654/2A2</div>
+                    </div>
+                    <div class="facture-footer-entreprise-col" style="text-align: right;">
+                        <div><strong>Banque :</strong> BOA</div>
+                        <div><strong>IBAN :</strong> SN 100 01026 002822180000 88</div>
+                        <div style="margin-top: 4px; font-style: italic; color: #3564a6;">Merci pour votre confiance</div>
+                    </div>
+                </div>
+            </div>
+            <div class="facture-banner-bottom"></div>
+        </div>
     </div>
 </body>
 </html>

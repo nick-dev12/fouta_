@@ -227,8 +227,8 @@ $nb_lignes = count($lignes_form);
                                 <input type="text" id="client_nom" name="client_nom" required value="<?php echo htmlspecialchars($client_nom); ?>">
                             </div>
                             <div class="form-group">
-                                <label for="client_prenom">Prénom <span class="required">*</span></label>
-                                <input type="text" id="client_prenom" name="client_prenom" required value="<?php echo htmlspecialchars($client_prenom); ?>">
+                                <label for="client_prenom">Prénom <span class="optional">(optionnel)</span></label>
+                                <input type="text" id="client_prenom" name="client_prenom" value="<?php echo htmlspecialchars($client_prenom); ?>">
                             </div>
                         </div>
                         <div class="form-group">

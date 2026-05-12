@@ -967,6 +967,7 @@ function employe_collect_post() {
         'type_contrat' => isset($_POST['type_contrat']) ? trim($_POST['type_contrat']) : '',
         'salaire_base' => isset($_POST['salaire_base']) ? trim((string) $_POST['salaire_base']) : '',
         'montant_irpp_mensuel' => isset($_POST['montant_irpp_mensuel']) ? trim((string) $_POST['montant_irpp_mensuel']) : '',
+        'montant_trimf_mensuel' => isset($_POST['montant_trimf_mensuel']) ? trim((string) $_POST['montant_trimf_mensuel']) : '',
         'categorie_paie' => isset($_POST['categorie_paie']) ? trim((string) $_POST['categorie_paie']) : '',
         'admin_id' => isset($_POST['admin_id']) ? (int) $_POST['admin_id'] : 0,
     ];
@@ -1042,6 +1043,11 @@ function process_employe_ajout() {
         return ['success' => false, 'message' => 'Montant IRPP invalide.'];
     }
     $d['montant_irpp_mensuel'] = $irpp_m;
+    $trimf_m = employe_parse_montant_fcfa_optionnel($d['montant_trimf_mensuel'] ?? '');
+    if ($trimf_m === false) {
+        return ['success' => false, 'message' => 'Montant TRIMF invalide.'];
+    }
+    $d['montant_trimf_mensuel'] = $trimf_m;
     $cat = mb_substr((string) ($d['categorie_paie'] ?? ''), 0, 120);
     $d['categorie_paie'] = $cat !== '' ? $cat : null;
     $id = create_employe($d);
@@ -1101,6 +1107,11 @@ function process_employe_ajout_rh_simple() {
         return ['success' => false, 'message' => 'Montant IRPP invalide.'];
     }
     $d['montant_irpp_mensuel'] = $irpp_m;
+    $trimf_m = employe_parse_montant_fcfa_optionnel($d['montant_trimf_mensuel'] ?? '');
+    if ($trimf_m === false) {
+        return ['success' => false, 'message' => 'Montant TRIMF invalide.'];
+    }
+    $d['montant_trimf_mensuel'] = $trimf_m;
     $cat = mb_substr((string) ($d['categorie_paie'] ?? ''), 0, 120);
     $d['categorie_paie'] = $cat !== '' ? $cat : null;
     $id = create_employe($d);
@@ -1180,6 +1191,11 @@ function process_employe_modification($employe_id) {
         return ['success' => false, 'message' => 'Montant IRPP invalide.'];
     }
     $d['montant_irpp_mensuel'] = $irpp_m;
+    $trimf_m = employe_parse_montant_fcfa_optionnel($d['montant_trimf_mensuel'] ?? '');
+    if ($trimf_m === false) {
+        return ['success' => false, 'message' => 'Montant TRIMF invalide.'];
+    }
+    $d['montant_trimf_mensuel'] = $trimf_m;
     $cat = mb_substr((string) ($d['categorie_paie'] ?? ''), 0, 120);
     $d['categorie_paie'] = $cat !== '' ? $cat : null;
     $curr_pdf = isset($ex['contrat_pdf_chemin']) && trim((string) $ex['contrat_pdf_chemin']) !== ''

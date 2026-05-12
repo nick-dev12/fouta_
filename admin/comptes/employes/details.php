@@ -379,6 +379,7 @@ if (isset($f['salaire_base']) && $f['salaire_base'] !== null && (string) $f['sal
 }
 
 $bp_irpp_montant_fiche = max(0.0, round((float) ($f['montant_irpp_mensuel'] ?? 0), 2));
+$bp_trimf_montant_fiche = max(0.0, round((float) ($f['montant_trimf_mensuel'] ?? 0), 2));
 
 $transport_mois_def = date('Y-m');
 $transport_prime_mensuelle = $bp_tables_ok ? (float) ($bp_params['prime_transport_mensuelle'] ?? 0) : 0.0;
@@ -1441,7 +1442,7 @@ $titre = htmlspecialchars(trim(($f['prenom'] ?? '') . ' ' . ($f['nom'] ?? ''))) 
                                     <div class="er-bp-form__section">
                                         <span class="er-bp-form__section-tag">Retenues</span>
                                         <h4 class="er-bp-form__section-title">Déductions</h4>
-                                        <p class="er-bp-form__section-hint">Taux sur brut (TRIMF, IPRES, CSS) : <a href="../../parametres/bulletin_paie.php">Paramètres bulletin</a>. L’<strong>IRPP</strong> reprend le montant mensuel de la <a href="modifier.php?id=<?php echo (int) $id; ?>">fiche employé</a>.</p>
+                                        <p class="er-bp-form__section-hint">Taux sur brut (IPRES, CSS) : <a href="../../parametres/bulletin_paie.php">Paramètres bulletin</a>. L’<strong>IRPP</strong> et la <strong>TRIMF</strong> (montants fixes) reprennent les valeurs de la <a href="modifier.php?id=<?php echo (int) $id; ?>">fiche employé</a>.</p>
                                         <div class="er-bp-form__grid">
                                             <?php foreach ($ret_codes_bp as $rc) :
                                                 if (empty($rub_bp['retenues'][$rc])) {
@@ -1452,6 +1453,14 @@ $titre = htmlspecialchars(trim(($f['prenom'] ?? '') . ' ' . ($f['nom'] ?? ''))) 
                                             <div class="er-bp-field er-bp-field--pct">
                                                 <span class="er-bp-field-label"><?php echo htmlspecialchars($bp_lr[$rc] ?? $rc); ?></span>
                                                 <p class="er-bp-pct-display"><strong><?php echo htmlspecialchars(number_format($bp_irpp_montant_fiche, 0, ',', ' ')); ?> FCFA</strong> <span class="er-bp-hint--inline">(fiche employé)</span></p>
+                                                <span class="er-bp-hint er-bp-hint--muted">Retenue appliquée à l’enregistrement du bulletin.</span>
+                                            </div>
+                                                <?php
+                                                elseif ($rc === 'trimf') :
+                                                    ?>
+                                            <div class="er-bp-field er-bp-field--pct">
+                                                <span class="er-bp-field-label"><?php echo htmlspecialchars($bp_lr[$rc] ?? $rc); ?></span>
+                                                <p class="er-bp-pct-display"><strong><?php echo htmlspecialchars(number_format($bp_trimf_montant_fiche, 0, ',', ' ')); ?> FCFA</strong> <span class="er-bp-hint--inline">(fiche employé)</span></p>
                                                 <span class="er-bp-hint er-bp-hint--muted">Retenue appliquée à l’enregistrement du bulletin.</span>
                                             </div>
                                                 <?php

@@ -78,8 +78,6 @@ if (!empty($_POST['lignes']) && is_array($_POST['lignes'])) {
 $erreur = null;
 if ($client_nom === '') {
     $erreur = 'Le nom du client est requis.';
-} elseif ($client_prenom === '') {
-    $erreur = 'Le prénom du client est requis.';
 } elseif ($client_telephone === '') {
     $erreur = 'Le téléphone du client est requis.';
 } elseif (empty($items)) {

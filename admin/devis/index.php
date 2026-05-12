@@ -470,8 +470,8 @@ $devis_page_has_alert = isset($_SESSION['success_message']) || !empty($bl_erreur
                                             value="<?php echo htmlspecialchars($bp['client_nom'] ?? ''); ?>">
                                     </div>
                                     <div class="form-group">
-                                        <label for="client_prenom_bl">Prénom <span class="required">*</span></label>
-                                        <input type="text" id="client_prenom_bl" name="client_prenom" required
+                                        <label for="client_prenom_bl">Prénom <span class="optional">(optionnel)</span></label>
+                                        <input type="text" id="client_prenom_bl" name="client_prenom"
                                             value="<?php echo htmlspecialchars($bp['client_prenom'] ?? ''); ?>">
                                     </div>
                                 </div>

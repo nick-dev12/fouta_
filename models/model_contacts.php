@@ -5,21 +5,82 @@
 require_once __DIR__ . '/../conn/conn.php';
 
 /**
- * Récupère tous les contacts
+ * @return array{0: string, 1: array<string, string>}
+ */
+function contacts_build_search_clause(PDO $db, $recherche)
+{
+    $sql = ' WHERE 1=1';
+    $params = [];
+    if (!empty(trim($recherche ?? ''))) {
+        $term = '%' . trim($recherche) . '%';
+        $sql .= ' AND (nom LIKE :term OR prenom LIKE :term2 OR telephone LIKE :term3 OR email LIKE :term4';
+        try {
+            $c = $db->query("SHOW COLUMNS FROM contacts LIKE 'adresse'");
+            if ($c && $c->fetch()) {
+                $sql .= ' OR adresse LIKE :term5';
+                $params['term5'] = $term;
+            }
+        } catch (PDOException $e) {
+        }
+        $sql .= ')';
+        $params['term'] = $term;
+        $params['term2'] = $term;
+        $params['term3'] = $term;
+        $params['term4'] = $term;
+    }
+    return [$sql, $params];
+}
+
+/**
+ * @param string|null $recherche Recherche sur nom, prénom, téléphone, email, adresse
+ */
+function get_contacts_count($recherche = null) {
+    global $db;
+    try {
+        [$where, $params] = contacts_build_search_clause($db, $recherche);
+        $stmt = $db->prepare('SELECT COUNT(*) AS n FROM contacts' . $where);
+        $stmt->execute($params);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return (int) ($row['n'] ?? 0);
+    } catch (PDOException $e) {
+        return 0;
+    }
+}
+
+/**
+ * @return array<int, array<string, mixed>>
+ */
+function get_contacts_page($recherche = null, $page = 1, $per_page = 10) {
+    global $db;
+    $page = max(1, (int) $page);
+    $per_page = max(1, min(100, (int) $per_page));
+    $offset = ($page - 1) * $per_page;
+    try {
+        [$where, $params] = contacts_build_search_clause($db, $recherche);
+        $sql = 'SELECT * FROM contacts' . $where . ' ORDER BY nom ASC, prenom ASC LIMIT :lim OFFSET :off';
+        $stmt = $db->prepare($sql);
+        foreach ($params as $k => $v) {
+            $stmt->bindValue(':' . $k, $v, PDO::PARAM_STR);
+        }
+        $stmt->bindValue(':lim', $per_page, PDO::PARAM_INT);
+        $stmt->bindValue(':off', $offset, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (PDOException $e) {
+        return [];
+    }
+}
+
+/**
+ * Récupère tous les contacts (sans pagination) — préférer get_contacts_page en liste admin
+ *
  * @param string|null $recherche Recherche sur nom, prénom, téléphone
- * @return array
  */
 function get_all_contacts($recherche = null) {
     global $db;
     try {
-        $sql = "SELECT * FROM contacts WHERE 1=1";
-        $params = [];
-        if (!empty(trim($recherche ?? ''))) {
-            $term = '%' . trim($recherche) . '%';
-            $sql .= " AND (nom LIKE :term OR prenom LIKE :term2 OR telephone LIKE :term3 OR email LIKE :term4)";
-            $params = ['term' => $term, 'term2' => $term, 'term3' => $term, 'term4' => $term];
-        }
-        $sql .= " ORDER BY nom ASC, prenom ASC";
+        [$where, $params] = contacts_build_search_clause($db, $recherche);
+        $sql = 'SELECT * FROM contacts' . $where . ' ORDER BY nom ASC, prenom ASC';
         $stmt = $db->prepare($sql);
         $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
@@ -68,7 +129,12 @@ function ensure_contact_from_bl($nom, $prenom, $telephone, $email = null) {
     if ($existing) {
         return (int) $existing['id'];
     }
-    $id = create_contact(trim($nom ?? ''), trim($prenom ?? ''), $telephone, $email && trim($email) !== '' ? trim($email) : null);
+    $id = create_contact(
+        trim($nom ?? ''),
+        trim($prenom ?? ''),
+        $telephone,
+        $email && trim($email) !== '' ? trim($email) : null
+    );
     return $id ? (int) $id : false;
 }
 
@@ -78,7 +144,9 @@ function ensure_contact_from_bl($nom, $prenom, $telephone, $email = null) {
 function telephone_exists_in_users_or_contacts($telephone) {
     global $db;
     $tel = preg_replace('/\D/', '', $telephone);
-    if (empty($tel) || strlen($tel) < 8) return false;
+    if (empty($tel) || strlen($tel) < 8) {
+        return false;
+    }
     try {
         $stmt = $db->prepare("
             SELECT 1 FROM users WHERE REPLACE(REPLACE(REPLACE(COALESCE(telephone,''), ' ', ''), '-', ''), '+', '') LIKE :tel
@@ -99,7 +167,7 @@ function telephone_exists_in_users_or_contacts($telephone) {
 function get_contact_by_id($id) {
     global $db;
     try {
-        $stmt = $db->prepare("SELECT * FROM contacts WHERE id = :id");
+        $stmt = $db->prepare('SELECT * FROM contacts WHERE id = :id');
         $stmt->execute(['id' => (int) $id]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         return $row ?: false;
@@ -111,6 +179,12 @@ function get_contact_by_id($id) {
 function contacts_normalize_type_bl($code)
 {
     return (($code ?? '') === 'vip') ? 'vip' : 'standard';
+}
+
+function contacts_normalize_plafond_ht($val)
+{
+    $n = (float) str_replace(',', '.', (string) ($val ?? '0'));
+    return round(max(0, $n), 2);
 }
 
 /**
@@ -233,41 +307,75 @@ function contacts_list_with_compta_stats(array $contacts)
 
 /**
  * Met à jour un contact
+ *
+ * @param string|null $adresse
  */
-function update_contact($id, $nom, $prenom, $telephone, $email = null, $type_client_bl = 'standard') {
+function update_contact($id, $nom, $prenom, $telephone, $email = null, $adresse = null, $plafond_bl_cumul_ht = 0.0) {
     global $db;
+    $pl = contacts_normalize_plafond_ht($plafond_bl_cumul_ht);
+    $addr = $adresse !== null && trim((string) $adresse) !== '' ? trim((string) $adresse) : null;
     try {
-        $stmt = $db->prepare('UPDATE contacts SET nom = :nom, prenom = :prenom, telephone = :telephone, email = :email, type_client_bl = :tb WHERE id = :id');
+        $stmt = $db->prepare('UPDATE contacts SET nom = :nom, prenom = :prenom, telephone = :telephone, email = :email, adresse = :adresse, plafond_bl_cumul_ht = :pl WHERE id = :id');
         return $stmt->execute([
             'id' => (int) $id,
             'nom' => trim($nom),
             'prenom' => trim($prenom),
             'telephone' => trim($telephone),
             'email' => $email && trim($email) !== '' ? trim($email) : null,
-            'tb' => contacts_normalize_type_bl($type_client_bl),
+            'adresse' => $addr,
+            'pl' => $pl,
         ]);
     } catch (PDOException $e) {
-        return false;
+        // colonnes absentes : repli sans adresse/plafond
+        try {
+            $stmt = $db->prepare('UPDATE contacts SET nom = :nom, prenom = :prenom, telephone = :telephone, email = :email WHERE id = :id');
+            return $stmt->execute([
+                'id' => (int) $id,
+                'nom' => trim($nom),
+                'prenom' => trim($prenom),
+                'telephone' => trim($telephone),
+                'email' => $email && trim($email) !== '' ? trim($email) : null,
+            ]);
+        } catch (PDOException $e2) {
+            return false;
+        }
     }
 }
 
 /**
  * Crée un contact
+ *
+ * @param string|null $adresse
  */
-function create_contact($nom, $prenom, $telephone, $email = null, $type_client_bl = 'standard') {
+function create_contact($nom, $prenom, $telephone, $email = null, $adresse = null, $plafond_bl_cumul_ht = 0.0) {
     global $db;
+    $pl = contacts_normalize_plafond_ht($plafond_bl_cumul_ht);
+    $addr = $adresse !== null && trim((string) $adresse) !== '' ? trim((string) $adresse) : null;
     try {
-        $stmt = $db->prepare('INSERT INTO contacts (nom, prenom, telephone, email, type_client_bl) VALUES (:nom, :prenom, :telephone, :email, :tb)');
+        $stmt = $db->prepare('INSERT INTO contacts (nom, prenom, telephone, email, adresse, plafond_bl_cumul_ht) VALUES (:nom, :prenom, :telephone, :email, :adresse, :pl)');
         $stmt->execute([
             'nom' => trim($nom),
             'prenom' => trim($prenom),
             'telephone' => trim($telephone),
             'email' => $email && trim($email) !== '' ? trim($email) : null,
-            'tb' => contacts_normalize_type_bl($type_client_bl),
+            'adresse' => $addr,
+            'pl' => $pl,
         ]);
         return $db->lastInsertId();
     } catch (PDOException $e) {
-        return false;
+        try {
+            $stmt = $db->prepare('INSERT INTO contacts (nom, prenom, telephone, email, type_client_bl) VALUES (:nom, :prenom, :telephone, :email, :tb)');
+            $stmt->execute([
+                'nom' => trim($nom),
+                'prenom' => trim($prenom),
+                'telephone' => trim($telephone),
+                'email' => $email && trim($email) !== '' ? trim($email) : null,
+                'tb' => 'standard',
+            ]);
+            return $db->lastInsertId();
+        } catch (PDOException $e2) {
+            return false;
+        }
     }
 }
 
@@ -277,13 +385,17 @@ function create_contact($nom, $prenom, $telephone, $email = null, $type_client_b
 function search_clients_for_commande($recherche, $limit = 20) {
     global $db;
     $term = '%' . trim($recherche) . '%';
-    if (strlen(trim($recherche)) < 1) return [];
+    if (strlen(trim($recherche)) < 1) {
+        return [];
+    }
     try {
         $stmt = $db->prepare("
-            (SELECT id, nom, prenom, telephone, email, 'user' AS source, 'standard' AS type_client_bl FROM users WHERE statut = 'actif' AND (nom LIKE :t1 OR prenom LIKE :t2 OR email LIKE :t3 OR telephone LIKE :t4))
+            (SELECT id, nom, prenom, telephone, email, 'user' AS source, 'standard' AS type_client_bl, 0 AS plafond_bl_cumul_ht FROM users WHERE statut = 'actif' AND (nom LIKE :t1 OR prenom LIKE :t2 OR email LIKE :t3 OR telephone LIKE :t4))
             UNION ALL
             (SELECT id, nom, prenom, telephone, email, 'contact' AS source,
-                COALESCE(type_client_bl, 'standard') AS type_client_bl FROM contacts WHERE nom LIKE :t5 OR prenom LIKE :t6 OR email LIKE :t7 OR telephone LIKE :t8)
+                COALESCE(type_client_bl, 'standard') AS type_client_bl,
+                COALESCE(plafond_bl_cumul_ht, 0) AS plafond_bl_cumul_ht
+                FROM contacts WHERE nom LIKE :t5 OR prenom LIKE :t6 OR email LIKE :t7 OR telephone LIKE :t8)
             LIMIT :limit
         ");
         $stmt->bindValue('t1', $term, PDO::PARAM_STR);
@@ -298,6 +410,27 @@ function search_clients_for_commande($recherche, $limit = 20) {
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     } catch (PDOException $e) {
-        return [];
+        try {
+            $stmt = $db->prepare("
+                (SELECT id, nom, prenom, telephone, email, 'user' AS source, 'standard' AS type_client_bl FROM users WHERE statut = 'actif' AND (nom LIKE :t1 OR prenom LIKE :t2 OR email LIKE :t3 OR telephone LIKE :t4))
+                UNION ALL
+                (SELECT id, nom, prenom, telephone, email, 'contact' AS source,
+                    COALESCE(type_client_bl, 'standard') AS type_client_bl FROM contacts WHERE nom LIKE :t5 OR prenom LIKE :t6 OR email LIKE :t7 OR telephone LIKE :t8)
+                LIMIT :limit
+            ");
+            $stmt->bindValue('t1', $term, PDO::PARAM_STR);
+            $stmt->bindValue('t2', $term, PDO::PARAM_STR);
+            $stmt->bindValue('t3', $term, PDO::PARAM_STR);
+            $stmt->bindValue('t4', $term, PDO::PARAM_STR);
+            $stmt->bindValue('t5', $term, PDO::PARAM_STR);
+            $stmt->bindValue('t6', $term, PDO::PARAM_STR);
+            $stmt->bindValue('t7', $term, PDO::PARAM_STR);
+            $stmt->bindValue('t8', $term, PDO::PARAM_STR);
+            $stmt->bindValue('limit', (int) $limit, PDO::PARAM_INT);
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        } catch (PDOException $e2) {
+            return [];
+        }
     }
 }

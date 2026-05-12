@@ -51,6 +51,10 @@ $sous_categories_all = $has_sous_cat_col ? get_all_sous_categories_with_categori
 $sous_cat_preselect = isset($_GET['sous_categorie_id']) ? (int) $_GET['sous_categorie_id'] : 0;
 $has_ident_col = produits_has_column('identifiant_interne');
 $has_img_etiq_col = produits_has_column('image_etiquette_fpl');
+$has_marque_col = produits_has_column('marque_id');
+$has_ref_fourn_col = produits_has_column('reference_fournisseur');
+require_once __DIR__ . '/../../models/model_marques.php';
+$marques_catalogue = ($has_marque_col && marques_table_ok()) ? get_all_marques_ordered_by_nom() : [];
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -144,10 +148,35 @@ $has_img_etiq_col = produits_has_column('image_etiquette_fpl');
                                 </p>
                                 <?php endif; ?>
                             </div>
+                            <?php if ($has_marque_col || $has_ref_fourn_col): ?>
+                            <div class="form-row">
+                                <?php if ($has_marque_col): ?>
+                                <div class="form-group">
+                                    <label for="marque_id">Marque</label>
+                                    <select id="marque_id" name="marque_id">
+                                        <option value="">— Aucune —</option>
+                                        <?php foreach ($marques_catalogue as $mq): ?>
+                                        <option value="<?php echo (int) $mq['id']; ?>" <?php echo (isset($_POST['marque_id']) && (string) $_POST['marque_id'] === (string) $mq['id']) ? 'selected' : ''; ?>>
+                                            <?php echo htmlspecialchars($mq['nom']); ?>
+                                        </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <small class="form-hint">Référentiel <a href="../parametres/logos.php?tab=marques">Paramètres → Marques</a><?php echo empty($marques_catalogue) ? ' (aucune marque pour l’instant).' : '.'; ?></small>
+                                </div>
+                                <?php endif; ?>
+                                <?php if ($has_ref_fourn_col): ?>
+                                <div class="form-group">
+                                    <label for="reference_fournisseur">Référence fournisseur</label>
+                                    <input type="text" id="reference_fournisseur" name="reference_fournisseur" maxlength="120"
+                                        placeholder="Code ou réf. chez le fournisseur"
+                                        value="<?php echo isset($_POST['reference_fournisseur']) ? htmlspecialchars((string) $_POST['reference_fournisseur'], ENT_QUOTES, 'UTF-8') : ''; ?>">
+                                    <small class="form-hint">Optionnel — identifiant article côté fournisseur.</small>
+                                </div>
+                                <?php endif; ?>
+                            </div>
+                            <?php endif; ?>
                         </div>
                     </section>
-
-                    <section class="pm-card" aria-labelledby="pm-sec-prix-add">
                         <div class="pm-card__head">
                             <span class="pm-card__icon" aria-hidden="true"><i class="fas fa-coins"></i></span>
                             <div>

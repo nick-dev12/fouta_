@@ -108,7 +108,7 @@ function generate_numero_devis() {
 function create_devis($items, $client_nom, $client_prenom, $client_telephone, $adresse_livraison, $client_email = null, $notes = null, $zone_livraison_id = null, $frais_livraison = 0, $user_id = null, $admin_createur_id = null, $tva_incluse = false, $adresse_client = null) {
     global $db;
 
-    if (empty($items) || empty(trim($client_nom)) || empty(trim($client_prenom)) || empty(trim($client_telephone))) {
+    if (empty($items) || empty(trim($client_nom)) || empty(trim($client_telephone))) {
         return false;
     }
 

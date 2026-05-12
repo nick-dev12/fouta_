@@ -12,26 +12,39 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
 require_once __DIR__ . '/../includes/require_access.php';
 require_once __DIR__ . '/../../includes/admin_permissions.php';
 
+function contacts_admin_list_url($recherche, $page)
+{
+    $q = [];
+    if ($recherche !== '') {
+        $q['recherche'] = $recherche;
+    }
+    if ($page > 1) {
+        $q['page'] = $page;
+    }
+    return $q ? ('?' . http_build_query($q)) : '';
+}
+
 $contacts_compta_readonly = (admin_current_role() === 'comptabilite');
 $contacts_restricted_admin = admin_is_restricted_admin_account();
 
 if ($contacts_restricted_admin && $_SERVER['REQUEST_METHOD'] === 'POST'
     && (isset($_POST['add_contact']) || isset($_POST['import_contacts']))) {
     $_SESSION['contacts_error'] = 'L’ajout et l’import de contacts ne sont pas disponibles pour ce profil.';
-    header('Location: index.php' . (!empty($_GET['recherche']) ? '?recherche=' . urlencode((string) $_GET['recherche']) : ''));
+    header('Location: index.php' . contacts_admin_list_url(trim($_GET['recherche'] ?? ''), max(1, (int) ($_GET['page'] ?? 1))));
     exit;
 }
 
 if ($contacts_compta_readonly && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $_SESSION['contacts_error'] = 'Les modifications du carnet contacts ne sont pas autorisées pour le profil comptabilité.';
-    header('Location: index.php' . (!empty($_GET['recherche']) ? '?recherche=' . urlencode((string) $_GET['recherche']) : ''));
+    header('Location: index.php' . contacts_admin_list_url(trim($_GET['recherche'] ?? ''), max(1, (int) ($_GET['page'] ?? 1))));
     exit;
 }
 
 require_once __DIR__ . '/../../models/model_contacts.php';
-require_once __DIR__ . '/../../models/model_clients_b2b.php';
 
 $recherche = trim($_GET['recherche'] ?? '');
+$page = max(1, (int) ($_GET['page'] ?? 1));
+$per_page = 10;
 
 $success_message = isset($_SESSION['contacts_success']) ? $_SESSION['contacts_success'] : '';
 $error_message = isset($_SESSION['contacts_error']) ? $_SESSION['contacts_error'] : '';
@@ -43,14 +56,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_contact'])) {
     $prenom = trim($_POST['prenom'] ?? '');
     $telephone = trim($_POST['telephone'] ?? '');
     $email = trim($_POST['email'] ?? '') ?: null;
-    $type_bl = ($_POST['type_client_bl'] ?? '') === 'vip' ? 'vip' : 'standard';
+    $adresse = trim($_POST['adresse'] ?? '');
+    $plafond = contacts_normalize_plafond_ht($_POST['plafond_bl_cumul_ht'] ?? 0);
 
     if (empty($nom) || empty($telephone)) {
         $error_message = 'Le nom et le téléphone sont obligatoires.';
-    } elseif (create_contact($nom, $prenom, $telephone, $email, $type_bl)) {
-        update_client_b2b_type_client_bl_by_telephone($telephone, $type_bl);
+    } elseif (create_contact($nom, $prenom, $telephone, $email, $adresse !== '' ? $adresse : null, $plafond)) {
         $_SESSION['contacts_success'] = 'Contact ajouté avec succès.';
-        header('Location: index.php' . ($recherche ? '?recherche=' . urlencode($recherche) : ''));
+        header('Location: index.php' . contacts_admin_list_url($recherche, 1));
         exit;
     } else {
         $error_message = 'Erreur lors de l\'ajout du contact.';
@@ -64,14 +77,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_contact'])) {
     $prenom = trim($_POST['prenom'] ?? '');
     $telephone = trim($_POST['telephone'] ?? '');
     $email = trim($_POST['email'] ?? '') ?: null;
-    $type_bl = ($_POST['type_client_bl'] ?? '') === 'vip' ? 'vip' : 'standard';
+    $adresse = trim($_POST['adresse'] ?? '');
+    $plafond = contacts_normalize_plafond_ht($_POST['plafond_bl_cumul_ht'] ?? 0);
 
     if ($id <= 0 || empty($nom) || empty($telephone)) {
         $error_message = 'Données invalides.';
-    } elseif (update_contact($id, $nom, $prenom, $telephone, $email, $type_bl)) {
-        update_client_b2b_type_client_bl_by_telephone($telephone, $type_bl);
+    } elseif (update_contact($id, $nom, $prenom, $telephone, $email, $adresse !== '' ? $adresse : null, $plafond)) {
         $_SESSION['contacts_success'] = 'Contact modifié avec succès.';
-        header('Location: index.php' . ($recherche ? '?recherche=' . urlencode($recherche) : ''));
+        header('Location: index.php' . contacts_admin_list_url($recherche, $page));
         exit;
     } else {
         $error_message = 'Erreur lors de la modification.';
@@ -95,14 +108,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['import_contacts'])) {
             }
         }
         $_SESSION['contacts_success'] = $imported . ' contact(s) importé(s).';
-        header('Location: index.php' . ($recherche ? '?recherche=' . urlencode($recherche) : ''));
+        header('Location: index.php' . contacts_admin_list_url($recherche, 1));
         exit;
     } else {
         $error_message = 'Aucun contact à importer.';
     }
 }
 
-$contacts = contacts_list_with_compta_stats(get_all_contacts($recherche));
+$total_contacts = get_contacts_count($recherche);
+$total_pages = max(1, (int) ceil($total_contacts / $per_page));
+if ($page > $total_pages) {
+    $page = $total_pages;
+}
+$contacts = contacts_list_with_compta_stats(get_contacts_page($recherche, $page, $per_page));
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -154,7 +172,14 @@ $contacts = contacts_list_with_compta_stats(get_all_contacts($recherche));
         .form-group { margin-bottom: 20px; }
         .form-group label { display: block; margin-bottom: 8px; font-weight: 600; }
         .form-group input,
-        .form-group select { width: 100%; padding: 12px 14px; border: 1px solid #d9d9d9; border-radius: 8px; }
+        .form-group select,
+        .form-group textarea { width: 100%; padding: 12px 14px; border: 1px solid #d9d9d9; border-radius: 8px; box-sizing: border-box; }
+        .contacts-pagination { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; margin: 24px 0 8px; }
+        .contacts-pagination a, .contacts-pagination span { display: inline-flex; align-items: center; padding: 8px 12px; border-radius: 8px; text-decoration: none; font-size: 0.875rem; font-weight: 600; }
+        .contacts-pagination a { background: var(--blanc); border: 1px solid var(--border-input); color: var(--couleur-dominante); }
+        .contacts-pagination a:hover { background: var(--bleu-pale); }
+        .contacts-pagination .is-current { background: var(--couleur-dominante); color: #fff; border: 1px solid var(--couleur-dominante); }
+        .contacts-pagination .is-ellipsis { border: none; background: transparent; color: var(--gris-moyen); }
         .admin-filters-bar { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; padding: 16px; background: #fff; border: 1px solid #ececec; border-radius: 12px; margin-bottom: 20px; }
         .admin-filter-field { flex: 1 1 220px; }
         .admin-filter-field label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600; }
@@ -197,13 +222,14 @@ $contacts = contacts_list_with_compta_stats(get_all_contacts($recherche));
         <form method="GET" class="admin-filters-bar" style="margin-bottom:20px;">
             <div class="admin-filter-field">
                 <label>Rechercher</label>
-                <input type="text" name="recherche" placeholder="Nom, téléphone, email..." value="<?php echo htmlspecialchars($recherche); ?>">
+                <input type="text" name="recherche" placeholder="Nom, téléphone, email, adresse…" value="<?php echo htmlspecialchars($recherche); ?>">
             </div>
+            <input type="hidden" name="page" value="1">
             <button type="submit" class="btn-primary"><i class="fas fa-search"></i> Filtrer</button>
         </form>
 
         <div class="section-title">
-            <h2><i class="fas fa-list"></i> Liste des contacts (<?php echo count($contacts); ?>)</h2>
+            <h2><i class="fas fa-list"></i> Liste des contacts (<?php echo (int) $total_contacts; ?><?php if ($total_pages > 1): ?> — page <?php echo (int) $page; ?> / <?php echo (int) $total_pages; ?><?php endif; ?>)</h2>
         </div>
 
         <?php if (empty($contacts)): ?>
@@ -220,6 +246,8 @@ $contacts = contacts_list_with_compta_stats(get_all_contacts($recherche));
                             <th scope="col">Contact</th>
                             <th scope="col">Téléphone</th>
                             <th scope="col">Email</th>
+                            <th scope="col">Adresse</th>
+                            <th scope="col" class="cnt-num">Plafond BL (max HT)</th>
                             <th scope="col" class="cnt-num cnt-num--payee">Fact. devis payées</th>
                             <th scope="col" class="cnt-num cnt-num--due">Fact. devis impayées</th>
                             <th scope="col" class="cnt-num cnt-num--payee">Fact. BL payées</th>
@@ -240,6 +268,21 @@ $contacts = contacts_list_with_compta_stats(get_all_contacts($recherche));
                             <td><strong><?php echo htmlspecialchars(trim(($c['prenom'] ?? '') . ' ' . ($c['nom'] ?? ''))); ?></strong></td>
                             <td><?php echo htmlspecialchars($c['telephone'] ?? '—'); ?></td>
                             <td><?php echo !empty($c['email']) ? htmlspecialchars((string) $c['email']) : '—'; ?></td>
+                            <td><?php
+                                $adr = trim((string) ($c['adresse'] ?? ''));
+                            if ($adr !== '') {
+                                $show = function_exists('mb_strimwidth')
+                                    ? mb_strimwidth($adr, 0, 42, '…', 'UTF-8')
+                                    : (strlen($adr) > 40 ? substr($adr, 0, 37) . '…' : $adr);
+                                echo htmlspecialchars($show);
+                            } else {
+                                echo '—';
+                            }
+                            ?></td>
+                            <td class="cnt-num"><?php
+                                $pl = (float) ($c['plafond_bl_cumul_ht'] ?? 0);
+                            echo $pl > 0 ? number_format($pl, 0, ',', ' ') . ' FCFA' : '—';
+                            ?></td>
                             <td class="cnt-num cnt-num--payee"><?php echo (int) ($co['fd_payees'] ?? 0); ?></td>
                             <td class="cnt-num cnt-num--due"><?php echo (int) ($co['fd_impayees'] ?? 0); ?></td>
                             <td class="cnt-num cnt-num--payee"><?php echo (int) ($co['fm_payees'] ?? 0); ?></td>
@@ -254,7 +297,8 @@ $contacts = contacts_list_with_compta_stats(get_all_contacts($recherche));
                                         data-prenom="<?php echo htmlspecialchars($c['prenom'] ?? ''); ?>"
                                         data-telephone="<?php echo htmlspecialchars($c['telephone']); ?>"
                                         data-email="<?php echo htmlspecialchars($c['email'] ?? ''); ?>"
-                                        data-type-bl="<?php echo htmlspecialchars(($c['type_client_bl'] ?? 'standard')); ?>">
+                                        data-adresse="<?php echo htmlspecialchars($c['adresse'] ?? '', ENT_QUOTES, 'UTF-8'); ?>"
+                                        data-plafond="<?php echo htmlspecialchars((string) ((float) ($c['plafond_bl_cumul_ht'] ?? 0)), ENT_QUOTES, 'UTF-8'); ?>">
                                         <i class="fas fa-edit"></i> Modifier
                                     </button>
                                     <?php endif; ?>
@@ -265,6 +309,53 @@ $contacts = contacts_list_with_compta_stats(get_all_contacts($recherche));
                     </tbody>
                 </table>
             </div>
+
+            <?php if ($total_pages > 1): ?>
+            <nav class="contacts-pagination" aria-label="Pagination des contacts">
+                <?php
+                $build_link = static function ($p) use ($recherche) {
+                    return 'index.php' . contacts_admin_list_url($recherche, $p);
+                };
+                if ($page > 1): ?>
+                    <a href="<?php echo htmlspecialchars($build_link($page - 1)); ?>"><i class="fas fa-chevron-left" aria-hidden="true"></i> Précédent</a>
+                <?php endif;
+
+                $num_links = [];
+                if ($total_pages <= 12) {
+                    $num_links = range(1, $total_pages);
+                } else {
+                    $set = [1, $total_pages];
+                    for ($i = max(2, $page - 2); $i <= min($total_pages - 1, $page + 2); $i++) {
+                        $set[] = $i;
+                    }
+                    $set = array_unique($set);
+                    sort($set, SORT_NUMERIC);
+                    $prev = 0;
+                    foreach ($set as $pnum) {
+                        if ($prev > 0 && $pnum - $prev > 1) {
+                            $num_links[] = null;
+                        }
+                        $num_links[] = $pnum;
+                        $prev = $pnum;
+                    }
+                }
+                foreach ($num_links as $pitem) {
+                    if ($pitem === null) {
+                        echo '<span class="is-ellipsis" aria-hidden="true">…</span>';
+                        continue;
+                    }
+                    if ((int) $pitem === (int) $page) {
+                        echo '<span class="is-current" aria-current="page">' . (int) $pitem . '</span>';
+                    } else {
+                        echo '<a href="' . htmlspecialchars($build_link((int) $pitem)) . '">' . (int) $pitem . '</a>';
+                    }
+                }
+                ?>
+                <?php if ($page < $total_pages): ?>
+                    <a href="<?php echo htmlspecialchars($build_link($page + 1)); ?>">Suivant <i class="fas fa-chevron-right" aria-hidden="true"></i></a>
+                <?php endif; ?>
+            </nav>
+            <?php endif; ?>
         <?php endif; ?>
     </section>
 
@@ -295,12 +386,13 @@ $contacts = contacts_list_with_compta_stats(get_all_contacts($recherche));
                         <input type="email" name="email" placeholder="email@exemple.com">
                     </div>
                     <div class="form-group">
-                        <label>Type client (plafonds BL)</label>
-                        <select name="type_client_bl">
-                            <option value="standard">Standard</option>
-                            <option value="vip">VIP</option>
-                        </select>
-                        <p class="form-hint" style="margin-top:8px;font-size:12px;color:#666;"><i class="fas fa-info-circle"></i> Utilisé pour les plafonds cumulés des bons de livraison.</p>
+                        <label>Adresse <span style="color:#888; font-weight:400;">(optionnel)</span></label>
+                        <textarea name="adresse" rows="3" placeholder="Adresse postale, ville…"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Plafond cumul BL (HT max) <span style="color:#888; font-weight:400;">(optionnel)</span></label>
+                        <input type="number" name="plafond_bl_cumul_ht" min="0" step="0.01" value="0" placeholder="0">
+                        <p class="form-hint" style="margin-top:8px;font-size:12px;color:#666;"><i class="fas fa-info-circle"></i> Montant maximum cumulé (tous les bons de livraison) pour ce contact. <strong>0</strong> = aucune limite.</p>
                     </div>
                     <div class="modal-actions">
                         <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Enregistrer</button>
@@ -339,11 +431,13 @@ $contacts = contacts_list_with_compta_stats(get_all_contacts($recherche));
                         <input type="email" name="email" id="edit_email" placeholder="email@exemple.com">
                     </div>
                     <div class="form-group">
-                        <label>Type client (plafonds BL)</label>
-                        <select name="type_client_bl" id="edit_type_client_bl">
-                            <option value="standard">Standard</option>
-                            <option value="vip">VIP</option>
-                        </select>
+                        <label>Adresse <span style="color:#888; font-weight:400;">(optionnel)</span></label>
+                        <textarea name="adresse" id="edit_adresse" rows="3" placeholder="Adresse postale, ville…"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Plafond cumul BL (HT max)</label>
+                        <input type="number" name="plafond_bl_cumul_ht" id="edit_plafond_bl" min="0" step="0.01" value="0">
+                        <p class="form-hint" style="margin-top:8px;font-size:12px;color:#666;"><i class="fas fa-info-circle"></i> <strong>0</strong> = aucune limite sur le cumul des BL.</p>
                     </div>
                     <div class="modal-actions">
                         <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Enregistrer</button>
@@ -379,14 +473,16 @@ $contacts = contacts_list_with_compta_stats(get_all_contacts($recherche));
         var modalEdit = document.getElementById('modal-edit-contact');
         var btnEditClose = document.getElementById('modal-edit-close');
         var btnEditCancel = document.getElementById('modal-edit-cancel');
-        function openModalEdit(id, nom, prenom, telephone, email, typeBl) {
+        function openModalEdit(id, nom, prenom, telephone, email, adresse, plafondVal) {
             document.getElementById('edit_contact_id').value = id;
             document.getElementById('edit_nom').value = nom || '';
             document.getElementById('edit_prenom').value = prenom || '';
             document.getElementById('edit_telephone').value = telephone || '';
             document.getElementById('edit_email').value = email || '';
-            var sel = document.getElementById('edit_type_client_bl');
-            if (sel) sel.value = (typeBl === 'vip') ? 'vip' : 'standard';
+            var ta = document.getElementById('edit_adresse');
+            if (ta) ta.value = adresse || '';
+            var pl = document.getElementById('edit_plafond_bl');
+            if (pl) pl.value = (plafondVal !== undefined && plafondVal !== '') ? plafondVal : '0';
             if (modalEdit) modalEdit.classList.add('show');
             document.body.style.overflow = 'hidden';
         }
@@ -396,7 +492,7 @@ $contacts = contacts_list_with_compta_stats(get_all_contacts($recherche));
         }
         document.querySelectorAll('.btn-edit-contact').forEach(function(btn) {
             btn.addEventListener('click', function() {
-                openModalEdit(btn.dataset.id, btn.dataset.nom, btn.dataset.prenom, btn.dataset.telephone, btn.dataset.email, btn.dataset.typeBl);
+                openModalEdit(btn.dataset.id, btn.dataset.nom, btn.dataset.prenom, btn.dataset.telephone, btn.dataset.email, btn.dataset.adresse, btn.dataset.plafond);
             });
         });
         if (btnEditClose) btnEditClose.addEventListener('click', closeModalEdit);

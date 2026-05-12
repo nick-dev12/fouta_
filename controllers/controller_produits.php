@@ -5,6 +5,7 @@
  */
 
 require_once __DIR__ . '/../models/model_produits.php';
+require_once __DIR__ . '/../models/model_marques.php';
 require_once __DIR__ . '/../models/model_sous_categories.php';
 require_once __DIR__ . '/../includes/barcode_fpl.php';
 require_once __DIR__ . '/../includes/fouta_upload_limits.php';
@@ -374,6 +375,28 @@ function process_add_produit()
         }
     }
 
+    $marque_id_resolved = null;
+    if (produits_has_column('marque_id')) {
+        $mid_post = isset($_POST['marque_id']) ? (int) $_POST['marque_id'] : 0;
+        if ($mid_post > 0) {
+            if (!marques_table_ok() || !get_marque_by_id($mid_post)) {
+                $errors[] = 'La marque sélectionnée est invalide.';
+            } else {
+                $marque_id_resolved = $mid_post;
+            }
+        }
+    }
+
+    $reference_fournisseur_val = null;
+    if (produits_has_column('reference_fournisseur')) {
+        $rf_raw = isset($_POST['reference_fournisseur']) ? trim((string) $_POST['reference_fournisseur']) : '';
+        if ($rf_raw !== '') {
+            $reference_fournisseur_val = function_exists('mb_substr')
+                ? mb_substr($rf_raw, 0, 120, 'UTF-8')
+                : substr($rf_raw, 0, 120);
+        }
+    }
+
     $identifiant_attribue = null;
     if (produits_has_column('identifiant_interne')) {
         $identifiant_attribue = produits_allouer_identifiant_fpl_9_auto(0);
@@ -457,6 +480,12 @@ function process_add_produit()
         }
         if (produits_has_column('image_etiquette_fpl')) {
             $data['image_etiquette_fpl'] = $image_etiquette_fpl;
+        }
+        if (produits_has_column('marque_id')) {
+            $data['marque_id'] = $marque_id_resolved;
+        }
+        if (produits_has_column('reference_fournisseur')) {
+            $data['reference_fournisseur'] = $reference_fournisseur_val;
         }
         if ($admin_session_id > 0) {
             $data['admin_createur_id'] = $admin_session_id;
@@ -681,6 +710,28 @@ function process_update_produit($produit_id)
         }
     }
 
+    $marque_id_resolved = null;
+    if (produits_has_column('marque_id')) {
+        $mid_post = isset($_POST['marque_id']) ? (int) $_POST['marque_id'] : 0;
+        if ($mid_post > 0) {
+            if (!marques_table_ok() || !get_marque_by_id($mid_post)) {
+                $errors[] = 'La marque sélectionnée est invalide.';
+            } else {
+                $marque_id_resolved = $mid_post;
+            }
+        }
+    }
+
+    $reference_fournisseur_val = null;
+    if (produits_has_column('reference_fournisseur')) {
+        $rf_raw = isset($_POST['reference_fournisseur']) ? trim((string) $_POST['reference_fournisseur']) : '';
+        if ($rf_raw !== '') {
+            $reference_fournisseur_val = function_exists('mb_substr')
+                ? mb_substr($rf_raw, 0, 120, 'UTF-8')
+                : substr($rf_raw, 0, 120);
+        }
+    }
+
     $nouvel_identifiant = null;
     if (produits_has_column('identifiant_interne')) {
         $ref6 = isset($_POST['reference_suffix6']) ? preg_replace('/\D/', '', (string) $_POST['reference_suffix6']) : '';
@@ -799,6 +850,12 @@ function process_update_produit($produit_id)
         }
         if (produits_has_column('image_etiquette_fpl')) {
             $data['image_etiquette_fpl'] = $image_etiquette_fpl_courant !== '' ? $image_etiquette_fpl_courant : null;
+        }
+        if (produits_has_column('marque_id')) {
+            $data['marque_id'] = $marque_id_resolved;
+        }
+        if (produits_has_column('reference_fournisseur')) {
+            $data['reference_fournisseur'] = $reference_fournisseur_val;
         }
         if ($admin_session_id > 0) {
             $data['admin_dernier_modificateur_id'] = $admin_session_id;

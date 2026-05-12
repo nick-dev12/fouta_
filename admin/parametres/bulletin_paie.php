@@ -317,7 +317,7 @@ $pct_ret_codes = bp_retenues_codes_taux_brut();
                     </div>
                 </div>
                 <div class="bpp-section__body">
-                <p class="bpp-section__subtitle bpp-section__subtitle--inline">Pour <strong>TRIMF</strong>, <strong>IPRES RG</strong>, <strong>IPRES cadre</strong> et <strong>CSS</strong>, indiquez le pourcentage appliqué au <strong>salaire brut</strong>. L’<strong>IRPP</strong> se saisit sur chaque fiche employé (montant fixe mensuel).</p>
+                <p class="bpp-section__subtitle bpp-section__subtitle--inline">Pour <strong>IPRES RG</strong>, <strong>IPRES cadre</strong> et <strong>CSS</strong>, indiquez le pourcentage appliqué au <strong>salaire brut</strong>. L’<strong>IRPP</strong> et la <strong>TRIMF</strong> sont des <strong>montants mensuels</strong> renseignés sur chaque fiche employé.</p>
                 <div class="bpp-check-grid bpp-check-grid--retenues">
                     <?php foreach ($rub['retenues'] as $code => $on) :
                         if (!isset($lr[$code])) {
@@ -443,7 +443,7 @@ $pct_ret_codes = bp_retenues_codes_taux_brut();
                 <span class="bpp-ic bpp-ic--info" aria-hidden="true"><i class="fas fa-circle-info"></i></span>
                 <div>
                     <strong>Rappel de calcul (indicatif)</strong><br>
-                    TRIMF, IPRES (RG et cadre) et CSS sont en % du <strong>brut</strong>. L’IRPP est le <strong>montant mensuel</strong> enregistré sur la fiche du salarié. <strong>Net imposable</strong> = brut − (IPRES RG + IPRES cadre + CSS + accident du travail) ; <strong>net à payer</strong> = net imposable − (IRPP + TRIMF + retenue prêt + autres + pénalités d’absence si applicable).
+                    IPRES (RG et cadre) et CSS sont en % du <strong>brut</strong>. L’<strong>IRPP</strong> et la <strong>TRIMF</strong> sont les <strong>montants mensuels</strong> enregistrés sur la fiche du salarié. <strong>Net imposable</strong> = brut − (IPRES RG + IPRES cadre + CSS + accident du travail) ; <strong>net à payer</strong> = net imposable − (IRPP + TRIMF + retenue prêt + autres + pénalités d’absence si applicable).
                 </div>
             </div>
 

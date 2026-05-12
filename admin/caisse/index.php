@@ -30,6 +30,7 @@ require_once __DIR__ . '/../../models/model_caisse_compta.php';
 require_once __DIR__ . '/../../includes/barcode_caisse_ticket.php';
 require_once __DIR__ . '/../../models/model_produits.php';
 require_once __DIR__ . '/../../models/model_categories.php';
+require_once __DIR__ . '/../../models/model_marques.php';
 
 $cart = caisse_cart_get();
 if (admin_current_role() === 'commercial' && !empty($cart['inclure_tva'])) {
@@ -63,9 +64,18 @@ if (!empty($_SESSION['caisse_last_ticket_id'])) {
 $q = isset($_GET['q']) ? trim((string) $_GET['q']) : '';
 $cat = isset($_GET['cat']) ? (int) $_GET['cat'] : 0;
 $cat = $cat > 0 ? $cat : null;
+$marque_sel = isset($_GET['marque']) ? (int) $_GET['marque'] : 0;
+$marque_sel = $marque_sel > 0 ? $marque_sel : null;
+$marque_has_col = function_exists('produits_has_column') && produits_has_column('marque_id');
+$marque_arg = ($marque_has_col && $marque_sel !== null) ? $marque_sel : null;
 
-$show_catalogue = ($q !== '' || $cat !== null);
-$produits_liste = $show_catalogue ? search_produits_with_filters($q, null, null, $cat, 'nom', 0, 60) : [];
+$marques_liste = [];
+if (function_exists('marques_table_ok') && marques_table_ok()) {
+    $marques_liste = get_all_marques_ordered_by_nom();
+}
+
+$show_catalogue = ($q !== '' || $cat !== null || $marque_arg !== null);
+$produits_liste = $show_catalogue ? search_produits_with_filters($q, null, null, $cat, 'nom', 0, 60, $marque_arg) : [];
 $categories = get_all_categories();
 
 $has_ident = function_exists('produits_has_column') && produits_has_column('identifiant_interne');
@@ -73,18 +83,25 @@ $has_ident = function_exists('produits_has_column') && produits_has_column('iden
 /** Catalogue actif (stock > 0) pour filtrage temps réel côté navigateur — limite pour poids de page */
 $caisse_catalog_json = [];
 $caisse_catalog_limit = 2500;
-$caisse_catalog_rows = search_produits_with_filters('', null, null, null, 'nom', 0, $caisse_catalog_limit);
+$caisse_catalog_rows = search_produits_with_filters('', null, null, null, 'nom', 0, $caisse_catalog_limit, null);
 foreach ($caisse_catalog_rows as $pr) {
     if ((int) ($pr['stock'] ?? 0) <= 0) {
         continue;
     }
+    $mid = 0;
+    if ($marque_has_col) {
+        $mid = (int) ($pr['marque_id'] ?? 0);
+    }
+    $imgs = function_exists('produits_galerie_web_urls') ? produits_galerie_web_urls($pr) : [];
     $caisse_catalog_json[] = [
         'id' => (int) ($pr['id'] ?? 0),
         'nom' => (string) ($pr['nom'] ?? ''),
         'ref' => $has_ident ? strtoupper(trim((string) ($pr['identifiant_interne'] ?? ''))) : '',
         'cat_id' => (int) ($pr['categorie_id'] ?? 0),
+        'marque_id' => $mid,
         'prix' => round((float) caisse_prix_unitaire_produit($pr), 2),
         'stock' => (int) ($pr['stock'] ?? 0),
+        'imgs' => $imgs,
     ];
 }
 $caisse_catalog_json_script = json_encode($caisse_catalog_json, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS);
@@ -287,6 +304,17 @@ if ($preview_recu !== null && $total_ttc > 0) {
                                     </option>
                                     <?php endforeach; ?>
                                 </select>
+                                <?php if (!empty($marques_liste) && $marque_has_col): ?>
+                                <select name="marque" id="caisse_marque_live" class="caisse-search-select" aria-label="Marque">
+                                    <option value="">Toutes les marques</option>
+                                    <?php foreach ($marques_liste as $m): ?>
+                                    <option value="<?php echo (int) $m['id']; ?>"
+                                        <?php echo ($marque_sel !== null && (int) $m['id'] === (int) $marque_sel) ? 'selected' : ''; ?>>
+                                        <?php echo htmlspecialchars($m['nom'] ?? '', ENT_QUOTES, 'UTF-8'); ?>
+                                    </option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <?php endif; ?>
                                 <button type="submit" class="btn-primary caisse-search-btn">Rechercher (liste complète)</button>
                             </div>
                         </form>
@@ -294,7 +322,9 @@ if ($preview_recu !== null && $total_ttc > 0) {
                             <span id="caisse-live-results-label" class="visually-hidden">Suggestions produits</span>
                             <div id="caisse-live-results" class="caisse-live-results" role="listbox" aria-labelledby="caisse-live-results-label"
                                 data-csrf="<?php echo htmlspecialchars($_SESSION['admin_csrf'], ENT_QUOTES, 'UTF-8'); ?>"
-                                data-has-ident="<?php echo $has_ident ? '1' : '0'; ?>" hidden></div>
+                                data-has-ident="<?php echo $has_ident ? '1' : '0'; ?>"
+                                data-marque-filter="<?php echo ($marque_has_col && !empty($marques_liste)) ? '1' : '0'; ?>"
+                                hidden></div>
                         </div>
                     </div>
 
@@ -536,12 +566,8 @@ if ($preview_recu !== null && $total_ttc > 0) {
                         <div class="caisse-recap-row caisse-recap-row--main"><span><?php echo $taux_tva > 0 ? 'Total TTC (à payer)' : 'Total à payer'; ?></span><strong><?php echo number_format($total_ttc, 0, ',', ' '); ?>
                                 <small>FCFA</small></strong></div>
                     </div>
-                    <?php if ($taux_tva > 0): ?>
-                    <?php if ($afficher_option_tva_caisse): ?>
-                    <p class="caisse-recap-note">Sans cocher « Inclure la TVA », le montant affiché est le <strong>total TTC</strong> (décomposition HT + TVA sur le ticket). Coché : le panier reste en <strong>net HT</strong> et la TVA s’ajoute.</p>
-                    <?php else: ?>
+                    <?php if ($taux_tva > 0 && !$afficher_option_tva_caisse): ?>
                     <p class="caisse-recap-note">Le total à payer est TTC ; le détail HT + TVA figure sur le ticket.</p>
-                    <?php endif; ?>
                     <?php endif; ?>
 
                     <?php if (!empty($cart['lines']) && $total_ttc > 0): ?>
@@ -628,6 +654,23 @@ if ($preview_recu !== null && $total_ttc > 0) {
         </div>
     </div>
 
+    <div id="caisse-gallery-modal" class="caisse-gallery-modal" hidden role="dialog" aria-modal="true"
+        aria-labelledby="caisseGalleryTitle">
+        <button type="button" class="caisse-gallery-modal__backdrop" data-caisse-gallery-close aria-label="Fermer la galerie"></button>
+        <div class="caisse-gallery-modal__panel" tabindex="-1">
+            <h2 id="caisseGalleryTitle" class="visually-hidden">Photos du produit</h2>
+            <button type="button" class="caisse-gallery-modal__close" data-caisse-gallery-close aria-label="Fermer"><i class="fas fa-times" aria-hidden="true"></i></button>
+            <div class="caisse-gallery-modal__img-wrap">
+                <img src="" alt="" class="caisse-gallery-modal__img" id="caisseGalleryImg" width="800" height="800">
+            </div>
+            <div class="caisse-gallery-modal__toolbar">
+                <button type="button" class="caisse-gallery-modal__nav-btn" id="caisseGalleryPrev" aria-label="Image précédente"><i class="fas fa-chevron-left" aria-hidden="true"></i></button>
+                <span class="caisse-gallery-modal__counter" id="caisseGalleryCounter" aria-live="polite"></span>
+                <button type="button" class="caisse-gallery-modal__nav-btn" id="caisseGalleryNext" aria-label="Image suivante"><i class="fas fa-chevron-right" aria-hidden="true"></i></button>
+            </div>
+        </div>
+    </div>
+
     <script type="application/json" id="caisse-catalog-json"><?php echo $caisse_catalog_json_script; ?></script>
 
     <script>
@@ -642,9 +685,11 @@ if ($preview_recu !== null && $total_ttc > 0) {
         var box = document.getElementById('caisse-live-results');
         var inputQ = document.getElementById('caisse_q_live');
         var selCat = document.getElementById('caisse_cat_live');
+        var selMarque = document.getElementById('caisse_marque_live');
         if (!elJson || !box || !inputQ || !selCat) {
             return;
         }
+        var marqueFilterOn = box.getAttribute('data-marque-filter') === '1' && selMarque;
         var catalog = [];
         try {
             catalog = JSON.parse(elJson.textContent || '[]');
@@ -654,6 +699,7 @@ if ($preview_recu !== null && $total_ttc > 0) {
         var csrf = box.getAttribute('data-csrf') || '';
         var hasIdent = box.getAttribute('data-has-ident') === '1';
         var maxLive = 25;
+        var placeholderImg = '/image/produit1.jpg';
         var fmtFcfa = function(n) {
             var x = Math.round(Number(n));
             return String(x).replace(/\B(?=(\d{3})+(?!\d))/g, '\u202f');
@@ -664,12 +710,22 @@ if ($preview_recu !== null && $total_ttc > 0) {
             d.textContent = s;
             return d.innerHTML;
         }
-        function matchProduct(p, qRaw, catVal) {
-            if (catVal) {
-                if (String(p.cat_id) !== String(catVal)) {
-                    return false;
-                }
+        function escAttr(s) {
+            return String(s)
+                .replace(/&/g, '&amp;')
+                .replace(/"/g, '&quot;')
+                .replace(/</g, '&lt;');
+        }
+        function filtersOk(p, catVal, marqueVal) {
+            if (catVal && String(p.cat_id) !== String(catVal)) {
+                return false;
             }
+            if (marqueVal && String(p.marque_id || '0') !== String(marqueVal)) {
+                return false;
+            }
+            return true;
+        }
+        function matchProductText(p, qRaw) {
             var q = (qRaw || '').trim();
             if (!q) {
                 return false;
@@ -693,21 +749,32 @@ if ($preview_recu !== null && $total_ttc > 0) {
             }
             return false;
         }
+        function matchProduct(p, qRaw, catVal, marqueVal) {
+            if (!filtersOk(p, catVal, marqueVal)) {
+                return false;
+            }
+            var q = (qRaw || '').trim();
+            if (!q) {
+                return !!(catVal || marqueVal);
+            }
+            return matchProductText(p, qRaw);
+        }
         function renderLive() {
             var q = inputQ.value;
             var catVal = selCat.value;
+            var marqueVal = marqueFilterOn ? selMarque.value : '';
             var hits = [];
             var i;
-            var needFilter = (q.trim() !== '') || (catVal !== '');
+            var needFilter = (q.trim() !== '') || (catVal !== '') || (marqueVal !== '');
             if (!needFilter) {
                 box.innerHTML = '';
                 box.hidden = true;
                 box.classList.remove('is-empty');
                 return;
             }
-            if (q.trim() === '' && catVal !== '') {
+            if (q.trim() === '' && (catVal !== '' || marqueVal !== '')) {
                 for (i = 0; i < catalog.length; i++) {
-                    if (String(catalog[i].cat_id) === String(catVal)) {
+                    if (filtersOk(catalog[i], catVal, marqueVal)) {
                         hits.push(catalog[i]);
                     }
                     if (hits.length >= maxLive) {
@@ -716,7 +783,7 @@ if ($preview_recu !== null && $total_ttc > 0) {
                 }
             } else {
                 for (i = 0; i < catalog.length; i++) {
-                    if (matchProduct(catalog[i], q, catVal)) {
+                    if (matchProduct(catalog[i], q, catVal, marqueVal)) {
                         hits.push(catalog[i]);
                     }
                     if (hits.length >= maxLive) {
@@ -736,17 +803,23 @@ if ($preview_recu !== null && $total_ttc > 0) {
                 var refCell = hasIdent
                     ? '<span class="caisse-live-ref"><code>' + esc(p.ref || '—') + '</code></span>'
                     : '';
+                var imgs = Array.isArray(p.imgs) ? p.imgs : [];
+                var thumbSrc = imgs.length ? imgs[0] : placeholderImg;
+                var imgsAttr = escAttr(JSON.stringify(imgs.length ? imgs : [placeholderImg]));
                 html += '<li class="caisse-live-item" role="option">' +
-                    '<div class="caisse-live-item-main">' +
-                    '<span class="caisse-live-nom">' + esc(p.nom) + '</span>' + refCell +
-                    '<span class="caisse-live-meta">' + fmtFcfa(p.prix) + ' FCFA HT · stock ' + esc(String(p.stock)) + '</span>' +
-                    '</div>' +
-                    '<form method="post" action="post.php" class="caisse-live-add">' +
+                    '<form method="post" action="post.php" class="caisse-live-add-form">' +
                     '<input type="hidden" name="csrf_token" value="' + esc(csrf) + '">' +
                     '<input type="hidden" name="caisse_action" value="add_product">' +
                     '<input type="hidden" name="produit_id" value="' + esc(String(p.id)) + '">' +
                     '<input type="hidden" name="quantite" value="1">' +
-                    '<button type="submit" class="btn-add-line"><i class="fas fa-plus"></i> Ajouter</button>' +
+                    '<button type="button" class="caisse-live-thumb" data-caisse-gallery="' + imgsAttr + '" title="Voir les photos">' +
+                            '<img src="' + escAttr(thumbSrc) + '" alt="" loading="lazy" width="56" height="56" onerror="this.src=\'' + placeholderImg + '\'">' +
+                    '</button>' +
+                    '<button type="submit" class="caisse-live-row-hit">' +
+                        '<span class="caisse-live-nom">' + esc(p.nom) + '</span>' + refCell +
+                        '<span class="caisse-live-meta">' + fmtFcfa(p.prix) + ' FCFA HT · stock ' + esc(String(p.stock)) + '</span>' +
+                        '<span class="caisse-live-hint-add">Cliquer pour ajouter au panier</span>' +
+                    '</button>' +
                     '</form></li>';
             }
             if (catalog.length >= 2500 && hits.length >= maxLive) {
@@ -767,14 +840,111 @@ if ($preview_recu !== null && $total_ttc > 0) {
             schedule();
         });
         selCat.addEventListener('change', renderLive);
+        if (marqueFilterOn) {
+            selMarque.addEventListener('change', renderLive);
+        }
         document.addEventListener('click', function(ev) {
             if (!box.hidden && !box.contains(ev.target) && ev.target !== inputQ && !selCat.contains(ev.target)) {
+                if (marqueFilterOn && selMarque.contains(ev.target)) {
+                    return;
+                }
                 var insideFields = ev.target.closest && ev.target.closest('.caisse-search-fields');
-                if (!insideFields && inputQ.value.trim() === '') {
+                var noTextQ = inputQ.value.trim() === '';
+                var noCat = !selCat.value;
+                var noMarque = !marqueFilterOn || !selMarque.value;
+                if (!insideFields && noTextQ && noCat && noMarque) {
                     box.innerHTML = '';
                     box.hidden = true;
                     box.classList.remove('is-empty');
                 }
+            }
+        });
+    })();
+    (function() {
+        var modal = document.getElementById('caisse-gallery-modal');
+        var imgEl = document.getElementById('caisseGalleryImg');
+        var counterEl = document.getElementById('caisseGalleryCounter');
+        var btnPrev = document.getElementById('caisseGalleryPrev');
+        var btnNext = document.getElementById('caisseGalleryNext');
+        if (!modal || !imgEl || !counterEl || !btnPrev || !btnNext) {
+            return;
+        }
+        var urls = [];
+        var idx = 0;
+        var placeholderImg = '/image/produit1.jpg';
+        function showSlide() {
+            if (!urls.length) {
+                return;
+            }
+            var u = urls[idx] || placeholderImg;
+            imgEl.src = u;
+            imgEl.alt = 'Photo ' + (idx + 1) + ' sur ' + urls.length;
+            counterEl.textContent = (idx + 1) + ' / ' + urls.length;
+            btnPrev.disabled = urls.length < 2;
+            btnNext.disabled = urls.length < 2;
+        }
+        function openGallery(list) {
+            urls = list && list.length ? list.slice() : [placeholderImg];
+            idx = 0;
+            modal.hidden = false;
+            document.body.style.overflow = 'hidden';
+            showSlide();
+            setTimeout(function() {
+                btnNext.focus();
+            }, 50);
+        }
+        function closeGallery() {
+            modal.hidden = true;
+            document.body.style.overflow = '';
+            imgEl.removeAttribute('src');
+        }
+        function step(d) {
+            if (urls.length < 2) {
+                return;
+            }
+            idx = (idx + d + urls.length) % urls.length;
+            showSlide();
+        }
+        document.addEventListener('click', function(ev) {
+            var btn = ev.target.closest && ev.target.closest('[data-caisse-gallery]');
+            if (!btn) {
+                return;
+            }
+            var raw = btn.getAttribute('data-caisse-gallery');
+            var list = [];
+            try {
+                list = JSON.parse(raw || '[]');
+            } catch (e) {
+                list = [];
+            }
+            if (!Array.isArray(list) || !list.length) {
+                list = [placeholderImg];
+            }
+            ev.preventDefault();
+            ev.stopPropagation();
+            openGallery(list);
+        });
+        modal.addEventListener('click', function(ev) {
+            if (ev.target.closest('[data-caisse-gallery-close]')) {
+                closeGallery();
+            }
+        });
+        btnPrev.addEventListener('click', function() {
+            step(-1);
+        });
+        btnNext.addEventListener('click', function() {
+            step(1);
+        });
+        document.addEventListener('keydown', function(ev) {
+            if (modal.hidden) {
+                return;
+            }
+            if (ev.key === 'Escape') {
+                closeGallery();
+            } else if (ev.key === 'ArrowLeft') {
+                step(-1);
+            } else if (ev.key === 'ArrowRight') {
+                step(1);
             }
         });
     })();

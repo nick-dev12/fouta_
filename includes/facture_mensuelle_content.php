@@ -62,10 +62,29 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
         }
 
         .facture-container {
-            max-width: 918px;
+            width: 210mm;
+            min-height: 297mm;
+            max-width: 210mm;
             margin: 0 auto;
             background: #fff;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .facture-sheet-body {
+            flex: 1 1 auto;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+
+        .facture-footer-wrapper {
+            margin-top: auto;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
         }
 
         .facture-banner-top {
@@ -112,7 +131,7 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
         }
 
         .facture-entreprise-info p {
-            font-size: 12px;
+            font-size: 10px;
             color: #666;
             margin-bottom: 4px;
         }
@@ -124,6 +143,9 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
 
         .facture-entreprise-info .tel {
             margin-top: 6px;
+            font-size: 10px;
+            color: #666;
+            line-height: 1.35;
         }
 
         .facture-meta {
@@ -214,7 +236,7 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
         .facture-table th {
             background: #3564a6;
             color: #fff;
-            font-size: 11px;
+            font-size: 12px;
             font-weight: 700;
             text-transform: uppercase;
             padding: 6px 10px;
@@ -272,12 +294,12 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
             display: flex;
             justify-content: space-between;
             padding: 8px 0;
-            font-size: 14px;
+            font-size: 13px;
         }
 
         .facture-summary .total {
             font-weight: 700;
-            font-size: 16px;
+            font-size: 13px;
             padding-top: 12px;
             border-top: 2px solid #3564a6;
             margin-top: 8px;
@@ -289,7 +311,7 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
             margin-top: 8px;
             border-radius: 6px;
             font-weight: 700;
-            font-size: 14px;
+            font-size: 13px;
         }
 
         .facture-summary .facture-footer-statut-paye {
@@ -306,6 +328,7 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
 
         .facture-summary .facture-row-tva {
             color: #4a4a4a;
+            font-size: 13px;
         }
 
         .facture-client-zone {
@@ -344,6 +367,33 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
             height: 20px;
             background: linear-gradient(135deg, rgba(53, 100, 166, 0.3) 0%, rgba(45, 86, 144, 0.2) 50%, rgba(53, 100, 166, 0.25) 100%);
             background-image: repeating-linear-gradient(-45deg, transparent, transparent 10px, rgba(53, 100, 166, 0.2) 10px, rgba(53, 100, 166, 0.2) 20px);
+        }
+
+        .facture-footer-entreprise {
+            padding: 16px 32px;
+            background: linear-gradient(135deg, rgba(53, 100, 166, 0.08) 0%, rgba(45, 86, 144, 0.05) 100%);
+            border-top: 2px solid #3564a6;
+            margin-top: 0;
+        }
+
+        .facture-footer-entreprise-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            font-size: 11px;
+            color: #444;
+            line-height: 1.5;
+        }
+
+        .facture-footer-entreprise-col {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .facture-footer-entreprise-col strong {
+            color: #3564a6;
+            font-weight: 700;
         }
 
         .facture-actions {
@@ -564,10 +614,17 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
             .facture-table th,
             .facture-table td {
                 padding: 4px 6px !important;
-                font-size: 10px !important;
                 word-wrap: break-word !important;
                 overflow-wrap: break-word !important;
                 hyphens: auto !important;
+            }
+
+            .facture-table th {
+                font-size: 11px !important;
+            }
+
+            .facture-table td {
+                font-size: 13px !important;
             }
 
             .facture-table th:nth-child(1),
@@ -663,7 +720,44 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
 
             @page {
                 size: A4 portrait;
-                margin: 10mm;
+                margin: 0 10mm;
+            }
+
+            .facture-sheet-body {
+                flex: 1 1 auto !important;
+                display: flex !important;
+                flex-direction: column !important;
+                min-height: 0 !important;
+            }
+
+            .facture-footer-wrapper {
+                margin-top: auto !important;
+                flex-shrink: 0 !important;
+                display: flex !important;
+                flex-direction: column !important;
+            }
+
+            .facture-footer-entreprise {
+                position: static !important;
+                padding: 10px 20px !important;
+                font-size: 9px !important;
+                background: #f8f9fa !important;
+                border-top: 1px solid #3564a6 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            .facture-footer-entreprise-grid {
+                font-size: 9px !important;
+            }
+
+            .facture-container {
+                width: 100% !important;
+                max-width: 100% !important;
+                min-height: 297mm !important;
+                display: flex !important;
+                flex-direction: column !important;
+                height: auto !important;
             }
         }
 
@@ -715,7 +809,11 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
             }
 
             .facture-entreprise-info p {
-                font-size: 11px;
+                font-size: 10px;
+            }
+
+            .facture-entreprise-info .tel {
+                font-size: 10px;
             }
 
             .facture-meta {
@@ -840,6 +938,7 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
     <?php endif; ?>
 
     <div class="facture-container">
+        <div class="facture-sheet-body">
         <div class="facture-banner-top"></div>
 
         <div class="facture-header">
@@ -1019,8 +1118,26 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
             <div class="facture-client-zone__title">Client</div>
         </div>
         <?php endif; ?>
+        </div>
 
-        <div class="facture-banner-bottom"></div>
+        <div class="facture-footer-wrapper">
+            <div class="facture-footer-entreprise">
+                <div class="facture-footer-entreprise-grid">
+                    <div class="facture-footer-entreprise-col">
+                        <div><strong>Siège Social :</strong> Rond-Point Zac Mbao</div>
+                        <div><strong>Succursale :</strong> 106, Rue Marsat x Blaise Diagne</div>
+                        <div><strong>RCCM :</strong> SN.DKR.2019.M.28414</div>
+                        <div><strong>NINEA :</strong> 006705654/2A2</div>
+                    </div>
+                    <div class="facture-footer-entreprise-col" style="text-align: right;">
+                        <div><strong>Banque :</strong> BOA</div>
+                        <div><strong>IBAN :</strong> SN 100 01026 002822180000 88</div>
+                        <div style="margin-top: 4px; font-style: italic; color: #3564a6;">Merci pour votre confiance</div>
+                    </div>
+                </div>
+            </div>
+            <div class="facture-banner-bottom"></div>
+        </div>
     </div>
 </body>
 

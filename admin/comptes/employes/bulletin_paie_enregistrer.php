@@ -89,7 +89,7 @@ foreach ($pct_codes as $pc) {
     }
     $pctv = (float) ($taux_cfg[$pc] ?? 0);
     if (bp_colonne_retenues_taux_disponible() && $pctv <= 0) {
-        $_SESSION['bp_flash_err'] = 'Paramètres bulletin : renseignez un taux supérieur à 0 % pour chaque retenue en pourcentage activée (TRIMF, IPRES RG, IPRES cadre, CSS).';
+        $_SESSION['bp_flash_err'] = 'Paramètres bulletin : renseignez un taux supérieur à 0 % pour chaque retenue en pourcentage activée (IPRES RG, IPRES cadre, CSS).';
         header('Location: details.php?id=' . $employe_id . '&tab=bp');
         exit;
     }
@@ -158,6 +158,16 @@ foreach ($ret_codes as $code) {
             'base_calcul' => 'fiche_employe',
         ];
         $montant_irpp_st = $m;
+        continue;
+    }
+    if ($code === 'trimf') {
+        $m = max(0.0, round((float) ($emp['montant_trimf_mensuel'] ?? 0), 2));
+        $retenues_detail[] = [
+            'code' => $code,
+            'label' => $lr[$code] ?? $code,
+            'montant' => $m,
+            'base_calcul' => 'fiche_employe',
+        ];
         continue;
     }
     if (in_array($code, $pct_codes, true)) {

@@ -31,6 +31,39 @@ function produits_has_column($name) {
 }
 
 /**
+ * URLs publiques /upload/... pour les images produit (JSON images ou image principale)
+ *
+ * @param array $p Ligne produit (champs image_principale, images)
+ * @return array<int, string>
+ */
+function produits_galerie_web_urls($p) {
+    $galerie = [];
+    if (!empty($p['images'])) {
+        $dec = json_decode((string) $p['images'], true);
+        if (is_array($dec)) {
+            foreach ($dec as $one) {
+                $one = trim((string) $one);
+                if ($one !== '') {
+                    $galerie[] = $one;
+                }
+            }
+        }
+    }
+    if (empty($galerie) && !empty($p['image_principale'])) {
+        $galerie = [trim((string) $p['image_principale'])];
+    }
+    $out = [];
+    foreach ($galerie as $rel) {
+        $rel = str_replace('\\', '/', $rel);
+        if ($rel === '') {
+            continue;
+        }
+        $out[] = '/upload/' . ltrim($rel, '/');
+    }
+    return $out;
+}
+
+/**
  * Génère le prochain identifiant interne FPLXXXXXX (6 chiffres)
  */
 function generate_next_identifiant_interne_produit() {
@@ -655,9 +688,10 @@ function count_search_produits($recherche)
  * @param string $tri Tri: 'date', 'prix_asc', 'prix_desc', 'nom' (défaut: date)
  * @param int $offset Décalage pour pagination
  * @param int $limit Nombre max de résultats
+ * @param int|null $marque_id Filtre marque (si colonne marque_id)
  * @return array Tableau des produits trouvés
  */
-function search_produits_with_filters($recherche = '', $prix_min = null, $prix_max = null, $categorie_id = null, $tri = 'date', $offset = 0, $limit = 50)
+function search_produits_with_filters($recherche = '', $prix_min = null, $prix_max = null, $categorie_id = null, $tri = 'date', $offset = 0, $limit = 50, $marque_id = null)
 {
     global $db;
 
@@ -695,6 +729,14 @@ function search_produits_with_filters($recherche = '', $prix_min = null, $prix_m
             $categorie_id = (int) $categorie_id;
             $conditions[] = "p.categorie_id = :categorie_id";
             $params['categorie_id'] = $categorie_id;
+        }
+
+        if ($marque_id !== null && $marque_id !== '' && function_exists('produits_has_column') && produits_has_column('marque_id')) {
+            $mid = (int) $marque_id;
+            if ($mid > 0) {
+                $conditions[] = 'p.marque_id = :marque_id';
+                $params['marque_id'] = $mid;
+            }
         }
 
         $order = "p.date_creation DESC";
@@ -737,7 +779,7 @@ function search_produits_with_filters($recherche = '', $prix_min = null, $prix_m
 /**
  * Compte les produits avec les mêmes filtres que search_produits_with_filters
  */
-function count_search_produits_with_filters($recherche = '', $prix_min = null, $prix_max = null, $categorie_id = null)
+function count_search_produits_with_filters($recherche = '', $prix_min = null, $prix_max = null, $categorie_id = null, $marque_id = null)
 {
     global $db;
 
@@ -775,6 +817,14 @@ function count_search_produits_with_filters($recherche = '', $prix_min = null, $
             $categorie_id = (int) $categorie_id;
             $conditions[] = "categorie_id = :categorie_id";
             $params['categorie_id'] = $categorie_id;
+        }
+
+        if ($marque_id !== null && $marque_id !== '' && function_exists('produits_has_column') && produits_has_column('marque_id')) {
+            $mid = (int) $marque_id;
+            if ($mid > 0) {
+                $conditions[] = 'marque_id = :marque_id';
+                $params['marque_id'] = $mid;
+            }
         }
 
         $where = implode(' AND ', $conditions);
@@ -1065,6 +1115,18 @@ function create_produit($data)
             $ief = $data['image_etiquette_fpl'] ?? null;
             $params['image_etiquette_fpl'] = ($ief !== null && $ief !== '') ? trim((string) $ief) : null;
         }
+        if (produits_has_column('marque_id')) {
+            $cols .= ", marque_id";
+            $vals .= ", :marque_id";
+            $mid = $data['marque_id'] ?? null;
+            $params['marque_id'] = ($mid !== null && (int) $mid > 0) ? (int) $mid : null;
+        }
+        if (produits_has_column('reference_fournisseur')) {
+            $cols .= ", reference_fournisseur";
+            $vals .= ", :reference_fournisseur";
+            $rf = $data['reference_fournisseur'] ?? null;
+            $params['reference_fournisseur'] = ($rf !== null && trim((string) $rf) !== '') ? trim((string) $rf) : null;
+        }
         $with_extras = isset($data['couleurs']) || isset($data['taille']);
         if ($with_extras) {
             $cols .= ", couleurs, taille";
@@ -1162,6 +1224,16 @@ function update_produit($id, $data)
             $sets .= ", image_etiquette_fpl = :image_etiquette_fpl";
             $ief = $data['image_etiquette_fpl'];
             $params['image_etiquette_fpl'] = ($ief !== null && $ief !== '') ? trim((string) $ief) : null;
+        }
+        if (produits_has_column('marque_id')) {
+            $sets .= ", marque_id = :marque_id";
+            $mid = $data['marque_id'] ?? null;
+            $params['marque_id'] = ($mid !== null && (int) $mid > 0) ? (int) $mid : null;
+        }
+        if (produits_has_column('reference_fournisseur')) {
+            $sets .= ", reference_fournisseur = :reference_fournisseur";
+            $rf = $data['reference_fournisseur'] ?? null;
+            $params['reference_fournisseur'] = ($rf !== null && trim((string) $rf) !== '') ? trim((string) $rf) : null;
         }
         if (produits_has_column('identifiant_interne') && array_key_exists('identifiant_interne', $data) && $data['identifiant_interne'] !== null && $data['identifiant_interne'] !== '') {
             $sets .= ", identifiant_interne = :identifiant_interne";

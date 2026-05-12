@@ -52,6 +52,7 @@ if (isset($result['success']) && $result['success']) {
 // Récupérer les catégories (stock géré via produits.stock)
 require_once __DIR__ . '/../../models/model_categories.php';
 require_once __DIR__ . '/../../models/model_fournisseurs.php';
+require_once __DIR__ . '/../../models/model_marques.php';
 require_once __DIR__ . '/../../models/model_sous_categories.php';
 $categories = get_all_categories();
 
@@ -66,6 +67,9 @@ $sous_categories_all = $has_sous_cat_col ? get_all_sous_categories_with_categori
 $sous_cat_preselect = isset($_GET['sous_categorie_id']) ? (int) $_GET['sous_categorie_id'] : 0;
 $has_ident_col = produits_has_column('identifiant_interne');
 $has_img_etiq_col = produits_has_column('image_etiquette_fpl');
+$has_marque_col = produits_has_column('marque_id');
+$has_ref_fourn_col = produits_has_column('reference_fournisseur');
+$marques_catalogue = ($has_marque_col && marques_table_ok()) ? get_all_marques_ordered_by_nom() : [];
 
 $sous_cat_form_val = 0;
 if ($has_sous_cat_col) {
@@ -111,6 +115,20 @@ if (!empty($produit['fournisseur_id'])) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && array_key_exists('fournisseur_id', $_POST)) {
     $v = trim((string) $_POST['fournisseur_id']);
     $fournisseur_id_form_val = $v === '' ? '' : (string) (int) $v;
+}
+
+$marque_id_form_val = '';
+if (!empty($produit['marque_id'])) {
+    $marque_id_form_val = (string) (int) $produit['marque_id'];
+}
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && array_key_exists('marque_id', $_POST)) {
+    $v = trim((string) $_POST['marque_id']);
+    $marque_id_form_val = $v === '' ? '' : (string) (int) $v;
+}
+
+$reference_fournisseur_form_val = trim((string) ($produit['reference_fournisseur'] ?? ''));
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && array_key_exists('reference_fournisseur', $_POST)) {
+    $reference_fournisseur_form_val = trim((string) $_POST['reference_fournisseur']);
 }
 
 $statut_form_val = in_array($produit['statut'] ?? '', ['actif', 'inactif', 'rupture_stock'], true)
@@ -213,6 +231,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
                 </p>
                 <?php endif; ?>
             </div>
+            <?php if ($has_marque_col || $has_ref_fourn_col): ?>
+            <div class="form-row">
+                <?php if ($has_marque_col): ?>
+                <div class="form-group">
+                    <label for="marque_id">Marque</label>
+                    <select id="marque_id" name="marque_id">
+                        <option value="">— Aucune —</option>
+                        <?php foreach ($marques_catalogue as $mq): ?>
+                        <option value="<?php echo (int) $mq['id']; ?>" <?php echo ((string) $marque_id_form_val !== '' && (string) $marque_id_form_val === (string) $mq['id']) ? 'selected' : ''; ?>>
+                            <?php echo htmlspecialchars($mq['nom']); ?>
+                        </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <small class="form-hint"><a href="../parametres/logos.php?tab=marques">Paramètres → Marques</a><?php echo empty($marques_catalogue) ? ' (liste vide).' : ''; ?></small>
+                </div>
+                <?php endif; ?>
+                <?php if ($has_ref_fourn_col): ?>
+                <div class="form-group">
+                    <label for="reference_fournisseur">Référence fournisseur</label>
+                    <input type="text" id="reference_fournisseur" name="reference_fournisseur" maxlength="120"
+                        placeholder="Code ou réf. chez le fournisseur"
+                        value="<?php echo htmlspecialchars($reference_fournisseur_form_val, ENT_QUOTES, 'UTF-8'); ?>">
+                </div>
+                <?php endif; ?>
+            </div>
+            <?php endif; ?>
                 </div>
             </section>
 

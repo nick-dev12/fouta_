@@ -73,13 +73,13 @@ function create_employe($data) {
             INSERT INTO employes (
                 nom, prenom, email, telephone, poste, service, date_embauche, statut, notes,
                 statut_familial, type_contrat, contrat_pdf_chemin,
-                salaire_base, montant_irpp_mensuel, categorie_paie,
+                salaire_base, montant_irpp_mensuel, montant_trimf_mensuel, categorie_paie,
                 admin_id, date_creation
             )
             VALUES (
                 :nom, :prenom, :email, :telephone, :poste, :service, :date_embauche, :statut, :notes,
                 :statut_familial, :type_contrat, :contrat_pdf_chemin,
-                :salaire_base, :montant_irpp_mensuel, :categorie_paie,
+                :salaire_base, :montant_irpp_mensuel, :montant_trimf_mensuel, :categorie_paie,
                 :admin_id, NOW()
             )
         ');
@@ -98,6 +98,7 @@ function create_employe($data) {
             'contrat_pdf_chemin' => array_key_exists('contrat_pdf_chemin', $data) ? $data['contrat_pdf_chemin'] : null,
             'salaire_base' => array_key_exists('salaire_base', $data) ? $data['salaire_base'] : null,
             'montant_irpp_mensuel' => array_key_exists('montant_irpp_mensuel', $data) ? $data['montant_irpp_mensuel'] : null,
+            'montant_trimf_mensuel' => array_key_exists('montant_trimf_mensuel', $data) ? $data['montant_trimf_mensuel'] : null,
             'categorie_paie' => array_key_exists('categorie_paie', $data) ? $data['categorie_paie'] : null,
             'admin_id' => !empty($data['admin_id']) ? (int) $data['admin_id'] : null,
         ]);
@@ -119,7 +120,7 @@ function update_employe($id, $data) {
                 poste = :poste, service = :service, date_embauche = :date_embauche,
                 statut = :statut, notes = :notes,
                 statut_familial = :statut_familial, type_contrat = :type_contrat, contrat_pdf_chemin = :contrat_pdf_chemin,
-                salaire_base = :salaire_base, montant_irpp_mensuel = :montant_irpp_mensuel, categorie_paie = :categorie_paie,
+                salaire_base = :salaire_base, montant_irpp_mensuel = :montant_irpp_mensuel, montant_trimf_mensuel = :montant_trimf_mensuel, categorie_paie = :categorie_paie,
                 admin_id = :admin_id, date_modification = NOW()
             WHERE id = :id
         ');
@@ -139,6 +140,7 @@ function update_employe($id, $data) {
             'contrat_pdf_chemin' => array_key_exists('contrat_pdf_chemin', $data) ? $data['contrat_pdf_chemin'] : null,
             'salaire_base' => array_key_exists('salaire_base', $data) ? $data['salaire_base'] : null,
             'montant_irpp_mensuel' => array_key_exists('montant_irpp_mensuel', $data) ? $data['montant_irpp_mensuel'] : null,
+            'montant_trimf_mensuel' => array_key_exists('montant_trimf_mensuel', $data) ? $data['montant_trimf_mensuel'] : null,
             'categorie_paie' => array_key_exists('categorie_paie', $data) ? $data['categorie_paie'] : null,
             'admin_id' => !empty($data['admin_id']) ? (int) $data['admin_id'] : null,
         ]);

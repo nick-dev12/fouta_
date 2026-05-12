@@ -119,9 +119,9 @@ $msg_whatsapp = "Bonjour " . $client_nom . ",\n\n"
 $whatsapp_url = !empty($tel_whatsapp) ? 'https://wa.me/' . $tel_whatsapp . '?text=' . urlencode($msg_whatsapp) : '';
 
 $entreprise_nom = 'FOUTA POIDS LOURDS';
-$entreprise_rc = 'SN.DKR.2022.A.702';
-$entreprise_ninea = '009116684';
-$entreprise_adresse = 'Rond point Zack Mbao, Dakar';
+$entreprise_rc = 'SN.DKR.2019.M.28414';
+$entreprise_ninea = '006705654/2A2';
+$entreprise_adresse = 'Rond-Point Zac Mbao, Dakar';
 $entreprise_tel1 = '338700070';
 $entreprise_tel2 = '';
 $entreprise_site = 'https://www.foutapoidslourds.com';

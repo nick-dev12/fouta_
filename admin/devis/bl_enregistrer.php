@@ -71,8 +71,6 @@ if (!empty($_POST['lignes']) && is_array($_POST['lignes'])) {
 $erreur = null;
 if ($client_nom === '') {
     $erreur = 'Le nom du client est requis.';
-} elseif ($client_prenom === '') {
-    $erreur = 'Le prénom du client est requis.';
 } elseif ($client_telephone === '') {
     $erreur = 'Le téléphone du client est requis.';
 } elseif (empty($items)) {
@@ -108,6 +106,7 @@ ensure_contact_from_bl(
 
 $contact_row = get_contact_by_telephone($client_telephone);
 $type_depuis_contact = $contact_row ? contacts_normalize_type_bl($contact_row['type_client_bl'] ?? 'standard') : 'standard';
+$plafond_contact_ht = $contact_row ? (float) ($contact_row['plafond_bl_cumul_ht'] ?? 0) : 0.0;
 
 $client = find_client_b2b_by_telephone($client_telephone);
 if (!$client) {
@@ -160,8 +159,7 @@ if ($frais_livraison > 0) {
 }
 
 $total_bl_ht = bl_totaux_ht_lignes_manuel($lignes);
-$code_type_client = (($client['type_client_bl'] ?? '') === 'vip') ? 'vip' : 'standard';
-$verif_plafond = pct_verifier_bl_montant_autorise((int) $client['id'], $code_type_client, $total_bl_ht);
+$verif_plafond = pct_verifier_bl_montant_autorise((int) $client['id'], $plafond_contact_ht, $total_bl_ht);
 if (empty($verif_plafond['ok'])) {
     $_SESSION['bl_erreur'] = $verif_plafond['message'] ?? 'Plafond BL dépassé.';
     $_SESSION['bl_post'] = $_POST;

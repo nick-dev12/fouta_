@@ -1,28 +1,8 @@
 <?php
 /**
- * Paramètres plafond BL par type client (Standard / VIP) + vérifications cumul.
+ * Vérification du plafond BL cumulé HT (montant défini par contact, plus de table globale).
  */
 require_once __DIR__ . '/../conn/conn.php';
-
-function pct_types_client_bl_tables_available()
-{
-    global $db;
-    static $ok = null;
-    if ($ok !== null) {
-        return $ok;
-    }
-    if (!$db) {
-        $ok = false;
-        return false;
-    }
-    try {
-        $db->query('SELECT 1 FROM parametres_types_client_bl LIMIT 1');
-        $ok = true;
-    } catch (PDOException $e) {
-        $ok = false;
-    }
-    return $ok;
-}
 
 function pct_label_type($code)
 {
@@ -31,83 +11,6 @@ function pct_label_type($code)
         return 'VIP';
     }
     return 'Standard';
-}
-
-/**
- * Plafond : 0 ou NULL = pas de limite (cumul non borné)
- */
-function pct_get_plafond_bl($code_type)
-{
-    global $db;
-    if (!pct_types_client_bl_tables_available()) {
-        return null;
-    }
-    $code = ($code_type === 'vip') ? 'vip' : 'standard';
-    try {
-        $stmt = $db->prepare('SELECT montant_plafond_ht FROM parametres_types_client_bl WHERE code_type = :c');
-        $stmt->execute(['c' => $code]);
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        if (!$row) {
-            return 0;
-        }
-        return (float) ($row['montant_plafond_ht'] ?? 0);
-    } catch (PDOException $e) {
-        return null;
-    }
-}
-
-function pct_get_all_plafonds()
-{
-    global $db;
-    if (!pct_types_client_bl_tables_available()) {
-        return ['standard' => 0, 'vip' => 0];
-    }
-    try {
-        $stmt = $db->query('SELECT code_type, montant_plafond_ht FROM parametres_types_client_bl');
-        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
-        $out = ['standard' => 0, 'vip' => 0];
-        foreach ($rows as $r) {
-            $k = ($r['code_type'] === 'vip') ? 'vip' : 'standard';
-            $out[$k] = (float) ($r['montant_plafond_ht'] ?? 0);
-        }
-        return $out;
-    } catch (PDOException $e) {
-        return ['standard' => 0, 'vip' => 0];
-    }
-}
-
-/**
- * @return bool succès
- */
-function pct_upsert_plafond($code_type, $montant)
-{
-    global $db;
-    if (!pct_types_client_bl_tables_available()) {
-        return false;
-    }
-    $code = ($code_type === 'vip') ? 'vip' : 'standard';
-    $montant = max(0, (float) $montant);
-    try {
-        $stmt = $db->prepare('
-            INSERT INTO parametres_types_client_bl (code_type, montant_plafond_ht)
-            VALUES (:c, :m)
-            ON DUPLICATE KEY UPDATE montant_plafond_ht = VALUES(montant_plafond_ht), date_modification = NOW()
-        ');
-        return $stmt->execute(['c' => $code, 'm' => round($montant, 2)]);
-    } catch (PDOException $e) {
-        error_log('[pct_upsert_plafond] ' . $e->getMessage());
-        return false;
-    }
-}
-
-/**
- * Remettre un type sans plafond (même effet que montant = 0).
- *
- * @return bool succès
- */
-function pct_reinitialiser_plafond_type_bl($code_type)
-{
-    return pct_upsert_plafond($code_type, 0);
 }
 
 /**
@@ -131,14 +34,16 @@ function pct_somme_totaux_bl_client_b2b($client_b2b_id)
 }
 
 /**
- * Vérifie si cumul actuel + nouveau BL dépasse le plafond pour le type donné
+ * Vérifie si cumul actuel + nouveau BL dépasse le plafond du contact.
+ *
+ * @param float $montant_plafond_ht plafond depuis la fiche contact (0 = pas de limite)
  *
  * @return array{ok:bool,message:string,cumul:float,plafond:float|null,reste:float|null}
  */
-function pct_verifier_bl_montant_autorise($client_b2b_id, $code_type, $montant_nouveau_bl)
+function pct_verifier_bl_montant_autorise($client_b2b_id, $montant_plafond_ht, $montant_nouveau_bl)
 {
-    $plafond = pct_get_plafond_bl($code_type);
-    if ($plafond === null || $plafond <= 0) {
+    $plafond = round(max(0, (float) $montant_plafond_ht), 2);
+    if ($plafond <= 0) {
         return [
             'ok' => true,
             'message' => '',
@@ -150,16 +55,16 @@ function pct_verifier_bl_montant_autorise($client_b2b_id, $code_type, $montant_n
     $cumul = pct_somme_totaux_bl_client_b2b((int) $client_b2b_id);
     $nouveau = (float) $montant_nouveau_bl;
     $apres = round($cumul + $nouveau, 2);
-    $plaf = round($plafond, 2);
+    $plaf = $plafond;
     if ($apres > $plaf + 0.000001) {
-        $label = pct_label_type($code_type);
         return [
             'ok' => false,
-            'message' => 'Plafond BL pour les clients « ' . $label . ' » dépassé : cumul actuel ' . number_format($cumul, 0, ',', ' ')
+            'message' => 'Plafond BL dépassé pour ce client : cumul actuel '
+                . number_format($cumul, 0, ',', ' ')
                 . ' FCFA + ce BL ' . number_format($nouveau, 0, ',', ' ')
                 . ' FCFA = ' . number_format($apres, 0, ',', ' ')
                 . ' FCFA, maximum autorisé ' . number_format($plaf, 0, ',', ' ')
-                . ' FCFA. Augmentez le plafond dans Paramètres ou changez le type du client.',
+                . ' FCFA (montant défini sur la fiche contact dans Contacts).',
             'cumul' => $cumul,
             'plafond' => $plafond,
             'reste' => max(0, round($plaf - $cumul, 2)),
