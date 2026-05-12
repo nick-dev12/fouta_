@@ -32,7 +32,8 @@ if ($annee_opt === null || $mois_opt === null || $annee_opt < 2000 || $annee_opt
     $mois_opt = null;
 }
 
-$result = generer_ou_maj_facture_mensuelle($client_b2b_id, (int) ($_SESSION['admin_id'] ?? 0), $annee_opt, $mois_opt);
+$tva_incl = isset($_GET['inclure_tva']) && (string) $_GET['inclure_tva'] === '1';
+$result = generer_ou_maj_facture_mensuelle($client_b2b_id, (int) ($_SESSION['admin_id'] ?? 0), $annee_opt, $mois_opt, $tva_incl);
 
 if (!empty($result['success']) && !empty($result['facture_mensuelle_id'])) {
     header('Location: facture_mensuelle.php?id=' . (int) $result['facture_mensuelle_id']);

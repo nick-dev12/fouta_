@@ -11,11 +11,16 @@
  * $facture_bl_statut_libelle (string, optionnel): statut du BL (ex. facture BL)
  * $facture_bl_statut_code (string, optionnel): brouillon | valide (ou ancien paye) — couleur du libellé
  * $facture_show_client_zone (bool, optionnel): zone réservée au client en bas de page (signature)
+ * $facture_recap_label_ht_decomp (string, optionnel): libellé ligne « base HT » lorsque TVA non en sus (ex. TOTAL BL, TOTAL DEVIS)
  */
 $adresse_livraison = $adresse_livraison ?? '';
+$adresse_client_display = isset($adresse_client_display) ? trim((string) $adresse_client_display) : trim((string) ($commande['adresse_client'] ?? ''));
 $facture_bl_statut_libelle = isset($facture_bl_statut_libelle) ? (string) $facture_bl_statut_libelle : '';
 $facture_bl_statut_code = isset($facture_bl_statut_code) ? (string) $facture_bl_statut_code : '';
 $facture_show_client_zone = !empty($facture_show_client_zone);
+$facture_recap_label_ht_decomp = isset($facture_recap_label_ht_decomp) && (string) $facture_recap_label_ht_decomp !== ''
+    ? (string) $facture_recap_label_ht_decomp
+    : (!empty($facture_bl_statut_libelle) ? 'TOTAL BL' : 'TOTAL');
 $facture_bl_meta_color = '#2d5690';
 if ($facture_bl_statut_libelle !== '') {
     if (in_array($facture_bl_statut_code, ['valide', 'paye'], true)) {
@@ -41,14 +46,23 @@ $facture_page_flash_error = isset($facture_page_flash_error) ? (string) $facture
 require_once __DIR__ . '/site_url.php';
 require_once __DIR__ . '/fiscal_tva.php';
 $facture_tva_incluse = isset($facture_tva_incluse) ? (bool) $facture_tva_incluse : (!empty($facture['tva_incluse']));
-$facture_fiscal_ht = isset($facture_fiscal_ht) ? $facture_fiscal_ht : ($facture['montant_ht'] ?? null);
-$facture_fiscal_ht = ($facture_fiscal_ht !== null && $facture_fiscal_ht !== '') ? (float) $facture_fiscal_ht : null;
-$facture_fiscal_tva = isset($facture_fiscal_tva) ? $facture_fiscal_tva : ($facture['montant_tva'] ?? null);
-$facture_fiscal_tva = ($facture_fiscal_tva !== null && $facture_fiscal_tva !== '') ? (float) $facture_fiscal_tva : null;
 $facture_fiscal_taux = isset($facture_fiscal_taux) && (float) $facture_fiscal_taux > 0
     ? (float) $facture_fiscal_taux
     : ((isset($facture['taux_tva_pourcent']) && (float) $facture['taux_tva_pourcent'] > 0) ? (float) $facture['taux_tva_pourcent'] : fiscal_taux_tva_pourcent());
-$facture_afficher_detail_tva = $facture_tva_incluse && $facture_fiscal_ht !== null && $facture_fiscal_tva !== null;
+
+if (!$facture_tva_incluse) {
+    $montant_payer = round((float) ($facture['montant_total'] ?? 0), 2);
+    $d_inc = fiscal_decomposer_montant_ttc_inclus($montant_payer, $facture_fiscal_taux);
+    $facture_fiscal_ht = $d_inc['montant_ht'];
+    $facture_fiscal_tva = $d_inc['montant_tva'];
+    $facture_afficher_detail_tva = ($facture_fiscal_taux > 0 && $montant_payer > 0);
+} else {
+    $facture_fiscal_ht = isset($facture_fiscal_ht) ? $facture_fiscal_ht : ($facture['montant_ht'] ?? null);
+    $facture_fiscal_ht = ($facture_fiscal_ht !== null && $facture_fiscal_ht !== '') ? (float) $facture_fiscal_ht : null;
+    $facture_fiscal_tva = isset($facture_fiscal_tva) ? $facture_fiscal_tva : ($facture['montant_tva'] ?? null);
+    $facture_fiscal_tva = ($facture_fiscal_tva !== null && $facture_fiscal_tva !== '') ? (float) $facture_fiscal_tva : null;
+    $facture_afficher_detail_tva = $facture_fiscal_ht !== null && $facture_fiscal_tva !== null;
+}
 $facture_og_title = 'Facture ' . htmlspecialchars($facture_numero_affichage) . ' - FOUTA POIDS LOURDS';
 $facture_og_desc = 'Facture FOUTA POIDS LOURDS - ' . ($entreprise_nom ?? 'FOUTA POIDS LOURDS') . ' - Montant : ' . number_format($facture['montant_total'] ?? 0, 0, ',', ' ') . ' CFA';
 $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
@@ -377,6 +391,18 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
             border-radius: 6px;
             font-weight: 700;
             font-size: 14px;
+        }
+
+            margin-top: 6px;
+        }
+
+        .facture-adresse-client .facture-addr-label {
+            font-size: 10px;
+            font-weight: 700;
+            color: #888;
+            text-transform: uppercase;
+            display: block;
+            margin-bottom: 2px;
         }
 
         .facture-client-zone {
@@ -847,6 +873,12 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
             <div class="client-tel"><i class="fas fa-phone"
                     style="font-size:11px; margin-right:4px;"></i><?php echo htmlspecialchars($client_telephone); ?>
             </div>
+            <?php if ($adresse_client_display !== ''): ?>
+                <div class="adresse-livraison facture-adresse-client">
+                    <span class="facture-addr-label">Adresse du client</span>
+                    <span><i class="fas fa-building" style="font-size:11px; margin-right:4px;"></i><?php echo nl2br(htmlspecialchars($adresse_client_display)); ?></span>
+                </div>
+            <?php endif; ?>
             <?php if (!empty($adresse_livraison)): ?>
                 <div class="adresse-livraison"><i class="fas fa-map-marker-alt"
                         style="font-size:11px; margin-right:4px;"></i><?php echo nl2br(htmlspecialchars($adresse_livraison)); ?>
@@ -883,7 +915,6 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
         <div class="facture-footer-section">
             <div class="facture-payment">
                 <h3>Information De Paiement</h3>
-                <p>AUTRE</p>
                 <p><?php echo nl2br(htmlspecialchars($commande['notes'] ?? '—')); ?></p>
             </div>
             <div class="facture-summary">
@@ -895,28 +926,39 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
                 $frais_livraison = (float) ($commande['frais_livraison'] ?? 0);
                 ?>
                 <?php if ($facture_afficher_detail_tva): ?>
-                <div class="row">
-                    <span>SOUS-TOTAL PRODUITS (HT)</span>
-                    <span><?php echo number_format($sous_total_produits, 2, ',', ' '); ?> CFA</span>
-                </div>
                 <?php if ($frais_livraison > 0): ?>
                 <div class="row">
                     <span>FRAIS DE LIVRAISON (HT)</span>
                     <span><?php echo number_format($frais_livraison, 2, ',', ' '); ?> CFA</span>
                 </div>
                 <?php endif; ?>
+                <?php if ($facture_tva_incluse): ?>
                 <div class="row">
                     <span>TOTAL HT</span>
                     <span><?php echo number_format($facture_fiscal_ht, 2, ',', ' '); ?> CFA</span>
                 </div>
                 <div class="row facture-row-tva">
-                    <span>TVA (<?php echo number_format($facture_fiscal_taux, 2, ',', ' '); ?> %)</span>
+                    <span>TVA <?php echo number_format($facture_fiscal_taux, 2, ',', ' '); ?>%</span>
                     <span><?php echo number_format($facture_fiscal_tva, 2, ',', ' '); ?> CFA</span>
                 </div>
                 <div class="row">
                     <span>TOTAL TTC</span>
                     <span><?php echo number_format($facture['montant_total'], 2, ',', ' '); ?> CFA</span>
                 </div>
+                <?php else: ?>
+                <div class="row">
+                    <span><?php echo htmlspecialchars($facture_recap_label_ht_decomp); ?></span>
+                    <span><?php echo number_format($facture_fiscal_ht, 2, ',', ' '); ?> CFA</span>
+                </div>
+                <div class="row facture-row-tva">
+                    <span>TVA <?php echo number_format($facture_fiscal_taux, 2, ',', ' '); ?>%</span>
+                    <span><?php echo number_format($facture_fiscal_tva, 2, ',', ' '); ?> CFA</span>
+                </div>
+                <div class="row">
+                    <span>TOTAL TTC</span>
+                    <span><?php echo number_format($facture['montant_total'], 2, ',', ' '); ?> CFA</span>
+                </div>
+                <?php endif; ?>
                 <?php else: ?>
                 <?php if ($frais_livraison > 0): ?>
                 <div class="row">

@@ -12,13 +12,13 @@ require_once __DIR__ . '/../includes/require_access.php';
 
 
 require_once __DIR__ . '/../../includes/admin_permissions.php';
-if (!admin_can_devis_bl()) {
+if (!admin_can_devis()) {
     header('Location: ../dashboard.php');
     exit;
 }
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: index.php');
+    header('Location: devis.php');
     exit;
 }
 
@@ -26,7 +26,7 @@ $token = $_POST['csrf_token'] ?? '';
 $expected = $_SESSION['admin_csrf'] ?? '';
 if ($token === '' || !hash_equals((string) $expected, (string) $token)) {
     $_SESSION['error_devis'] = 'Session expirée. Réessayez.';
-    header('Location: index.php');
+    header('Location: devis.php');
     exit;
 }
 
@@ -39,5 +39,5 @@ if ($devis_id > 0 && delete_devis($devis_id)) {
     $_SESSION['error_devis'] = 'Suppression impossible (devis introuvable, déjà facturé ou statut différent de brouillon).';
 }
 
-header('Location: index.php');
+header('Location: devis.php');
 exit;

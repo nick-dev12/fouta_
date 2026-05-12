@@ -2,7 +2,7 @@
 /**
  * Facture mensuelle HT (B2B — regroupement de bons de livraison)
  * Variables attendues :
- *   $facture (numero_facture, montant_total = total HT)
+ *   $facture (numero_facture, montant_total, tva_incluse, montant_ht, montant_tva, taux_tva_pourcent)
  *   $detail_bls : array de [ 'bl' => row BL, 'lignes' => lignes bl_lignes ]
  *   $periode_label (ex. "mars 2026"), $statut_fm_label (ex. "Brouillon")
  *   $client_nom, $client_telephone, $adresse_livraison
@@ -18,10 +18,17 @@ $facture_show_client_zone = !empty($facture_show_client_zone);
 $fm_statut = isset($fm_statut) ? (string) $fm_statut : '';
 $fm_affiche_comme_reglee = ($fm_statut === 'payee');
 $fm_show_marquer_paye = !empty($fm_show_marquer_paye);
-$notes_facture = $notes_facture ?? 'Montants exprimés en HT (hors TVA), conformément aux bons de livraison référencés.';
 $detail_bls = isset($detail_bls) && is_array($detail_bls) ? $detail_bls : [];
 $fm_flash_success = $fm_flash_success ?? null;
 require_once __DIR__ . '/site_url.php';
+require_once __DIR__ . '/fiscal_tva.php';
+$fm_tva_incl = !empty($facture['tva_incluse']);
+$fm_taux = isset($facture['taux_tva_pourcent']) && (float) $facture['taux_tva_pourcent'] > 0
+    ? (float) $facture['taux_tva_pourcent'] : fiscal_taux_tva_pourcent();
+$fm_montant_total = (float) ($facture['montant_total'] ?? 0);
+$fm_fiscal_ht = (float) ($facture['montant_ht'] ?? 0);
+$fm_fiscal_tva = (float) ($facture['montant_tva'] ?? 0);
+$fm_afficher_detail_tva = ($fm_taux > 0 && $fm_montant_total > 0);
 $facture_og_title = 'Facture ' . htmlspecialchars($facture['numero_facture'] ?? '') . ' - FOUTA POIDS LOURDS';
 $facture_og_desc = 'Facture FOUTA POIDS LOURDS - ' . ($entreprise_nom ?? 'FOUTA POIDS LOURDS') . ' - Montant : ' . number_format($facture['montant_total'] ?? 0, 0, ',', ' ') . ' CFA';
 $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
@@ -295,6 +302,10 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
         .facture-summary .facture-footer-statut-paye span {
             text-align: center;
             width: 100%;
+        }
+
+        .facture-summary .facture-row-tva {
+            color: #4a4a4a;
         }
 
         .facture-client-zone {
@@ -891,9 +902,9 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
                         <?php endif; ?>
                     </div>
                 <?php endif; ?>
-                <div class="facture-meta-kv facture-meta-kv--total">
-                    <div class="label">TOTAL HT</div>
-                    <div class="solde">XOF <?php echo number_format($facture['montant_total'], 2, ',', ' '); ?> CFA</div>
+                    <div class="facture-meta-kv facture-meta-kv--total">
+                    <div class="label"><?php echo $fm_tva_incl ? 'TOTAL TTC' : 'TOTAL À PAYER (TTC)'; ?></div>
+                    <div class="solde">XOF <?php echo number_format($fm_montant_total, 2, ',', ' '); ?> CFA</div>
                 </div>
             </div>
         </div>
@@ -954,18 +965,46 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
         <div class="facture-footer-section">
             <div class="facture-payment">
                 <h3>Information de paiement</h3>
-                <p>Facturation professionnelle HT</p>
-                <p><?php echo nl2br(htmlspecialchars($notes_facture)); ?></p>
             </div>
             <div class="facture-summary">
-                <div class="row total">
+                <?php if ($fm_afficher_detail_tva): ?>
+                <?php if ($fm_tva_incl): ?>
+                <div class="row">
                     <span>TOTAL HT</span>
-                    <span><?php echo number_format($facture['montant_total'], 2, ',', ' '); ?> CFA</span>
+                    <span><?php echo number_format($fm_fiscal_ht, 2, ',', ' '); ?> CFA</span>
                 </div>
+                <div class="row facture-row-tva">
+                    <span>TVA <?php echo number_format($fm_taux, 2, ',', ' '); ?>%</span>
+                    <span><?php echo number_format($fm_fiscal_tva, 2, ',', ' '); ?> CFA</span>
+                </div>
+                <div class="row total">
+                    <span>TOTAL TTC</span>
+                    <span><?php echo number_format($fm_montant_total, 2, ',', ' '); ?> CFA</span>
+                </div>
+                <?php else: ?>
+                <div class="row">
+                    <span>TOTAL BL</span>
+                    <span><?php echo number_format($fm_fiscal_ht, 2, ',', ' '); ?> CFA</span>
+                </div>
+                <div class="row facture-row-tva">
+                    <span>TVA <?php echo number_format($fm_taux, 2, ',', ' '); ?>%</span>
+                    <span><?php echo number_format($fm_fiscal_tva, 2, ',', ' '); ?> CFA</span>
+                </div>
+                <div class="row total">
+                    <span>TOTAL TTC</span>
+                    <span><?php echo number_format($fm_montant_total, 2, ',', ' '); ?> CFA</span>
+                </div>
+                <?php endif; ?>
+                <?php else: ?>
+                <div class="row total">
+                    <span>TOTAL</span>
+                    <span><?php echo number_format($fm_montant_total, 2, ',', ' '); ?> CFA</span>
+                </div>
+                <?php endif; ?>
                 <?php if (!$fm_affiche_comme_reglee): ?>
                 <div class="row solde-row">
-                    <span>MONTANT HT À RÉGLER</span>
-                    <span>XOF <?php echo number_format($facture['montant_total'], 2, ',', ' '); ?> CFA</span>
+                    <span>MONTANT À RÉGLER</span>
+                    <span>XOF <?php echo number_format($fm_montant_total, 2, ',', ' '); ?> CFA</span>
                 </div>
                 <?php else: ?>
                 <div class="row solde-row solde-row--paye facture-footer-statut-paye">

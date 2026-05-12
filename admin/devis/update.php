@@ -12,13 +12,13 @@ require_once __DIR__ . '/../includes/require_access.php';
 
 
 require_once __DIR__ . '/../../includes/admin_permissions.php';
-if (!admin_can_devis_bl()) {
+if (!admin_can_devis()) {
     header('Location: ../dashboard.php');
     exit;
 }
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: index.php');
+    header('Location: devis.php');
     exit;
 }
 
@@ -27,13 +27,13 @@ $expected = $_SESSION['admin_csrf'] ?? '';
 if ($token === '' || !hash_equals((string) $expected, (string) $token)) {
     $_SESSION['devis_erreur'] = 'Session expirée. Réessayez.';
     $rid = isset($_POST['devis_id']) ? (int) $_POST['devis_id'] : 0;
-    header('Location: ' . ($rid > 0 ? 'modifier.php?id=' . $rid : 'index.php'));
+    header('Location: ' . ($rid > 0 ? 'modifier.php?id=' . $rid : 'devis.php'));
     exit;
 }
 
 $devis_id = isset($_POST['devis_id']) ? (int) $_POST['devis_id'] : 0;
 if ($devis_id <= 0) {
-    header('Location: index.php');
+    header('Location: devis.php');
     exit;
 }
 
@@ -50,6 +50,7 @@ $client_nom = trim($_POST['client_nom'] ?? '');
 $client_prenom = trim($_POST['client_prenom'] ?? '');
 $client_telephone = trim($_POST['client_telephone'] ?? '');
 $client_email = trim($_POST['client_email'] ?? '');
+$adresse_client = trim($_POST['adresse_client'] ?? '');
 $adresse_livraison = trim($_POST['adresse_livraison'] ?? '');
 $notes = trim($_POST['notes'] ?? '');
 $zone_livraison_id = isset($_POST['zone_livraison_id']) && $_POST['zone_livraison_id'] !== '' && $_POST['zone_livraison_id'] !== 'custom'
@@ -97,6 +98,7 @@ $infos = [
     'client_prenom' => $client_prenom,
     'client_telephone' => $client_telephone,
     'client_email' => $client_email,
+    'adresse_client' => $adresse_client,
     'adresse_livraison' => $adresse_livraison,
     'zone_livraison_id' => $zone_livraison_id,
     'frais_livraison' => $frais_livraison,

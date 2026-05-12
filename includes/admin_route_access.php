@@ -29,6 +29,25 @@ if (!function_exists('admin_route_relative_path')) {
     }
 
     /**
+     * Scripts sous admin/devis/ autorisés pour le rôle « commercial » (devis uniquement, pas BL/BR).
+     */
+    function admin_route_commercial_devis_scripts() {
+        return [
+            'devis/devis.php',
+            'devis/create.php',
+            'devis/details.php',
+            'devis/modifier.php',
+            'devis/update.php',
+            'devis/supprimer_devis.php',
+            'devis/generer_facture.php',
+            'devis/facture.php',
+            'devis/devis_par_client.php',
+            'devis/ajax_search_produits.php',
+            'devis/ajax_search_clients.php',
+        ];
+    }
+
+    /**
      * URL de secours (relative à admin/) si la route est interdite
      */
     function admin_role_default_redirect_path($role) {
@@ -109,6 +128,9 @@ if (!function_exists('admin_route_relative_path')) {
                     || $starts('commercial/');
 
             case 'commercial':
+                if (in_array($p, admin_route_commercial_devis_scripts(), true)) {
+                    return true;
+                }
                 return $starts('commandes/')
                     || $starts('caisse/')
                     || $starts('commercial/');

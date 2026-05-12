@@ -20,6 +20,28 @@ function factures_mensuelles_table_ok() {
 }
 
 /**
+ * Colonne tva_incluse (migration add_factures_mensuelles_tva_incluse)
+ */
+function factures_mensuelles_tva_incluse_column_ok() {
+    global $db;
+    static $ok = null;
+    if ($ok !== null) {
+        return $ok;
+    }
+    $ok = false;
+    if (!factures_mensuelles_table_ok()) {
+        return false;
+    }
+    try {
+        $db->query('SELECT tva_incluse FROM factures_mensuelles LIMIT 1');
+        $ok = true;
+    } catch (PDOException $e) {
+        $ok = false;
+    }
+    return $ok;
+}
+
+/**
  * BL validés pour ce client, pas encore rattachés à une facture mensuelle
  * (statut validé côté BL — une fois liés à une FM, ils ne sont plus proposés)
  */
@@ -287,13 +309,15 @@ function recalc_total_facture_mensuelle($facture_mensuelle_id) {
  *
  * @param int|null $annee_cible
  * @param int|null $mois_cible
+ * @param bool $tva_incluse Si true : TTC = somme HT des BL + TVA en sus. Si false : montant facturé = somme HT, TVA décomposée « incluse » pour mention légale.
  * @return array{success:bool, facture_mensuelle_id?:int, message?:string}
  */
-function generer_ou_maj_facture_mensuelle($client_b2b_id, $admin_id, $annee_cible = null, $mois_cible = null) {
+function generer_ou_maj_facture_mensuelle($client_b2b_id, $admin_id, $annee_cible = null, $mois_cible = null, $tva_incluse = false) {
     global $db;
     if (!factures_mensuelles_table_ok()) {
         return ['success' => false, 'message' => 'Tables factures mensuelles absentes. Exécutez la migration B2B.'];
     }
+    $tva_flag = (bool) $tva_incluse;
     $client_b2b_id = (int) $client_b2b_id;
     if ($client_b2b_id <= 0) {
         return ['success' => false, 'message' => 'Client invalide.'];
@@ -366,22 +390,42 @@ function generer_ou_maj_facture_mensuelle($client_b2b_id, $admin_id, $annee_cibl
 
         if (!$fm) {
             $numero = generate_numero_facture_mensuelle();
-            $stmt = $db->prepare('
-                INSERT INTO factures_mensuelles (
-                    numero_facture, client_b2b_id, annee, mois, statut, total_ht,
-                    date_emission, admin_createur_id, date_creation
-                ) VALUES (
-                    :numero, :cid, :an, :mo, \'brouillon\', 0,
-                    NULL, :aid, NOW()
-                )
-            ');
-            $stmt->execute([
-                'numero' => $numero,
-                'cid' => $client_b2b_id,
-                'an' => $annee,
-                'mo' => $mois,
-                'aid' => $admin_id ? (int) $admin_id : null,
-            ]);
+            if (factures_mensuelles_tva_incluse_column_ok()) {
+                $stmt = $db->prepare('
+                    INSERT INTO factures_mensuelles (
+                        numero_facture, client_b2b_id, annee, mois, statut, total_ht, tva_incluse,
+                        date_emission, admin_createur_id, date_creation
+                    ) VALUES (
+                        :numero, :cid, :an, :mo, \'brouillon\', 0, :tva,
+                        NULL, :aid, NOW()
+                    )
+                ');
+                $stmt->execute([
+                    'numero' => $numero,
+                    'cid' => $client_b2b_id,
+                    'an' => $annee,
+                    'mo' => $mois,
+                    'tva' => $tva_flag ? 1 : 0,
+                    'aid' => $admin_id ? (int) $admin_id : null,
+                ]);
+            } else {
+                $stmt = $db->prepare('
+                    INSERT INTO factures_mensuelles (
+                        numero_facture, client_b2b_id, annee, mois, statut, total_ht,
+                        date_emission, admin_createur_id, date_creation
+                    ) VALUES (
+                        :numero, :cid, :an, :mo, \'brouillon\', 0,
+                        NULL, :aid, NOW()
+                    )
+                ');
+                $stmt->execute([
+                    'numero' => $numero,
+                    'cid' => $client_b2b_id,
+                    'an' => $annee,
+                    'mo' => $mois,
+                    'aid' => $admin_id ? (int) $admin_id : null,
+                ]);
+            }
             $fm_id = (int) $db->lastInsertId();
         } else {
             $fm_id = (int) $fm['id'];
@@ -395,6 +439,11 @@ function generer_ou_maj_facture_mensuelle($client_b2b_id, $admin_id, $annee_cibl
         }
 
         recalc_total_facture_mensuelle($fm_id);
+
+        if (factures_mensuelles_tva_incluse_column_ok()) {
+            $db->prepare('UPDATE factures_mensuelles SET tva_incluse = :t, date_modification = NOW() WHERE id = :id')
+                ->execute(['t' => $tva_flag ? 1 : 0, 'id' => $fm_id]);
+        }
 
         $db->commit();
         return ['success' => true, 'facture_mensuelle_id' => $fm_id];

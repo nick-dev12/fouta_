@@ -10,13 +10,19 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
 }
 require_once __DIR__ . '/../includes/require_access.php';
 
+require_once __DIR__ . '/../../includes/admin_permissions.php';
+if (!admin_can_devis() && !admin_can_comptabilite()) {
+    header('Location: ../dashboard.php');
+    exit;
+}
+
 if (empty($_SESSION['admin_csrf'])) {
     $_SESSION['admin_csrf'] = bin2hex(random_bytes(32));
 }
 
 $facture_id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 if ($facture_id <= 0) {
-    header('Location: index.php');
+    header('Location: devis.php');
     exit;
 }
 
@@ -43,7 +49,7 @@ require_once __DIR__ . '/../../includes/site_url.php';
 
 $facture = get_facture_devis_by_id($facture_id);
 if (!$facture) {
-    header('Location: index.php');
+    header('Location: devis.php');
     exit;
 }
 
@@ -66,6 +72,7 @@ $commande = [
     'user_telephone' => $devis['client_telephone'] ?? '',
     'telephone_livraison' => $devis['client_telephone'] ?? '',
     'adresse_livraison' => $devis['adresse_livraison'] ?? '',
+    'adresse_client' => trim((string) ($devis['adresse_client'] ?? '')),
     'notes' => $devis['notes'] ?? '—',
     'frais_livraison' => $devis['frais_livraison'] ?? 0,
     'numero_commande' => $devis['numero_devis'] ?? ''
@@ -141,6 +148,8 @@ $facture_numero_affichage = ($facture_est_payee && !empty($facture['numero_refer
     : (string) ($facture['numero_facture'] ?? '');
 $facture_afficher_marquer_payee = function_exists('factures_devis_col_payee_ok') && factures_devis_col_payee_ok() && !$facture_est_payee;
 $facture_csrf_token = (string) ($_SESSION['admin_csrf'] ?? '');
+
+$facture_recap_label_ht_decomp = 'TOTAL DEVIS';
 
 require_once __DIR__ . '/../../includes/fiscal_tva.php';
 

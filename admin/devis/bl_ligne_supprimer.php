@@ -12,7 +12,7 @@ require_once __DIR__ . '/../includes/require_access.php';
 
 
 require_once __DIR__ . '/../../includes/admin_permissions.php';
-if (!admin_can_devis_bl()) {
+if (!admin_can_bl_retours_b2b()) {
     header('Location: ../dashboard.php');
     exit;
 }

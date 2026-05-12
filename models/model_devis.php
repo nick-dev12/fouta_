@@ -31,6 +31,28 @@ function devis_tva_columns_ok() {
 }
 
 /**
+ * Colonne adresse_client (migration add_devis_bl_adresse_client)
+ */
+function devis_adresse_client_column_ok() {
+    global $db;
+    static $ok = null;
+    if ($ok !== null) {
+        return $ok;
+    }
+    $ok = false;
+    if (!$db) {
+        return false;
+    }
+    try {
+        $db->query('SELECT adresse_client FROM devis LIMIT 1');
+        $ok = true;
+    } catch (PDOException $e) {
+        $ok = false;
+    }
+    return $ok;
+}
+
+/**
  * Net HT d'un devis : somme des lignes + frais de livraison
  */
 function devis_calcul_net_ht($devis_id) {
@@ -80,9 +102,10 @@ function generate_numero_devis() {
  * @param int|null $user_id
  * @param int|null $admin_createur_id Admin ayant créé le devis (traçabilité)
  * @param bool $tva_incluse Total à payer TTC (HT + TVA) si true — comme la caisse
+ * @param string|null $adresse_client Adresse postale / siège du client (optionnel)
  * @return array|false ['success'=>true, 'devis_id'=>int, 'numero_devis'=>string] ou false
  */
-function create_devis($items, $client_nom, $client_prenom, $client_telephone, $adresse_livraison, $client_email = null, $notes = null, $zone_livraison_id = null, $frais_livraison = 0, $user_id = null, $admin_createur_id = null, $tva_incluse = false) {
+function create_devis($items, $client_nom, $client_prenom, $client_telephone, $adresse_livraison, $client_email = null, $notes = null, $zone_livraison_id = null, $frais_livraison = 0, $user_id = null, $admin_createur_id = null, $tva_incluse = false, $adresse_client = null) {
     global $db;
 
     if (empty($items) || empty(trim($client_nom)) || empty(trim($client_prenom)) || empty(trim($client_telephone))) {
@@ -230,6 +253,16 @@ function create_devis($items, $client_nom, $client_prenom, $client_telephone, $a
         }
         $devis_id = (int) $db->lastInsertId();
         if ($devis_id <= 0) return false;
+
+        if (devis_adresse_client_column_ok()) {
+            $ac_ins = trim((string) ($adresse_client ?? ''));
+            try {
+                $u = $db->prepare('UPDATE devis SET adresse_client = :a WHERE id = :id');
+                $u->execute(['a' => $ac_ins !== '' ? $ac_ins : null, 'id' => $devis_id]);
+            } catch (PDOException $e) {
+                error_log('[create_devis adresse_client] ' . $e->getMessage());
+            }
+        }
 
         $stmt_prod = $db->prepare("
             INSERT INTO devis_produits (devis_id, produit_id, nom_produit, quantite, prix_unitaire, prix_total)
@@ -495,6 +528,12 @@ function update_devis($devis_id, $items, $infos) {
                 'notes' => !empty(trim($infos['notes'] ?? '')) ? trim($infos['notes']) : null,
                 'id' => $devis_id
             ]);
+        }
+
+        if (devis_adresse_client_column_ok()) {
+            $acu = trim((string) ($infos['adresse_client'] ?? ''));
+            $stmt_ac = $db->prepare('UPDATE devis SET adresse_client = :a WHERE id = :id');
+            $stmt_ac->execute(['a' => $acu !== '' ? $acu : null, 'id' => $devis_id]);
         }
 
         $db->prepare("DELETE FROM devis_produits WHERE devis_id = :id")->execute(['id' => $devis_id]);

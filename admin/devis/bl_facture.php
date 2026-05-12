@@ -12,7 +12,7 @@ require_once __DIR__ . '/../includes/require_access.php';
 
 
 require_once __DIR__ . '/../../includes/admin_permissions.php';
-if (!admin_can_devis_bl()) {
+if (!admin_can_bl_retours_b2b()) {
     header('Location: ../dashboard.php');
     exit;
 }
@@ -73,6 +73,7 @@ $facture_fiscal_taux = $taux_bl ?? fiscal_taux_tva_pourcent();
 $commande = [
     'notes' => $bl['notes'] ?? '',
     'frais_livraison' => 0,
+    'adresse_client' => trim((string) ($bl['adresse_client'] ?? '')),
 ];
 
 $client_nom = trim($bl['raison_sociale'] ?? '');
@@ -96,5 +97,6 @@ $facture_back_label = 'Retour au bon de livraison';
 $facture_bl_statut_libelle = bl_libelle_statut_facture($bl['statut'] ?? 'brouillon');
 $facture_bl_statut_code = (string) ($bl['statut'] ?? 'brouillon');
 $facture_show_client_zone = true;
+$facture_recap_label_ht_decomp = 'TOTAL BL';
 
 require __DIR__ . '/../../includes/facture_content.php';

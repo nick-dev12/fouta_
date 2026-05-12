@@ -43,6 +43,28 @@ function bl_tva_columns_ok() {
 }
 
 /**
+ * Adresse client optionnelle sur le BL (migration add_devis_bl_adresse_client)
+ */
+function bl_adresse_client_column_ok() {
+    global $db;
+    static $ok = null;
+    if ($ok !== null) {
+        return $ok;
+    }
+    $ok = false;
+    if (!bl_tables_available() || !$db) {
+        return false;
+    }
+    try {
+        $db->query('SELECT adresse_client FROM bons_livraison LIMIT 1');
+        $ok = true;
+    } catch (PDOException $e) {
+        $ok = false;
+    }
+    return $ok;
+}
+
+/**
  * Libellé affichage admin pour le statut d'un BL
  */
 function bl_libelle_statut($st)
@@ -463,6 +485,18 @@ function create_bl_from_devis($devis_id, $admin_id) {
         }
         $bl_id = (int) $db->lastInsertId();
 
+        if (bl_adresse_client_column_ok()) {
+            $ac_from_devis = trim((string) ($devis['adresse_client'] ?? ''));
+            try {
+                $db->prepare('UPDATE bons_livraison SET adresse_client = :a WHERE id = :id')->execute([
+                    'a' => $ac_from_devis !== '' ? $ac_from_devis : null,
+                    'id' => $bl_id,
+                ]);
+            } catch (PDOException $e) {
+                error_log('[create_bl_from_devis adresse_client] ' . $e->getMessage());
+            }
+        }
+
         $ins = $db->prepare('
             INSERT INTO bl_lignes (bl_id, produit_id, designation, quantite, prix_unitaire_ht, total_ligne_ht, ordre)
             VALUES (:bl_id, :produit_id, :designation, :quantite, :pu, :total, :ordre)
@@ -470,12 +504,12 @@ function create_bl_from_devis($devis_id, $admin_id) {
         $ord = 0;
         foreach ($produits as $p) {
             $designation = $p['produit_nom'] ?? $p['nom_produit'] ?? 'Produit';
-            $q = (float) $p['quantite'];
-            $pu = (float) $p['prix_unitaire'];
-            $tl = (float) $p['prix_total'];
+            $q = (float) ($p['quantite'] ?? 0);
+            $pu = (float) ($p['prix_unitaire'] ?? 0);
+            $tl = (float) ($p['prix_total'] ?? 0);
             $ins->execute([
                 'bl_id' => $bl_id,
-                'produit_id' => (int) $p['produit_id'],
+                'produit_id' => (int) ($p['produit_id'] ?? 0),
                 'designation' => $designation,
                 'quantite' => $q,
                 'pu' => $pu,
@@ -529,8 +563,9 @@ function bl_totaux_ht_lignes_manuel($lignes)
  * Création manuelle d'un BL avec lignes
  * @param array $lignes [['produit_id'=>, 'designation'=>, 'quantite'=>, 'prix_unitaire_ht'=>], ...]
  * @param bool $tva_incluse Facture BL : total TTC (HT + TVA) si true
+ * @param string|null $adresse_client Adresse du client (facturation, optionnel)
  */
-function create_bl_manuel($client_b2b_id, $date_bl, $notes, $lignes, $admin_id, $statut = 'brouillon', $tva_incluse = false) {
+function create_bl_manuel($client_b2b_id, $date_bl, $notes, $lignes, $admin_id, $statut = 'brouillon', $tva_incluse = false, $adresse_client = null) {
     global $db;
     if (!bl_tables_available()) {
         return ['success' => false, 'message' => 'Tables BL absentes.'];
@@ -611,6 +646,18 @@ function create_bl_manuel($client_b2b_id, $date_bl, $notes, $lignes, $admin_id, 
             ]);
         }
         $bl_id = (int) $db->lastInsertId();
+
+        if (bl_adresse_client_column_ok()) {
+            $ac_m = trim((string) ($adresse_client ?? ''));
+            try {
+                $db->prepare('UPDATE bons_livraison SET adresse_client = :a WHERE id = :id')->execute([
+                    'a' => $ac_m !== '' ? $ac_m : null,
+                    'id' => $bl_id,
+                ]);
+            } catch (PDOException $e) {
+                error_log('[create_bl_manuel adresse_client] ' . $e->getMessage());
+            }
+        }
 
         $ins = $db->prepare('
             INSERT INTO bl_lignes (bl_id, produit_id, designation, quantite, prix_unitaire_ht, total_ligne_ht, ordre)
@@ -756,7 +803,7 @@ function replace_bl_lignes($bl_id, $lignes) {
     }
 }
 
-function update_bl_entete($bl_id, $date_bl, $notes) {
+function update_bl_entete($bl_id, $date_bl, $notes, $adresse_client = null) {
     global $db;
     if (!bl_tables_available()) {
         return false;
@@ -765,7 +812,18 @@ function update_bl_entete($bl_id, $date_bl, $notes) {
     if ($bl && bl_est_statut_verrouille($bl['statut'] ?? '')) {
         return false;
     }
+    $ac = trim((string) ($adresse_client ?? ''));
+    $ac_bind = $ac !== '' ? $ac : null;
     try {
+        if (bl_adresse_client_column_ok()) {
+            $stmt = $db->prepare('UPDATE bons_livraison SET date_bl = :d, notes = :n, adresse_client = :ac, date_modification = NOW() WHERE id = :id');
+            return $stmt->execute([
+                'd' => $date_bl ?: date('Y-m-d'),
+                'n' => $notes !== '' && $notes !== null ? trim($notes) : null,
+                'ac' => $ac_bind,
+                'id' => (int) $bl_id,
+            ]);
+        }
         $stmt = $db->prepare('UPDATE bons_livraison SET date_bl = :d, notes = :n, date_modification = NOW() WHERE id = :id');
         return $stmt->execute([
             'd' => $date_bl ?: date('Y-m-d'),

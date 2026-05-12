@@ -12,7 +12,7 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
 require_once __DIR__ . '/../includes/require_access.php';
 
 require_once __DIR__ . '/../../includes/admin_permissions.php';
-if (!admin_can_devis_bl()) {
+if (!admin_can_bl_retours_b2b() && !admin_can_comptabilite()) {
     header('Location: ../dashboard.php');
     exit;
 }
@@ -241,6 +241,10 @@ function bl_modifier_esc_attr($v): string
                             <div class="bl-modifier-client-field">
                                 <span class="bl-modifier-client-label">Email</span>
                                 <p class="bl-modifier-client-val"><?php echo bl_modifier_esc_attr($bl['client_email'] ?? '—'); ?></p>
+                            </div>
+                            <div class="form-group">
+                                <label for="adresse_client">Adresse du client (facturation) <span class="optional">(optionnel)</span></label>
+                                <textarea id="adresse_client" name="adresse_client" rows="2" placeholder="Siège social, rue, complément d’adresse affiché sur la facture…"><?php echo bl_modifier_esc_attr($bl['adresse_client'] ?? ''); ?></textarea>
                             </div>
                             <?php if (!empty($bl['client_adresse'])): ?>
                             <div class="bl-modifier-client-field">

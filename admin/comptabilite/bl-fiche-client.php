@@ -145,7 +145,16 @@ if (isset($_SESSION['fm_erreur'])) {
                             <a href="../devis/facture_mensuelle.php?id=<?php echo (int) $fm_derniere['id']; ?>" class="btn-secondary"><i class="fas fa-eye" aria-hidden="true"></i> Voir la dernière facture</a>
                         <?php endif; ?>
                         <a href="bl-factures-archives.php?client=<?php echo (int) $client_b2b_id; ?>" class="btn-secondary"><i class="fas fa-list" aria-hidden="true"></i> Liste des factures</a>
-                        <a href="../devis/facture_mensuelle_generer.php?client_b2b_id=<?php echo (int) $client_b2b_id; ?>" class="btn-primary"><i class="fas fa-magic" aria-hidden="true"></i> Générer / mettre à jour la facture</a>
+                        <form method="get" action="../devis/facture_mensuelle_generer.php" class="bl-fm-gen-inline" style="display:inline-flex;flex-wrap:wrap;align-items:center;gap:12px;vertical-align:middle;">
+                            <input type="hidden" name="client_b2b_id" value="<?php echo (int) $client_b2b_id; ?>">
+                            <label style="display:inline-flex;align-items:center;gap:8px;font-size:0.88rem;color:var(--gris-fonce,#444);cursor:pointer;white-space:nowrap;">
+                                <input type="checkbox" name="inclure_tva" value="1" style="width:16px;height:16px;accent-color:var(--couleur-dominante,#3564a6);">
+                                Inclure la TVA (TTC = HT + TVA)
+                            </label>
+                            <button type="submit" class="btn-primary" style="border:none;cursor:pointer;font:inherit;">
+                                <i class="fas fa-magic" aria-hidden="true"></i> Générer / mettre à jour la facture
+                            </button>
+                        </form>
                     </div>
                 </div>
                 <div class="bl-fm-period-row form-hint" style="margin-top:14px;padding:14px 16px;border-radius:12px;border:1px solid var(--glass-border);background:var(--blanc-neige);">
@@ -175,6 +184,10 @@ if (isset($_SESSION['fm_erreur'])) {
                                 endfor;
                                 ?>
                             </select>
+                        </label>
+                        <label style="display:flex;align-items:center;gap:8px;font-size:0.88rem;cursor:pointer;white-space:nowrap;">
+                            <input type="checkbox" name="inclure_tva" value="1" style="width:16px;height:16px;accent-color:var(--couleur-dominante,#3564a6);">
+                            Inclure la TVA (TTC = HT + TVA)
                         </label>
                         <button type="submit" class="btn-secondary" style="padding:10px 16px;border-radius:10px;cursor:pointer;border:1px solid var(--border-input);background:var(--blanc);font-weight:600;color:var(--couleur-dominante);">
                             <i class="fas fa-magic" aria-hidden="true"></i> Générer pour cette période

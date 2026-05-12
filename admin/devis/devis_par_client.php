@@ -11,7 +11,7 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
 
 require_once __DIR__ . '/../includes/require_access.php';
 require_once __DIR__ . '/../../includes/admin_permissions.php';
-if (!admin_can_devis_bl() && !admin_can_comptabilite()) {
+if (!admin_can_devis() && !admin_can_comptabilite()) {
     header('Location: ../dashboard.php');
     exit;
 }
@@ -21,7 +21,7 @@ require_once __DIR__ . '/../../models/model_devis.php';
 
 $cle = isset($_GET['k']) ? trim((string) $_GET['k']) : '';
 if ($cle === '') {
-    header('Location: index.php?tab=devis');
+    header('Location: devis.php');
     exit;
 }
 
@@ -36,7 +36,7 @@ foreach ($groupes as $g) {
 
 if (!$filtre) {
     $_SESSION['error_devis'] = 'Client ou groupe de devis introuvable (déjà entièrement soldé ?).';
-    header('Location: index.php?tab=devis');
+    header('Location: devis.php');
     exit;
 }
 
@@ -65,7 +65,7 @@ $devis_items = $filtre['devis'];
                 <p class="dashboard-subtitle"><?php echo (int) $filtre['nb']; ?> devis non soldés (facture non marquée payée) · dernier : <?php echo htmlspecialchars(date('d/m/Y H:i', strtotime($filtre['derniere']))); ?></p>
             </div>
             <div class="header-actions">
-                <a href="index.php?tab=devis" class="btn-secondary"><i class="fas fa-arrow-left" aria-hidden="true"></i> Retour</a>
+                <a href="devis.php" class="btn-secondary"><i class="fas fa-arrow-left" aria-hidden="true"></i> Retour</a>
             </div>
         </div>
 

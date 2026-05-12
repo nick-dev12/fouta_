@@ -35,6 +35,22 @@ $is_comptabilite_hub = strpos($current_dir, '/comptabilite') !== false;
 $admin_role = admin_normalize_role_for_route($_SESSION['admin_role'] ?? 'admin');
 $admin_nav_is_tech_full = ($admin_role === 'informaticien' || $admin_role === 'developpeur');
 
+require_once __DIR__ . '/../../includes/admin_permissions.php';
+$nav_can_devis = admin_can_devis();
+$nav_can_bl_hub = admin_can_bl_retours_b2b();
+$is_nav_devis_section = $is_devis && (
+    $current_page === 'devis.php'
+    || in_array($current_page, ['details.php', 'modifier.php', 'facture.php', 'devis_par_client.php', 'create.php', 'generer_facture.php', 'update.php', 'supprimer_devis.php'], true)
+);
+$is_nav_bl_section = $is_devis && (
+    $current_page === 'index.php'
+    || strpos($current_page, 'bl_') === 0
+    || strpos($current_page, 'br_') === 0
+    || $current_page === 'convertir_bl.php'
+    || $current_page === 'clients_b2b_create.php'
+    || strpos($current_page, 'facture_mensuelle') === 0
+);
+
 include __DIR__ . '/../../includes/pwa_admin_boot.php';
 
 ?>
@@ -83,11 +99,20 @@ include __DIR__ . '/../../includes/pwa_admin_boot.php';
                 <span class="menu-item-icon" aria-hidden="true"><i class="fas fa-home"></i></span>
                 <span class="menu-item-text">Tableau de bord</span>
             </a>
-            <a href="<?php echo $admin_nav_base; ?>devis/index.php"
-                class="menu-item mi-devis<?php echo ($is_devis || $is_commercial_hub) ? ' active' : ''; ?>">
-                <span class="menu-item-icon" aria-hidden="true"><i class="fas fa-handshake"></i></span>
-                <span class="menu-item-text">Devis &amp; BL</span>
+            <?php if ($nav_can_devis): ?>
+            <a href="<?php echo $admin_nav_base; ?>devis/devis.php"
+                class="menu-item mi-devis<?php echo $is_nav_devis_section ? ' active' : ''; ?>">
+                <span class="menu-item-icon" aria-hidden="true"><i class="fas fa-file-invoice"></i></span>
+                <span class="menu-item-text">Devis</span>
             </a>
+            <?php endif; ?>
+            <?php if ($nav_can_bl_hub): ?>
+            <a href="<?php echo $admin_nav_base; ?>devis/index.php"
+                class="menu-item mi-bl-hub<?php echo $is_nav_bl_section ? ' active' : ''; ?>">
+                <span class="menu-item-icon" aria-hidden="true"><i class="fas fa-truck-loading"></i></span>
+                <span class="menu-item-text">BL &amp; retours</span>
+            </a>
+            <?php endif; ?>
             <a href="<?php echo $admin_nav_base; ?>comptabilite/index.php"
                 class="menu-item mi-compta<?php echo $is_comptabilite_hub ? ' active' : ''; ?>">
                 <span class="menu-item-icon" aria-hidden="true"><i class="fas fa-calculator"></i></span>
@@ -153,11 +178,20 @@ include __DIR__ . '/../../includes/pwa_admin_boot.php';
             </a>
             <?php endif; ?>
             <?php elseif ($admin_role === 'commercial_general'): ?>
-            <a href="<?php echo $admin_nav_base; ?>devis/index.php"
-                class="menu-item mi-devis<?php echo ($is_devis || $is_commercial_hub) ? ' active' : ''; ?>">
-                <span class="menu-item-icon" aria-hidden="true"><i class="fas fa-handshake"></i></span>
-                <span class="menu-item-text">Devis &amp; BL</span>
+            <?php if ($nav_can_devis): ?>
+            <a href="<?php echo $admin_nav_base; ?>devis/devis.php"
+                class="menu-item mi-devis<?php echo $is_nav_devis_section ? ' active' : ''; ?>">
+                <span class="menu-item-icon" aria-hidden="true"><i class="fas fa-file-invoice"></i></span>
+                <span class="menu-item-text">Devis</span>
             </a>
+            <?php endif; ?>
+            <?php if ($nav_can_bl_hub): ?>
+            <a href="<?php echo $admin_nav_base; ?>devis/index.php"
+                class="menu-item mi-bl-hub<?php echo $is_nav_bl_section ? ' active' : ''; ?>">
+                <span class="menu-item-icon" aria-hidden="true"><i class="fas fa-truck-loading"></i></span>
+                <span class="menu-item-text">BL &amp; retours</span>
+            </a>
+            <?php endif; ?>
             <a href="<?php echo $admin_nav_base; ?>commandes/index.php"
                 class="menu-item mi-commandes<?php echo ($is_commandes && ($current_page == 'index.php' || $current_page == 'livrees.php' || $current_page == 'annulees.php' || $current_page == 'details.php' || $current_page == 'historique-ventes.php')) ? ' active' : ''; ?>">
                 <span class="menu-item-icon" aria-hidden="true"><i class="fas fa-shopping-cart"></i></span>
@@ -169,6 +203,13 @@ include __DIR__ . '/../../includes/pwa_admin_boot.php';
                 <span class="menu-item-text">Caisse</span>
             </a>
             <?php elseif ($admin_role === 'commercial'): ?>
+            <?php if ($nav_can_devis): ?>
+            <a href="<?php echo $admin_nav_base; ?>devis/devis.php"
+                class="menu-item mi-devis<?php echo $is_nav_devis_section ? ' active' : ''; ?>">
+                <span class="menu-item-icon" aria-hidden="true"><i class="fas fa-file-invoice"></i></span>
+                <span class="menu-item-text">Devis</span>
+            </a>
+            <?php endif; ?>
             <a href="<?php echo $admin_nav_base; ?>commandes/index.php"
                 class="menu-item mi-commandes<?php echo ($is_commandes && ($current_page == 'index.php' || $current_page == 'livrees.php' || $current_page == 'annulees.php' || $current_page == 'details.php' || $current_page == 'historique-ventes.php')) ? ' active' : ''; ?>">
                 <span class="menu-item-icon" aria-hidden="true"><i class="fas fa-shopping-cart"></i></span>

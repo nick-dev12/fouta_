@@ -12,7 +12,7 @@ require_once __DIR__ . '/../includes/require_access.php';
 
 
 require_once __DIR__ . '/../../includes/admin_permissions.php';
-if (!admin_can_devis_bl()) {
+if (!admin_can_bl_retours_b2b()) {
     header('Location: ../dashboard.php');
     exit;
 }
@@ -34,6 +34,7 @@ $client_nom = trim($_POST['client_nom'] ?? '');
 $client_prenom = trim($_POST['client_prenom'] ?? '');
 $client_telephone = trim($_POST['client_telephone'] ?? '');
 $client_email = trim($_POST['client_email'] ?? '');
+$adresse_client = trim($_POST['adresse_client'] ?? '');
 $adresse_livraison = trim($_POST['adresse_livraison'] ?? '');
 $notes = trim($_POST['notes'] ?? '');
 $zone_livraison_id = isset($_POST['zone_livraison_id']) && $_POST['zone_livraison_id'] !== '' && $_POST['zone_livraison_id'] !== 'custom'
@@ -170,7 +171,7 @@ if (empty($verif_plafond['ok'])) {
 
 $tva_incl = isset($_POST['inclure_tva']) && (string) $_POST['inclure_tva'] === '1';
 
-$res = create_bl_manuel((int) $client['id'], $date_bl, $notes !== '' ? $notes : null, $lignes, (int) $_SESSION['admin_id'], $statut, $tva_incl);
+$res = create_bl_manuel((int) $client['id'], $date_bl, $notes !== '' ? $notes : null, $lignes, (int) $_SESSION['admin_id'], $statut, $tva_incl, $adresse_client !== '' ? $adresse_client : null);
 
 if (!empty($res['success'])) {
     $_SESSION['success_message'] = 'Bon de livraison ' . ($res['numero_bl'] ?? '') . ' enregistré.';

@@ -7,7 +7,7 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
 }
 
 require_once __DIR__ . '/../../includes/admin_permissions.php';
-if (!admin_can_devis_bl()) {
+if (!admin_can_bl_retours_b2b()) {
     header('Location: ../dashboard.php');
     exit;
 }

@@ -10,7 +10,7 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
 }
 
 require_once __DIR__ . '/../../includes/admin_permissions.php';
-if (!admin_can_devis_bl()) {
+if (!admin_can_devis()) {
     header('Location: ../dashboard.php');
     exit;
 }
@@ -26,14 +26,14 @@ $fiscal_tva_pourcent_modifier = fiscal_taux_tva_pourcent();
 
 $devis_id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 if ($devis_id <= 0) {
-    header('Location: index.php');
+    header('Location: devis.php');
     exit;
 }
 
 $devis = get_devis_by_id($devis_id);
 if (!$devis || ($devis['statut'] ?? '') !== 'brouillon') {
     $_SESSION['error_devis'] = 'Ce devis ne peut pas être modifié.';
-    header('Location: index.php');
+    header('Location: devis.php');
     exit;
 }
 
@@ -54,6 +54,7 @@ if ($devis_post && is_array($devis_post)) {
     $client_prenom = $devis_post['client_prenom'] ?? '';
     $client_telephone = $devis_post['client_telephone'] ?? '';
     $client_email = $devis_post['client_email'] ?? '';
+    $adresse_client = $devis_post['adresse_client'] ?? '';
     $notes = $devis_post['notes'] ?? '';
     $zone_livraison_id = $devis_post['zone_livraison_id'] ?? '';
     $user_id_val = $devis_post['user_id'] ?? '';
@@ -64,6 +65,7 @@ if ($devis_post && is_array($devis_post)) {
     $client_prenom = $devis['client_prenom'] ?? '';
     $client_telephone = $devis['client_telephone'] ?? '';
     $client_email = $devis['client_email'] ?? '';
+    $adresse_client = $devis['adresse_client'] ?? '';
     $notes = $devis['notes'] ?? '';
     $zone_livraison_id = $devis['zone_livraison_id'] ?? '';
     $user_id_val = $devis['user_id'] ?? '';
@@ -105,7 +107,7 @@ $nb_lignes = count($lignes_form);
         <h1><i class="fas fa-edit"></i> Modifier le devis #<?php echo htmlspecialchars($devis['numero_devis']); ?></h1>
         <div class="header-actions">
             <a href="details.php?id=<?php echo (int) $devis_id; ?>" class="btn-secondary"><i class="fas fa-eye"></i> Détail</a>
-            <a href="index.php" class="btn-back"><i class="fas fa-arrow-left"></i> Liste des devis</a>
+            <a href="devis.php" class="btn-back"><i class="fas fa-arrow-left"></i> Liste des devis</a>
         </div>
     </div>
 
@@ -238,6 +240,10 @@ $nb_lignes = count($lignes_form);
                             <input type="email" id="client_email" name="client_email" value="<?php echo htmlspecialchars($client_email); ?>">
                         </div>
                         <div class="form-group">
+                            <label for="adresse_client">Adresse du client <span class="optional">(optionnel)</span></label>
+                            <textarea id="adresse_client" name="adresse_client" rows="2" placeholder="Siège social, rue, complément…"><?php echo htmlspecialchars($adresse_client); ?></textarea>
+                        </div>
+                        <div class="form-group">
                             <label for="zone_livraison_id"><i class="fas fa-map-marker-alt"></i> Adresse de livraison <span class="optional">(optionnel)</span></label>
                             <select id="zone_livraison_id" name="zone_livraison_id">
                                 <option value="">— Sélectionnez une adresse —</option>
@@ -297,7 +303,7 @@ $nb_lignes = count($lignes_form);
             </div>
 
             <div class="form-commande-manuelle-actions" style="margin-top: 24px;">
-                <a href="index.php" class="btn-secondary">Annuler</a>
+                <a href="devis.php" class="btn-secondary">Annuler</a>
                 <button type="submit" class="btn-primary btn-submit-commande"><i class="fas fa-save"></i> Enregistrer les modifications</button>
             </div>
         </form>

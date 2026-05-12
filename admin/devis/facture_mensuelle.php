@@ -12,7 +12,7 @@ require_once __DIR__ . '/../includes/require_access.php';
 
 
 require_once __DIR__ . '/../../includes/admin_permissions.php';
-if (!admin_can_devis_bl() && !admin_can_comptabilite()) {
+if (!admin_can_bl_retours_b2b() && !admin_can_comptabilite()) {
     header('Location: ../dashboard.php');
     exit;
 }
@@ -30,6 +30,7 @@ if ($facture_id <= 0) {
 require_once __DIR__ . '/../../models/model_factures_mensuelles.php';
 require_once __DIR__ . '/../../models/model_clients_b2b.php';
 require_once __DIR__ . '/../../includes/site_url.php';
+require_once __DIR__ . '/../../includes/fiscal_tva.php';
 
 if (!factures_mensuelles_table_ok()) {
     header('Location: index.php?tab=bl');
@@ -50,9 +51,20 @@ if (!$client) {
 
 $detail_bls = get_bls_et_lignes_facture_mensuelle($facture_id);
 
+$net_ht_fm = (float) $facture_fm['total_ht'];
+$taux_fm = fiscal_taux_tva_pourcent();
+$fm_tva_col = function_exists('factures_mensuelles_tva_incluse_column_ok') && factures_mensuelles_tva_incluse_column_ok();
+$fm_tva_incl = $fm_tva_col && !empty($facture_fm['tva_incluse']);
+$decomp_fm_susc = fiscal_decomposer_net_ht($net_ht_fm, true, $taux_fm);
+$decomp_fm_inclus = fiscal_decomposer_montant_ttc_inclus($net_ht_fm, $taux_fm);
+
 $facture = [
     'numero_facture' => $facture_fm['numero_facture'],
-    'montant_total' => (float) $facture_fm['total_ht'],
+    'montant_total' => $fm_tva_incl ? $decomp_fm_susc['montant_ttc'] : $net_ht_fm,
+    'tva_incluse' => $fm_tva_incl ? 1 : 0,
+    'montant_ht' => $fm_tva_incl ? $decomp_fm_susc['montant_ht'] : $decomp_fm_inclus['montant_ht'],
+    'montant_tva' => $fm_tva_incl ? $decomp_fm_susc['montant_tva'] : $decomp_fm_inclus['montant_tva'],
+    'taux_tva_pourcent' => $taux_fm,
     'client_b2b_id' => (int) $facture_fm['client_b2b_id'],
 ];
 
@@ -114,8 +126,8 @@ foreach ($detail_bls as $block) {
     }
 }
 $msg_whatsapp = "Bonjour,\n\n"
-    . "Votre facture HT n°" . ($facture_fm['numero_facture'] ?? '') . " (" . $periode_label . ") d’un montant de "
-    . number_format((float) $facture_fm['total_ht'], 0, ',', ' ') . " CFA est disponible.\n\n"
+    . "Votre facture n°" . ($facture_fm['numero_facture'] ?? '') . " (" . $periode_label . ") d’un montant de "
+    . number_format((float) $facture['montant_total'], 0, ',', ' ') . " CFA est disponible.\n\n"
     . "Détail :\n" . implode("\n", $lignes_txt) . "\n\nCordialement,\n" . $entreprise_nom;
 $whatsapp_url = !empty($tel_whatsapp) ? 'https://wa.me/' . $tel_whatsapp . '?text=' . rawurlencode($msg_whatsapp) : '';
 

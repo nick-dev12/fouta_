@@ -10,14 +10,14 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
 }
 
 require_once __DIR__ . '/../../includes/admin_permissions.php';
-if (!admin_can_devis_bl()) {
+if (!admin_can_devis()) {
     header('Location: ../dashboard.php');
     exit;
 }
 
 $devis_id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 if ($devis_id <= 0) {
-    header('Location: index.php');
+    header('Location: devis.php');
     exit;
 }
 
@@ -30,7 +30,7 @@ $produits = is_array($produits) ? $produits : [];
 $facture = get_facture_devis_by_devis($devis_id);
 
 if (!$devis) {
-    header('Location: index.php');
+    header('Location: devis.php');
     exit;
 }
 
@@ -80,7 +80,7 @@ $frais = isset($devis['frais_livraison']) ? (float) $devis['frais_livraison'] : 
                     <i class="fas fa-file-signature" aria-hidden="true"></i> Générer une facture
                 </a>
             <?php endif; ?>
-            <a href="index.php" class="btn-back">
+            <a href="devis.php" class="btn-back">
                 <i class="fas fa-arrow-left" aria-hidden="true"></i> Retour à la liste
             </a>
         </div>

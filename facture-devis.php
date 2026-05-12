@@ -30,6 +30,7 @@ $commande = [
     'user_telephone' => $devis['client_telephone'] ?? '',
     'telephone_livraison' => $devis['client_telephone'] ?? '',
     'adresse_livraison' => $devis['adresse_livraison'] ?? '',
+    'adresse_client' => trim((string) ($devis['adresse_client'] ?? '')),
     'notes' => $devis['notes'] ?? '—',
     'frais_livraison' => $devis['frais_livraison'] ?? 0,
     'numero_commande' => $devis['numero_devis'] ?? ''
@@ -54,6 +55,8 @@ $entreprise_email = 'info@foutapoidslourds.com';
 
 $is_public = true;
 $whatsapp_url = '';
+
+$facture_recap_label_ht_decomp = 'TOTAL DEVIS';
 
 require_once __DIR__ . '/includes/fiscal_tva.php';
 

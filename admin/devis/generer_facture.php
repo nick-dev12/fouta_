@@ -10,10 +10,15 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
 }
 require_once __DIR__ . '/../includes/require_access.php';
 
+require_once __DIR__ . '/../../includes/admin_permissions.php';
+if (!admin_can_devis()) {
+    header('Location: ../dashboard.php');
+    exit;
+}
 
 $devis_id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 if ($devis_id <= 0) {
-    header('Location: index.php');
+    header('Location: devis.php');
     exit;
 }
 
@@ -22,7 +27,7 @@ require_once __DIR__ . '/../../models/model_factures_devis.php';
 
 $devis = get_devis_by_id($devis_id);
 if (!$devis) {
-    header('Location: index.php');
+    header('Location: devis.php');
     exit;
 }
 

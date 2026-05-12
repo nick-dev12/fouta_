@@ -12,12 +12,12 @@ require_once __DIR__ . '/../includes/require_access.php';
 
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: index.php');
+    header('Location: devis.php');
     exit;
 }
 
 require_once __DIR__ . '/../../includes/admin_permissions.php';
-if (!admin_can_devis_bl()) {
+if (!admin_can_devis()) {
     header('Location: ../dashboard.php');
     exit;
 }
@@ -26,7 +26,7 @@ $token = $_POST['csrf_token'] ?? '';
 $expected = $_SESSION['admin_csrf'] ?? '';
 if ($token === '' || !hash_equals((string) $expected, (string) $token)) {
     $_SESSION['devis_erreur'] = 'Session expirée. Réessayez.';
-    header('Location: index.php?modal=devis');
+    header('Location: devis.php?modal=devis');
     exit;
 }
 
@@ -37,6 +37,7 @@ $client_nom = trim($_POST['client_nom'] ?? '');
 $client_prenom = trim($_POST['client_prenom'] ?? '');
 $client_telephone = trim($_POST['client_telephone'] ?? '');
 $client_email = trim($_POST['client_email'] ?? '');
+$adresse_client = trim($_POST['adresse_client'] ?? '');
 $adresse_livraison = trim($_POST['adresse_livraison'] ?? '');
 $notes = trim($_POST['notes'] ?? '');
 $zone_livraison_id = isset($_POST['zone_livraison_id']) && $_POST['zone_livraison_id'] !== '' && $_POST['zone_livraison_id'] !== 'custom' ? (int) $_POST['zone_livraison_id'] : null;
@@ -70,7 +71,7 @@ elseif (empty($items)) $erreur = 'Ajoutez au moins un produit au devis.';
 if ($erreur) {
     $_SESSION['devis_erreur'] = $erreur;
     $_SESSION['devis_post'] = $_POST;
-    header('Location: index.php?modal=devis');
+    header('Location: devis.php?modal=devis');
     exit;
 }
 
@@ -95,7 +96,8 @@ $result = create_devis(
     $frais_livraison,
     $user_id,
     (int) ($_SESSION['admin_id'] ?? 0) > 0 ? (int) $_SESSION['admin_id'] : null,
-    $tva_incl
+    $tva_incl,
+    $adresse_client !== '' ? $adresse_client : null
 );
 
 if ($result && $result['success']) {
@@ -106,4 +108,4 @@ if ($result && $result['success']) {
 
 $_SESSION['devis_erreur'] = 'Erreur lors de l\'enregistrement du devis.';
 $_SESSION['devis_post'] = $_POST;
-header('Location: index.php?modal=devis');
+header('Location: devis.php?modal=devis');

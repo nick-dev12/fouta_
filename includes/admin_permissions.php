@@ -42,10 +42,21 @@ if (!function_exists('admin_current_role')) {
         return in_array($r, ['admin', 'commercial', 'commercial_general', 'informaticien', 'developpeur'], true);
     }
 
-    /** Devis, BL, conversion — admin, commercial général, informaticien / développeur (pas le rôle « Commercial » restreint). */
-    function admin_can_devis_bl() {
+    /**
+     * Devis (création, détail, facture client B2C) — commercial, commercial général, informaticien / développeur.
+     * Exclut le compte rôle « admin » restreint (table admin) comme pour l’ancien périmètre devis/BL.
+     */
+    function admin_can_devis() {
         $r = admin_current_role();
-        return in_array($r, ['admin', 'commercial_general', 'informaticien', 'developpeur'], true);
+        return in_array($r, ['commercial', 'commercial_general', 'informaticien', 'developpeur'], true);
+    }
+
+    /**
+     * BL, bons de retour B2B, hub index.php — commercial général ou informaticien / développeur (pas le rôle « Commercial » seul).
+     */
+    function admin_can_bl_retours_b2b() {
+        $r = admin_current_role();
+        return in_array($r, ['commercial_general', 'informaticien', 'developpeur'], true);
     }
 
     function admin_can_comptabilite() {
