@@ -127,13 +127,13 @@ function bl_modifier_esc_attr($v): string
                         </div>
                         <div class="form-group search-group">
                             <div class="search-input-wrapper">
-                                <input type="text" id="search-produit-bl-edit" placeholder="Tapez le nom du produit..." autocomplete="off" aria-label="Rechercher un produit">
+                                <input type="text" id="search-produit-bl-edit" placeholder="Nom, réf. produit (FPL…), réf. fournisseur…" autocomplete="off" aria-label="Rechercher un produit">
                                 <i class="fas fa-search search-icon"></i>
                                 <span class="search-loading" id="search-loading-bl-edit" aria-hidden="true"><i class="fas fa-spinner fa-spin"></i></span>
                             </div>
                             <div id="search-produit-results-bl-edit" class="search-produit-results" role="listbox" aria-hidden="true"></div>
                         </div>
-                        <p class="form-hint"><i class="fas fa-info-circle"></i> Tapez au moins 1 caractère ou laissez vide pour afficher tous les articles.</p>
+                        <p class="form-hint"><i class="fas fa-info-circle"></i> Recherche par <strong>nom</strong>, <strong>réf. produit</strong> (FPL, 5 chiffres) ou <strong>réf. fournisseur</strong>. Laissez vide pour tous les articles.</p>
                     </div>
 
                     <div class="form-section-card">
@@ -300,6 +300,7 @@ function bl_modifier_esc_attr($v): string
 
     <?php include '../includes/footer.php'; ?>
 
+    <script src="/js/admin-produit-search-ui.js<?php echo asset_version_query(); ?>"></script>
     <script>
     (function() {
         var FISCAL_TVA_PCT = <?php echo json_encode((float) $fiscal_tva_pourcent_devis_bl); ?>;
@@ -375,18 +376,20 @@ function bl_modifier_esc_attr($v): string
         function addLigne(produit) {
             var prix = parseFloat(produit.prix) || 0;
             var prixPromo = produit.prix_promotion && parseFloat(produit.prix_promotion) > 0 ? parseFloat(produit.prix_promotion) : '';
-            var nom = (produit.nom || '');
             var idx = ligneIndex++;
             var div = document.createElement('div');
             div.className = 'ligne-commande-item ligne-commande-item-bl';
             div.dataset.produitId = produit.id;
             var maxQ = produit.stock_dispo || produit.stock || 99999;
-            div.innerHTML =
-                '<div class="ligne-bl-cell">' +
+            var U = window.FoutaAdminProduitSearchUi;
+            var cellDes = U && U.buildLigneBlDesignationCellHtml
+                ? U.buildLigneBlDesignationCellHtml(produit, idx, 'lignes')
+                : ('<div class="ligne-bl-cell">' +
                     '<input type="hidden" name="lignes[' + idx + '][produit_id]" value="' + produit.id + '">' +
                     '<span class="ligne-bl-label">Désignation</span>' +
-                    '<input type="text" name="lignes[' + idx + '][nom_produit]" value="' + nom.replace(/"/g, '&quot;').replace(/</g, '') + '" placeholder="Nom du produit" class="ligne-nom-input" aria-label="Désignation du produit">' +
-                '</div>' +
+                    '<input type="text" name="lignes[' + idx + '][nom_produit]" value="' + (produit.nom || '').replace(/"/g, '&quot;').replace(/</g, '') + '" placeholder="Nom du produit" class="ligne-nom-input" aria-label="Désignation du produit">' +
+                '</div>');
+            div.innerHTML = cellDes +
                 '<div class="ligne-bl-cell">' +
                     '<span class="ligne-bl-label">Quantité</span>' +
                     '<input type="number" name="lignes[' + idx + '][quantite]" value="1" min="0.001" step="0.001" max="' + maxQ + '" class="ligne-qte" aria-label="Quantité">' +
@@ -432,10 +435,11 @@ function bl_modifier_esc_attr($v): string
                             el.className = 'search-result-item';
                             el.setAttribute('role', 'option');
                             el.setAttribute('tabindex', '0');
-                            var stock = p.stock_dispo || p.stock || 0;
-                            var prix = parseFloat(p.prix) || 0;
-                            el.innerHTML = '<span class="sr-nom">' + (p.nom || '') + '</span>' +
-                                '<span class="sr-meta">' + (p.categorie_nom || '') + ' &bull; Stock: ' + stock + ' &bull; ' + prix + ' FCFA</span>';
+                            var U = window.FoutaAdminProduitSearchUi;
+                            el.innerHTML = U && U.buildSearchResultHtml ? U.buildSearchResultHtml(p) : (
+                                '<span class="sr-nom">' + (p.nom || '') + '</span>' +
+                                '<span class="sr-meta">' + (p.categorie_nom || '') + '</span>'
+                            );
                             el.addEventListener('mousedown', function(ev) {
                                 ev.preventDefault();
                                 addLigne(p);

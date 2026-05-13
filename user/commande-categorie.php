@@ -170,6 +170,12 @@ $all_categories = get_all_categories();
             font-weight: 700;
             color: var(--titres);
             margin-bottom: 5px;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 4;
+            -webkit-box-orient: vertical;
+            line-height: 1.35;
+            white-space: normal;
         }
 
         .produit-card-commande-info {
@@ -372,7 +378,7 @@ $all_categories = get_all_categories();
                                         alt="<?php echo htmlspecialchars($produit_nom_affichage); ?>" class="produit-card-image"
                                         onerror="this.src='/image/produit1.jpg'">
                                     <div class="produit-card-info">
-                                        <h4 class="produit-card-nom"><?php echo htmlspecialchars($produit_nom_affichage); ?></h4>
+                                        <h4 class="produit-card-nom"><?php echo produits_card_heading_inner_html($produit, 20, $produit_nom_affichage); ?></h4>
                                         <div class="produit-card-commande-info">
                                             <?php
                                             $numero_commande = $produit['numero_commande'] ?? null;

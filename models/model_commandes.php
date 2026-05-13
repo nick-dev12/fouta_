@@ -503,14 +503,20 @@ function get_commande_produits($commande_id) {
             ? ", COALESCE(NULLIF(TRIM(cp.variante_nom), ''), pv.nom) as variante_nom"
             : "";
         $nom_col = _commande_produits_has_nom_produit() ? "COALESCE(NULLIF(TRIM(cp.nom_produit), ''), p.nom) as nom" : "p.nom";
+        $sel_marque_id = (function_exists('produits_has_column') && produits_has_column('marque_id')) ? ', p.marque_id' : '';
+        $jb = produits_catalog_join_bundle();
+        $sel_cat = $jb['sel'];
+        $join_cat = $jb['join'];
         $stmt = $db->prepare("
-            SELECT cp.*, p.id as produit_id, $nom_col, p.image_principale, p.poids, p.unite,
+            SELECT cp.*, p.id as produit_id, $nom_col, p.image_principale, p.poids, p.unite, p.description$sel_marque_id,
                    c.nom as categorie_nom, c.id as categorie_id,
                    cmd.numero_commande, cmd.date_commande, cmd.statut as statut_commande,
                    $img $var_nom
+                   $sel_cat
             FROM commande_produits cp
             INNER JOIN produits p ON cp.produit_id = p.id
             LEFT JOIN categories c ON p.categorie_id = c.id
+            $join_cat
             $join_variante
             INNER JOIN commandes cmd ON cp.commande_id = cmd.id
             WHERE cp.commande_id = :commande_id
@@ -539,7 +545,12 @@ function get_commandes_by_categorie($user_id, $categorie_id = null) {
         $has_var = _commande_produits_has_variante_columns();
         $img = $has_var ? "COALESCE(pv.image, p.image_principale) as image_principale" : "p.image_principale as image_principale";
         $produit_nom_col = _commande_produits_has_nom_produit() ? "COALESCE(NULLIF(TRIM(cp.nom_produit), ''), p.nom) as produit_nom" : "p.nom as produit_nom";
-        $cols = "c.id as categorie_id, c.nom as categorie_nom, cmd.id as commande_id, cmd.numero_commande, cmd.date_commande, cmd.statut as statut_commande, cmd.montant_total, cp.produit_id, $produit_nom_col, $img, p.poids, p.unite, cp.quantite, cp.prix_unitaire, cp.prix_total";
+        $jb = produits_catalog_join_bundle();
+        $sel_cat = $jb['sel'];
+        $join_cat = $jb['join'];
+        $cols_mid = (function_exists('produits_has_column') && produits_has_column('marque_id')) ? ', p.marque_id' : '';
+        $cols = "c.id as categorie_id, c.nom as categorie_nom, cmd.id as commande_id, cmd.numero_commande, cmd.date_commande, cmd.statut as statut_commande, cmd.montant_total, cp.produit_id, $produit_nom_col, $img, p.description, p.poids, p.unite$cols_mid, cp.quantite, cp.prix_unitaire, cp.prix_total";
+        $cols .= $sel_cat;
         if ($has_opts) $cols .= ", cp.couleur, cp.poids as choix_poids, cp.taille";
         if ($has_var) $cols .= ", cp.variante_nom, cp.surcout_poids, cp.surcout_taille";
         $join_pv = $has_var ? "LEFT JOIN produits_variantes pv ON cp.variante_id = pv.id AND pv.produit_id = p.id" : "";
@@ -549,6 +560,7 @@ function get_commandes_by_categorie($user_id, $categorie_id = null) {
             INNER JOIN commande_produits cp ON cmd.id = cp.commande_id
             INNER JOIN produits p ON cp.produit_id = p.id
             INNER JOIN categories c ON p.categorie_id = c.id
+            $join_cat
             $join_pv
             WHERE cmd.user_id = :user_id
         ";
@@ -596,11 +608,16 @@ function get_produits_commandes_by_user($user_id, $statut_commande = null) {
     global $db;
     
     try {
+        $jb = produits_catalog_join_bundle();
+        $sel_cat = $jb['sel'];
+        $join_cat = $jb['join'];
+        $sel_mid_u = (function_exists('produits_has_column') && produits_has_column('marque_id')) ? "p.marque_id,\n                " : '';
         $sql = "
             SELECT DISTINCT
                 p.id,
                 p.nom,
                 p.description,
+                $sel_mid_u
                 p.prix,
                 p.prix_promotion,
                 p.stock,
@@ -615,10 +632,12 @@ function get_produits_commandes_by_user($user_id, $statut_commande = null) {
                 cmd.numero_commande,
                 cmd.date_commande,
                 cmd.statut as statut_commande
+                $sel_cat
             FROM commandes cmd
             INNER JOIN commande_produits cp ON cmd.id = cp.commande_id
             INNER JOIN produits p ON cp.produit_id = p.id
             LEFT JOIN categories c ON p.categorie_id = c.id
+            $join_cat
             WHERE cmd.user_id = :user_id
         ";
         

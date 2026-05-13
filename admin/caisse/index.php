@@ -93,10 +93,23 @@ foreach ($caisse_catalog_rows as $pr) {
         $mid = (int) ($pr['marque_id'] ?? 0);
     }
     $imgs = function_exists('produits_galerie_web_urls') ? produits_galerie_web_urls($pr) : [];
+    $refF = '';
+    if (function_exists('produits_has_column') && produits_has_column('reference_fournisseur')) {
+        $refF = trim((string) ($pr['reference_fournisseur'] ?? ''));
+    }
+    $descShort = function_exists('produits_description_excerpt')
+        ? produits_description_excerpt($pr['description'] ?? '', 50)
+        : '';
+    $marqueNom = function_exists('produits_marque_libelle_from_row')
+        ? produits_marque_libelle_from_row($pr)
+        : trim((string) ($pr['marque_libelle_catalogue'] ?? $pr['marque_nom'] ?? ''));
     $caisse_catalog_json[] = [
         'id' => (int) ($pr['id'] ?? 0),
         'nom' => (string) ($pr['nom'] ?? ''),
         'ref' => $has_ident ? strtoupper(trim((string) ($pr['identifiant_interne'] ?? ''))) : '',
+        'ref_f' => $refF,
+        'marque_nom' => $marqueNom,
+        'desc_short' => $descShort,
         'cat_id' => (int) ($pr['categorie_id'] ?? 0),
         'marque_id' => $mid,
         'prix' => round((float) caisse_prix_unitaire_produit($pr), 2),
@@ -285,15 +298,16 @@ if ($preview_recu !== null && $total_ttc > 0) {
 
         <div class="caisse-shell">
 
-            <!-- ——— Zone A : scan + recherche ——— -->
-            <section class="caisse-zone caisse-zone--a" aria-label="Recherche catalogue et scan">
+            <!-- ——— Zone A : recherche unifiée (catalogue + codes) ——— -->
+            <section class="caisse-zone caisse-zone--a" aria-label="Recherche catalogue">
                 <div class="caisse-zone-a-grid">
                     <div class="caisse-search-card caisse-search-card--primary">
-                        <h2 class="caisse-catalog-title"><i class="fas fa-search" aria-hidden="true"></i> Recherche catalogue</h2>
+                        <h2 class="caisse-catalog-title"><i class="fas fa-search" aria-hidden="true"></i> Recherche &amp; ajout catalogue</h2>
+                        <p class="caisse-catalog-lead">Nom, références FPL, réf. fournisseur ou code ticket (TKT…). Un seul champ pour rechercher et valider un code.</p>
                         <form method="get" action="index.php" class="caisse-search-form" id="caisse-search-form-get">
                             <div class="caisse-search-fields">
                                 <input type="search" name="q" id="caisse_q_live" value="<?php echo htmlspecialchars($q, ENT_QUOTES, 'UTF-8'); ?>"
-                                    placeholder="Nom, mot-clé, réf. FPL…" class="caisse-search-input caisse-search-input--live"
+                                    placeholder="Nom, réf. FPL, réf. fournisseur, TKT…" class="caisse-search-input caisse-search-input--live"
                                     aria-label="Recherche produit" autocomplete="off" autofocus>
                                 <select name="cat" id="caisse_cat_live" class="caisse-search-select" aria-label="Catégorie">
                                     <option value="">Toutes les catégories</option>
@@ -326,23 +340,11 @@ if ($preview_recu !== null && $total_ttc > 0) {
                                 data-marque-filter="<?php echo ($marque_has_col && !empty($marques_liste)) ? '1' : '0'; ?>"
                                 hidden></div>
                         </div>
-                    </div>
-
-                    <div class="caisse-scan-card caisse-scan-card--compact">
-                        <span class="caisse-zone-label"><i class="fas fa-barcode"></i> A · Code-barres &amp; référence</span>
-                        <form method="post" action="post.php" class="caisse-scan-form">
-                            <input type="hidden" name="csrf_token"
-                                value="<?php echo htmlspecialchars($_SESSION['admin_csrf']); ?>">
+                        <form id="caisse-add-scan-fallback" method="post" action="post.php" class="visually-hidden" tabindex="-1" aria-hidden="true">
+                            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['admin_csrf'], ENT_QUOTES, 'UTF-8'); ?>">
                             <input type="hidden" name="caisse_action" value="add_scan">
                             <input type="hidden" name="quantite" value="1">
-                            <label class="visually-hidden" for="code_scan">Code ou recherche</label>
-                            <div class="caisse-scan-input-wrap">
-                                <i class="fas fa-keyboard caisse-scan-icon" aria-hidden="true"></i>
-                                <input type="text" name="code" id="code_scan" class="caisse-scan-input"
-                                    placeholder="FPL, code ticket TKT…, ID produit…" autocomplete="off">
-                                <button type="submit" class="caisse-scan-submit" title="Valider (Entrée)"><i
-                                        class="fas fa-arrow-right"></i></button>
-                            </div>
+                            <input type="hidden" name="code" id="caisse_add_scan_code" value="">
                         </form>
                     </div>
                 </div>
@@ -740,10 +742,28 @@ if ($preview_recu !== null && $total_ttc > 0) {
             if (ref && ref.indexOf(qu) !== -1) {
                 return true;
             }
+            var refF = ((p.ref_f || '') + '').toUpperCase();
+            if (refF && refF.indexOf(qu) !== -1) {
+                return true;
+            }
+            var desc = ((p.desc_short || '') + '').toLowerCase();
+            if (desc && desc.indexOf(d) !== -1) {
+                return true;
+            }
+            var marque = ((p.marque_nom || '') + '').toLowerCase();
+            if (marque && marque.indexOf(d) !== -1) {
+                return true;
+            }
             var qDigits = q.replace(/\D/g, '');
             if (qDigits && ref) {
                 var rDigits = ref.replace(/\D/g, '');
                 if (rDigits.indexOf(qDigits) !== -1) {
+                    return true;
+                }
+            }
+            if (qDigits && refF) {
+                var rfD = refF.replace(/\D/g, '');
+                if (rfD && rfD.indexOf(qDigits) !== -1) {
                     return true;
                 }
             }
@@ -759,12 +779,56 @@ if ($preview_recu !== null && $total_ttc > 0) {
             }
             return matchProductText(p, qRaw);
         }
+        function collectHits(qRaw, catVal, marqueVal, cap) {
+            cap = cap || maxLive;
+            var q = (qRaw || '').trim();
+            var hits = [];
+            var i;
+            var needFilter = (q !== '') || (catVal !== '') || (marqueVal !== '');
+            if (!needFilter) {
+                return hits;
+            }
+            if (q === '' && (catVal !== '' || marqueVal !== '')) {
+                for (i = 0; i < catalog.length; i++) {
+                    if (filtersOk(catalog[i], catVal, marqueVal)) {
+                        hits.push(catalog[i]);
+                    }
+                    if (hits.length >= cap) {
+                        break;
+                    }
+                }
+            } else {
+                for (i = 0; i < catalog.length; i++) {
+                    if (matchProduct(catalog[i], qRaw, catVal, marqueVal)) {
+                        hits.push(catalog[i]);
+                    }
+                    if (hits.length >= cap) {
+                        break;
+                    }
+                }
+            }
+            return hits;
+        }
+        function preferScanResolve(raw) {
+            var t = (raw || '').trim();
+            if (t === '') {
+                return false;
+            }
+            if (/^tkt/i.test(t)) {
+                return true;
+            }
+            if (/^fpl\d+/i.test(t)) {
+                return true;
+            }
+            if (/^\d{1,12}$/.test(t)) {
+                return true;
+            }
+            return false;
+        }
         function renderLive() {
             var q = inputQ.value;
             var catVal = selCat.value;
             var marqueVal = marqueFilterOn ? selMarque.value : '';
-            var hits = [];
-            var i;
             var needFilter = (q.trim() !== '') || (catVal !== '') || (marqueVal !== '');
             if (!needFilter) {
                 box.innerHTML = '';
@@ -772,25 +836,7 @@ if ($preview_recu !== null && $total_ttc > 0) {
                 box.classList.remove('is-empty');
                 return;
             }
-            if (q.trim() === '' && (catVal !== '' || marqueVal !== '')) {
-                for (i = 0; i < catalog.length; i++) {
-                    if (filtersOk(catalog[i], catVal, marqueVal)) {
-                        hits.push(catalog[i]);
-                    }
-                    if (hits.length >= maxLive) {
-                        break;
-                    }
-                }
-            } else {
-                for (i = 0; i < catalog.length; i++) {
-                    if (matchProduct(catalog[i], q, catVal, marqueVal)) {
-                        hits.push(catalog[i]);
-                    }
-                    if (hits.length >= maxLive) {
-                        break;
-                    }
-                }
-            }
+            var hits = collectHits(q, catVal, marqueVal, maxLive);
             if (hits.length === 0) {
                 box.innerHTML = '<p class="caisse-live-empty">Aucun produit en stock ne correspond.</p>';
                 box.hidden = false;
@@ -798,10 +844,25 @@ if ($preview_recu !== null && $total_ttc > 0) {
                 return;
             }
             var html = '<ul class="caisse-live-list">';
+            var i;
             for (i = 0; i < hits.length; i++) {
                 var p = hits[i];
                 var refCell = hasIdent
                     ? '<span class="caisse-live-ref"><code>' + esc(p.ref || '—') + '</code></span>'
+                    : '';
+                var marqueNom = (p.marque_nom || '').trim();
+                var descShort = (p.desc_short || '').trim();
+                // Format nom · marque · description (comme les cartes produits)
+                var line1Parts = ['<span class="caisse-live-nom">' + esc(p.nom) + '</span>'];
+                if (marqueNom) {
+                    line1Parts.push('<span class="caisse-live-marque">' + esc(marqueNom) + '</span>');
+                }
+                if (descShort) {
+                    line1Parts.push('<span class="caisse-live-desc">' + esc(descShort) + '</span>');
+                }
+                var line1Html = line1Parts.join('<span class="caisse-live-sep"> · </span>');
+                var refFourn = (p.ref_f || '').trim()
+                    ? '<span class="caisse-live-ref-fourn">Réf. fourn. <code>' + esc(p.ref_f) + '</code></span>'
                     : '';
                 var imgs = Array.isArray(p.imgs) ? p.imgs : [];
                 var thumbSrc = imgs.length ? imgs[0] : placeholderImg;
@@ -816,8 +877,10 @@ if ($preview_recu !== null && $total_ttc > 0) {
                             '<img src="' + escAttr(thumbSrc) + '" alt="" loading="lazy" width="56" height="56" onerror="this.src=\'' + placeholderImg + '\'">' +
                     '</button>' +
                     '<button type="submit" class="caisse-live-row-hit">' +
-                        '<span class="caisse-live-nom">' + esc(p.nom) + '</span>' + refCell +
-                        '<span class="caisse-live-meta">' + fmtFcfa(p.prix) + ' FCFA HT · stock ' + esc(String(p.stock)) + '</span>' +
+                        '<span class="caisse-live-line1">' + line1Html + '</span>' +
+                        refFourn +
+                        '<span class="caisse-live-refs-prod">' + refCell + '</span>' +
+                        '<span class="caisse-live-meta"><strong>' + fmtFcfa(p.prix) + ' FCFA</strong> HT · stock ' + esc(String(p.stock)) + '</span>' +
                         '<span class="caisse-live-hint-add">Cliquer pour ajouter au panier</span>' +
                     '</button>' +
                     '</form></li>';
@@ -843,6 +906,31 @@ if ($preview_recu !== null && $total_ttc > 0) {
         if (marqueFilterOn) {
             selMarque.addEventListener('change', renderLive);
         }
+        var scanForm = document.getElementById('caisse-add-scan-fallback');
+        var scanCodeInput = document.getElementById('caisse_add_scan_code');
+        inputQ.addEventListener('keydown', function(ev) {
+            if (ev.key !== 'Enter') {
+                return;
+            }
+            var raw = inputQ.value.trim();
+            var catVal = selCat.value;
+            var marqueVal = marqueFilterOn ? selMarque.value : '';
+            var hitsQuick = collectHits(inputQ.value, catVal, marqueVal, 2);
+            if (hitsQuick.length === 1) {
+                ev.preventDefault();
+                var quickForm = box.querySelector('.caisse-live-add-form');
+                if (quickForm) {
+                    quickForm.submit();
+                }
+                return;
+            }
+            if (preferScanResolve(raw) && scanForm && scanCodeInput) {
+                ev.preventDefault();
+                scanCodeInput.value = raw;
+                scanForm.submit();
+                return;
+            }
+        });
         document.addEventListener('click', function(ev) {
             if (!box.hidden && !box.contains(ev.target) && ev.target !== inputQ && !selCat.contains(ev.target)) {
                 if (marqueFilterOn && selMarque.contains(ev.target)) {

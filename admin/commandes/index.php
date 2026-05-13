@@ -360,7 +360,7 @@ $montant_total_a_traiter = array_sum(array_column($commandes, 'montant_total'));
                                 <div class="form-group search-group">
                                     <div class="search-input-wrapper">
                                         <input type="text" id="search-produit" name="search_produit"
-                                            placeholder="Tapez le nom du produit ou de la catégorie..."
+                                            placeholder="Nom, réf. produit (FPL…), réf. fournisseur…"
                                             autocomplete="off">
                                         <i class="fas fa-search search-icon"></i>
                                         <span class="search-loading" id="search-loading" aria-hidden="true"><i
@@ -369,8 +369,7 @@ $montant_total_a_traiter = array_sum(array_column($commandes, 'montant_total'));
                                     <div id="search-produit-results" class="search-produit-results" role="listbox"
                                         aria-hidden="true"></div>
                                 </div>
-                                <p class="form-hint"><i class="fas fa-info-circle"></i> Tapez au moins 1 caractère ou
-                                    laissez vide pour afficher tous les produits en stock.</p>
+                                <p class="form-hint"><i class="fas fa-info-circle"></i> Recherche par <strong>nom</strong>, <strong>réf. produit</strong> (FPL, 5 chiffres) ou <strong>réf. fournisseur</strong>. Laissez vide pour tous les produits en stock.</p>
                             </div>
 
                             <div class="form-section-card">
@@ -503,6 +502,7 @@ $montant_total_a_traiter = array_sum(array_column($commandes, 'montant_total'));
 
     <?php include '../includes/footer.php'; ?>
 
+    <script src="/js/admin-produit-search-ui.js<?php echo asset_version_query(); ?>"></script>
     <script>
     (function() {
         var modal = document.getElementById('modal-commande-manuelle');
@@ -551,6 +551,8 @@ $montant_total_a_traiter = array_sum(array_column($commandes, 'montant_total'));
                 .prix_promotion) : '';
             var nom = (produit.nom || '');
             var idx = ligneIndex++;
+            var U = window.FoutaAdminProduitSearchUi;
+            var metaHtml = U && U.buildLigneMetaDivHtml ? U.buildLigneMetaDivHtml(produit) : '';
             var div = document.createElement('div');
             div.className = 'ligne-commande-item';
             div.dataset.produitId = produit.id;
@@ -559,6 +561,7 @@ $montant_total_a_traiter = array_sum(array_column($commandes, 'montant_total'));
                 '<input type="text" name="lignes[' + idx + '][nom_produit]" value="' + (nom.replace(/"/g,
                 '&quot;')) +
                 '" placeholder="Nom du produit (modifiable)" class="ligne-nom-input" title="Modifier le nom affiché">' +
+                metaHtml +
                 '<input type="number" name="lignes[' + idx + '][quantite]" value="1" min="1" max="' + (produit
                     .stock_dispo || produit.stock || 999) + '" class="ligne-qte" title="Quantité">' +
                 '<input type="number" name="lignes[' + idx + '][prix_unitaire]" value="' + (prixPromo || prix) +
@@ -595,11 +598,11 @@ $montant_total_a_traiter = array_sum(array_column($commandes, 'montant_total'));
                             el.className = 'search-result-item';
                             el.setAttribute('role', 'option');
                             el.setAttribute('tabindex', '0');
-                            var stock = p.stock_dispo || p.stock || 0;
-                            var prix = parseFloat(p.prix) || 0;
-                            el.innerHTML = '<span class="sr-nom">' + (p.nom || '') + '</span>' +
-                                '<span class="sr-meta">' + (p.categorie_nom || '') + ' &bull; Stock: ' +
-                                stock + ' &bull; ' + prix + ' FCFA</span>';
+                            var U = window.FoutaAdminProduitSearchUi;
+                            el.innerHTML = U && U.buildSearchResultHtml ? U.buildSearchResultHtml(p) : (
+                                '<span class="sr-nom">' + (p.nom || '') + '</span>' +
+                                '<span class="sr-meta">' + (p.categorie_nom || '') + '</span>'
+                            );
                             el.addEventListener('mousedown', function(ev) {
                                 ev.preventDefault();
                                 addLigne(p);

@@ -31,6 +31,27 @@ function produits_has_column($name) {
 }
 
 /**
+ * Valeur d’une colonne résultat SQL insensible à la casse du nom (PDO / MySQL).
+ *
+ * @param array<string, mixed> $row
+ * @return mixed|null
+ */
+function produits_assoc_ci(array $row, $key) {
+    $key = (string) $key;
+    if (array_key_exists($key, $row)) {
+        return $row[$key];
+    }
+    $lk = strtolower($key);
+    foreach ($row as $k => $v) {
+        if (strtolower((string) $k) === $lk) {
+            return $v;
+        }
+    }
+
+    return null;
+}
+
+/**
  * URLs publiques /upload/... pour les images produit (JSON images ou image principale)
  *
  * @param array $p Ligne produit (champs image_principale, images)
@@ -61,6 +82,165 @@ function produits_galerie_web_urls($p) {
         $out[] = '/upload/' . ltrim($rel, '/');
     }
     return $out;
+}
+
+/**
+ * Extrait un extrait lisible de la description (HTML retiré).
+ *
+ * @param string|null $description
+ * @param int $max_len
+ * @return string
+ */
+function produits_description_excerpt($description, $max_len = 30) {
+    $raw = (string) $description;
+    if ($raw === '') {
+        return '';
+    }
+    $t = trim(strip_tags(html_entity_decode($raw, ENT_QUOTES | ENT_HTML5, 'UTF-8')));
+    if ($t === '') {
+        return '';
+    }
+    $max_len = max(1, (int) $max_len);
+    if (function_exists('mb_strlen') && function_exists('mb_substr')) {
+        if (mb_strlen($t, 'UTF-8') <= $max_len) {
+            return $t;
+        }
+
+        return rtrim(mb_substr($t, 0, $max_len, 'UTF-8')) . '…';
+    }
+    if (strlen($t) <= $max_len) {
+        return $t;
+    }
+
+    return substr($t, 0, $max_len) . '…';
+}
+
+/**
+ * Libellé marque pour une ligne produit (jointure marque_nom ou lookup marque_id).
+ *
+ * @param array<string, mixed> $row
+ * @return string
+ */
+function produits_marque_libelle_from_row(array $row) {
+    $raw = produits_assoc_ci($row, 'marque_libelle_catalogue');
+    if ($raw === null) {
+        $raw = produits_assoc_ci($row, 'pcn_marque_join_nom');
+    }
+    if ($raw === null) {
+        $raw = produits_assoc_ci($row, 'marque_nom');
+    }
+    $t = trim((string) ($raw ?? ''));
+    if ($t !== '') {
+        return $t;
+    }
+    $mid = (int) (produits_assoc_ci($row, 'marque_id') ?? 0);
+    if ($mid <= 0) {
+        return '';
+    }
+    if (!function_exists('produits_has_column') || !produits_has_column('marque_id')) {
+        return '';
+    }
+    static $id_to_nom = false;
+    if ($id_to_nom === false) {
+        $id_to_nom = [];
+        // Charger le modèle marques si disponible (nécessaire pour marques_table_ok())
+        $marquesPhp = __DIR__ . '/model_marques.php';
+        if (file_exists($marquesPhp)) {
+            require_once $marquesPhp;
+        }
+        if (function_exists('marques_table_ok') && marques_table_ok()) {
+            foreach (get_all_marques_ordered_by_nom() as $m) {
+                $id_to_nom[(int) $m['id']] = trim((string) ($m['nom'] ?? ''));
+            }
+        }
+    }
+
+    return $id_to_nom[$mid] ?? '';
+}
+
+/**
+ * Fragment HTML pour le titre de carte produit : ordre fixe 1) nom, 2) marque liée, 3) extrait de description.
+ *
+ * @param array<string, mixed> $produit nom, marque_nom, description (clés optionnelles)
+ * @param int $desc_max_len Longueur max de l'extrait description
+ * @param string|null $nom_override Remplace le nom principal (ex. nom + variante)
+ * @return string HTML interne à placer dans &lt;h3 class="produit-card-nom"&gt;
+ */
+function produits_card_heading_inner_html(array $produit, $desc_max_len = 20, $nom_override = null) {
+    if ($nom_override !== null && trim((string) $nom_override) !== '') {
+        $nom_raw = trim((string) $nom_override);
+    } else {
+        $nom_raw = trim((string) ($produit['nom'] ?? $produit['produit_nom'] ?? ''));
+    }
+    $nom_esc = htmlspecialchars($nom_raw, ENT_QUOTES, 'UTF-8');
+    $marque = produits_marque_libelle_from_row($produit);
+    $desc_ex = produits_description_excerpt($produit['description'] ?? '', (int) $desc_max_len);
+    $parts = ['<span class="pcn-nom">' . $nom_esc . '</span>'];
+    if ($marque !== '') {
+        $parts[] = '<span class="pcn-marque">' . htmlspecialchars($marque, ENT_QUOTES, 'UTF-8') . '</span>';
+    }
+    if ($desc_ex !== '') {
+        $parts[] = '<span class="pcn-desc">' . htmlspecialchars($desc_ex, ENT_QUOTES, 'UTF-8') . '</span>';
+    }
+
+    $sep = '<span class="pcn-sep" aria-hidden="true"> · </span>';
+
+    return implode($sep, $parts);
+}
+
+/**
+ * Nom fournisseur affiché : jointure table fournisseurs ou champ nom_fournisseur.
+ *
+ * @param array<string, mixed> $row
+ * @return string
+ */
+function produits_fournisseur_nom_affichage($row) {
+    $t = trim((string) ($row['fournisseur_table_nom'] ?? ''));
+    if ($t !== '') {
+        return $t;
+    }
+    if (function_exists('produits_has_column') && produits_has_column('nom_fournisseur')) {
+        $t = trim((string) ($row['nom_fournisseur'] ?? ''));
+        if ($t !== '') {
+            return $t;
+        }
+    }
+
+    return '';
+}
+
+/**
+ * Suffixe SELECT + JOIN pour marque / fournisseur (listes catalogue admin).
+ *
+ * @return array{sel: string, join: string}
+ */
+function produits_catalog_join_bundle() {
+    static $cache = null;
+    if ($cache !== null) {
+        return $cache;
+    }
+    $sel = '';
+    $join = '';
+    // Charger le modèle marques si disponible (nécessaire pour marques_table_ok())
+    $marquesPhp = __DIR__ . '/model_marques.php';
+    if (file_exists($marquesPhp)) {
+        require_once $marquesPhp;
+    }
+    if (produits_has_column('marque_id') && function_exists('marques_table_ok') && marques_table_ok()) {
+        /* Sous-requête : évite tout conflit de nom avec p.* / PDO (alias unique). */
+        $sel .= ', (SELECT mx.nom FROM marques mx WHERE mx.id = p.marque_id LIMIT 1) AS marque_libelle_catalogue';
+    } else {
+        $sel .= ', NULL AS marque_libelle_catalogue';
+    }
+    if (produits_has_column('fournisseur_id')) {
+        $join .= ' LEFT JOIN fournisseurs f ON p.fournisseur_id = f.id ';
+        $sel .= ', f.nom AS fournisseur_table_nom';
+    } else {
+        $sel .= ', NULL AS fournisseur_table_nom';
+    }
+    $cache = ['sel' => $sel, 'join' => $join];
+
+    return $cache;
 }
 
 /**
@@ -210,20 +390,25 @@ function get_all_produits($statut = null)
     global $db;
 
     try {
+        $jb = produits_catalog_join_bundle();
+        $selx = $jb['sel'];
+        $joinx = $jb['join'];
         if ($statut) {
             $stmt = $db->prepare("
-                SELECT p.*, c.nom as categorie_nom
+                SELECT p.*, c.nom as categorie_nom $selx
                 FROM produits p 
                 LEFT JOIN categories c ON p.categorie_id = c.id 
+                $joinx
                 WHERE p.statut = :statut 
                 ORDER BY p.date_creation DESC
             ");
             $stmt->execute(['statut' => $statut]);
         } else {
             $stmt = $db->prepare("
-                SELECT p.*, c.nom as categorie_nom
+                SELECT p.*, c.nom as categorie_nom $selx
                 FROM produits p 
                 LEFT JOIN categories c ON p.categorie_id = c.id 
+                $joinx
                 ORDER BY p.date_creation DESC
             ");
             $stmt->execute();
@@ -285,10 +470,14 @@ function get_produits_by_categorie($categorie_id)
     global $db;
 
     try {
+        $jb = produits_catalog_join_bundle();
+        $selx = $jb['sel'];
+        $joinx = $jb['join'];
         $stmt = $db->prepare("
-            SELECT p.*, c.nom as categorie_nom 
+            SELECT p.*, c.nom as categorie_nom $selx
             FROM produits p 
             LEFT JOIN categories c ON p.categorie_id = c.id 
+            $joinx
             WHERE p.categorie_id = :categorie_id AND p.statut = 'actif'
             ORDER BY p.date_creation DESC
         ");
@@ -319,10 +508,14 @@ function get_produits_by_sous_categorie_id($sous_categorie_id)
     }
 
     try {
+        $jb = produits_catalog_join_bundle();
+        $selx = $jb['sel'];
+        $joinx = $jb['join'];
         $stmt = $db->prepare("
-            SELECT p.*, c.nom as categorie_nom
+            SELECT p.*, c.nom as categorie_nom $selx
             FROM produits p
             LEFT JOIN categories c ON p.categorie_id = c.id
+            $joinx
             WHERE p.sous_categorie_id = :sid
             ORDER BY p.date_creation DESC, p.id DESC
         ");
@@ -708,7 +901,14 @@ function search_produits_with_filters($recherche = '', $prix_min = null, $prix_m
                 $conditions[] = 'UPPER(TRIM(p.identifiant_interne)) = :ident_exact';
                 $params['ident_exact'] = strtoupper($tr);
             } else {
-                $conditions[] = '(p.nom LIKE :term OR p.description LIKE :term)';
+                $or = ['p.nom LIKE :term', 'p.description LIKE :term'];
+                if (produits_has_column('identifiant_interne')) {
+                    $or[] = '(p.identifiant_interne IS NOT NULL AND TRIM(p.identifiant_interne) != \'\' AND UPPER(TRIM(p.identifiant_interne)) LIKE UPPER(:term))';
+                }
+                if (produits_has_column('reference_fournisseur')) {
+                    $or[] = '(p.reference_fournisseur IS NOT NULL AND p.reference_fournisseur LIKE :term)';
+                }
+                $conditions[] = '(' . implode(' OR ', $or) . ')';
                 $params['term'] = '%' . $tr . '%';
             }
         }
@@ -752,10 +952,14 @@ function search_produits_with_filters($recherche = '', $prix_min = null, $prix_m
         $params['limit'] = $limit;
         $params['offset'] = $offset;
 
+        $jb = produits_catalog_join_bundle();
+        $selx = $jb['sel'];
+        $joinx = $jb['join'];
         $stmt = $db->prepare("
-            SELECT p.*, c.nom as categorie_nom 
+            SELECT p.*, c.nom as categorie_nom $selx
             FROM produits p 
             LEFT JOIN categories c ON p.categorie_id = c.id 
+            $joinx
             WHERE $where
             ORDER BY $order
             LIMIT :limit OFFSET :offset
@@ -796,7 +1000,14 @@ function count_search_produits_with_filters($recherche = '', $prix_min = null, $
                 $conditions[] = 'UPPER(TRIM(identifiant_interne)) = :ident_exact';
                 $params['ident_exact'] = strtoupper($tr);
             } else {
-                $conditions[] = '(nom LIKE :term OR description LIKE :term)';
+                $or = ['nom LIKE :term', 'description LIKE :term'];
+                if (produits_has_column('identifiant_interne')) {
+                    $or[] = '(identifiant_interne IS NOT NULL AND TRIM(identifiant_interne) != \'\' AND UPPER(TRIM(identifiant_interne)) LIKE UPPER(:term))';
+                }
+                if (produits_has_column('reference_fournisseur')) {
+                    $or[] = '(reference_fournisseur IS NOT NULL AND reference_fournisseur LIKE :term)';
+                }
+                $conditions[] = '(' . implode(' OR ', $or) . ')';
                 $params['term'] = '%' . $tr . '%';
             }
         }
@@ -1406,29 +1617,91 @@ function search_produits_en_stock_commande_manuelle($recherche = '', $limit = 30
     global $db;
 
     try {
+        $jb = produits_catalog_join_bundle();
+        $selx = $jb['sel'];
+        $joinx = $jb['join'];
+        $limit = max(5, min(80, (int) $limit));
+
         $sql = "
-            SELECT p.id, p.nom, p.prix, p.prix_promotion, p.stock, p.image_principale,
+            SELECT p.id, p.nom, p.prix, p.prix_promotion, p.stock, p.image_principale, p.description,
                    c.nom as categorie_nom,
                    p.stock as stock_dispo
+        ";
+        if (produits_has_column('identifiant_interne')) {
+            $sql .= ', p.identifiant_interne';
+        }
+        if (produits_has_column('reference_fournisseur')) {
+            $sql .= ', p.reference_fournisseur';
+        }
+        if (produits_has_column('nom_fournisseur')) {
+            $sql .= ', p.nom_fournisseur';
+        }
+        $sql .= $selx . "
             FROM produits p
             LEFT JOIN categories c ON p.categorie_id = c.id
+            $joinx
             WHERE p.statut = 'actif' AND p.stock > 0
         ";
-        $params = ['limit' => (int) $limit];
 
-        if (!empty(trim($recherche))) {
-            $sql .= " AND (p.nom LIKE :term OR c.nom LIKE :term2)";
-            $params['term'] = '%' . trim($recherche) . '%';
-            $params['term2'] = '%' . trim($recherche) . '%';
+        $params = [];
+        $tr = trim((string) $recherche);
+        if ($tr !== '') {
+            $or = [];
+            $or[] = 'p.nom LIKE :st_nom';
+            $or[] = 'c.nom LIKE :st_cat';
+            $params['st_nom'] = '%' . $tr . '%';
+            $params['st_cat'] = '%' . $tr . '%';
+            if (produits_has_column('description')) {
+                $or[] = 'p.description LIKE :st_desc';
+                $params['st_desc'] = '%' . $tr . '%';
+            }
+            if (produits_has_column('reference_fournisseur')) {
+                $or[] = 'p.reference_fournisseur LIKE :st_rf';
+                $params['st_rf'] = '%' . $tr . '%';
+            }
+            if (produits_has_column('identifiant_interne')) {
+                if (preg_match('/^FPL(\d{6}|\d{9})$/i', $tr)) {
+                    $or[] = 'UPPER(TRIM(p.identifiant_interne)) = :st_ident_ex';
+                    $params['st_ident_ex'] = strtoupper($tr);
+                } elseif (preg_match('/^\d{5}$/', $tr)) {
+                    $or[] = 'p.identifiant_interne IS NOT NULL AND TRIM(p.identifiant_interne) != \'\' AND ' . produits_sql_identifiant_suffix_5_expr('p') . ' = :st_suf5';
+                    $params['st_suf5'] = $tr;
+                } else {
+                    $or[] = '(p.identifiant_interne IS NOT NULL AND TRIM(p.identifiant_interne) != \'\' AND p.identifiant_interne LIKE :st_idlike)';
+                    $params['st_idlike'] = '%' . $tr . '%';
+                }
+            }
+            $sql .= ' AND (' . implode(' OR ', $or) . ')';
         }
 
-        $sql .= " ORDER BY p.nom ASC LIMIT :limit";
+        $sql .= ' ORDER BY p.nom ASC LIMIT ' . $limit;
         $stmt = $db->prepare($sql);
         foreach ($params as $k => $v) {
-            $stmt->bindValue(':' . $k, $v, is_int($v) ? PDO::PARAM_INT : PDO::PARAM_STR);
+            $stmt->bindValue(':' . $k, $v, PDO::PARAM_STR);
         }
         $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        $out = [];
+        foreach ($rows as $r) {
+            $item = [
+                'id' => (int) ($r['id'] ?? 0),
+                'nom' => (string) ($r['nom'] ?? ''),
+                'prix' => $r['prix'] ?? 0,
+                'prix_promotion' => $r['prix_promotion'] ?? null,
+                'stock' => (int) ($r['stock'] ?? 0),
+                'stock_dispo' => (int) ($r['stock_dispo'] ?? $r['stock'] ?? 0),
+                'image_principale' => $r['image_principale'] ?? '',
+                'categorie_nom' => (string) ($r['categorie_nom'] ?? ''),
+                'marque_nom' => trim((string) ($r['marque_libelle_catalogue'] ?? $r['pcn_marque_join_nom'] ?? $r['marque_nom'] ?? '')),
+                'fournisseur_nom' => produits_fournisseur_nom_affichage($r),
+                'ref_fournisseur' => (produits_has_column('reference_fournisseur') ? trim((string) ($r['reference_fournisseur'] ?? '')) : ''),
+                'ref_produit' => (produits_has_column('identifiant_interne') ? strtoupper(trim((string) ($r['identifiant_interne'] ?? ''))) : ''),
+                'desc_excerpt' => produits_description_excerpt($r['description'] ?? '', 50),
+            ];
+            $out[] = $item;
+        }
+
+        return $out;
     } catch (PDOException $e) {
         return [];
     }

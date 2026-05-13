@@ -134,7 +134,7 @@ $fpl_shield_logo_ver = is_file($fpl_shield_logo_fs) ? (int) filemtime($fpl_shiel
 
 $etiquette_fpl_ready = ($barcode_url !== '' && !empty($produit['identifiant_interne']));
 $fpl_css_path_fs = __DIR__ . '/../../css/fpl-etiquette.css';
-$fpl_etiq_css_abs = $site_base_et . '/css/fpl-etiquette.css?v=' . (is_file($fpl_css_path_fs) ? (int) filemtime($fpl_css_path_fs) : time());
+$fpl_etiq_css_abs = $origin_et . '/css/fpl-etiquette.css?v=' . (is_file($fpl_css_path_fs) ? (int) filemtime($fpl_css_path_fs) : time());
 
 if ($etiquette_fpl_ready) {
     $barcode_fs_et = __DIR__ . '/../../upload/barcodes/produit_' . $produit_id . '.png';
@@ -208,6 +208,16 @@ if (isset($_SESSION['success_message'])) {
         </div>
     <?php endif; ?>
 
+    <?php
+    // Récupération des informations enrichies
+    $prod_description = trim(strip_tags((string) ($produit['description'] ?? '')));
+    $prod_marque = produits_marque_libelle_from_row($produit);
+    $prod_fournisseur = produits_fournisseur_nom_affichage($produit);
+    $prod_ref_fournisseur = (produits_has_column('reference_fournisseur') ? trim((string) ($produit['reference_fournisseur'] ?? '')) : '');
+    $meta_ref = !empty($produit['identifiant_interne']) ? trim((string) $produit['identifiant_interne']) : '';
+    $meta_etage = isset($produit['etage']) && (string) $produit['etage'] !== '' ? trim((string) $produit['etage']) : '';
+    $meta_rayon = isset($produit['numero_rayon']) && (string) $produit['numero_rayon'] !== '' ? trim((string) $produit['numero_rayon']) : '';
+    ?>
     <div class="produit-preview page-ajuster-stock-preview" aria-label="Aperçu produit">
         <div class="page-ajuster-stock-preview__media">
             <img src="/upload/<?php echo htmlspecialchars($produit['image_principale'] ?? ''); ?>"
@@ -215,16 +225,52 @@ if (isset($_SESSION['success_message'])) {
                 onerror="this.src='/image/produit1.jpg'" width="96" height="96" loading="eager" decoding="async">
         </div>
         <div class="produit-preview-info page-ajuster-stock-preview__info">
-            <h3 class="page-ajuster-stock-preview__title"><?php echo htmlspecialchars($produit['nom']); ?></h3>
-            <span class="prix page-ajuster-stock-preview__prix"><?php echo number_format($prix_produit, 0, ',', ' '); ?> FCFA <span class="page-ajuster-stock-preview__prix-unit">/ unité</span></span>
+            <!-- Titre avec nom · marque · description -->
+            <h3 class="page-ajuster-stock-preview__title">
+                <span class="pas-preview-nom"><?php echo htmlspecialchars($produit['nom']); ?></span>
+                <?php if ($prod_marque !== ''): ?>
+                <span class="pas-preview-sep">·</span>
+                <span class="pas-preview-marque"><?php echo htmlspecialchars($prod_marque); ?></span>
+                <?php endif; ?>
+                <?php if ($prod_description !== ''): ?>
+                <span class="pas-preview-sep">·</span>
+                <span class="pas-preview-desc"><?php echo htmlspecialchars(substr($prod_description, 0, 100)) . (strlen($prod_description) > 100 ? '…' : ''); ?></span>
+                <?php endif; ?>
+            </h3>
+
+            <!-- Prix -->
+            <span class="prix page-ajuster-stock-preview__prix">
+                <?php echo number_format($prix_produit, 0, ',', ' '); ?> FCFA
+                <span class="page-ajuster-stock-preview__prix-unit">/ unité</span>
+            </span>
             <p class="page-ajuster-stock-preview__legend">Prix retenu pour la valorisation (promo si applicable).</p>
-            <?php
-            $meta_ref = !empty($produit['identifiant_interne']) ? trim((string) $produit['identifiant_interne']) : '';
-            $meta_etage = isset($produit['etage']) && (string) $produit['etage'] !== '' ? trim((string) $produit['etage']) : '';
-            $meta_rayon = isset($produit['numero_rayon']) && (string) $produit['numero_rayon'] !== '' ? trim((string) $produit['numero_rayon']) : '';
-            $has_preview_meta = ($meta_ref !== '' || $meta_etage !== '' || $meta_rayon !== '');
-            ?>
-            <?php if ($has_preview_meta): ?>
+
+            <!-- Infos enrichies : Fournisseur + Référence -->
+            <?php if ($prod_fournisseur !== '' || $prod_ref_fournisseur !== ''): ?>
+            <div class="pas-preview-supplier" role="region" aria-label="Fournisseur">
+                <?php if ($prod_fournisseur !== ''): ?>
+                <div class="pas-preview-supplier__item">
+                    <span class="pas-preview-supplier__ic"><i class="fas fa-truck" aria-hidden="true"></i></span>
+                    <div class="pas-preview-supplier__body">
+                        <span class="pas-preview-supplier__label">Fournisseur</span>
+                        <span class="pas-preview-supplier__value"><?php echo htmlspecialchars($prod_fournisseur); ?></span>
+                    </div>
+                </div>
+                <?php endif; ?>
+                <?php if ($prod_ref_fournisseur !== ''): ?>
+                <div class="pas-preview-supplier__item">
+                    <span class="pas-preview-supplier__ic"><i class="fas fa-hashtag" aria-hidden="true"></i></span>
+                    <div class="pas-preview-supplier__body">
+                        <span class="pas-preview-supplier__label">Réf. fournisseur</span>
+                        <span class="pas-preview-supplier__value"><?php echo htmlspecialchars($prod_ref_fournisseur); ?></span>
+                    </div>
+                </div>
+                <?php endif; ?>
+            </div>
+            <?php endif; ?>
+
+            <!-- Mini-cartes : référence FPL, étage, rayon -->
+            <?php if ($meta_ref !== '' || $meta_etage !== '' || $meta_rayon !== ''): ?>
             <div class="page-ajuster-stock-meta-cards" role="list" aria-label="Informations magasin">
                 <?php if ($meta_ref !== ''): ?>
                 <div class="page-ajuster-stock-meta-card" role="listitem">
@@ -557,19 +603,94 @@ if (isset($_SESSION['success_message'])) {
         var root = document.getElementById('fpl-etiquette-print-root');
         if (!root) return;
         var cssHref = <?php echo json_encode($fpl_etiq_css_abs, JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP); ?>;
+        var baseHref = <?php echo json_encode(rtrim($origin_et, '/') . '/', JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP); ?>;
         var node = root.querySelector('.fpl-etiq');
         if (!node || !cssHref) return;
-        var w = window.open('', '_blank', 'width=540,height=920');
-        w.document.open();
-        w.document.write('<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>Étiquette FPL</title>'
-            + '<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>'
-            + '<link rel="stylesheet" href="' + cssHref + '"/></head><body>' + node.outerHTML + '</body></html>');
-        w.document.close();
-        w.focus();
-        setTimeout(function() {
-            try { w.print(); } catch (e) {}
-            w.close();
-        }, 450);
+
+        var w = window.open('', '_blank', 'width=560,height=940');
+        if (!w || !w.document) return;
+
+        var doc = w.document;
+        doc.open();
+        doc.write('<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>Étiquette FPL</title>');
+        doc.write('<base href="' + String(baseHref).replace(/"/g, '&quot;') + '">');
+        doc.write('<style>');
+        doc.write('html,body{margin:0;padding:12px;box-sizing:border-box;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}');
+        doc.write('</style></head><body></body></html>');
+        doc.close();
+
+        var head = doc.head;
+        var body = doc.body;
+
+        var fa = doc.createElement('link');
+        fa.rel = 'stylesheet';
+        fa.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css';
+        head.appendChild(fa);
+
+        body.innerHTML = node.outerHTML;
+
+        var printed = false;
+        function runPrint() {
+            if (printed) return;
+            printed = true;
+            w.requestAnimationFrame(function () {
+                setTimeout(function () {
+                    try {
+                        w.focus();
+                        w.print();
+                    } catch (e) {}
+                    try {
+                        w.close();
+                    } catch (e2) {}
+                }, 120);
+            });
+        }
+
+        function whenImagesReady(cb) {
+            var imgs = doc.images;
+            var n = imgs.length;
+            var pending = 0;
+            var i;
+            for (i = 0; i < n; i++) {
+                if (!imgs[i].complete) pending++;
+            }
+            if (pending === 0) {
+                cb();
+                return;
+            }
+            function tick() {
+                pending--;
+                if (pending <= 0) cb();
+            }
+            for (i = 0; i < n; i++) {
+                if (!imgs[i].complete) {
+                    imgs[i].addEventListener('load', tick);
+                    imgs[i].addEventListener('error', tick);
+                }
+            }
+        }
+
+        var sheet = doc.createElement('link');
+        sheet.rel = 'stylesheet';
+        sheet.href = cssHref;
+        sheet.onload = function () {
+            whenImagesReady(runPrint);
+        };
+        sheet.onerror = function () {
+            whenImagesReady(runPrint);
+        };
+        head.appendChild(sheet);
+
+        setTimeout(function () {
+            if (printed || w.closed) return;
+            try {
+                if (sheet.sheet) {
+                    whenImagesReady(runPrint);
+                }
+            } catch (e) {
+                whenImagesReady(runPrint);
+            }
+        }, 700);
     };
     </script>
 </body>

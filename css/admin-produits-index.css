@@ -306,7 +306,7 @@
 
 .page-produits-admin .produit-card-nom {
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
   overflow: hidden;
   white-space: normal;
@@ -314,8 +314,73 @@
   font-size: 1.02rem;
   font-weight: 700;
   color: var(--titres);
-  margin: 0 0 8px;
+  margin: 0 0 6px;
   min-height: 2.7em;
+}
+
+.page-produits-admin .produit-card-nom .pcn-nom,
+.page-produits-admin .produit-card-nom .pcn-marque,
+.page-produits-admin .produit-card-nom .pcn-desc,
+.page-produits-admin .produit-card-nom .pcn-sep {
+  font-size: inherit;
+  font-weight: inherit;
+  color: inherit;
+  line-height: inherit;
+  display: inline;
+  margin: 0;
+  padding: 0;
+}
+
+.page-produits-admin .produit-card-nom .pcn-sep {
+  color: var(--gris-clair);
+  font-weight: 400;
+  padding: 0 0.12em;
+}
+
+.page-produits-admin .produit-card-nom .pcn-nom {
+  font-weight: 700;
+  color: var(--titres);
+}
+
+.page-produits-admin .produit-card-nom .pcn-marque {
+  font-weight: 600;
+  color: var(--couleur-dominante);
+}
+
+.page-produits-admin .produit-card-nom .pcn-desc {
+  font-weight: 500;
+  color: var(--gris-moyen);
+}
+
+.page-produits-admin .produit-card-marque-desc {
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--gris-fonce);
+  margin: 0 0 6px;
+}
+
+.page-produits-admin .produit-card-marque-desc .pcm-marque {
+  font-weight: 700;
+  color: var(--couleur-dominante);
+}
+
+.page-produits-admin .produit-card-marque-desc .pcm-desc {
+  color: var(--gris-moyen);
+}
+
+.page-produits-admin .produit-card-fournisseur {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--gris-moyen);
+  margin: 0 0 8px;
+}
+
+.page-produits-admin .produit-card-fournisseur i {
+  color: var(--couleur-dominante);
+  font-size: 0.72rem;
 }
 
 .page-produits-admin .produit-card-linkable:hover .produit-card-nom {

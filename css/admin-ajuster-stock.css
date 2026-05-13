@@ -759,6 +759,126 @@
   }
 }
 
+/* ========== Preview enrichie : nom · marque · description + fournisseur ========== */
+.page-ajuster-stock-preview__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.4rem;
+  line-height: 1.35;
+}
+
+.pas-preview-nom {
+  font-weight: 700;
+  color: var(--titres);
+}
+
+.pas-preview-sep {
+  color: var(--gris-clair);
+  font-weight: 400;
+  padding: 0 0.1em;
+  user-select: none;
+}
+
+.pas-preview-marque {
+  font-weight: 600;
+  color: var(--couleur-dominante);
+  background: linear-gradient(135deg, var(--bleu-pale) 0%, rgba(53,100,166,0.08) 100%);
+  padding: 0.15rem 0.6rem;
+  border-radius: 20px;
+  font-size: 0.85rem;
+}
+
+.pas-preview-desc {
+  font-weight: 500;
+  color: var(--gris-moyen);
+  font-size: 0.9rem;
+}
+
+/* Bloc fournisseur élégant */
+.pas-preview-supplier {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  margin: 12px 0 14px;
+  padding: 12px 14px;
+  background: linear-gradient(135deg, rgba(53,100,166,0.06) 0%, rgba(255,255,255,0.8) 100%);
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  box-shadow: 0 2px 10px rgba(53,100,166,0.06);
+}
+
+.pas-preview-supplier__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  background: var(--fond-principal);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  min-width: 160px;
+  flex: 1;
+  max-width: 260px;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.pas-preview-supplier__item:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--ombre-douce);
+}
+
+.pas-preview-supplier__ic {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: var(--bleu-pale);
+  color: var(--couleur-dominante);
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.pas-preview-supplier__body {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.pas-preview-supplier__label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--gris-moyen);
+  font-weight: 600;
+}
+
+.pas-preview-supplier__value {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--titres);
+  line-height: 1.3;
+  word-break: break-word;
+}
+
+/* Responsive */
+@media (max-width: 720px) {
+  .pas-preview-supplier {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .pas-preview-supplier__item {
+    max-width: none;
+    width: 100%;
+  }
+  .page-ajuster-stock-preview__title {
+    justify-content: center;
+    text-align: center;
+  }
+}
+
 /* Impression (étiquettes) */
 @media print {
   .page-ajuster-stock-hero,
@@ -795,6 +915,22 @@
   .page-ajuster-stock {
     max-width: none;
     padding: 0;
+  }
+
+  /* Éviter qu’un img global admin (max-width:100%) déforme l’étiquette à l’impression */
+  .fpl-etiq.fpl-etiq--fixed img {
+    max-width: none !important;
+  }
+
+  .fpl-etiq.fpl-etiq--fixed,
+  .fpl-etiq.fpl-etiq--fixed * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 
   .qr-code-block,

@@ -47,8 +47,13 @@ if ($admin_show_catalogue && !empty($produits)) {
             $produit['nom'] ?? '',
             $produit['description'] ?? '',
             $produit['categorie_nom'] ?? '',
+            function_exists('produits_marque_libelle_from_row') ? produits_marque_libelle_from_row($produit) : ($produit['marque_nom'] ?? ''),
             $produit['statut'] ?? ''
         ];
+        if (function_exists('produits_has_column') && produits_has_column('reference_fournisseur')) {
+            $haystacks[] = (string) ($produit['reference_fournisseur'] ?? '');
+        }
+        $haystacks[] = (string) ($produit['identifiant_interne'] ?? '');
 
         foreach ($haystacks as $value) {
             $value = function_exists('mb_strtolower') ? mb_strtolower((string) $value) : strtolower((string) $value);
@@ -282,7 +287,7 @@ if ($admin_show_catalogue && !empty($produits)) {
                         }
                         ?>
                         <div class="produit-card produit-card-linkable produit-card--dashboard"
-                            data-href="produits/modifier.php?id=<?php echo (int) $produit['id']; ?>">
+                            data-href="produits/ajuster-stock.php?id=<?php echo (int) $produit['id']; ?>">
                             <span class="statut-badge <?php echo $statut_class; ?>"><?php echo htmlspecialchars($statut_label, ENT_QUOTES, 'UTF-8'); ?></span>
                             <div class="produit-card-media">
                                 <?php if ($img_catalogue !== ''): ?>
@@ -296,7 +301,14 @@ if ($admin_show_catalogue && !empty($produits)) {
                                 <?php endif; ?>
                             </div>
                             <div class="produit-card-body">
-                                <h3 class="produit-card-nom"><?php echo htmlspecialchars((string) ($produit['nom'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></h3>
+                                <h3 class="produit-card-nom"><?php echo produits_card_heading_inner_html($produit, 20); ?></h3>
+                                <?php
+                            $pcm_four = function_exists('produits_fournisseur_nom_affichage')
+                                ? produits_fournisseur_nom_affichage($produit) : '';
+                            ?>
+                                <?php if ($pcm_four !== ''): ?>
+                                <p class="produit-card-fournisseur"><i class="fas fa-truck-field" aria-hidden="true"></i> <?php echo htmlspecialchars($pcm_four, ENT_QUOTES, 'UTF-8'); ?></p>
+                                <?php endif; ?>
                                 <p class="produit-card-categorie">
                                     <i class="fas fa-tag" aria-hidden="true"></i>
                                     <?php echo htmlspecialchars((string) ($produit['categorie_nom'] ?? 'Sans catégorie'), ENT_QUOTES, 'UTF-8'); ?>
@@ -320,7 +332,8 @@ if ($admin_show_catalogue && !empty($produits)) {
                                     </a>
                                     <a href="produits/supprimer.php?id=<?php echo $produit['id']; ?>"
                                         class="btn-card btn-delete"
-                                        onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce produit ?');">
+                                        data-delete-confirm="true"
+                                        data-delete-name="<?php echo htmlspecialchars((string) ($produit['nom'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
                                         <i class="fas fa-trash"></i> Supprimer
                                     </a>
                                 </div>
@@ -554,6 +567,87 @@ if ($admin_show_catalogue && !empty($produits)) {
                 }
             });
         });
+
+        // Modal de confirmation de suppression
+        (function() {
+            var deleteOverlay = document.createElement('div');
+            deleteOverlay.className = 'delete-confirm-overlay';
+            deleteOverlay.id = 'deleteConfirmOverlay';
+            document.body.appendChild(deleteOverlay);
+
+            var deleteModal = document.createElement('div');
+            deleteModal.className = 'delete-confirm-modal';
+            deleteModal.id = 'deleteConfirmModal';
+            deleteModal.setAttribute('role', 'dialog');
+            deleteModal.setAttribute('aria-modal', 'true');
+            deleteModal.innerHTML = `
+                <div class="delete-confirm-modal__icon"><i class="fas fa-exclamation-triangle"></i></div>
+                <h3 class="delete-confirm-modal__title">Confirmer la suppression</h3>
+                <p class="delete-confirm-modal__text">Êtes-vous sûr de vouloir supprimer ce produit ?</p>
+                <div class="delete-confirm-modal__product" id="deleteConfirmProduct"></div>
+                <p class="delete-confirm-modal__warning"><i class="fas fa-info-circle"></i> Cette action est irréversible</p>
+                <div class="delete-confirm-modal__actions">
+                    <button type="button" class="delete-confirm-modal__btn delete-confirm-modal__btn--cancel" id="deleteConfirmCancel">
+                        <i class="fas fa-times"></i> Annuler
+                    </button>
+                    <button type="button" class="delete-confirm-modal__btn delete-confirm-modal__btn--confirm" id="deleteConfirmConfirm">
+                        <i class="fas fa-trash"></i> Confirmer
+                    </button>
+                </div>
+            `;
+            document.body.appendChild(deleteModal);
+
+            var deleteProduct = document.getElementById('deleteConfirmProduct');
+            var deleteCancel = document.getElementById('deleteConfirmCancel');
+            var deleteConfirm = document.getElementById('deleteConfirmConfirm');
+            var currentDeleteLink = null;
+
+            function positionModal(triggerElement) {
+                var rect = triggerElement.getBoundingClientRect();
+                var modalWidth = deleteModal.offsetWidth || 360;
+                var modalHeight = deleteModal.offsetHeight || 300;
+                var left = rect.left + (rect.width / 2) - (modalWidth / 2);
+                var top = rect.top + rect.height + 10;
+                if (left < 10) left = 10;
+                if (left + modalWidth > window.innerWidth - 10) left = window.innerWidth - modalWidth - 10;
+                if (top + modalHeight > window.innerHeight - 10) top = rect.top - modalHeight - 10;
+                if (top < 10) top = 10;
+                deleteModal.style.left = left + 'px';
+                deleteModal.style.top = top + 'px';
+            }
+
+            function showModal(link) {
+                currentDeleteLink = link;
+                var productName = link.getAttribute('data-delete-name') || 'ce produit';
+                deleteProduct.textContent = productName;
+                deleteOverlay.classList.add('visible');
+                deleteModal.classList.add('visible', 'animated');
+                deleteCancel.focus();
+            }
+
+            function hideModal() {
+                deleteOverlay.classList.remove('visible');
+                deleteModal.classList.remove('visible', 'animated');
+                currentDeleteLink = null;
+            }
+
+            document.querySelectorAll('a[data-delete-confirm="true"]').forEach(function(link) {
+                link.addEventListener('click', function(event) {
+                    event.preventDefault();
+                    positionModal(link);
+                    showModal(link);
+                });
+            });
+
+            deleteCancel.addEventListener('click', hideModal);
+            deleteOverlay.addEventListener('click', hideModal);
+            deleteConfirm.addEventListener('click', function() {
+                if (currentDeleteLink) window.location.href = currentDeleteLink.href;
+            });
+            document.addEventListener('keydown', function(event) {
+                if (event.key === 'Escape' && deleteModal.classList.contains('visible')) hideModal();
+            });
+        })();
     </script>
     <?php include __DIR__ . '/../includes/admin_stock_alerte_popup.php'; ?>
     <?php include 'includes/footer.php'; ?>

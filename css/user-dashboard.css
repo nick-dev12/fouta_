@@ -369,8 +369,45 @@ body {
   color: var(--titres);
   margin-bottom: 5px;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  line-height: 1.35;
+  white-space: normal;
+}
+
+.produit-card-nom .pcn-nom,
+.produit-card-nom .pcn-marque,
+.produit-card-nom .pcn-desc,
+.produit-card-nom .pcn-sep {
+  font-size: inherit;
+  font-weight: inherit;
+  color: inherit;
+  line-height: inherit;
+  display: inline;
+  margin: 0;
+  padding: 0;
+}
+
+.produit-card-nom .pcn-sep {
+  color: var(--gris-clair);
+  font-weight: 400;
+  padding: 0 0.12em;
+}
+
+.produit-card-nom .pcn-nom {
+  font-weight: 700;
+  color: var(--titres);
+}
+
+.produit-card-nom .pcn-marque {
+  font-weight: 600;
+  color: var(--couleur-dominante);
+}
+
+.produit-card-nom .pcn-desc {
+  font-weight: 500;
+  color: var(--gris-moyen);
 }
 
 .produit-card-categorie {

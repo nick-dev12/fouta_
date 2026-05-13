@@ -59,9 +59,13 @@ if (!empty($produits)) {
             $produit['nom'] ?? '',
             $produit['description'] ?? '',
             $produit['categorie_nom'] ?? '',
+            produits_marque_libelle_from_row($produit),
             $produit['statut'] ?? '',
             (string) ($produit['identifiant_interne'] ?? ''),
         ];
+        if (function_exists('produits_has_column') && produits_has_column('reference_fournisseur')) {
+            $haystacks[] = (string) ($produit['reference_fournisseur'] ?? '');
+        }
 
         foreach ($haystacks as $value) {
             $value = function_exists('mb_strtolower') ? mb_strtolower((string) $value) : strtolower((string) $value);
@@ -167,7 +171,7 @@ if (!empty($produits)) {
                 <ul class="produits-grid page-produits-grid" role="list">
                     <?php foreach ($produits as $produit): ?>
                         <li class="produit-card produit-card--admin produit-card-linkable"
-                            data-href="modifier.php?id=<?php echo (int) $produit['id']; ?>" role="listitem">
+                            data-href="ajuster-stock.php?id=<?php echo (int) $produit['id']; ?>" role="listitem">
                             <?php
                             $statut_class = 'statut-actif';
                             if ($produit['statut'] == 'inactif') {
@@ -199,9 +203,14 @@ if (!empty($produits)) {
                                 <?php endif; ?>
                             </div>
                             <div class="produit-card-body">
-                                <h3 class="produit-card-nom">
-                                    <?php echo htmlspecialchars((string) ($produit['nom'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>
-                                </h3>
+                                <h3 class="produit-card-nom"><?php echo produits_card_heading_inner_html($produit, 20); ?></h3>
+                                <?php
+                            $pcm_four = function_exists('produits_fournisseur_nom_affichage')
+                                ? produits_fournisseur_nom_affichage($produit) : '';
+                            ?>
+                                <?php if ($pcm_four !== ''): ?>
+                                <p class="produit-card-fournisseur"><i class="fas fa-truck-field" aria-hidden="true"></i> <?php echo htmlspecialchars($pcm_four, ENT_QUOTES, 'UTF-8'); ?></p>
+                                <?php endif; ?>
                                 <p class="produit-card-categorie">
                                     <i class="fas fa-tag" aria-hidden="true"></i>
                                     <?php echo htmlspecialchars((string) ($produit['categorie_nom'] ?? 'Sans catégorie'), ENT_QUOTES, 'UTF-8'); ?>
@@ -222,15 +231,12 @@ if (!empty($produits)) {
                                     <span class="stock-value"><?php echo $produit['stock']; ?></span>
                                 </p>
                                 <div class="produit-card-actions produit-card-actions--admin">
-                                    <a href="ajuster-stock.php?id=<?php echo $produit['id']; ?>" class="btn-card btn-stock"
-                                        title="Ajuster le stock">
-                                        <i class="fas fa-boxes-stacked" aria-hidden="true"></i> Stock
-                                    </a>
                                     <a href="modifier.php?id=<?php echo $produit['id']; ?>" class="btn-card btn-edit">
                                         <i class="fas fa-edit" aria-hidden="true"></i> Modifier
                                     </a>
                                     <a href="supprimer.php?id=<?php echo $produit['id']; ?>" class="btn-card btn-delete"
-                                        onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce produit ?');">
+                                        data-delete-confirm="true"
+                                        data-delete-name="<?php echo htmlspecialchars((string) ($produit['nom'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
                                         <i class="fas fa-trash" aria-hidden="true"></i> Supprimer
                                     </a>
                                 </div>
@@ -244,8 +250,32 @@ if (!empty($produits)) {
     </div><!-- .page-produits-admin -->
 
     <?php include '../includes/footer.php'; ?>
+
+    <!-- Modal de confirmation de suppression -->
+    <div class="delete-confirm-overlay" id="deleteConfirmOverlay"></div>
+    <div class="delete-confirm-modal" id="deleteConfirmModal" role="dialog" aria-modal="true" aria-labelledby="deleteConfirmTitle">
+        <div class="delete-confirm-modal__icon">
+            <i class="fas fa-exclamation-triangle"></i>
+        </div>
+        <h3 class="delete-confirm-modal__title" id="deleteConfirmTitle">Confirmer la suppression</h3>
+        <p class="delete-confirm-modal__text">Êtes-vous sûr de vouloir supprimer ce produit ?</p>
+        <div class="delete-confirm-modal__product" id="deleteConfirmProduct"></div>
+        <p class="delete-confirm-modal__warning">
+            <i class="fas fa-info-circle"></i> Cette action est irréversible
+        </p>
+        <div class="delete-confirm-modal__actions">
+            <button type="button" class="delete-confirm-modal__btn delete-confirm-modal__btn--cancel" id="deleteConfirmCancel">
+                <i class="fas fa-times"></i> Annuler
+            </button>
+            <button type="button" class="delete-confirm-modal__btn delete-confirm-modal__btn--confirm" id="deleteConfirmConfirm">
+                <i class="fas fa-trash"></i> Confirmer
+            </button>
+        </div>
+    </div>
+
     <script>
         document.addEventListener('DOMContentLoaded', function () {
+            // Navigation par clic sur les cards
             document.querySelectorAll('.produit-card-linkable').forEach(function (card) {
                 card.addEventListener('click', function (event) {
                     if (event.target.closest('a, button, input, select, textarea, form')) {
@@ -256,6 +286,78 @@ if (!empty($produits)) {
                         window.location.href = href;
                     }
                 });
+            });
+
+            // Modal de confirmation de suppression
+            var deleteOverlay = document.getElementById('deleteConfirmOverlay');
+            var deleteModal = document.getElementById('deleteConfirmModal');
+            var deleteProduct = document.getElementById('deleteConfirmProduct');
+            var deleteCancel = document.getElementById('deleteConfirmCancel');
+            var deleteConfirm = document.getElementById('deleteConfirmConfirm');
+            var currentDeleteLink = null;
+
+            function positionModal(triggerElement) {
+                var rect = triggerElement.getBoundingClientRect();
+                var modalWidth = deleteModal.offsetWidth || 360;
+                var modalHeight = deleteModal.offsetHeight || 300;
+
+                var left = rect.left + (rect.width / 2) - (modalWidth / 2);
+                var top = rect.top + rect.height + 10;
+
+                // Ajuster si dépasse l'écran
+                if (left < 10) left = 10;
+                if (left + modalWidth > window.innerWidth - 10) {
+                    left = window.innerWidth - modalWidth - 10;
+                }
+                if (top + modalHeight > window.innerHeight - 10) {
+                    top = rect.top - modalHeight - 10;
+                }
+                if (top < 10) top = 10;
+
+                deleteModal.style.left = left + 'px';
+                deleteModal.style.top = top + 'px';
+            }
+
+            function showModal(link) {
+                currentDeleteLink = link;
+                var productName = link.getAttribute('data-delete-name') || 'ce produit';
+                deleteProduct.textContent = productName;
+
+                deleteOverlay.classList.add('visible');
+                deleteModal.classList.add('visible', 'animated');
+                deleteCancel.focus();
+            }
+
+            function hideModal() {
+                deleteOverlay.classList.remove('visible');
+                deleteModal.classList.remove('visible', 'animated');
+                currentDeleteLink = null;
+            }
+
+            // Gestion des clics sur les liens de suppression
+            document.querySelectorAll('a[data-delete-confirm="true"]').forEach(function (link) {
+                link.addEventListener('click', function (event) {
+                    event.preventDefault();
+                    positionModal(link);
+                    showModal(link);
+                });
+            });
+
+            // Boutons de la modal
+            deleteCancel.addEventListener('click', hideModal);
+            deleteOverlay.addEventListener('click', hideModal);
+
+            deleteConfirm.addEventListener('click', function () {
+                if (currentDeleteLink) {
+                    window.location.href = currentDeleteLink.href;
+                }
+            });
+
+            // Fermer avec Escape
+            document.addEventListener('keydown', function (event) {
+                if (event.key === 'Escape' && deleteModal.classList.contains('visible')) {
+                    hideModal();
+                }
             });
         });
     </script>

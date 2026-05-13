@@ -146,7 +146,7 @@ $nb_visites = count_visites_by_user($_SESSION['user_id']);
                             alt="<?php echo htmlspecialchars($produit['nom']); ?>" class="produit-card-image"
                             onerror="this.src='/image/produit1.jpg'">
                         <div class="produit-card-body">
-                            <h3 class="produit-card-nom"><?php echo htmlspecialchars($produit['nom']); ?></h3>
+                            <h3 class="produit-card-nom"><?php echo produits_card_heading_inner_html($produit, 20); ?></h3>
                             <p class="produit-card-categorie">
                                 <?php echo htmlspecialchars($produit['categorie_nom'] ?? 'Sans catégorie'); ?>
                             </p>
