@@ -1721,7 +1721,7 @@ $seo_image = $img ? $base . '/' . ltrim($img, '/') : $base . '/icons/icon-512.pn
                                     <input type="hidden" name="return_url"
                                         value="<?php echo htmlspecialchars($_SERVER['REQUEST_URI'] ?? '/produit.php'); ?>">
                                     <button type="submit" class="btn-add-cart">
-                                        <i class="fa-solid fa-cart-shopping"></i> Ajouter au panier
+                                        <i class="fa-solid fa-cart-shopping" aria-hidden="true"></i><span>Ajouter</span>
                                     </button>
                                 </form>
                             </div>

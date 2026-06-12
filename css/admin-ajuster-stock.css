@@ -491,6 +491,42 @@
   margin-top: 14px;
 }
 
+.page-ajuster-stock-code-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.page-ajuster-stock-pdf-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  color: var(--couleur-dominante);
+  background: var(--blanc);
+  border: 1px solid rgba(53, 100, 166, 0.35);
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.page-ajuster-stock-pdf-btn:hover {
+  background: var(--bleu-pale);
+  border-color: var(--couleur-dominante);
+  color: var(--couleur-dominante-hover);
+}
+
+.fpl-etiquette-print-actions.page-ajuster-stock-code-actions {
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 /* Historique */
 .page-ajuster-stock-mouvements {
   margin-top: 28px;

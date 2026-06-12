@@ -443,6 +443,7 @@ if (isset($_SESSION['inscription_success'])) {
                     <input type="checkbox" id="accepte_conditions" name="accepte_conditions" value="1" required>
                     <label for="accepte_conditions">
                         J'accepte les <a href="/conditions-utilisation.php" target="_blank">conditions d'utilisation</a>
+                        et la <a href="/politique-confidentialite.php" target="_blank">politique de confidentialité</a>
                         *
                     </label>
                 </div>

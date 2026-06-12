@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>aps-environment</key>
+	<string>development</string>
+	<!-- Universal Links : ouvre l'app quand un lien du site e-commerce est ouvert sur iOS -->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:e.foutapoidslourds.com</string>
+		<string>applinks:www.e.foutapoidslourds.com</string>
+	</array>
+</dict>
+</plist>

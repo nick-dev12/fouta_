@@ -65,10 +65,18 @@ $seo_canonical = $base . '/';
     }
 
     .carousel-produits-outer .carousel1.carousel1-flex-mode .carousel {
-        width: 270px;
-        min-width: 144px;
-        max-width: 270px;
-        flex: 0 0 270px;
+        width: 210px;
+        min-width: 130px;
+        max-width: 210px;
+        flex: 0 0 210px;
+    }
+
+    @media (max-width: 649px) {
+        .carousel-produits-outer .carousel1.carousel1-flex-mode .carousel {
+            width: calc(50% - 6px);
+            max-width: 210px;
+            flex: 0 1 calc(50% - 6px);
+        }
     }
 
     .carousel-produits-outer .carousel1.carousel1-flex-mode .carousel:nth-child(n+9) {
@@ -496,7 +504,7 @@ $seo_canonical = $base . '/';
                         <input type="hidden" name="return_url"
                             value="<?php echo htmlspecialchars($_SERVER['REQUEST_URI'] ?? '/index.php'); ?>">
                         <button type="submit" class="btn-add-cart">
-                            <i class="fa-solid fa-cart-shopping"></i> Ajouter au panier
+                            <i class="fa-solid fa-cart-shopping" aria-hidden="true"></i><span>Ajouter</span>
                         </button>
                     </form>
                 </div>
@@ -701,7 +709,7 @@ $seo_canonical = $base . '/';
                         <input type="hidden" name="return_url"
                             value="<?php echo htmlspecialchars($_SERVER['REQUEST_URI'] ?? '/index.php'); ?>">
                         <button type="submit" class="btn-add-cart">
-                            <i class="fa-solid fa-cart-shopping"></i> Ajouter au panier
+                            <i class="fa-solid fa-cart-shopping" aria-hidden="true"></i><span>Ajouter</span>
                         </button>
                     </form>
                 </div>
@@ -862,7 +870,7 @@ $seo_canonical = $base . '/';
                         <input type="hidden" name="return_url"
                             value="<?php echo htmlspecialchars($_SERVER['REQUEST_URI'] ?? '/index.php'); ?>">
                         <button type="submit" class="btn-add-cart">
-                            <i class="fa-solid fa-cart-shopping"></i> Ajouter au panier
+                            <i class="fa-solid fa-cart-shopping" aria-hidden="true"></i><span>Ajouter</span>
                         </button>
                     </form>
                 </div>

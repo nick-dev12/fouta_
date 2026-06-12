@@ -1,0 +1,35 @@
+{
+    "name": "FOUTA POIDS LOURDS",
+    "short_name": "FOUTA PL",
+    "start_url": ".",
+    "display": "standalone",
+    "background_color": "#3564a6",
+    "theme_color": "#3564a6",
+    "description": "Application mobile FOUTA POIDS LOURDS — pièces poids lourds.",
+    "orientation": "portrait-primary",
+    "prefer_related_applications": false,
+    "icons": [
+        {
+            "src": "icons/Icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/Icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/Icon-maskable-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "maskable"
+        },
+        {
+            "src": "icons/Icon-maskable-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ]
+}

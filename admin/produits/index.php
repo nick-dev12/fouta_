@@ -106,9 +106,9 @@ if (!empty($produits)) {
                     <strong>FPL</strong> ou les <strong>5 derniers chiffres</strong> du numéro (caisse).'; ?></p>
                 <div class="page-produits-hero__actions">
                     <?php if (!admin_is_restricted_admin_account()): ?>
-                    <a href="ajouter.php" class="btn-primary page-produits-hero__btn">
-                        <i class="fas fa-upload" aria-hidden="true"></i> Publier un produit
-                    </a>
+                        <a href="ajouter.php" class="btn-primary page-produits-hero__btn">
+                            <i class="fas fa-upload" aria-hidden="true"></i> Publier un produit
+                        </a>
                     <?php endif; ?>
                 </div>
             </div>
@@ -160,11 +160,13 @@ if (!empty($produits)) {
                     <div class="page-produits-empty__icon" aria-hidden="true"><i class="fas fa-box-open"></i></div>
                     <p class="page-produits-empty__title">Aucun produit à afficher</p>
                     <p class="page-produits-empty__hint">Élargissez la recherche, choisissez « Toutes les catégories » ou <a
-                            href="index.php">réinitialisez les filtres</a>.<?php echo admin_is_restricted_admin_account() ? '' : ' Vous pouvez aussi ajouter un produit.'; ?></p>
+                            href="index.php">réinitialisez les
+                            filtres</a>.<?php echo admin_is_restricted_admin_account() ? '' : ' Vous pouvez aussi ajouter un produit.'; ?>
+                    </p>
                     <?php if (!admin_is_restricted_admin_account()): ?>
-                    <a href="ajouter.php" class="btn-primary page-produits-empty__cta">
-                        <i class="fas fa-upload" aria-hidden="true"></i> Publier un produit
-                    </a>
+                        <a href="ajouter.php" class="btn-primary page-produits-empty__cta">
+                            <i class="fas fa-upload" aria-hidden="true"></i> Publier un produit
+                        </a>
                     <?php endif; ?>
                 </div>
             <?php else: ?>
@@ -205,11 +207,12 @@ if (!empty($produits)) {
                             <div class="produit-card-body">
                                 <h3 class="produit-card-nom"><?php echo produits_card_heading_inner_html($produit, 20); ?></h3>
                                 <?php
-                            $pcm_four = function_exists('produits_fournisseur_nom_affichage')
-                                ? produits_fournisseur_nom_affichage($produit) : '';
-                            ?>
+                                $pcm_four = function_exists('produits_fournisseur_nom_affichage')
+                                    ? produits_fournisseur_nom_affichage($produit) : '';
+                                ?>
                                 <?php if ($pcm_four !== ''): ?>
-                                <p class="produit-card-fournisseur"><i class="fas fa-truck-field" aria-hidden="true"></i> <?php echo htmlspecialchars($pcm_four, ENT_QUOTES, 'UTF-8'); ?></p>
+                                    <p class="produit-card-fournisseur"><i class="fas fa-truck-field" aria-hidden="true"></i>
+                                        <?php echo htmlspecialchars($pcm_four, ENT_QUOTES, 'UTF-8'); ?></p>
                                 <?php endif; ?>
                                 <p class="produit-card-categorie">
                                     <i class="fas fa-tag" aria-hidden="true"></i>
@@ -253,7 +256,8 @@ if (!empty($produits)) {
 
     <!-- Modal de confirmation de suppression -->
     <div class="delete-confirm-overlay" id="deleteConfirmOverlay"></div>
-    <div class="delete-confirm-modal" id="deleteConfirmModal" role="dialog" aria-modal="true" aria-labelledby="deleteConfirmTitle">
+    <div class="delete-confirm-modal" id="deleteConfirmModal" role="dialog" aria-modal="true"
+        aria-labelledby="deleteConfirmTitle">
         <div class="delete-confirm-modal__icon">
             <i class="fas fa-exclamation-triangle"></i>
         </div>
@@ -264,10 +268,12 @@ if (!empty($produits)) {
             <i class="fas fa-info-circle"></i> Cette action est irréversible
         </p>
         <div class="delete-confirm-modal__actions">
-            <button type="button" class="delete-confirm-modal__btn delete-confirm-modal__btn--cancel" id="deleteConfirmCancel">
+            <button type="button" class="delete-confirm-modal__btn delete-confirm-modal__btn--cancel"
+                id="deleteConfirmCancel">
                 <i class="fas fa-times"></i> Annuler
             </button>
-            <button type="button" class="delete-confirm-modal__btn delete-confirm-modal__btn--confirm" id="deleteConfirmConfirm">
+            <button type="button" class="delete-confirm-modal__btn delete-confirm-modal__btn--confirm"
+                id="deleteConfirmConfirm">
                 <i class="fas fa-trash"></i> Confirmer
             </button>
         </div>

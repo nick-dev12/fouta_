@@ -61,6 +61,9 @@
                 <li class="li footer_list_item">
                     <a href="/conditions-utilisation.php">Conditions d'utilisation</a>
                 </li>
+                <li class="li footer_list_item">
+                    <a href="/politique-suppression-compte.php">Suppression de compte</a>
+                </li>
             </ul>
         </div>
     </div>

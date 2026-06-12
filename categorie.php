@@ -154,7 +154,7 @@ $seo_canonical = $base . '/categorie.php?id=' . (int) $categorie_id;
                                 <input type="hidden" name="return_url"
                                     value="<?php echo htmlspecialchars($_SERVER['REQUEST_URI'] ?? '/categorie.php'); ?>">
                                 <button type="submit" class="btn-add-cart">
-                                    <i class="fa-solid fa-cart-shopping"></i> Ajouter au panier
+                                    <i class="fa-solid fa-cart-shopping" aria-hidden="true"></i><span>Ajouter</span>
                                 </button>
                             </form>
                         </div>

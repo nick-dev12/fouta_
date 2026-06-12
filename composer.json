@@ -5,6 +5,7 @@
     "require": {
         "php": ">=8.0",
         "chillerlan/php-qrcode": "^5.0",
+        "dompdf/dompdf": "^3.1",
         "kreait/firebase-php": "^7.0",
         "phpmailer/phpmailer": "^6.9",
         "picqer/php-barcode-generator": "2.4"

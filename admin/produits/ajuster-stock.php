@@ -160,6 +160,11 @@ if (isset($_SESSION['success_message'])) {
     $success_message = $_SESSION['success_message'];
     unset($_SESSION['success_message']);
 }
+
+$pdf_barcode_href = 'telecharger-code-pdf.php?id=' . $produit_id . '&type=barcode';
+$pdf_qrcode_href = 'telecharger-code-pdf.php?id=' . $produit_id . '&type=qrcode';
+$can_pdf_barcode = ($barcode_url !== '' && !empty($produit['identifiant_interne']));
+$can_pdf_qrcode = ($stock_info_url !== '');
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -378,10 +383,15 @@ if (isset($_SESSION['success_message'])) {
                         <img src="<?php echo htmlspecialchars($barcode_url); ?>?v=<?php echo $barcode_ver; ?>" alt="Code-barres <?php echo htmlspecialchars($produit['identifiant_interne']); ?>" class="barcode-fpl-img page-ajuster-stock-barcode-img" width="280" height="100">
                         <div class="barcode-fpl-code"><?php echo htmlspecialchars($produit['identifiant_interne']); ?></div>
                     </div>
-                    <div class="barcode-fpl-actions page-ajuster-stock-aux__actions">
+                    <div class="barcode-fpl-actions page-ajuster-stock-aux__actions page-ajuster-stock-code-actions">
                         <button type="button" class="btn-primary btn-print-barcode page-ajuster-stock-print-btn" onclick="imprimerCodeBarresFPL()">
                             <i class="fas fa-print" aria-hidden="true"></i> Imprimer le code-barres
                         </button>
+                        <?php if ($can_pdf_barcode): ?>
+                        <a href="<?php echo htmlspecialchars($pdf_barcode_href, ENT_QUOTES, 'UTF-8'); ?>" class="btn-download-pdf page-ajuster-stock-pdf-btn" download>
+                            <i class="fas fa-file-pdf" aria-hidden="true"></i> Télécharger PDF
+                        </a>
+                        <?php endif; ?>
                     </div>
                 </div>
                 <?php endif; ?>
@@ -393,10 +403,15 @@ if (isset($_SESSION['success_message'])) {
                         <img src="<?php echo htmlspecialchars($qr_code_data_uri); ?>" alt="QR Code - <?php echo htmlspecialchars($produit['nom']); ?>" class="qr-code-img" width="180" height="180">
                     </div>
                     <p class="qr-code-produit"><?php echo htmlspecialchars($produit['nom']); ?></p>
-                    <div class="qr-code-actions page-ajuster-stock-aux__actions">
+                    <div class="qr-code-actions page-ajuster-stock-aux__actions page-ajuster-stock-code-actions">
                         <button type="button" class="btn-primary btn-print-qr page-ajuster-stock-print-btn" onclick="imprimerQRCode()">
                             <i class="fas fa-print" aria-hidden="true"></i> Imprimer le QR code
                         </button>
+                        <?php if ($can_pdf_qrcode): ?>
+                        <a href="<?php echo htmlspecialchars($pdf_qrcode_href, ENT_QUOTES, 'UTF-8'); ?>" class="btn-download-pdf page-ajuster-stock-pdf-btn" download>
+                            <i class="fas fa-file-pdf" aria-hidden="true"></i> Télécharger PDF
+                        </a>
+                        <?php endif; ?>
                     </div>
                 </div>
                 <?php endif; ?>
@@ -483,7 +498,17 @@ if (isset($_SESSION['success_message'])) {
                     </footer>
                 </div>
             </article>
-            <div class="fpl-etiquette-print-actions">
+            <div class="fpl-etiquette-print-actions page-ajuster-stock-code-actions">
+                <?php if ($can_pdf_barcode): ?>
+                <a href="<?php echo htmlspecialchars($pdf_barcode_href, ENT_QUOTES, 'UTF-8'); ?>" class="btn-download-pdf page-ajuster-stock-pdf-btn" download>
+                    <i class="fas fa-file-pdf" aria-hidden="true"></i> Code-barres (PDF)
+                </a>
+                <?php endif; ?>
+                <?php if ($can_pdf_qrcode): ?>
+                <a href="<?php echo htmlspecialchars($pdf_qrcode_href, ENT_QUOTES, 'UTF-8'); ?>" class="btn-download-pdf page-ajuster-stock-pdf-btn" download>
+                    <i class="fas fa-file-pdf" aria-hidden="true"></i> QR code (PDF)
+                </a>
+                <?php endif; ?>
                 <button type="button" class="btn-primary page-ajuster-stock-print-btn" onclick="window.imprimerEtiquetteFPLStock && window.imprimerEtiquetteFPLStock();">
                     <i class="fas fa-print" aria-hidden="true"></i> Imprimer l’étiquette
                 </button>
