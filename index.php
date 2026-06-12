@@ -313,35 +313,44 @@ $seo_canonical = $base . '/';
                 <span class="vitrine-hero-orb vitrine-hero-orb--c"></span>
             </div>
             <div class="vitrine-hero-floats">
-                <span class="vitrine-hero-float vitrine-hero-float--1"><i class="fas fa-shield-halved" aria-hidden="true"></i></span>
-                <span class="vitrine-hero-float vitrine-hero-float--2"><i class="fas fa-gears" aria-hidden="true"></i></span>
-                <span class="vitrine-hero-float vitrine-hero-float--3"><i class="fas fa-medal" aria-hidden="true"></i></span>
+                <span class="vitrine-hero-float vitrine-hero-float--1"><i class="fas fa-shield-halved"
+                        aria-hidden="true"></i></span>
+                <span class="vitrine-hero-float vitrine-hero-float--2"><i class="fas fa-gears"
+                        aria-hidden="true"></i></span>
+                <span class="vitrine-hero-float vitrine-hero-float--3"><i class="fas fa-medal"
+                        aria-hidden="true"></i></span>
             </div>
         </div>
         <div class="vitrine-hero-content">
             <div class="vitrine-hero-glass-head">
-                <p class="vitrine-hero-title-badge"><i class="fas fa-circle-check" aria-hidden="true"></i> Qualité professionnelle</p>
+                <p class="vitrine-hero-title-badge"><i class="fas fa-circle-check" aria-hidden="true"></i> Qualité
+                    professionnelle</p>
                 <h1 class="vitrine-hero-title">Chez FOUTA POIDS LOURDS</h1>
                 <p class="vitrine-hero-desc">
-                    Spécialisée dans la vente de pièces détachées pour véhicules poids lourds (camions, bus et remorques)
+                    Spécialisée dans la vente de pièces détachées pour véhicules poids lourds (camions, bus et
+                    remorques)
                     et l&apos;approvisionnement des professionnels du transport et de la mécanique en pièces de qualité.
                 </p>
             </div>
             <div class="vitrine-services-grid">
                 <a href="produits.php" class="vitrine-service-block vitrine-service-block--bus">
-                    <span class="vitrine-service-icon-wrap" aria-hidden="true"><i class="fas fa-bus vitrine-service-icon"></i></span>
+                    <span class="vitrine-service-icon-wrap" aria-hidden="true"><i
+                            class="fas fa-bus vitrine-service-icon"></i></span>
                     <span class="vitrine-service-label">Bus</span>
                 </a>
                 <a href="produits.php" class="vitrine-service-block vitrine-service-block--tractor">
-                    <span class="vitrine-service-icon-wrap" aria-hidden="true"><i class="fas fa-tractor vitrine-service-icon"></i></span>
+                    <span class="vitrine-service-icon-wrap" aria-hidden="true"><i
+                            class="fas fa-tractor vitrine-service-icon"></i></span>
                     <span class="vitrine-service-label">Tracteur</span>
                 </a>
                 <a href="produits.php" class="vitrine-service-block vitrine-service-block--truck">
-                    <span class="vitrine-service-icon-wrap" aria-hidden="true"><i class="fas fa-truck vitrine-service-icon"></i></span>
+                    <span class="vitrine-service-icon-wrap" aria-hidden="true"><i
+                            class="fas fa-truck vitrine-service-icon"></i></span>
                     <span class="vitrine-service-label">Camion</span>
                 </a>
                 <a href="produits.php" class="vitrine-service-block vitrine-service-block--trailer">
-                    <span class="vitrine-service-icon-wrap" aria-hidden="true"><i class="fas fa-trailer vitrine-service-icon"></i></span>
+                    <span class="vitrine-service-icon-wrap" aria-hidden="true"><i
+                            class="fas fa-trailer vitrine-service-icon"></i></span>
                     <span class="vitrine-service-label">Remorque</span>
                 </a>
             </div>
@@ -475,7 +484,8 @@ $seo_canonical = $base . '/';
                 <div class="carousel">
                     <a href="produit.php?id=<?php echo $produit['id']; ?>" class="product-card-link">
                         <div class="image-wrapper">
-                            <span class="produit-card-badge produit-card-badge--nouveau" aria-hidden="true">Nouveau</span>
+                            <span class="produit-card-badge produit-card-badge--nouveau"
+                                aria-hidden="true">Nouveau</span>
                             <img src="/upload/<?php echo htmlspecialchars($produit['image_principale'] ?? 'produit1.jpg'); ?>"
                                 alt="<?php echo htmlspecialchars($produit['nom'] ?? 'Produit'); ?>"
                                 onerror="this.src='/image/produit1.jpg'">
@@ -783,13 +793,14 @@ $seo_canonical = $base . '/';
                         <div class="section5-card-media">
                             <span class="section5-card-shine" aria-hidden="true"></span>
                             <img src="<?php echo htmlspecialchars($categorie_image_path, ENT_QUOTES, 'UTF-8'); ?>"
-                                alt="<?php echo htmlspecialchars($nom_cat, ENT_QUOTES, 'UTF-8'); ?>"
-                                loading="lazy"
+                                alt="<?php echo htmlspecialchars($nom_cat, ENT_QUOTES, 'UTF-8'); ?>" loading="lazy"
                                 onerror="this.src='/image/produit1.jpg'">
                         </div>
                         <div class="section5-card-body">
-                            <h3 class="section5-card-title"><?php echo htmlspecialchars($nom_cat_titre, ENT_QUOTES, 'UTF-8'); ?></h3>
-                            <span class="section5-card-cta">Voir les produits <i class="fas fa-arrow-right" aria-hidden="true"></i></span>
+                            <h3 class="section5-card-title">
+                                <?php echo htmlspecialchars($nom_cat_titre, ENT_QUOTES, 'UTF-8'); ?></h3>
+                            <span class="section5-card-cta">Voir les produits <i class="fas fa-arrow-right"
+                                    aria-hidden="true"></i></span>
                         </div>
                     </a>
                 </article>
@@ -929,21 +940,21 @@ $seo_canonical = $base . '/';
 
 
         if ($('.slider-area').length && $('.slider-area .slider-item').length) {
-        $('.slider-area').owlCarousel({
-            items: 1,
-            loop: true,
-            dots: true,
-            autoplay: true,
-            autoplayTimeout: 6000,
-            animateOut: 'slideOutDown',
-            animateIn: 'flipInX',
-            smartSpeed: 800,
-            stagePadding: 1,
-            nav: true,
-            navText: ['<i class="fa-solid fa-chevron-left"></i>',
-                '<i class="fa-solid fa-chevron-right"></i>'
-            ]
-        });
+            $('.slider-area').owlCarousel({
+                items: 1,
+                loop: true,
+                dots: true,
+                autoplay: true,
+                autoplayTimeout: 6000,
+                animateOut: 'slideOutDown',
+                animateIn: 'flipInX',
+                smartSpeed: 800,
+                stagePadding: 1,
+                nav: true,
+                navText: ['<i class="fa-solid fa-chevron-left"></i>',
+                    '<i class="fa-solid fa-chevron-right"></i>'
+                ]
+            });
         }
         var carousel2 = $('.carousel2').owlCarousel();
         $('.owl-next2').click(function() {
