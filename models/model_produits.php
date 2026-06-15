@@ -116,6 +116,197 @@ function produits_description_excerpt($description, $max_len = 30) {
 }
 
 /**
+ * Description produit en texte brut (HTML / entités retirés) pour la recherche admin.
+ *
+ * @param string|null $description
+ * @return string
+ */
+function produits_description_plain_text($description) {
+    $raw = (string) $description;
+    if ($raw === '') {
+        return '';
+    }
+    $t = trim(strip_tags(html_entity_decode($raw, ENT_QUOTES | ENT_HTML5, 'UTF-8')));
+    if ($t === '') {
+        return '';
+    }
+
+    return preg_replace('/\s+/u', ' ', $t);
+}
+
+/**
+ * Normalise une chaîne pour comparaison insensible à la casse (recherche admin).
+ *
+ * @param string $text
+ * @return string
+ */
+function produits_recherche_normalize($text) {
+    $t = function_exists('mb_strtolower') ? mb_strtolower((string) $text) : strtolower((string) $text);
+
+    return trim(preg_replace('/\s+/u', ' ', $t));
+}
+
+/**
+ * Indique si un produit correspond à la recherche de la liste admin (nom, description, codes…).
+ *
+ * @param array<string, mixed> $produit
+ * @param string $recherche
+ * @return bool
+ */
+function produit_admin_liste_match_recherche(array $produit, $recherche) {
+    $recherche = trim((string) $recherche);
+    if ($recherche === '') {
+        return true;
+    }
+
+    if (preg_match('/^FPL(\d{6}|\d{9})$/i', $recherche)) {
+        $code = strtoupper($recherche);
+        $ident = strtoupper(trim((string) ($produit['identifiant_interne'] ?? '')));
+
+        return $ident !== '' && $ident === $code;
+    }
+
+    if (preg_match('/^\d{5}$/', $recherche)) {
+        $ident = $produit['identifiant_interne'] ?? '';
+
+        return produit_identifiant_derniers_5_chiffres($ident) === $recherche;
+    }
+
+    $haystacks = produit_admin_liste_search_champs($produit);
+
+    $needle = produits_recherche_normalize($recherche);
+
+    foreach ($haystacks as $value) {
+        $value = produits_recherche_normalize((string) $value);
+        if ($value !== '' && strpos($value, $needle) !== false) {
+            return true;
+        }
+    }
+
+    $combined = produits_recherche_normalize(implode(' ', $haystacks));
+    if ($combined !== '' && strpos($combined, $needle) !== false) {
+        return true;
+    }
+
+    $tokens = preg_split('/\s+/u', $needle, -1, PREG_SPLIT_NO_EMPTY);
+    if (count($tokens) > 1 && $combined !== '') {
+        foreach ($tokens as $token) {
+            if ($token === '') {
+                continue;
+            }
+            $token_len = function_exists('mb_strlen') ? mb_strlen($token, 'UTF-8') : strlen($token);
+            if ($token_len < 2 && !preg_match('/^\d+$/', $token)) {
+                continue;
+            }
+            if (strpos($combined, $token) === false) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    return false;
+}
+
+/**
+ * Champs textuels indexables pour la recherche admin (liste produits).
+ *
+ * @param array<string, mixed> $produit
+ * @return array<int, string>
+ */
+function produit_admin_liste_search_champs(array $produit) {
+    $champs = [
+        (string) ($produit['nom'] ?? ''),
+        produits_description_plain_text($produit['description'] ?? ''),
+        (string) ($produit['categorie_nom'] ?? ''),
+        produits_marque_libelle_from_row($produit),
+        (string) ($produit['statut'] ?? ''),
+        (string) ($produit['identifiant_interne'] ?? ''),
+        (string) ($produit['poids'] ?? ''),
+        (string) ($produit['unite'] ?? ''),
+    ];
+
+    if (function_exists('produits_fournisseur_nom_affichage')) {
+        $four = trim(produits_fournisseur_nom_affichage($produit));
+        if ($four !== '') {
+            $champs[] = $four;
+        }
+    }
+
+    if (function_exists('produits_has_column')) {
+        if (produits_has_column('reference_fournisseur')) {
+            $champs[] = (string) ($produit['reference_fournisseur'] ?? '');
+        }
+        if (produits_has_column('nom_fournisseur')) {
+            $champs[] = (string) ($produit['nom_fournisseur'] ?? '');
+        }
+        if (produits_has_column('etage')) {
+            $champs[] = (string) ($produit['etage'] ?? '');
+        }
+        if (produits_has_column('numero_rayon')) {
+            $champs[] = (string) ($produit['numero_rayon'] ?? '');
+        }
+        if (produits_has_column('couleurs')) {
+            $champs[] = (string) ($produit['couleurs'] ?? '');
+        }
+        if (produits_has_column('taille')) {
+            $champs[] = (string) ($produit['taille'] ?? '');
+        }
+    }
+
+    return array_values(array_filter($champs, function ($value) {
+        return trim((string) $value) !== '';
+    }));
+}
+
+/**
+ * Texte normalisé pour data-search / filtrage live (liste admin produits).
+ *
+ * @param array<string, mixed> $produit
+ * @return string
+ */
+function produit_admin_liste_search_blob(array $produit) {
+    return produits_recherche_normalize(implode(' ', produit_admin_liste_search_champs($produit)));
+}
+
+/**
+ * Applique tous les filtres de la liste admin produits (catégorie, marque, fournisseur, recherche).
+ *
+ * @param array<string, mixed> $produit
+ * @param string $recherche
+ * @param int $categorie_id
+ * @param int $marque_id
+ * @param int $fournisseur_id
+ * @return bool
+ */
+function produit_admin_liste_pass_filtres(array $produit, $recherche, $categorie_id = 0, $marque_id = 0, $fournisseur_id = 0) {
+    if ($categorie_id > 0 && (int) ($produit['categorie_id'] ?? 0) !== $categorie_id) {
+        return false;
+    }
+
+    if ($marque_id > 0) {
+        if (!produits_has_column('marque_id')) {
+            return false;
+        }
+        if ((int) ($produit['marque_id'] ?? 0) !== $marque_id) {
+            return false;
+        }
+    }
+
+    if ($fournisseur_id > 0) {
+        if (!produits_has_column('fournisseur_id')) {
+            return false;
+        }
+        if ((int) ($produit['fournisseur_id'] ?? 0) !== $fournisseur_id) {
+            return false;
+        }
+    }
+
+    return produit_admin_liste_match_recherche($produit, $recherche);
+}
+
+/**
  * Libellé marque pour une ligne produit (jointure marque_nom ou lookup marque_id).
  *
  * @param array<string, mixed> $row
@@ -1696,7 +1887,7 @@ function search_produits_en_stock_commande_manuelle($recherche = '', $limit = 30
                 'fournisseur_nom' => produits_fournisseur_nom_affichage($r),
                 'ref_fournisseur' => (produits_has_column('reference_fournisseur') ? trim((string) ($r['reference_fournisseur'] ?? '')) : ''),
                 'ref_produit' => (produits_has_column('identifiant_interne') ? strtoupper(trim((string) ($r['identifiant_interne'] ?? ''))) : ''),
-                'desc_excerpt' => produits_description_excerpt($r['description'] ?? '', 50),
+                'desc_excerpt' => produits_description_excerpt($r['description'] ?? '', 20),
             ];
             $out[] = $item;
         }

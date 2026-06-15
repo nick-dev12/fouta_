@@ -518,6 +518,7 @@ $h_benefice = $h_gains_total - $h_depenses_ttc;
     <link rel="stylesheet" href="/css/compta-caisse.css<?php echo asset_version_query(); ?>">
     <link rel="stylesheet" href="/css/compta-bilan.css<?php echo asset_version_query(); ?>">
     <link rel="stylesheet" href="/css/admin-devis-compta-pages.css<?php echo asset_version_query(); ?>">
+    <link rel="stylesheet" href="/css/admin-comptabilite-index.css<?php echo asset_version_query(); ?>">
 </head>
 <body>
     <?php include '../includes/nav.php'; ?>

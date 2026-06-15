@@ -13,7 +13,7 @@
             }
         }
         window.addEventListener('resize', function() {
-            if (window.innerWidth > 600) {
+            if (window.innerWidth > 1024) {
                 closeAdminSidebar();
             }
         });

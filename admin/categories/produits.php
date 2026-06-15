@@ -40,6 +40,37 @@ if (!$categorie) {
 // Récupérer les produits de cette catégorie
 require_once __DIR__ . '/../../models/model_produits.php';
 $produits = get_produits_by_categorie($categorie_id);
+
+$marque_id = isset($_GET['marque_id']) ? (int) $_GET['marque_id'] : 0;
+$fournisseur_id = isset($_GET['fournisseur_id']) ? (int) $_GET['fournisseur_id'] : 0;
+$recherche = trim($_GET['recherche'] ?? '');
+
+$marques_filtre = [];
+$fournisseurs_filtre = [];
+if (produits_has_column('marque_id')) {
+    require_once __DIR__ . '/../../models/model_marques.php';
+    if (marques_table_ok()) {
+        $marques_filtre = get_all_marques_ordered_by_nom();
+    }
+}
+if (produits_has_column('fournisseur_id')) {
+    require_once __DIR__ . '/../../models/model_fournisseurs.php';
+    $fournisseurs_filtre = get_all_fournisseurs_ordered_by_nom();
+}
+
+if (!empty($produits)) {
+    $produits = array_values(array_filter($produits, function ($produit) use ($categorie_id, $marque_id, $fournisseur_id) {
+        return produit_admin_liste_pass_filtres($produit, '', $categorie_id, $marque_id, $fournisseur_id);
+    }));
+}
+
+$categorie_filtres_classes = 'admin-filters-bar page-categorie-produits-filters';
+if (!empty($marques_filtre)) {
+    $categorie_filtres_classes .= ' page-categorie-produits-filters--has-marque';
+}
+if (!empty($fournisseurs_filtre)) {
+    $categorie_filtres_classes .= ' page-categorie-produits-filters--has-fournisseur';
+}
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -52,6 +83,7 @@ $produits = get_produits_by_categorie($categorie_id);
     <?php require_once __DIR__ . '/../../includes/asset_version.php'; ?>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../../css/admin-dashboard.css<?php echo asset_version_query(); ?>">
+    <link rel="stylesheet" href="../../css/admin-categorie-produits.css<?php echo asset_version_query(); ?>">
 </head>
 
 <body>
@@ -65,10 +97,6 @@ $produits = get_produits_by_categorie($categorie_id);
                     <i class="fas fa-box" aria-hidden="true"></i>
                     <?php echo htmlspecialchars((string) ($categorie['nom'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>
                 </h1>
-                <p class="dashboard-subtitle">
-                    <?php echo count($produits); ?> produit<?php echo count($produits) > 1 ? 's' : ''; ?>
-                    dans cette catégorie — ajustement de stock, modification ou suppression.
-                </p>
             </div>
             <div class="header-actions header-actions--categorie-produits">
                 <a href="../stock/index.php" class="btn-back">
@@ -87,10 +115,64 @@ $produits = get_produits_by_categorie($categorie_id);
                         <i class="fas fa-list" aria-hidden="true"></i>
                         Produits
                     </h2>
-                    <p class="section-title-hint">Catalogue filtré sur «
-                        <?php echo htmlspecialchars((string) ($categorie['nom'] ?? ''), ENT_QUOTES, 'UTF-8'); ?> »</p>
+                    <p class="section-title-hint" id="page-categorie-produits-count-hint">Catalogue filtré sur «
+                        <?php echo htmlspecialchars((string) ($categorie['nom'] ?? ''), ENT_QUOTES, 'UTF-8'); ?> » —
+                        <?php echo count($produits); ?> produit<?php echo count($produits) > 1 ? 's' : ''; ?></p>
                 </div>
             </div>
+
+            <?php if (!empty($produits)): ?>
+            <form method="GET" action="" class="<?php echo htmlspecialchars($categorie_filtres_classes, ENT_QUOTES, 'UTF-8'); ?>"
+                data-produits-live-search-form
+                data-live-grid="page-categorie-produits-grid"
+                data-live-count-hint="page-categorie-produits-count-hint"
+                data-live-empty="page-categorie-produits-live-empty">
+                <input type="hidden" name="id" value="<?php echo (int) $categorie_id; ?>">
+                <div class="admin-filter-field page-categorie-produits-filters__search">
+                    <label for="recherche">Recherche</label>
+                    <input type="text" id="recherche" name="recherche"
+                        placeholder="Nom, description… — filtre en direct"
+                        value="<?php echo htmlspecialchars($recherche); ?>"
+                        autocomplete="off" inputmode="search"                         data-live-search-input>
+                </div>
+                <?php if (!empty($marques_filtre)): ?>
+                <div class="admin-filter-field page-categorie-produits-filters__marque">
+                    <label for="marque_id">Marque</label>
+                    <select id="marque_id" name="marque_id">
+                        <option value="0">Toutes les marques</option>
+                        <?php foreach ($marques_filtre as $marque): ?>
+                            <option value="<?php echo (int) $marque['id']; ?>"
+                                <?php echo $marque_id === (int) $marque['id'] ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($marque['nom']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <?php endif; ?>
+                <?php if (!empty($fournisseurs_filtre)): ?>
+                <div class="admin-filter-field page-categorie-produits-filters__fournisseur">
+                    <label for="fournisseur_id">Fournisseur</label>
+                    <select id="fournisseur_id" name="fournisseur_id">
+                        <option value="0">Tous les fournisseurs</option>
+                        <?php foreach ($fournisseurs_filtre as $fournisseur): ?>
+                            <option value="<?php echo (int) $fournisseur['id']; ?>"
+                                <?php echo $fournisseur_id === (int) $fournisseur['id'] ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($fournisseur['nom']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <?php endif; ?>
+                <div class="admin-filter-actions page-categorie-produits-filters__actions">
+                    <button type="submit" class="btn-primary">
+                        <i class="fas fa-search"></i> Filtrer
+                    </button>
+                    <a href="produits.php?id=<?php echo (int) $categorie_id; ?>" class="btn-filter-reset">
+                        <i class="fas fa-rotate-left"></i>&nbsp;Réinitialiser
+                    </a>
+                </div>
+            </form>
+            <?php endif; ?>
 
             <?php if (empty($produits)): ?>
                 <div class="empty-state page-categorie-produits-empty">
@@ -101,7 +183,8 @@ $produits = get_produits_by_categorie($categorie_id);
                     </a>
                 </div>
             <?php else: ?>
-                <div class="produits-grid">
+                <div class="produits-grid page-categorie-produits-grid" id="page-categorie-produits-grid"
+                    data-total="<?php echo count($produits); ?>">
                     <?php foreach ($produits as $produit): ?>
                         <?php
                         $statut_class = 'statut-actif';
@@ -111,8 +194,18 @@ $produits = get_produits_by_categorie($categorie_id);
                             $statut_class = 'statut-rupture';
                         }
                         $statut_label = ucfirst(str_replace('_', ' ', (string) ($produit['statut'] ?? '')));
+                        $pcm_search_blob = produit_admin_liste_search_blob($produit);
+                        $pcm_nom_norm = produits_recherche_normalize((string) ($produit['nom'] ?? ''));
+                        $pcm_ident = strtoupper(trim((string) ($produit['identifiant_interne'] ?? '')));
                         ?>
-                        <div class="produit-card produit-card--dashboard produit-card-linkable" data-href="../produits/ajuster-stock.php?id=<?php echo (int) $produit['id']; ?>">
+                        <div class="produit-card produit-card--dashboard produit-card-linkable"
+                            data-href="../produits/ajuster-stock.php?id=<?php echo (int) $produit['id']; ?>"
+                            data-produit-search="<?php echo htmlspecialchars($pcm_search_blob, ENT_QUOTES, 'UTF-8'); ?>"
+                            data-produit-nom="<?php echo htmlspecialchars($pcm_nom_norm, ENT_QUOTES, 'UTF-8'); ?>"
+                            data-produit-ident="<?php echo htmlspecialchars($pcm_ident, ENT_QUOTES, 'UTF-8'); ?>"
+                            data-categorie-id="<?php echo (int) $categorie_id; ?>"
+                            data-marque-id="<?php echo (int) ($produit['marque_id'] ?? 0); ?>"
+                            data-fournisseur-id="<?php echo (int) ($produit['fournisseur_id'] ?? 0); ?>">
                             <span class="statut-badge <?php echo $statut_class; ?>"><?php echo htmlspecialchars((string) $statut_label, ENT_QUOTES, 'UTF-8'); ?></span>
                             <div class="produit-card-media">
                                 <?php
@@ -174,6 +267,10 @@ $produits = get_produits_by_categorie($categorie_id);
                         </div>
                     <?php endforeach; ?>
                 </div>
+                <div class="empty-state page-categorie-produits-empty page-categorie-produits-empty--live" id="page-categorie-produits-live-empty" hidden>
+                    <i class="fas fa-search" aria-hidden="true"></i>
+                    <p>Aucun produit ne correspond à votre recherche dans cette catégorie.</p>
+                </div>
             <?php endif; ?>
         </section>
     </div>
@@ -185,6 +282,8 @@ $produits = get_produits_by_categorie($categorie_id);
     }
     ?>
     <?php include '../includes/footer.php'; ?>
+
+    <script src="/js/admin-produits-live-search.js<?php echo asset_version_query(); ?>"></script>
 
     <!-- Modal de confirmation de suppression -->
     <div class="delete-confirm-overlay" id="deleteConfirmOverlay"></div>

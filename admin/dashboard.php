@@ -24,46 +24,40 @@ $dashboard_show_commandes = in_array(admin_current_role(), ['informaticien', 'de
 
 $recherche = trim($_GET['recherche'] ?? '');
 $categorie_id = isset($_GET['categorie_id']) ? (int) $_GET['categorie_id'] : 0;
+$marque_id = isset($_GET['marque_id']) ? (int) $_GET['marque_id'] : 0;
+$fournisseur_id = isset($_GET['fournisseur_id']) ? (int) $_GET['fournisseur_id'] : 0;
 $admin_show_catalogue = admin_can_gestion_boutique();
 $categories = [];
 $produits = [];
+$marques_filtre = [];
+$fournisseurs_filtre = [];
 if ($admin_show_catalogue) {
     $categories = get_all_categories();
     $produits = get_all_produits();
+    if (produits_has_column('marque_id')) {
+        require_once __DIR__ . '/../models/model_marques.php';
+        if (marques_table_ok()) {
+            $marques_filtre = get_all_marques_ordered_by_nom();
+        }
+    }
+    if (produits_has_column('fournisseur_id')) {
+        require_once __DIR__ . '/../models/model_fournisseurs.php';
+        $fournisseurs_filtre = get_all_fournisseurs_ordered_by_nom();
+    }
 }
 
 if ($admin_show_catalogue && !empty($produits)) {
-    $produits = array_values(array_filter($produits, function ($produit) use ($recherche, $categorie_id) {
-        if ($categorie_id > 0 && (int) ($produit['categorie_id'] ?? 0) !== $categorie_id) {
-            return false;
-        }
-
-        if ($recherche === '') {
-            return true;
-        }
-
-        $needle = function_exists('mb_strtolower') ? mb_strtolower($recherche) : strtolower($recherche);
-        $haystacks = [
-            $produit['nom'] ?? '',
-            $produit['description'] ?? '',
-            $produit['categorie_nom'] ?? '',
-            function_exists('produits_marque_libelle_from_row') ? produits_marque_libelle_from_row($produit) : ($produit['marque_nom'] ?? ''),
-            $produit['statut'] ?? ''
-        ];
-        if (function_exists('produits_has_column') && produits_has_column('reference_fournisseur')) {
-            $haystacks[] = (string) ($produit['reference_fournisseur'] ?? '');
-        }
-        $haystacks[] = (string) ($produit['identifiant_interne'] ?? '');
-
-        foreach ($haystacks as $value) {
-            $value = function_exists('mb_strtolower') ? mb_strtolower((string) $value) : strtolower((string) $value);
-            if (strpos($value, $needle) !== false) {
-                return true;
-            }
-        }
-
-        return false;
+    $produits = array_values(array_filter($produits, function ($produit) use ($categorie_id, $marque_id, $fournisseur_id) {
+        return produit_admin_liste_pass_filtres($produit, '', $categorie_id, $marque_id, $fournisseur_id);
     }));
+}
+
+$dashboard_filtres_classes = 'admin-filters-bar page-dashboard-filters';
+if (!empty($marques_filtre)) {
+    $dashboard_filtres_classes .= ' page-dashboard-filters--has-marque';
+}
+if (!empty($fournisseurs_filtre)) {
+    $dashboard_filtres_classes .= ' page-dashboard-filters--has-fournisseur';
 }
 
 ?>
@@ -78,6 +72,7 @@ if ($admin_show_catalogue && !empty($produits)) {
     <?php $pwa_mode = 'admin'; include __DIR__ . '/../includes/pwa_meta.php'; ?>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/css/admin-dashboard.css<?php echo asset_version_query(); ?>">
+    <link rel="stylesheet" href="/css/admin-dashboard-page.css<?php echo asset_version_query(); ?>">
     <link rel="stylesheet" href="/css/admin-dashboard-caisse-pages.css<?php echo asset_version_query(); ?>">
 </head>
 
@@ -87,7 +82,7 @@ if ($admin_show_catalogue && !empty($produits)) {
     <!-- Barre de navigation verticale -->
 
     <!-- Contenu principal -->
-    <div class="contents-container dashboard-page">
+    <div class="contents-container dashboard-page page-dashboard-home">
         <div class="content-header dashboard-hero">
             <div class="dashboard-hero-text">
                 <p class="dashboard-eyebrow">Administration</p>
@@ -223,21 +218,20 @@ if ($admin_show_catalogue && !empty($produits)) {
         <!-- Section produits (gestion des stocks) -->
         <?php if ($admin_show_catalogue): ?>
 
-        <section class="produits-section produits-section--dashboard" aria-labelledby="produits-heading">
-            <div class="section-title section-title--dashboard">
-                <div>
-                    <h2 id="produits-heading"><i class="fas fa-box" aria-hidden="true"></i> Catalogue produits</h2>
-                    <p class="section-title-hint"><?php echo count($produits); ?> produit<?php echo count($produits) > 1 ? 's' : ''; ?> affiché<?php echo count($produits) > 1 ? 's' : ''; ?></p>
-                </div>
-            </div>
+        <section class="produits-section produits-section--dashboard" aria-label="Catalogue produits">
 
-            <form method="GET" action="" class="admin-filters-bar">
-                <div class="admin-filter-field">
+            <form method="GET" action="" class="<?php echo htmlspecialchars($dashboard_filtres_classes, ENT_QUOTES, 'UTF-8'); ?>"
+                data-produits-live-search-form
+                data-live-grid="page-dashboard-produits-grid"
+                data-live-empty="page-dashboard-live-empty">
+                <div class="admin-filter-field page-dashboard-filters__search">
                     <label for="recherche">Recherche</label>
-                    <input type="text" id="recherche" name="recherche" placeholder="Nom, description, statut..."
-                        value="<?php echo htmlspecialchars($recherche); ?>">
+                    <input type="text" id="recherche" name="recherche"
+                        placeholder="Nom, description… — filtre en direct"
+                        value="<?php echo htmlspecialchars($recherche); ?>" autocomplete="off" inputmode="search"
+                        data-live-search-input>
                 </div>
-                <div class="admin-filter-field">
+                <div class="admin-filter-field page-dashboard-filters__categorie">
                     <label for="categorie_id">Catégorie</label>
                     <select id="categorie_id" name="categorie_id">
                         <option value="0">Toutes les catégories</option>
@@ -249,7 +243,35 @@ if ($admin_show_catalogue && !empty($produits)) {
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <div class="admin-filter-actions">
+                <?php if (!empty($marques_filtre)): ?>
+                <div class="admin-filter-field page-dashboard-filters__marque">
+                    <label for="marque_id">Marque</label>
+                    <select id="marque_id" name="marque_id">
+                        <option value="0">Toutes les marques</option>
+                        <?php foreach ($marques_filtre as $marque): ?>
+                            <option value="<?php echo (int) $marque['id']; ?>"
+                                <?php echo $marque_id === (int) $marque['id'] ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($marque['nom']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <?php endif; ?>
+                <?php if (!empty($fournisseurs_filtre)): ?>
+                <div class="admin-filter-field page-dashboard-filters__fournisseur">
+                    <label for="fournisseur_id">Fournisseur</label>
+                    <select id="fournisseur_id" name="fournisseur_id">
+                        <option value="0">Tous les fournisseurs</option>
+                        <?php foreach ($fournisseurs_filtre as $fournisseur): ?>
+                            <option value="<?php echo (int) $fournisseur['id']; ?>"
+                                <?php echo $fournisseur_id === (int) $fournisseur['id'] ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($fournisseur['nom']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <?php endif; ?>
+                <div class="admin-filter-actions page-dashboard-filters__actions">
                     <button type="submit" class="btn-primary">
                         <i class="fas fa-search"></i> Filtrer
                     </button>
@@ -271,7 +293,8 @@ if ($admin_show_catalogue && !empty($produits)) {
                 </div>
             <?php else: ?>
                 <!-- Grille de produits -->
-                <div class="produits-grid">
+                <div class="produits-grid page-dashboard-produits-grid" id="page-dashboard-produits-grid"
+                    data-total="<?php echo count($produits); ?>">
                     <?php foreach ($produits as $produit): ?>
                         <?php
                         $statut_class = 'statut-actif';
@@ -285,9 +308,18 @@ if ($admin_show_catalogue && !empty($produits)) {
                         if (!empty($produit['image_principale'])) {
                             $img_catalogue = trim((string) $produit['image_principale']);
                         }
+                        $pcm_search_blob = produit_admin_liste_search_blob($produit);
+                        $pcm_nom_norm = produits_recherche_normalize((string) ($produit['nom'] ?? ''));
+                        $pcm_ident = strtoupper(trim((string) ($produit['identifiant_interne'] ?? '')));
                         ?>
                         <div class="produit-card produit-card-linkable produit-card--dashboard"
-                            data-href="produits/ajuster-stock.php?id=<?php echo (int) $produit['id']; ?>">
+                            data-href="produits/ajuster-stock.php?id=<?php echo (int) $produit['id']; ?>"
+                            data-produit-search="<?php echo htmlspecialchars($pcm_search_blob, ENT_QUOTES, 'UTF-8'); ?>"
+                            data-produit-nom="<?php echo htmlspecialchars($pcm_nom_norm, ENT_QUOTES, 'UTF-8'); ?>"
+                            data-produit-ident="<?php echo htmlspecialchars($pcm_ident, ENT_QUOTES, 'UTF-8'); ?>"
+                            data-categorie-id="<?php echo (int) ($produit['categorie_id'] ?? 0); ?>"
+                            data-marque-id="<?php echo (int) ($produit['marque_id'] ?? 0); ?>"
+                            data-fournisseur-id="<?php echo (int) ($produit['fournisseur_id'] ?? 0); ?>">
                             <span class="statut-badge <?php echo $statut_class; ?>"><?php echo htmlspecialchars($statut_label, ENT_QUOTES, 'UTF-8'); ?></span>
                             <div class="produit-card-media">
                                 <?php if ($img_catalogue !== ''): ?>
@@ -341,11 +373,16 @@ if ($admin_show_catalogue && !empty($produits)) {
                         </div>
                     <?php endforeach; ?>
                 </div>
+                <div class="empty-state page-dashboard-live-empty" id="page-dashboard-live-empty" hidden>
+                    <i class="fas fa-search" aria-hidden="true"></i>
+                    <p>Aucun produit ne correspond à votre recherche.</p>
+                </div>
             <?php endif; ?>
         </section>
         <?php endif; ?>
     </div>
 
+    <script src="/js/admin-produits-live-search.js<?php echo asset_version_query(); ?>"></script>
     <script src="https://www.gstatic.com/firebasejs/12.9.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/12.9.0/firebase-messaging-compat.js"></script>
     <?php require_once __DIR__ . '/../includes/firebase_init.php'; ?>

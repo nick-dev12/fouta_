@@ -1,0 +1,516 @@
+/**
+ * Hub comptabilité (admin/comptabilite/index.php) — responsive
+ * Aligné dashboard / produits / comptes (≤1024 tablette, ≤640 mobile)
+ */
+
+.page-compta-admin {
+  width: 100%;
+  max-width: 100%;
+  padding: 0 16px 40px;
+  box-sizing: border-box;
+}
+
+/* ========== Tablette + mobile (≤ 1024px) ========== */
+@media (max-width: 1024px) {
+  .page-compta-admin {
+    padding: 0 10px 28px;
+  }
+
+  .page-compta-admin .content-header.dashboard-hero.page-compta-hero {
+    padding: 12px 14px !important;
+    margin-bottom: 12px !important;
+    border-radius: 14px !important;
+    gap: 8px !important;
+  }
+
+  .page-compta-admin .page-compta-hero .dashboard-eyebrow {
+    font-size: 8px;
+    letter-spacing: 0.1em;
+    margin-bottom: 4px;
+  }
+
+  .page-compta-admin .page-compta-hero .dashboard-hero-text h1 {
+    font-size: 0.95rem;
+    line-height: 1.2;
+    margin-bottom: 0;
+  }
+
+  .page-compta-admin .page-compta-hero .dashboard-hero-text h1 i {
+    font-size: 0.85em;
+    margin-right: 6px;
+  }
+
+  /* Synthèse hub */
+  .page-compta-admin .compta-synthese-hub {
+    margin-bottom: 12px;
+    padding: 10px 12px 14px;
+    border-radius: 12px;
+  }
+
+  .page-compta-admin .compta-synthese-hub__period {
+    font-size: 0.68rem;
+    line-height: 1.35;
+    margin-bottom: 10px;
+  }
+
+  .page-compta-admin .compta-synthese-cards {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .page-compta-admin .compta-synthese-card {
+    padding: 10px 10px 10px;
+    gap: 8px;
+    border-radius: 10px;
+  }
+
+  .page-compta-admin .compta-synthese-card__ic {
+    width: 32px;
+    height: 32px;
+    font-size: 0.82rem;
+    border-radius: 8px;
+    flex-shrink: 0;
+  }
+
+  .page-compta-admin .compta-synthese-card__label {
+    font-size: 0.52rem;
+  }
+
+  .page-compta-admin .compta-synthese-card__value {
+    font-size: 0.95rem;
+  }
+
+  .page-compta-admin .compta-synthese-card__value small {
+    font-size: 0.62rem;
+  }
+
+  .page-compta-admin .compta-synthese-card__detail {
+    font-size: 0.58rem;
+    line-height: 1.3;
+  }
+
+  /* Filtre synthèse + onglets */
+  .page-compta-admin .compta-ventes-filter__row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+
+  .page-compta-admin .compta-ventes-filter__label {
+    font-size: 8px;
+    margin-bottom: 0;
+  }
+
+  .page-compta-admin .compta-ventes-filter__controls {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px 8px;
+    width: 100%;
+  }
+
+  .page-compta-admin .compta-ventes-filter__controls .compta-ventes-filter__select {
+    grid-column: 1 / -1;
+    min-height: 32px;
+    padding: 6px 9px;
+    font-size: 11px;
+    border-radius: 8px;
+  }
+
+  .page-compta-admin .compta-ventes-filter__btn,
+  .page-compta-admin .compta-ventes-filter__reset {
+    min-height: 32px;
+    padding: 6px 10px;
+    font-size: 10px;
+    border-radius: 8px;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .page-compta-admin .compta-hub-filter__jma-block {
+    margin-bottom: 8px;
+  }
+
+  .page-compta-admin .compta-hub-filter__date-line {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+
+  .page-compta-admin .compta-ventes-filter__sublabel {
+    font-size: 8px;
+  }
+
+  .page-compta-admin .compta-hub-jma-inline {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4px;
+    align-items: center;
+    width: 100%;
+  }
+
+  .page-compta-admin .compta-hub-jma-sep {
+    font-size: 0.75rem;
+    text-align: center;
+  }
+
+  .page-compta-admin .compta-hub-jma-sel.compta-ventes-filter__select--sm {
+    min-width: 0;
+    width: 100%;
+    padding: 5px 6px;
+    font-size: 10px;
+  }
+
+  .page-compta-admin .compta-ventes-filter__fields--plage {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  /* Section principale */
+  .page-compta-admin .page-compta-section.content-section.compta-page {
+    padding: 12px 10px 18px;
+    border-radius: 16px;
+    margin-bottom: 16px;
+  }
+
+  .page-compta-admin .compta-tabs-wrap {
+    margin-bottom: 14px;
+  }
+
+  /* Onglets : 2 par ligne */
+  .page-compta-admin .compta-tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px;
+  }
+
+  .page-compta-admin .compta-tab {
+    padding: 10px 12px;
+    gap: 8px;
+    border-radius: 10px;
+    min-width: 0;
+  }
+
+  .page-compta-admin .compta-tab__ic {
+    width: 34px;
+    height: 34px;
+    font-size: 0.88rem;
+    border-radius: 8px;
+  }
+
+  .page-compta-admin .compta-tab__label {
+    font-size: 0.76rem;
+    line-height: 1.2;
+  }
+
+  .page-compta-admin .compta-tab__hint {
+    font-size: 0.6rem;
+    line-height: 1.28;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* Panneaux */
+  .page-compta-admin .compta-hero {
+    padding: 12px 14px;
+    margin-bottom: 12px;
+    border-radius: 12px;
+  }
+
+  .page-compta-admin .compta-hero__title {
+    font-size: 0.92rem;
+    margin-bottom: 6px;
+  }
+
+  .page-compta-admin .compta-hero__lead {
+    font-size: 0.72rem;
+    line-height: 1.35;
+  }
+
+  .page-compta-admin .compta-hero__actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    width: 100%;
+  }
+
+  .page-compta-admin .compta-btn {
+    min-height: 32px;
+    padding: 6px 10px;
+    font-size: 10px;
+    border-radius: 8px;
+    justify-content: center;
+  }
+
+  .page-compta-admin .compta-intro {
+    padding: 10px 12px;
+    font-size: 0.72rem;
+    margin-bottom: 14px;
+    border-radius: 10px;
+  }
+
+  .page-compta-admin .compta-section-title {
+    font-size: 0.88rem;
+    margin-bottom: 10px;
+  }
+
+  .page-compta-admin .compta-bl-filter {
+    padding: 10px 12px;
+    border-radius: 12px;
+  }
+
+  .page-compta-admin .compta-bl-filter__row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+
+  .page-compta-admin .compta-bl-filter__controls {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px 8px;
+    width: 100%;
+  }
+
+  .page-compta-admin .compta-bl-filter__select {
+    min-height: 32px;
+    font-size: 11px;
+    padding: 6px 9px;
+  }
+
+  .page-compta-admin .compta-bl-filter__btn {
+    min-height: 32px;
+    font-size: 10px;
+    padding: 6px 10px;
+  }
+
+  /* KPI / stats */
+  .page-compta-admin .compta-stat-grid,
+  .page-compta-admin .compta-bl-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .page-compta-admin .compta-stat-card,
+  .page-compta-admin .compta-bl-kpi {
+    padding: 10px 12px;
+    border-radius: 10px;
+  }
+
+  .page-compta-admin .compta-stat-card__label,
+  .page-compta-admin .compta-bl-kpi__label {
+    font-size: 0.58rem;
+    margin-bottom: 4px;
+  }
+
+  .page-compta-admin .compta-stat-card__value,
+  .page-compta-admin .compta-bl-kpi__value {
+    font-size: 1.05rem;
+  }
+
+  .page-compta-admin .compta-bl-kpi__ic {
+    width: 34px;
+    height: 34px;
+    font-size: 0.85rem;
+    border-radius: 8px;
+  }
+
+  /* Grilles cartes */
+  .page-compta-admin .compta-ventes-grid,
+  .page-compta-admin .compta-devis-payes-grid,
+  .page-compta-admin .compta-bl-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .page-compta-admin .compta-vente-card,
+  .page-compta-admin .compta-bl-mini,
+  .page-compta-admin .compta-devis-payee-card {
+    padding: 10px 10px 9px;
+    border-radius: 10px;
+  }
+
+  .page-compta-admin .compta-vente-card__num {
+    font-size: 0.78rem;
+  }
+
+  .page-compta-admin .compta-vente-card__client,
+  .page-compta-admin .compta-vente-card__date {
+    font-size: 0.64rem;
+  }
+
+  .page-compta-admin .compta-vente-card__mt {
+    font-size: 0.82rem;
+  }
+
+  /* Tableaux */
+  .page-compta-admin .compta-panel-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 10px;
+  }
+
+  .page-compta-admin .compta-panel-table-wrap .data-table {
+    font-size: 0.72rem;
+    min-width: 520px;
+  }
+
+  .page-compta-admin .compta-panel-table-wrap .data-table th,
+  .page-compta-admin .compta-panel-table-wrap .data-table td {
+    padding: 8px 10px;
+  }
+
+  .page-compta-admin .compta-info-card {
+    padding: 10px 12px;
+    font-size: 0.72rem;
+    gap: 10px;
+  }
+}
+
+/* ========== Mobile (≤ 640px) ========== */
+@media (max-width: 640px) {
+  .page-compta-admin {
+    padding: 0 8px 24px;
+  }
+
+  .page-compta-admin .content-header.dashboard-hero.page-compta-hero {
+    padding: 10px 12px !important;
+    border-radius: 12px !important;
+  }
+
+  .page-compta-admin .page-compta-hero .dashboard-hero-text h1 {
+    font-size: 0.88rem;
+  }
+
+  .page-compta-admin .compta-synthese-hub {
+    padding: 8px 10px 12px;
+    border-radius: 10px;
+  }
+
+  .page-compta-admin .compta-synthese-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .page-compta-admin .compta-synthese-card {
+    padding: 8px;
+    gap: 6px;
+  }
+
+  .page-compta-admin .compta-synthese-card__ic {
+    width: 26px;
+    height: 26px;
+    font-size: 0.7rem;
+  }
+
+  .page-compta-admin .compta-synthese-card__value {
+    font-size: 0.82rem;
+  }
+
+  .page-compta-admin .compta-synthese-card__detail {
+    font-size: 0.52rem;
+    -webkit-line-clamp: 2;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .page-compta-admin .page-compta-section.content-section.compta-page {
+    padding: 10px 8px 16px;
+    border-radius: 12px;
+  }
+
+  .page-compta-admin .compta-tabs {
+    gap: 6px;
+  }
+
+  .page-compta-admin .compta-tab {
+    padding: 8px 10px;
+    gap: 6px;
+  }
+
+  .page-compta-admin .compta-tab__ic {
+    width: 28px;
+    height: 28px;
+    font-size: 0.75rem;
+  }
+
+  .page-compta-admin .compta-tab__label {
+    font-size: 0.68rem;
+  }
+
+  .page-compta-admin .compta-tab__hint {
+    display: none;
+  }
+
+  .page-compta-admin .compta-ventes-grid,
+  .page-compta-admin .compta-devis-payes-grid,
+  .page-compta-admin .compta-bl-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .page-compta-admin .compta-stat-grid,
+  .page-compta-admin .compta-bl-kpis {
+    gap: 6px;
+  }
+
+  .page-compta-admin .compta-stat-card__value,
+  .page-compta-admin .compta-bl-kpi__value {
+    font-size: 0.95rem;
+  }
+
+  .page-compta-admin .compta-hero__actions {
+    grid-template-columns: 1fr;
+  }
+
+  .page-compta-admin .compta-ventes-filter__btn,
+  .page-compta-admin .compta-ventes-filter__reset,
+  .page-compta-admin .compta-bl-filter__btn {
+    min-height: 30px;
+    font-size: 9px;
+    padding: 5px 8px;
+  }
+
+  .page-compta-admin .compta-hub-jma-inline {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .page-compta-admin .compta-hub-jma-sep {
+    display: none;
+  }
+
+  .page-compta-admin .compta-ventes-filter__fields--plage {
+    grid-template-columns: 1fr;
+  }
+
+  .page-compta-admin .compta-devis-payee-card {
+    padding: 0.85rem 0.9rem;
+  }
+
+  .page-compta-admin .compta-devis-payee-card__client {
+    font-size: 0.82rem;
+  }
+
+  .page-compta-admin .compta-panel-table-wrap .data-table {
+    font-size: 0.66rem;
+    min-width: 480px;
+  }
+}
+
+@media (max-width: 480px) {
+  .page-compta-admin .page-compta-hero .dashboard-hero-text h1 {
+    font-size: 0.82rem;
+  }
+
+  .page-compta-admin .compta-tab__label {
+    font-size: 0.62rem;
+  }
+
+  .page-compta-admin .compta-synthese-hub__period {
+    font-size: 0.6rem;
+  }
+}

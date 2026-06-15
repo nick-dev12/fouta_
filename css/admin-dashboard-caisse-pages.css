@@ -341,13 +341,99 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.2rem;
+  gap: 0.15rem;
   border-radius: 8px;
   align-self: center;
 }
 
-.caisse-live-row-hit:hover .caisse-live-nom {
+.caisse-live-row-hit:hover .produit-card-nom,
+.caisse-live-row-hit:hover .caisse-live-card-nom {
   color: var(--couleur-dominante);
+}
+
+.caisse-live-row-hit .produit-card-nom,
+.caisse-live-row-hit .caisse-live-card-nom {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: normal;
+  line-height: 1.35;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--titres);
+  margin: 0;
+  width: 100%;
+}
+
+.caisse-live-row-hit .produit-card-nom .pcn-nom,
+.caisse-live-row-hit .produit-card-nom .pcn-marque,
+.caisse-live-row-hit .produit-card-nom .pcn-desc,
+.caisse-live-row-hit .produit-card-nom .pcn-sep {
+  font-size: inherit;
+  font-weight: inherit;
+  color: inherit;
+  line-height: inherit;
+  display: inline;
+  margin: 0;
+  padding: 0;
+}
+
+.caisse-live-row-hit .produit-card-nom .pcn-sep {
+  color: var(--gris-clair);
+  font-weight: 400;
+  padding: 0 0.12em;
+}
+
+.caisse-live-row-hit .produit-card-nom .pcn-nom {
+  font-weight: 700;
+  color: var(--titres);
+}
+
+.caisse-live-row-hit .produit-card-nom .pcn-marque {
+  font-weight: 600;
+  color: var(--couleur-dominante);
+}
+
+.caisse-live-row-hit .produit-card-nom .pcn-desc {
+  font-weight: 500;
+  color: var(--gris-moyen);
+}
+
+.caisse-live-row-hit .produit-card-fournisseur,
+.caisse-live-row-hit .caisse-live-fournisseur {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--gris-moyen);
+  margin: 0;
+  width: 100%;
+}
+
+.caisse-live-row-hit .produit-card-fournisseur i {
+  color: var(--couleur-dominante);
+  font-size: 0.7rem;
+  flex-shrink: 0;
+}
+
+.caisse-live-row-hit .produit-card-categorie,
+.caisse-live-row-hit .caisse-live-categorie {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--gris-moyen);
+  margin: 0;
+  width: 100%;
+}
+
+.caisse-live-row-hit .produit-card-categorie i {
+  color: var(--couleur-dominante);
+  font-size: 0.7rem;
+  flex-shrink: 0;
 }
 
 .caisse-live-item-main {
@@ -645,6 +731,53 @@ body.admin-caisse-page .caisse-ticket-view-modal--fullscreen .caisse-ticket-view
 body.admin-caisse-page .caisse-ticket-view-modal--fullscreen .caisse-ticket-card {
   flex: 1;
   overflow-y: auto;
+}
+
+/* Panier — prix unitaire modifiable (enregistré à la génération du ticket) */
+.caisse-prix-cell {
+  min-width: 0;
+}
+.caisse-prix-input {
+  width: 5.5rem;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--border-input);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  background: var(--fond-principal);
+  color: var(--titres);
+}
+.caisse-prix-input:focus {
+  outline: none;
+  border-color: var(--border-input-focus);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+.caisse-prix-input--manuel {
+  border-color: var(--couleur-dominante);
+  background: var(--bleu-pale);
+}
+
+.admin-caisse-page .caisse-search-field--q {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+.admin-caisse-page .caisse-search-label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--gris-moyen);
+  margin-bottom: 4px;
+}
+.admin-caisse-page .caisse-search-hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.72rem;
+  color: var(--gris-moyen);
 }
 
 @media print {

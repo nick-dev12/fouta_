@@ -181,6 +181,25 @@ function caisse_prix_unitaire_produit(array $p)
 }
 
 /**
+ * Parse un montant saisi en caisse (espaces, virgule décimale…)
+ *
+ * @return float|null null si vide ou invalide
+ */
+function caisse_parse_montant_saisi($raw)
+{
+    $t = trim((string) $raw);
+    if ($t === '') {
+        return null;
+    }
+    $t = preg_replace('/\s+/u', '', $t);
+    $t = str_replace(',', '.', $t);
+    if (!is_numeric($t)) {
+        return null;
+    }
+    return (float) $t;
+}
+
+/**
  * Clé de ligne unique par produit (une ligne fusionnée par article)
  */
 function caisse_line_key($produit_id)
@@ -357,7 +376,9 @@ function caisse_cart_add_produit(array &$cart, array $produit, $quantite = 1)
 
     if (isset($cart['lines'][$key])) {
         $cart['lines'][$key]['quantite'] = $ex + $quantite;
-        $cart['lines'][$key]['prix_unitaire'] = $pu;
+        if (empty($cart['lines'][$key]['prix_manuel'])) {
+            $cart['lines'][$key]['prix_unitaire'] = $pu;
+        }
         $cart['lines'][$key]['nom'] = $produit['nom'] ?? '';
     } else {
         $cart['lines'][$key] = [
@@ -369,6 +390,117 @@ function caisse_cart_add_produit(array &$cart, array $produit, $quantite = 1)
         ];
     }
     return ['ok' => true];
+}
+
+/**
+ * Met à jour le prix unitaire HT d'une ligne panier (saisie manuelle vendeur)
+ *
+ * @return array{ok:bool, error?:string}
+ */
+function caisse_cart_set_prix_ligne(array &$cart, $line_key, $prix_saisi)
+{
+    $key = trim((string) $line_key);
+    if ($key === '' || !isset($cart['lines'][$key])) {
+        return ['ok' => false, 'error' => 'Ligne panier introuvable.'];
+    }
+    $prix = caisse_parse_montant_saisi($prix_saisi);
+    if ($prix === null || $prix <= 0) {
+        return ['ok' => false, 'error' => 'Le prix unitaire doit être un montant supérieur à zéro.'];
+    }
+    $prix = round($prix, 2);
+
+    require_once __DIR__ . '/model_produits.php';
+    $pid = (int) ($cart['lines'][$key]['produit_id'] ?? 0);
+    $p = $pid > 0 ? get_produit_by_id($pid) : null;
+    $prix_catalogue = $p ? round((float) caisse_prix_unitaire_produit($p), 2) : 0.0;
+
+    $cart['lines'][$key]['prix_unitaire'] = $prix;
+    if ($prix_catalogue > 0 && abs($prix - $prix_catalogue) < 0.005) {
+        unset($cart['lines'][$key]['prix_manuel']);
+    } else {
+        $cart['lines'][$key]['prix_manuel'] = 1;
+    }
+    return ['ok' => true];
+}
+
+/**
+ * Applique les prix saisis dans le POST (génération ticket / encaissement)
+ *
+ * @return array<int, string> Messages d'erreur éventuels
+ */
+function caisse_cart_apply_prix_posted(array &$cart, array $post)
+{
+    $prix_lignes = $post['prix_ligne'] ?? null;
+    if (!is_array($prix_lignes) || empty($prix_lignes)) {
+        return [];
+    }
+    $errs = [];
+    foreach ($prix_lignes as $key => $raw) {
+        $key = trim((string) $key);
+        if ($key === '' || !isset($cart['lines'][$key])) {
+            continue;
+        }
+        $res = caisse_cart_set_prix_ligne($cart, $key, $raw);
+        if (!$res['ok']) {
+            $errs[] = $res['error'] ?? 'Prix invalide.';
+        }
+    }
+    return $errs;
+}
+
+/**
+ * Met à jour la quantité d'une ligne panier (avec contrôle stock)
+ *
+ * @return array{ok:bool, error?:string}
+ */
+function caisse_cart_set_quantite_ligne(array &$cart, $line_key, $quantite)
+{
+    $key = trim((string) $line_key);
+    if ($key === '' || !isset($cart['lines'][$key])) {
+        return ['ok' => false, 'error' => 'Ligne panier introuvable.'];
+    }
+    $qty = (int) $quantite;
+    if ($qty <= 0) {
+        return ['ok' => false, 'error' => 'La quantité doit être supérieure à zéro.'];
+    }
+
+    require_once __DIR__ . '/model_produits.php';
+    $pid = (int) ($cart['lines'][$key]['produit_id'] ?? 0);
+    $p = $pid > 0 ? get_produit_by_id($pid) : null;
+    if ($p) {
+        $stock = (int) ($p['stock'] ?? 0);
+        if ($qty > $stock) {
+            return ['ok' => false, 'error' => 'Quantité supérieure au stock disponible (' . $stock . ').'];
+        }
+    }
+
+    $cart['lines'][$key]['quantite'] = $qty;
+    return ['ok' => true];
+}
+
+/**
+ * Applique les quantités saisies dans le POST (génération ticket / encaissement)
+ *
+ * @return array<int, string>
+ */
+function caisse_cart_apply_quantites_posted(array &$cart, array $post)
+{
+    $qty_lignes = $post['quantite_ligne'] ?? null;
+    if (!is_array($qty_lignes) || empty($qty_lignes)) {
+        return [];
+    }
+    $errs = [];
+    foreach ($qty_lignes as $key => $raw) {
+        $key = trim((string) $key);
+        if ($key === '' || !isset($cart['lines'][$key])) {
+            continue;
+        }
+        $res = caisse_cart_set_quantite_ligne($cart, $key, $raw);
+        if (!$res['ok']) {
+            $errs[] = $res['error'] ?? 'Quantité invalide.';
+        }
+    }
+    return $errs;
 }
 
 /**

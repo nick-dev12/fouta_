@@ -107,7 +107,9 @@ if ($action === 'update_qty') {
                 $_SESSION['caisse_flash_error'] = 'Quantité supérieure au stock disponible (' . $stock . ').';
             } else {
                 $cart['lines'][$key]['quantite'] = $qty;
-                $cart['lines'][$key]['prix_unitaire'] = caisse_prix_unitaire_produit($p);
+                if (empty($cart['lines'][$key]['prix_manuel'])) {
+                    $cart['lines'][$key]['prix_unitaire'] = caisse_prix_unitaire_produit($p);
+                }
             }
         }
     }
@@ -130,14 +132,18 @@ if ($action === 'qty_step') {
                     $_SESSION['caisse_flash_error'] = 'Stock maximum atteint (' . $stock . ').';
                 } else {
                     $cart['lines'][$key]['quantite'] = $cur + 1;
-                    $cart['lines'][$key]['prix_unitaire'] = caisse_prix_unitaire_produit($p);
+                    if (empty($cart['lines'][$key]['prix_manuel'])) {
+                        $cart['lines'][$key]['prix_unitaire'] = caisse_prix_unitaire_produit($p);
+                    }
                 }
             } else {
                 if ($cur <= 1) {
                     unset($cart['lines'][$key]);
                 } else {
                     $cart['lines'][$key]['quantite'] = $cur - 1;
-                    $cart['lines'][$key]['prix_unitaire'] = caisse_prix_unitaire_produit($p);
+                    if (empty($cart['lines'][$key]['prix_manuel'])) {
+                        $cart['lines'][$key]['prix_unitaire'] = caisse_prix_unitaire_produit($p);
+                    }
                 }
             }
         }
@@ -204,6 +210,18 @@ if ($action === 'generer_ticket') {
         $_SESSION['caisse_flash_error'] = 'Action non autorisée.';
         caisse_redirect_ok();
     }
+    $qty_errs = caisse_cart_apply_quantites_posted($cart, $_POST);
+    if (!empty($qty_errs)) {
+        $_SESSION['caisse_flash_error'] = $qty_errs[0];
+        caisse_cart_save($cart);
+        caisse_redirect_ok();
+    }
+    $prix_errs = caisse_cart_apply_prix_posted($cart, $_POST);
+    if (!empty($prix_errs)) {
+        $_SESSION['caisse_flash_error'] = $prix_errs[0];
+        caisse_cart_save($cart);
+        caisse_redirect_ok();
+    }
     $res = caisse_creer_ticket_en_attente((int) $_SESSION['admin_id'], $cart);
     if (!$res['ok']) {
         $_SESSION['caisse_flash_error'] = $res['error'] ?? 'Erreur lors de la génération du ticket.';
@@ -224,6 +242,18 @@ if ($action === 'generer_ticket') {
 if ($action === 'encaisser') {
     if (!admin_can_caisse_vendeur()) {
         $_SESSION['caisse_flash_error'] = 'L’encaissement depuis le bureau vendeur est réservé aux commerciaux. Les commerciaux génèrent un ticket ; le caissier l’encaisse.';
+        caisse_cart_save($cart);
+        caisse_redirect_ok();
+    }
+    $qty_errs = caisse_cart_apply_quantites_posted($cart, $_POST);
+    if (!empty($qty_errs)) {
+        $_SESSION['caisse_flash_error'] = $qty_errs[0];
+        caisse_cart_save($cart);
+        caisse_redirect_ok();
+    }
+    $prix_errs = caisse_cart_apply_prix_posted($cart, $_POST);
+    if (!empty($prix_errs)) {
+        $_SESSION['caisse_flash_error'] = $prix_errs[0];
         caisse_cart_save($cart);
         caisse_redirect_ok();
     }

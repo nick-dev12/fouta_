@@ -68,14 +68,28 @@ $marque_sel = isset($_GET['marque']) ? (int) $_GET['marque'] : 0;
 $marque_sel = $marque_sel > 0 ? $marque_sel : null;
 $marque_has_col = function_exists('produits_has_column') && produits_has_column('marque_id');
 $marque_arg = ($marque_has_col && $marque_sel !== null) ? $marque_sel : null;
+$fournisseur_sel = isset($_GET['fournisseur']) ? (int) $_GET['fournisseur'] : 0;
+$fournisseur_sel = $fournisseur_sel > 0 ? $fournisseur_sel : null;
+$fournisseur_has_col = function_exists('produits_has_column') && produits_has_column('fournisseur_id');
 
 $marques_liste = [];
 if (function_exists('marques_table_ok') && marques_table_ok()) {
     $marques_liste = get_all_marques_ordered_by_nom();
 }
 
-$show_catalogue = ($q !== '' || $cat !== null || $marque_arg !== null);
+$fournisseurs_liste = [];
+if ($fournisseur_has_col) {
+    require_once __DIR__ . '/../../models/model_fournisseurs.php';
+    $fournisseurs_liste = get_all_fournisseurs_ordered_by_nom();
+}
+
+$show_catalogue = ($q !== '' || $cat !== null || $marque_arg !== null || $fournisseur_sel !== null);
 $produits_liste = $show_catalogue ? search_produits_with_filters($q, null, null, $cat, 'nom', 0, 60, $marque_arg) : [];
+if ($fournisseur_sel !== null && $fournisseur_has_col && !empty($produits_liste)) {
+    $produits_liste = array_values(array_filter($produits_liste, function ($pr) use ($fournisseur_sel) {
+        return (int) ($pr['fournisseur_id'] ?? 0) === $fournisseur_sel;
+    }));
+}
 $categories = get_all_categories();
 
 $has_ident = function_exists('produits_has_column') && produits_has_column('identifiant_interne');
@@ -100,18 +114,35 @@ foreach ($caisse_catalog_rows as $pr) {
     $descShort = function_exists('produits_description_excerpt')
         ? produits_description_excerpt($pr['description'] ?? '', 50)
         : '';
+    $descExcerpt = function_exists('produits_description_excerpt')
+        ? produits_description_excerpt($pr['description'] ?? '', 20)
+        : '';
     $marqueNom = function_exists('produits_marque_libelle_from_row')
         ? produits_marque_libelle_from_row($pr)
         : trim((string) ($pr['marque_libelle_catalogue'] ?? $pr['marque_nom'] ?? ''));
+    $fournisseurNom = function_exists('produits_fournisseur_nom_affichage')
+        ? trim(produits_fournisseur_nom_affichage($pr))
+        : '';
+    $categorieNom = trim((string) ($pr['categorie_nom'] ?? ''));
+    $fid = 0;
+    if ($fournisseur_has_col) {
+        $fid = (int) ($pr['fournisseur_id'] ?? 0);
+    }
     $caisse_catalog_json[] = [
         'id' => (int) ($pr['id'] ?? 0),
         'nom' => (string) ($pr['nom'] ?? ''),
+        'nom_norm' => produits_recherche_normalize((string) ($pr['nom'] ?? '')),
+        'search' => produit_admin_liste_search_blob($pr),
         'ref' => $has_ident ? strtoupper(trim((string) ($pr['identifiant_interne'] ?? ''))) : '',
         'ref_f' => $refF,
         'marque_nom' => $marqueNom,
         'desc_short' => $descShort,
+        'desc_excerpt' => $descExcerpt,
+        'fournisseur_nom' => $fournisseurNom,
+        'categorie_nom' => $categorieNom,
         'cat_id' => (int) ($pr['categorie_id'] ?? 0),
         'marque_id' => $mid,
+        'fournisseur_id' => $fid,
         'prix' => round((float) caisse_prix_unitaire_produit($pr), 2),
         'stock' => (int) ($pr['stock'] ?? 0),
         'imgs' => $imgs,
@@ -303,12 +334,16 @@ if ($preview_recu !== null && $total_ttc > 0) {
                 <div class="caisse-zone-a-grid">
                     <div class="caisse-search-card caisse-search-card--primary">
                         <h2 class="caisse-catalog-title"><i class="fas fa-search" aria-hidden="true"></i> Recherche &amp; ajout catalogue</h2>
-                        <p class="caisse-catalog-lead">Nom, références FPL, réf. fournisseur ou code ticket (TKT…). Un seul champ pour rechercher et valider un code.</p>
                         <form method="get" action="index.php" class="caisse-search-form" id="caisse-search-form-get">
                             <div class="caisse-search-fields">
-                                <input type="search" name="q" id="caisse_q_live" value="<?php echo htmlspecialchars($q, ENT_QUOTES, 'UTF-8'); ?>"
-                                    placeholder="Nom, réf. FPL, réf. fournisseur, TKT…" class="caisse-search-input caisse-search-input--live"
-                                    aria-label="Recherche produit" autocomplete="off" autofocus>
+                                <div class="caisse-search-field caisse-search-field--q">
+                                    <label for="caisse_q_live" class="caisse-search-label">Recherche</label>
+                                    <input type="text" name="q" id="caisse_q_live" value="<?php echo htmlspecialchars($q, ENT_QUOTES, 'UTF-8'); ?>"
+                                        placeholder="Nom, description… — filtre en direct"
+                                        class="caisse-search-input caisse-search-input--live"
+                                        aria-label="Recherche produit" autocomplete="off" inputmode="search"
+                                        data-live-search-input autofocus>
+                                </div>
                                 <select name="cat" id="caisse_cat_live" class="caisse-search-select" aria-label="Catégorie">
                                     <option value="">Toutes les catégories</option>
                                     <?php foreach ($categories as $c): ?>
@@ -329,6 +364,17 @@ if ($preview_recu !== null && $total_ttc > 0) {
                                     <?php endforeach; ?>
                                 </select>
                                 <?php endif; ?>
+                                <?php if (!empty($fournisseurs_liste) && $fournisseur_has_col): ?>
+                                <select name="fournisseur" id="caisse_fournisseur_live" class="caisse-search-select" aria-label="Fournisseur">
+                                    <option value="">Tous les fournisseurs</option>
+                                    <?php foreach ($fournisseurs_liste as $f): ?>
+                                    <option value="<?php echo (int) $f['id']; ?>"
+                                        <?php echo ($fournisseur_sel !== null && (int) $f['id'] === (int) $fournisseur_sel) ? 'selected' : ''; ?>>
+                                        <?php echo htmlspecialchars($f['nom'] ?? '', ENT_QUOTES, 'UTF-8'); ?>
+                                    </option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <?php endif; ?>
                                 <button type="submit" class="btn-primary caisse-search-btn">Rechercher (liste complète)</button>
                             </div>
                         </form>
@@ -338,6 +384,7 @@ if ($preview_recu !== null && $total_ttc > 0) {
                                 data-csrf="<?php echo htmlspecialchars($_SESSION['admin_csrf'], ENT_QUOTES, 'UTF-8'); ?>"
                                 data-has-ident="<?php echo $has_ident ? '1' : '0'; ?>"
                                 data-marque-filter="<?php echo ($marque_has_col && !empty($marques_liste)) ? '1' : '0'; ?>"
+                                data-fournisseur-filter="<?php echo ($fournisseur_has_col && !empty($fournisseurs_liste)) ? '1' : '0'; ?>"
                                 hidden></div>
                         </div>
                         <form id="caisse-add-scan-fallback" method="post" action="post.php" class="visually-hidden" tabindex="-1" aria-hidden="true">
@@ -433,7 +480,10 @@ if ($preview_recu !== null && $total_ttc > 0) {
                     <?php else: ?>
 
                     <div class="caisse-table-scroll">
-                        <table class="caisse-cart-table">
+                        <table class="caisse-cart-table"
+                            data-remise-globale="<?php echo htmlspecialchars((string) ($totals['remise_globale_pct'] ?? 0), ENT_QUOTES, 'UTF-8'); ?>"
+                            data-tva-taux="<?php echo htmlspecialchars((string) $taux_tva, ENT_QUOTES, 'UTF-8'); ?>"
+                            data-inclure-tva="<?php echo !empty($cart['inclure_tva']) ? '1' : '0'; ?>">
                             <thead>
                                 <tr>
                                     <th>Produit</th>
@@ -450,13 +500,17 @@ if ($preview_recu !== null && $total_ttc > 0) {
                                 $rl = (float) ($line['remise_ligne_pct'] ?? 0);
                                 $tl = $pu * $q * (1 - min(100, max(0, $rl)) / 100);
                                 $p_stock = get_produit_by_id((int) ($line['produit_id'] ?? 0));
+                                $prix_catalogue = $p_stock ? round((float) caisse_prix_unitaire_produit($p_stock), 2) : $pu;
+                                $prix_manuel = !empty($line['prix_manuel']);
                                 $stock_dispo = $p_stock ? (int) ($p_stock['stock'] ?? 0) : $q;
+                                $key_safe = preg_replace('/[^a-zA-Z0-9_-]/', '_', $key);
                                 $ref_produit = '';
                                 if ($has_ident && $p_stock && trim((string) ($p_stock['identifiant_interne'] ?? '')) !== '') {
                                     $ref_produit = strtoupper(trim((string) $p_stock['identifiant_interne']));
                                 }
                             ?>
-                                <tr>
+                                <tr class="caisse-cart-row" data-line-key="<?php echo htmlspecialchars($key, ENT_QUOTES, 'UTF-8'); ?>"
+                                    data-remise-ligne="<?php echo htmlspecialchars((string) $rl, ENT_QUOTES, 'UTF-8'); ?>">
                                     <td>
                                         <div class="caisse-cart-produit-cell">
                                             <div class="caisse-cart-produit-line1">
@@ -470,25 +524,38 @@ if ($preview_recu !== null && $total_ttc > 0) {
                                             <?php endif; ?>
                                         </div>
                                     </td>
-                                    <td><?php echo number_format($pu, 0, ',', ' '); ?></td>
+                                    <td>
+                                        <div class="caisse-prix-cell">
+                                            <label class="visually-hidden" for="prix_<?php echo htmlspecialchars($key_safe); ?>">Prix unitaire HT</label>
+                                            <input type="text"
+                                                name="prix_ligne[<?php echo htmlspecialchars($key, ENT_QUOTES, 'UTF-8'); ?>]"
+                                                id="prix_<?php echo htmlspecialchars($key_safe); ?>"
+                                                form="caisse-generer-ticket-form"
+                                                class="caisse-prix-input<?php echo $prix_manuel ? ' caisse-prix-input--manuel' : ''; ?>"
+                                                value="<?php echo htmlspecialchars((string) (int) round($pu)); ?>"
+                                                inputmode="decimal"
+                                                autocomplete="off"
+                                                title="Prix catalogue : <?php echo number_format($prix_catalogue, 0, ',', ' '); ?> FCFA — enregistré à la génération du ticket"
+                                                data-line-key="<?php echo htmlspecialchars($key, ENT_QUOTES, 'UTF-8'); ?>"
+                                                required>
+                                        </div>
+                                    </td>
                                     <td>
                                         <div class="caisse-qty-cell caisse-qty-cell--solo">
-                                            <form method="post" action="post.php" class="caisse-qty-set-form">
-                                                <input type="hidden" name="csrf_token"
-                                                    value="<?php echo htmlspecialchars($_SESSION['admin_csrf']); ?>">
-                                                <input type="hidden" name="caisse_action" value="update_qty">
-                                                <input type="hidden" name="line_key"
-                                                    value="<?php echo htmlspecialchars($key); ?>">
-                                                <label class="visually-hidden" for="qty_<?php echo htmlspecialchars(preg_replace('/[^a-zA-Z0-9_-]/', '_', $key)); ?>">Quantité</label>
-                                                <input type="number" name="quantite" id="qty_<?php echo htmlspecialchars(preg_replace('/[^a-zA-Z0-9_-]/', '_', $key)); ?>"
-                                                    class="caisse-qty-input" min="1" max="<?php echo max(1, $stock_dispo); ?>"
-                                                    value="<?php echo $q; ?>" inputmode="numeric" required>
-                                                <button type="submit" class="caisse-qty-apply btn-secondary btn-sm" title="Appliquer la quantité saisie">OK</button>
-                                            </form>
+                                            <label class="visually-hidden" for="qty_<?php echo htmlspecialchars($key_safe); ?>">Quantité</label>
+                                            <input type="number"
+                                                name="quantite_ligne[<?php echo htmlspecialchars($key, ENT_QUOTES, 'UTF-8'); ?>]"
+                                                id="qty_<?php echo htmlspecialchars($key_safe); ?>"
+                                                form="caisse-generer-ticket-form"
+                                                class="caisse-qty-input"
+                                                data-line-key="<?php echo htmlspecialchars($key, ENT_QUOTES, 'UTF-8'); ?>"
+                                                min="1" max="<?php echo max(1, $stock_dispo); ?>"
+                                                value="<?php echo $q; ?>" inputmode="numeric" required>
                                         </div>
                                     </td>
                                     <td class="caisse-cart-total-ligne">
-                                        <strong><?php echo number_format($tl, 0, ',', ' '); ?></strong></td>
+                                        <strong class="caisse-cart-total-value"
+                                            data-line-key="<?php echo htmlspecialchars($key, ENT_QUOTES, 'UTF-8'); ?>"><?php echo number_format($tl, 0, ',', ' '); ?></strong></td>
                                     <td>
                                         <form method="post" action="post.php">
                                             <input type="hidden" name="csrf_token"
@@ -538,7 +605,7 @@ if ($preview_recu !== null && $total_ttc > 0) {
                     <?php endif; ?>
 
                     <?php if (!empty($cart['lines']) && $total_ttc > 0): ?>
-                    <form method="post" action="post.php" class="caisse-generer-ticket-form">
+                    <form method="post" action="post.php" class="caisse-generer-ticket-form" id="caisse-generer-ticket-form">
                         <input type="hidden" name="csrf_token"
                             value="<?php echo htmlspecialchars($_SESSION['admin_csrf']); ?>">
                         <input type="hidden" name="caisse_action" value="generer_ticket">
@@ -546,8 +613,6 @@ if ($preview_recu !== null && $total_ttc > 0) {
                             <?php echo !$tables_ok ? 'disabled' : ''; ?>>
                             <i class="fas fa-ticket-alt"></i> Générer le ticket
                         </button>
-                        <p class="caisse-generer-hint">Le ticket s’affiche en plein écran ; le panier est vidé pour une
-                            nouvelle vente.</p>
                     </form>
                     <?php endif; ?>
                     <?php endif; ?>
@@ -558,14 +623,14 @@ if ($preview_recu !== null && $total_ttc > 0) {
                 <aside class="caisse-zone caisse-zone--c" aria-label="Résumé et paiement">
                     <span class="caisse-zone-label"><i class="fas fa-receipt"></i> C · Résumé &amp; paiement</span>
 
-                    <div class="caisse-recap">
+                    <div class="caisse-recap" id="caisse-recap-live">
                         <div class="caisse-recap-row"><span>Total
-                                HT</span><strong><?php echo number_format($total_ht, 0, ',', ' '); ?>
+                                HT</span><strong id="caisse-recap-ht"><?php echo number_format($total_ht, 0, ',', ' '); ?>
                                 <small>FCFA</small></strong></div>
                         <div class="caisse-recap-row"><span>TVA (<?php echo htmlspecialchars((string) $taux_tva); ?>
-                                %)</span><strong><?php echo number_format($montant_tva, 0, ',', ' '); ?>
+                                %)</span><strong id="caisse-recap-tva"><?php echo number_format($montant_tva, 0, ',', ' '); ?>
                                 <small>FCFA</small></strong></div>
-                        <div class="caisse-recap-row caisse-recap-row--main"><span><?php echo $taux_tva > 0 ? 'Total TTC (à payer)' : 'Total à payer'; ?></span><strong><?php echo number_format($total_ttc, 0, ',', ' '); ?>
+                        <div class="caisse-recap-row caisse-recap-row--main"><span><?php echo $taux_tva > 0 ? 'Total TTC (à payer)' : 'Total à payer'; ?></span><strong id="caisse-recap-ttc"><?php echo number_format($total_ttc, 0, ',', ' '); ?>
                                 <small>FCFA</small></strong></div>
                     </div>
                     <?php if ($taux_tva > 0 && !$afficher_option_tva_caisse): ?>
@@ -674,278 +739,14 @@ if ($preview_recu !== null && $total_ttc > 0) {
     </div>
 
     <script type="application/json" id="caisse-catalog-json"><?php echo $caisse_catalog_json_script; ?></script>
+    <script src="/js/admin-caisse-live-search.js<?php echo asset_version_query(); ?>"></script>
+    <script src="/js/admin-caisse-cart-live.js<?php echo asset_version_query(); ?>"></script>
 
     <script>
     (function() {
         var btn = document.getElementById('btnPrintTicket');
         if (btn) btn.addEventListener('click', function() {
             window.print();
-        });
-    })();
-    (function() {
-        var elJson = document.getElementById('caisse-catalog-json');
-        var box = document.getElementById('caisse-live-results');
-        var inputQ = document.getElementById('caisse_q_live');
-        var selCat = document.getElementById('caisse_cat_live');
-        var selMarque = document.getElementById('caisse_marque_live');
-        if (!elJson || !box || !inputQ || !selCat) {
-            return;
-        }
-        var marqueFilterOn = box.getAttribute('data-marque-filter') === '1' && selMarque;
-        var catalog = [];
-        try {
-            catalog = JSON.parse(elJson.textContent || '[]');
-        } catch (e) {
-            catalog = [];
-        }
-        var csrf = box.getAttribute('data-csrf') || '';
-        var hasIdent = box.getAttribute('data-has-ident') === '1';
-        var maxLive = 25;
-        var placeholderImg = '/image/produit1.jpg';
-        var fmtFcfa = function(n) {
-            var x = Math.round(Number(n));
-            return String(x).replace(/\B(?=(\d{3})+(?!\d))/g, '\u202f');
-        };
-        var debounceTimer;
-        function esc(s) {
-            var d = document.createElement('div');
-            d.textContent = s;
-            return d.innerHTML;
-        }
-        function escAttr(s) {
-            return String(s)
-                .replace(/&/g, '&amp;')
-                .replace(/"/g, '&quot;')
-                .replace(/</g, '&lt;');
-        }
-        function filtersOk(p, catVal, marqueVal) {
-            if (catVal && String(p.cat_id) !== String(catVal)) {
-                return false;
-            }
-            if (marqueVal && String(p.marque_id || '0') !== String(marqueVal)) {
-                return false;
-            }
-            return true;
-        }
-        function matchProductText(p, qRaw) {
-            var q = (qRaw || '').trim();
-            if (!q) {
-                return false;
-            }
-            var d = q.toLowerCase();
-            var nom = (p.nom || '').toLowerCase();
-            if (nom.indexOf(d) !== -1) {
-                return true;
-            }
-            var ref = (p.ref || '').toUpperCase();
-            var qu = q.toUpperCase();
-            if (ref && ref.indexOf(qu) !== -1) {
-                return true;
-            }
-            var refF = ((p.ref_f || '') + '').toUpperCase();
-            if (refF && refF.indexOf(qu) !== -1) {
-                return true;
-            }
-            var desc = ((p.desc_short || '') + '').toLowerCase();
-            if (desc && desc.indexOf(d) !== -1) {
-                return true;
-            }
-            var marque = ((p.marque_nom || '') + '').toLowerCase();
-            if (marque && marque.indexOf(d) !== -1) {
-                return true;
-            }
-            var qDigits = q.replace(/\D/g, '');
-            if (qDigits && ref) {
-                var rDigits = ref.replace(/\D/g, '');
-                if (rDigits.indexOf(qDigits) !== -1) {
-                    return true;
-                }
-            }
-            if (qDigits && refF) {
-                var rfD = refF.replace(/\D/g, '');
-                if (rfD && rfD.indexOf(qDigits) !== -1) {
-                    return true;
-                }
-            }
-            return false;
-        }
-        function matchProduct(p, qRaw, catVal, marqueVal) {
-            if (!filtersOk(p, catVal, marqueVal)) {
-                return false;
-            }
-            var q = (qRaw || '').trim();
-            if (!q) {
-                return !!(catVal || marqueVal);
-            }
-            return matchProductText(p, qRaw);
-        }
-        function collectHits(qRaw, catVal, marqueVal, cap) {
-            cap = cap || maxLive;
-            var q = (qRaw || '').trim();
-            var hits = [];
-            var i;
-            var needFilter = (q !== '') || (catVal !== '') || (marqueVal !== '');
-            if (!needFilter) {
-                return hits;
-            }
-            if (q === '' && (catVal !== '' || marqueVal !== '')) {
-                for (i = 0; i < catalog.length; i++) {
-                    if (filtersOk(catalog[i], catVal, marqueVal)) {
-                        hits.push(catalog[i]);
-                    }
-                    if (hits.length >= cap) {
-                        break;
-                    }
-                }
-            } else {
-                for (i = 0; i < catalog.length; i++) {
-                    if (matchProduct(catalog[i], qRaw, catVal, marqueVal)) {
-                        hits.push(catalog[i]);
-                    }
-                    if (hits.length >= cap) {
-                        break;
-                    }
-                }
-            }
-            return hits;
-        }
-        function preferScanResolve(raw) {
-            var t = (raw || '').trim();
-            if (t === '') {
-                return false;
-            }
-            if (/^tkt/i.test(t)) {
-                return true;
-            }
-            if (/^fpl\d+/i.test(t)) {
-                return true;
-            }
-            if (/^\d{1,12}$/.test(t)) {
-                return true;
-            }
-            return false;
-        }
-        function renderLive() {
-            var q = inputQ.value;
-            var catVal = selCat.value;
-            var marqueVal = marqueFilterOn ? selMarque.value : '';
-            var needFilter = (q.trim() !== '') || (catVal !== '') || (marqueVal !== '');
-            if (!needFilter) {
-                box.innerHTML = '';
-                box.hidden = true;
-                box.classList.remove('is-empty');
-                return;
-            }
-            var hits = collectHits(q, catVal, marqueVal, maxLive);
-            if (hits.length === 0) {
-                box.innerHTML = '<p class="caisse-live-empty">Aucun produit en stock ne correspond.</p>';
-                box.hidden = false;
-                box.classList.add('is-empty');
-                return;
-            }
-            var html = '<ul class="caisse-live-list">';
-            var i;
-            for (i = 0; i < hits.length; i++) {
-                var p = hits[i];
-                var refCell = hasIdent
-                    ? '<span class="caisse-live-ref"><code>' + esc(p.ref || '—') + '</code></span>'
-                    : '';
-                var marqueNom = (p.marque_nom || '').trim();
-                var descShort = (p.desc_short || '').trim();
-                // Format nom · marque · description (comme les cartes produits)
-                var line1Parts = ['<span class="caisse-live-nom">' + esc(p.nom) + '</span>'];
-                if (marqueNom) {
-                    line1Parts.push('<span class="caisse-live-marque">' + esc(marqueNom) + '</span>');
-                }
-                if (descShort) {
-                    line1Parts.push('<span class="caisse-live-desc">' + esc(descShort) + '</span>');
-                }
-                var line1Html = line1Parts.join('<span class="caisse-live-sep"> · </span>');
-                var refFourn = (p.ref_f || '').trim()
-                    ? '<span class="caisse-live-ref-fourn">Réf. fourn. <code>' + esc(p.ref_f) + '</code></span>'
-                    : '';
-                var imgs = Array.isArray(p.imgs) ? p.imgs : [];
-                var thumbSrc = imgs.length ? imgs[0] : placeholderImg;
-                var imgsAttr = escAttr(JSON.stringify(imgs.length ? imgs : [placeholderImg]));
-                html += '<li class="caisse-live-item" role="option">' +
-                    '<form method="post" action="post.php" class="caisse-live-add-form">' +
-                    '<input type="hidden" name="csrf_token" value="' + esc(csrf) + '">' +
-                    '<input type="hidden" name="caisse_action" value="add_product">' +
-                    '<input type="hidden" name="produit_id" value="' + esc(String(p.id)) + '">' +
-                    '<input type="hidden" name="quantite" value="1">' +
-                    '<button type="button" class="caisse-live-thumb" data-caisse-gallery="' + imgsAttr + '" title="Voir les photos">' +
-                            '<img src="' + escAttr(thumbSrc) + '" alt="" loading="lazy" width="56" height="56" onerror="this.src=\'' + placeholderImg + '\'">' +
-                    '</button>' +
-                    '<button type="submit" class="caisse-live-row-hit">' +
-                        '<span class="caisse-live-line1">' + line1Html + '</span>' +
-                        refFourn +
-                        '<span class="caisse-live-refs-prod">' + refCell + '</span>' +
-                        '<span class="caisse-live-meta"><strong>' + fmtFcfa(p.prix) + ' FCFA</strong> HT · stock ' + esc(String(p.stock)) + '</span>' +
-                        '<span class="caisse-live-hint-add">Cliquer pour ajouter au panier</span>' +
-                    '</button>' +
-                    '</form></li>';
-            }
-            if (catalog.length >= 2500 && hits.length >= maxLive) {
-                html += '</ul><p class="caisse-live-cap-hint">Affichage limité à ' + maxLive + ' résultats — affinez la recherche ou utilisez « Liste complète ».</p>';
-            } else {
-                html += '</ul>';
-            }
-            box.innerHTML = html;
-            box.hidden = false;
-            box.classList.remove('is-empty');
-        }
-        function schedule() {
-            clearTimeout(debounceTimer);
-            debounceTimer = setTimeout(renderLive, 180);
-        }
-        inputQ.addEventListener('input', schedule);
-        inputQ.addEventListener('focus', function() {
-            schedule();
-        });
-        selCat.addEventListener('change', renderLive);
-        if (marqueFilterOn) {
-            selMarque.addEventListener('change', renderLive);
-        }
-        var scanForm = document.getElementById('caisse-add-scan-fallback');
-        var scanCodeInput = document.getElementById('caisse_add_scan_code');
-        inputQ.addEventListener('keydown', function(ev) {
-            if (ev.key !== 'Enter') {
-                return;
-            }
-            var raw = inputQ.value.trim();
-            var catVal = selCat.value;
-            var marqueVal = marqueFilterOn ? selMarque.value : '';
-            var hitsQuick = collectHits(inputQ.value, catVal, marqueVal, 2);
-            if (hitsQuick.length === 1) {
-                ev.preventDefault();
-                var quickForm = box.querySelector('.caisse-live-add-form');
-                if (quickForm) {
-                    quickForm.submit();
-                }
-                return;
-            }
-            if (preferScanResolve(raw) && scanForm && scanCodeInput) {
-                ev.preventDefault();
-                scanCodeInput.value = raw;
-                scanForm.submit();
-                return;
-            }
-        });
-        document.addEventListener('click', function(ev) {
-            if (!box.hidden && !box.contains(ev.target) && ev.target !== inputQ && !selCat.contains(ev.target)) {
-                if (marqueFilterOn && selMarque.contains(ev.target)) {
-                    return;
-                }
-                var insideFields = ev.target.closest && ev.target.closest('.caisse-search-fields');
-                var noTextQ = inputQ.value.trim() === '';
-                var noCat = !selCat.value;
-                var noMarque = !marqueFilterOn || !selMarque.value;
-                if (!insideFields && noTextQ && noCat && noMarque) {
-                    box.innerHTML = '';
-                    box.hidden = true;
-                    box.classList.remove('is-empty');
-                }
-            }
         });
     })();
     (function() {

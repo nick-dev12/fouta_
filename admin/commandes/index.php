@@ -552,7 +552,6 @@ $montant_total_a_traiter = array_sum(array_column($commandes, 'montant_total'));
             var nom = (produit.nom || '');
             var idx = ligneIndex++;
             var U = window.FoutaAdminProduitSearchUi;
-            var metaHtml = U && U.buildLigneMetaDivHtml ? U.buildLigneMetaDivHtml(produit) : '';
             var div = document.createElement('div');
             div.className = 'ligne-commande-item';
             div.dataset.produitId = produit.id;
@@ -561,7 +560,6 @@ $montant_total_a_traiter = array_sum(array_column($commandes, 'montant_total'));
                 '<input type="text" name="lignes[' + idx + '][nom_produit]" value="' + (nom.replace(/"/g,
                 '&quot;')) +
                 '" placeholder="Nom du produit (modifiable)" class="ligne-nom-input" title="Modifier le nom affiché">' +
-                metaHtml +
                 '<input type="number" name="lignes[' + idx + '][quantite]" value="1" min="1" max="' + (produit
                     .stock_dispo || produit.stock || 999) + '" class="ligne-qte" title="Quantité">' +
                 '<input type="number" name="lignes[' + idx + '][prix_unitaire]" value="' + (prixPromo || prix) +

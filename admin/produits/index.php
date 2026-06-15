@@ -25,57 +25,43 @@ if (isset($_SESSION['success_message'])) {
 // Récupérer tous les produits
 require_once __DIR__ . '/../../models/model_produits.php';
 require_once __DIR__ . '/../../models/model_categories.php';
+
+$has_marque_filtre = produits_has_column('marque_id');
+$has_fournisseur_filtre = produits_has_column('fournisseur_id');
+$marques_filtre = [];
+$fournisseurs_filtre = [];
+
+if ($has_marque_filtre) {
+    require_once __DIR__ . '/../../models/model_marques.php';
+    if (marques_table_ok()) {
+        $marques_filtre = get_all_marques_ordered_by_nom();
+    }
+}
+
+if ($has_fournisseur_filtre) {
+    require_once __DIR__ . '/../../models/model_fournisseurs.php';
+    $fournisseurs_filtre = get_all_fournisseurs_ordered_by_nom();
+}
+
 $produits = get_all_produits();
 $categories = get_all_categories();
 $recherche = trim($_GET['recherche'] ?? '');
 $categorie_id = isset($_GET['categorie_id']) ? (int) $_GET['categorie_id'] : 0;
+$marque_id = isset($_GET['marque_id']) ? (int) $_GET['marque_id'] : 0;
+$fournisseur_id = isset($_GET['fournisseur_id']) ? (int) $_GET['fournisseur_id'] : 0;
 
 if (!empty($produits)) {
-    $produits = array_values(array_filter($produits, function ($produit) use ($recherche, $categorie_id) {
-        if ($categorie_id > 0 && (int) ($produit['categorie_id'] ?? 0) !== $categorie_id) {
-            return false;
-        }
-
-        if ($recherche === '') {
-            return true;
-        }
-
-        // Code interne FPLxxxxxx (exact, insensible à la casse)
-        if (preg_match('/^FPL(\d{6}|\d{9})$/i', $recherche)) {
-            $code = strtoupper($recherche);
-            $ident = strtoupper(trim((string) ($produit['identifiant_interne'] ?? '')));
-            return $ident !== '' && $ident === $code;
-        }
-
-        // 5 derniers chiffres du numéro (saisie rapide, type caisse supermarché)
-        if (preg_match('/^\d{5}$/', $recherche)) {
-            $ident = $produit['identifiant_interne'] ?? '';
-
-            return produit_identifiant_derniers_5_chiffres($ident) === $recherche;
-        }
-
-        $needle = function_exists('mb_strtolower') ? mb_strtolower($recherche) : strtolower($recherche);
-        $haystacks = [
-            $produit['nom'] ?? '',
-            $produit['description'] ?? '',
-            $produit['categorie_nom'] ?? '',
-            produits_marque_libelle_from_row($produit),
-            $produit['statut'] ?? '',
-            (string) ($produit['identifiant_interne'] ?? ''),
-        ];
-        if (function_exists('produits_has_column') && produits_has_column('reference_fournisseur')) {
-            $haystacks[] = (string) ($produit['reference_fournisseur'] ?? '');
-        }
-
-        foreach ($haystacks as $value) {
-            $value = function_exists('mb_strtolower') ? mb_strtolower((string) $value) : strtolower((string) $value);
-            if (strpos($value, $needle) !== false) {
-                return true;
-            }
-        }
-
-        return false;
+    $produits = array_values(array_filter($produits, function ($produit) use ($categorie_id, $marque_id, $fournisseur_id) {
+        return produit_admin_liste_pass_filtres($produit, '', $categorie_id, $marque_id, $fournisseur_id);
     }));
+}
+
+$filtres_form_classes = 'admin-filters-bar page-produits-filters';
+if (!empty($marques_filtre)) {
+    $filtres_form_classes .= ' page-produits-filters--has-marque';
+}
+if (!empty($fournisseurs_filtre)) {
+    $filtres_form_classes .= ' page-produits-filters--has-fournisseur';
 }
 ?>
 <!DOCTYPE html>
@@ -100,10 +86,6 @@ if (!empty($produits)) {
             <div class="dashboard-hero-text">
                 <p class="dashboard-eyebrow">Catalogue boutique</p>
                 <h1 id="page-produits-title"><i class="fas fa-box" aria-hidden="true"></i> Liste des produits</h1>
-                <p class="dashboard-subtitle"><?php echo admin_is_restricted_admin_account()
-                    ? 'Consultez la liste des produits et utilisez les filtres de recherche.'
-                    : 'Gérez le catalogue, les stocks et les tarifs. Recherchez par nom, code
-                    <strong>FPL</strong> ou les <strong>5 derniers chiffres</strong> du numéro (caisse).'; ?></p>
                 <div class="page-produits-hero__actions">
                     <?php if (!admin_is_restricted_admin_account()): ?>
                         <a href="ajouter.php" class="btn-primary page-produits-hero__btn">
@@ -123,18 +105,23 @@ if (!empty($produits)) {
         <section class="produits-section page-produits-section" aria-labelledby="produits-section-heading">
             <div class="section-title page-produits-section__head">
                 <h2 id="produits-section-heading"><i class="fas fa-th-large" aria-hidden="true"></i> Tous les produits
-                    <span class="page-produits-count">(<?php echo count($produits); ?>)</span>
+                    <span class="page-produits-count" id="page-produits-count" aria-live="polite">(<?php echo count($produits); ?>)</span>
                 </h2>
             </div>
 
-            <form method="GET" action="" class="admin-filters-bar page-produits-filters">
-                <div class="admin-filter-field">
+            <form method="GET" action="" class="<?php echo htmlspecialchars($filtres_form_classes, ENT_QUOTES, 'UTF-8'); ?>"
+                data-produits-live-search-form
+                data-live-grid="page-produits-grid"
+                data-live-count="page-produits-count"
+                data-live-empty="page-produits-live-empty">
+                <div class="admin-filter-field page-produits-filters__search">
                     <label for="recherche">Recherche</label>
                     <input type="text" id="recherche" name="recherche"
-                        placeholder="Nom, FPL000151 ou 5 chiffres (ex. 00151)…"
-                        value="<?php echo htmlspecialchars($recherche); ?>" autocomplete="off" inputmode="search">
+                        placeholder="Nom, description… — filtre en direct"
+                        value="<?php echo htmlspecialchars($recherche); ?>" autocomplete="off" inputmode="search"
+                        data-live-search-input>
                 </div>
-                <div class="admin-filter-field">
+                <div class="admin-filter-field page-produits-filters__categorie">
                     <label for="categorie_id">Catégorie</label>
                     <select id="categorie_id" name="categorie_id">
                         <option value="0">Toutes les catégories</option>
@@ -145,7 +132,33 @@ if (!empty($produits)) {
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <div class="admin-filter-actions">
+                <?php if (!empty($marques_filtre)): ?>
+                <div class="admin-filter-field page-produits-filters__marque">
+                    <label for="marque_id">Marque</label>
+                    <select id="marque_id" name="marque_id">
+                        <option value="0">Toutes les marques</option>
+                        <?php foreach ($marques_filtre as $marque): ?>
+                            <option value="<?php echo (int) $marque['id']; ?>" <?php echo $marque_id === (int) $marque['id'] ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($marque['nom']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <?php endif; ?>
+                <?php if (!empty($fournisseurs_filtre)): ?>
+                <div class="admin-filter-field page-produits-filters__fournisseur">
+                    <label for="fournisseur_id">Fournisseur</label>
+                    <select id="fournisseur_id" name="fournisseur_id">
+                        <option value="0">Tous les fournisseurs</option>
+                        <?php foreach ($fournisseurs_filtre as $fournisseur): ?>
+                            <option value="<?php echo (int) $fournisseur['id']; ?>" <?php echo $fournisseur_id === (int) $fournisseur['id'] ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($fournisseur['nom']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <?php endif; ?>
+                <div class="admin-filter-actions page-produits-filters__actions">
                     <button type="submit" class="btn-primary">
                         <i class="fas fa-search"></i> Filtrer
                     </button>
@@ -159,9 +172,8 @@ if (!empty($produits)) {
                 <div class="empty-state page-produits-empty">
                     <div class="page-produits-empty__icon" aria-hidden="true"><i class="fas fa-box-open"></i></div>
                     <p class="page-produits-empty__title">Aucun produit à afficher</p>
-                    <p class="page-produits-empty__hint">Élargissez la recherche, choisissez « Toutes les catégories » ou <a
-                            href="index.php">réinitialisez les
-                            filtres</a>.<?php echo admin_is_restricted_admin_account() ? '' : ' Vous pouvez aussi ajouter un produit.'; ?>
+                    <p class="page-produits-empty__hint">Élargissez la recherche, réinitialisez les filtres (catégorie, marque, fournisseur…) ou <a
+                            href="index.php">tout effacer</a>.<?php echo admin_is_restricted_admin_account() ? '' : ' Vous pouvez aussi ajouter un produit.'; ?>
                     </p>
                     <?php if (!admin_is_restricted_admin_account()): ?>
                         <a href="ajouter.php" class="btn-primary page-produits-empty__cta">
@@ -170,10 +182,22 @@ if (!empty($produits)) {
                     <?php endif; ?>
                 </div>
             <?php else: ?>
-                <ul class="produits-grid page-produits-grid" role="list">
+                <ul class="produits-grid page-produits-grid" id="page-produits-grid" role="list"
+                    data-total="<?php echo count($produits); ?>">
                     <?php foreach ($produits as $produit): ?>
+                        <?php
+                        $pcm_search_blob = produit_admin_liste_search_blob($produit);
+                        $pcm_nom_norm = produits_recherche_normalize((string) ($produit['nom'] ?? ''));
+                        $pcm_ident = strtoupper(trim((string) ($produit['identifiant_interne'] ?? '')));
+                        ?>
                         <li class="produit-card produit-card--admin produit-card-linkable"
-                            data-href="ajuster-stock.php?id=<?php echo (int) $produit['id']; ?>" role="listitem">
+                            data-href="ajuster-stock.php?id=<?php echo (int) $produit['id']; ?>" role="listitem"
+                            data-produit-search="<?php echo htmlspecialchars($pcm_search_blob, ENT_QUOTES, 'UTF-8'); ?>"
+                            data-produit-nom="<?php echo htmlspecialchars($pcm_nom_norm, ENT_QUOTES, 'UTF-8'); ?>"
+                            data-produit-ident="<?php echo htmlspecialchars($pcm_ident, ENT_QUOTES, 'UTF-8'); ?>"
+                            data-categorie-id="<?php echo (int) ($produit['categorie_id'] ?? 0); ?>"
+                            data-marque-id="<?php echo (int) ($produit['marque_id'] ?? 0); ?>"
+                            data-fournisseur-id="<?php echo (int) ($produit['fournisseur_id'] ?? 0); ?>">
                             <?php
                             $statut_class = 'statut-actif';
                             if ($produit['statut'] == 'inactif') {
@@ -247,12 +271,19 @@ if (!empty($produits)) {
                         </li>
                     <?php endforeach; ?>
                 </ul>
+                <div class="empty-state page-produits-empty page-produits-empty--live" id="page-produits-live-empty" hidden>
+                    <div class="page-produits-empty__icon" aria-hidden="true"><i class="fas fa-search"></i></div>
+                    <p class="page-produits-empty__title">Aucun produit ne correspond</p>
+                    <p class="page-produits-empty__hint">Modifiez les mots de recherche ou les filtres pour élargir les résultats.</p>
+                </div>
             <?php endif; ?>
         </section>
 
     </div><!-- .page-produits-admin -->
 
     <?php include '../includes/footer.php'; ?>
+
+    <script src="/js/admin-produits-live-search.js<?php echo asset_version_query(); ?>"></script>
 
     <!-- Modal de confirmation de suppression -->
     <div class="delete-confirm-overlay" id="deleteConfirmOverlay"></div>

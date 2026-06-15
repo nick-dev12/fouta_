@@ -216,13 +216,12 @@ $devis_page_has_alert = isset($_SESSION['success_message']) || !empty($error_dev
                                 </div>
                                 <div class="form-group search-group">
                                     <div class="search-input-wrapper">
-                                        <input type="text" id="search-produit" placeholder="Nom, réf. produit (FPL…), réf. fournisseur…" autocomplete="off">
+                                        <input type="text" id="search-produit" placeholder="Nom, description… — filtre en direct" autocomplete="off" inputmode="search" data-live-search-input>
                                         <i class="fas fa-search search-icon"></i>
                                         <span class="search-loading" id="search-loading" aria-hidden="true"><i class="fas fa-spinner fa-spin"></i></span>
                                     </div>
                                     <div id="search-produit-results" class="search-produit-results" role="listbox" aria-hidden="true"></div>
                                 </div>
-                                <p class="form-hint"><i class="fas fa-info-circle"></i> Recherche par <strong>nom</strong>, <strong>réf. produit</strong> (FPL, 5 chiffres) ou <strong>réf. fournisseur</strong>. Laissez vide pour afficher tous les articles en stock.</p>
                             </div>
 
                             <div class="form-section-card">
@@ -237,6 +236,7 @@ $devis_page_has_alert = isset($_SESSION['success_message']) || !empty($error_dev
                                         <span class="lch-head-cell">Quantité</span>
                                         <span class="lch-head-cell">prix FCFA</span>
                                         <span class="lch-head-cell">promo FCFA</span>
+                                        <span class="lch-head-cell">Total</span>
                                         <span class="lch-head-cell lch-head-actions" aria-hidden="true"></span>
                                     </div>
                                     <div class="lignes-empty" id="lignes-empty">
@@ -418,40 +418,14 @@ $devis_page_has_alert = isset($_SESSION['success_message']) || !empty($error_dev
         }
 
         function addLigne(produit) {
-            var prix = parseFloat(produit.prix) || 0;
-            var prixPromo = produit.prix_promotion && parseFloat(produit.prix_promotion) > 0 ? parseFloat(produit.prix_promotion) : '';
+            var U = window.FoutaAdminProduitSearchUi;
             var idx = ligneIndex++;
             var div = document.createElement('div');
             div.className = 'ligne-commande-item ligne-commande-item-bl';
             div.dataset.produitId = produit.id;
-            var U = window.FoutaAdminProduitSearchUi;
-            var cellDes = U && U.buildLigneBlDesignationCellHtml
-                ? U.buildLigneBlDesignationCellHtml(produit, idx, 'lignes')
-                : ('<div class="ligne-bl-cell">' +
-                    '<input type="hidden" name="lignes[' + idx + '][produit_id]" value="' + produit.id + '">' +
-                    '<span class="ligne-bl-label">Désignation</span>' +
-                    '<input type="text" name="lignes[' + idx + '][nom_produit]" value="' + ((produit.nom || '').replace(/"/g, '&quot;')) + '" placeholder="Nom du produit" class="ligne-nom-input" aria-label="Désignation du produit">' +
-                '</div>');
-            div.innerHTML = cellDes +
-                '<div class="ligne-bl-cell">' +
-                    '<span class="ligne-bl-label">Quantité</span>' +
-                    '<input type="number" name="lignes[' + idx + '][quantite]" value="1" min="1" max="' + (produit.stock_dispo || produit.stock || 999) + '" class="ligne-qte" aria-label="Quantité">' +
-                '</div>' +
-                '<div class="ligne-bl-cell ligne-bl-cell-prix">' +
-                    '<span class="ligne-bl-label">Prix unitaire</span>' +
-                    '<div class="ligne-bl-prix-row">' +
-                        '<input type="number" name="lignes[' + idx + '][prix_unitaire]" value="' + (prixPromo || prix) + '" min="0" step="0.01" class="ligne-prix" aria-label="Prix unitaire en FCFA">' +
-                        '<span class="ligne-unit-fcfa">FCFA</span>' +
-                    '</div>' +
-                '</div>' +
-                '<div class="ligne-bl-cell ligne-bl-cell-prix">' +
-                    '<span class="ligne-bl-label">Prix promo</span>' +
-                    '<div class="ligne-bl-prix-row">' +
-                        '<input type="number" name="lignes[' + idx + '][prix_promotion]" value="' + (prixPromo || '') + '" min="0" step="0.01" placeholder="Optionnel" class="ligne-prix-promo" aria-label="Prix promotionnel en FCFA">' +
-                        '<span class="ligne-unit-fcfa">FCFA</span>' +
-                    '</div>' +
-                '</div>' +
-                '<button type="button" class="ligne-remove" aria-label="Retirer la ligne"><i class="fas fa-trash"></i></button>';
+            div.innerHTML = U && U.buildLigneCommandeItemHtml
+                ? U.buildLigneCommandeItemHtml(produit, idx, 'lignes')
+                : '';
             if (lignesEmpty) lignesEmpty.style.display = 'none';
             div.querySelector('.ligne-remove').addEventListener('click', function() {
                 div.remove();
@@ -459,6 +433,7 @@ $devis_page_has_alert = isset($_SESSION['success_message']) || !empty($error_dev
                 updateRecap();
             });
             lignesContainer.appendChild(div);
+            if (U && U.updateLigneRowTotal) U.updateLigneRowTotal(div);
             updateLignesUI();
             updateRecap();
         }
@@ -532,16 +507,11 @@ $devis_page_has_alert = isset($_SESSION['success_message']) || !empty($error_dev
         }
 
         function getSousTotal() {
-            var total = 0;
-            var items = lignesContainer ? lignesContainer.querySelectorAll('.ligne-commande-item') : [];
-            items.forEach(function(row) {
-                var qte = parseFloat(row.querySelector('.ligne-qte').value) || 0;
-                var prix = parseFloat(row.querySelector('.ligne-prix').value) || 0;
-                var promo = row.querySelector('.ligne-prix-promo');
-                var p = promo && promo.value && parseFloat(promo.value) > 0 ? parseFloat(promo.value) : prix;
-                total += p * qte;
-            });
-            return total;
+            var U = window.FoutaAdminProduitSearchUi;
+            if (U && U.getLignesSousTotal) {
+                return U.getLignesSousTotal(lignesContainer);
+            }
+            return 0;
         }
 
         function getFraisLivraison() {
@@ -600,12 +570,9 @@ $devis_page_has_alert = isset($_SESSION['success_message']) || !empty($error_dev
 
         if (inclureTvaDevis) inclureTvaDevis.addEventListener('change', updateRecap);
 
-        if (lignesContainer) {
-            lignesContainer.addEventListener('input', function(ev) {
-                if (ev.target.classList.contains('ligne-qte') || ev.target.classList.contains('ligne-prix') || ev.target.classList.contains('ligne-prix-promo')) {
-                    updateRecap();
-                }
-            });
+        var U = window.FoutaAdminProduitSearchUi;
+        if (U && U.bindLignesLiveRecap) {
+            U.bindLignesLiveRecap(lignesContainer, updateRecap);
         }
 
         if (formDevis) {
@@ -625,7 +592,7 @@ $devis_page_has_alert = isset($_SESSION['success_message']) || !empty($error_dev
             searchInput.addEventListener('input', function() {
                 clearTimeout(searchTimeout);
                 var q = searchInput.value.trim();
-                searchTimeout = setTimeout(function() { doSearch(q); }, 250);
+                searchTimeout = setTimeout(function() { doSearch(q); }, 120);
             });
             searchInput.addEventListener('focus', function() {
                 var q = searchInput.value.trim();

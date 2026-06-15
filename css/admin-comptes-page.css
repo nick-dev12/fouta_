@@ -1061,13 +1061,405 @@
   margin-right: 0.35rem;
 }
 
-@media (max-width: 520px) {
+@media (max-width: 1024px) {
+  .page-comptes-wrap {
+    padding: 0 10px 28px;
+  }
+
+  .page-comptes-index .comptes-header-bar.page-comptes-hero {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 12px 14px;
+    margin-bottom: 12px;
+    border-radius: 14px;
+  }
+
+  .page-comptes-hero::after {
+    width: 90px;
+    height: 90px;
+    right: -12px;
+  }
+
+  .page-comptes-hero__text {
+    flex: 0 0 auto;
+    width: 100%;
+    height: auto;
+    min-height: 0;
+  }
+
+  .page-comptes-eyebrow {
+    font-size: 8px;
+    margin-bottom: 4px;
+  }
+
+  .page-comptes-index .comptes-header-bar h1 {
+    font-size: 0.95rem;
+    margin-bottom: 4px;
+  }
+
+  .page-comptes-index .comptes-header-bar h1 i {
+    font-size: 0.85em;
+  }
+
+  .page-comptes-index .comptes-lead {
+    font-size: 10px;
+    line-height: 1.35;
+    max-width: none;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* Actions hero : 2 par ligne */
+  .page-comptes-hero__actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px 8px;
+    width: 100%;
+    align-self: stretch;
+    flex-wrap: unset;
+  }
+
+  .page-comptes-hero__actions .page-comptes-cta,
+  .page-comptes-hero__actions .page-comptes-cta--secondary,
+  .page-comptes-hero__actions .page-comptes-cta--ghost,
+  .page-comptes-hero__actions .page-comptes-cta--employes,
+  .page-comptes-hero__actions .btn-open-emp-modal,
+  .page-comptes-hero__actions a.btn-inscription-admin-link {
+    width: 100%;
+    min-height: 34px;
+    padding: 7px 10px !important;
+    font-size: 10px !important;
+    border-radius: 8px !important;
+    justify-content: center;
+    box-sizing: border-box;
+  }
+
+  .page-comptes-index .page-comptes-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px 10px;
+    margin-bottom: 14px;
+  }
+
+  .page-comptes-kpi {
+    padding: 10px 12px !important;
+    gap: 8px;
+    border-radius: 12px !important;
+  }
+
+  .page-comptes-kpi__ic {
+    width: 34px;
+    height: 34px;
+    font-size: 0.9rem;
+    border-radius: 8px;
+  }
+
+  .page-comptes-kpi__body h3 {
+    font-size: 0.58rem !important;
+    margin-bottom: 2px;
+  }
+
+  .page-comptes-kpi__body .stat-value {
+    font-size: 1.35rem !important;
+  }
+
+  .page-comptes-main {
+    padding: 12px 10px 18px;
+    border-radius: 16px;
+  }
+
+  .page-comptes-main .page-comptes-section-title {
+    font-size: 0.92rem;
+    padding-bottom: 8px;
+    margin-bottom: 6px;
+  }
+
+  .page-comptes-main .section-subtitle-comptes {
+    font-size: 0.72rem;
+    margin-bottom: 12px !important;
+    line-height: 1.4;
+  }
+
+  /* Grille comptes : 3 par ligne (tablette) */
+  .page-comptes-index .users-grid.page-comptes-grid.comptes-acces-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px 10px;
+    margin-top: 6px;
+  }
+}
+
+/* Tablette : cartes comptes compactes */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .comptes-acces-card {
+    border-radius: 10px;
+  }
+
+  .comptes-acces-card__head {
+    padding: 0.55rem 0.65rem 0.6rem;
+  }
+
+  .comptes-acces-card__head-badges {
+    margin-bottom: 0.45rem;
+    gap: 0.25rem 0.35rem;
+  }
+
+  .comptes-acces-card__status {
+    font-size: 0.5rem;
+    padding: 0.15rem 0.4rem;
+  }
+
+  .comptes-acces-card__head .comptes-acces-card__role-pill {
+    font-size: 0.52rem;
+    padding: 0.15rem 0.4rem;
+  }
+
+  .comptes-acces-card__avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 0.85rem;
+  }
+
+  .comptes-acces-card__name {
+    font-size: 0.72rem;
+  }
+
+  .comptes-acces-card__email {
+    font-size: 0.58rem;
+  }
+
+  .comptes-acces-card__body {
+    padding: 0.55rem 0.6rem 0.65rem;
+    gap: 0.45rem;
+  }
+
   .comptes-acces-card__meta {
-    grid-template-columns: 1fr;
+    gap: 0.35rem;
+  }
+
+  .comptes-acces-card__meta-tile {
+    padding: 0.32rem 0.38rem;
+    min-height: 0;
+    border-radius: 6px;
+    gap: 0.28rem;
+  }
+
+  .comptes-acces-card__meta-ic {
+    width: 1.15rem;
+    height: 1.15rem;
+    font-size: 0.52rem;
+    border-radius: 5px;
+  }
+
+  .comptes-acces-card__meta-label {
+    font-size: 0.4rem;
+    letter-spacing: 0.04em;
+    line-height: 1.2;
+  }
+
+  .comptes-acces-card__meta-value {
+    font-size: 0.58rem;
+    line-height: 1.1;
+  }
+
+  .comptes-acces-card__meta-hint {
+    font-size: 0.48rem;
+  }
+
+  .comptes-acces-card__toolbar {
+    padding: 0.35rem;
+    gap: 0.3rem;
+  }
+
+  .comptes-acces-card__btn {
+    min-height: 1.75rem;
+    padding: 0.3rem 0.45rem;
+    font-size: 0.58rem;
+    border-radius: 6px;
+  }
+
+  .comptes-acces-card__role-block {
+    padding: 0.45rem 0.5rem 0.5rem;
+  }
+
+  .comptes-acces-card__role-title {
+    font-size: 0.52rem;
+    margin-bottom: 0.35rem;
+  }
+
+  .comptes-acces-card__select {
+    min-height: 1.85rem;
+    font-size: 0.68rem;
+    padding: 0.3rem 0.45rem;
+  }
+
+  .comptes-acces-card__btn--save {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .comptes-acces-card__self-hint {
+    font-size: 0.62rem;
+    padding: 0.45rem 0.5rem;
+  }
+}
+
+@media (max-width: 720px) {
+  .page-comptes-index .comptes-header-bar {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 12px 14px;
+  }
+
+  .page-comptes-hero__actions {
+    width: 100%;
+  }
+
+  .page-comptes-main {
+    padding: 12px 10px 18px;
+    border-radius: 14px;
+  }
+}
+
+/* Mobile : 2 comptes par ligne */
+@media (max-width: 640px) {
+  .page-comptes-wrap {
+    padding: 0 8px 24px;
+  }
+
+  .page-comptes-index .comptes-header-bar.page-comptes-hero {
+    padding: 10px 12px;
+    gap: 6px;
+    border-radius: 12px;
+  }
+
+  .page-comptes-hero::after {
+    display: none;
+  }
+
+  .page-comptes-index .comptes-header-bar h1 {
+    font-size: 0.88rem;
+  }
+
+  .page-comptes-index .comptes-lead {
+    font-size: 9px;
+    -webkit-line-clamp: 2;
+  }
+
+  .page-comptes-hero__actions {
+    gap: 5px 6px;
+  }
+
+  .page-comptes-hero__actions .page-comptes-cta,
+  .page-comptes-hero__actions .btn-open-emp-modal,
+  .page-comptes-hero__actions a.btn-inscription-admin-link {
+    min-height: 32px;
+    padding: 6px 8px !important;
+    font-size: 9px !important;
+  }
+
+  .page-comptes-index .page-comptes-kpis {
+    gap: 6px 8px;
+  }
+
+  .page-comptes-kpi {
+    padding: 8px 10px !important;
+  }
+
+  .page-comptes-kpi__ic {
+    width: 28px;
+    height: 28px;
+    font-size: 0.78rem;
+  }
+
+  .page-comptes-kpi__body .stat-value {
+    font-size: 1.15rem !important;
+  }
+
+  .page-comptes-main {
+    padding: 10px 8px 16px;
+    border-radius: 12px;
+  }
+
+  .page-comptes-main .page-comptes-section-title {
+    font-size: 0.84rem;
+  }
+
+  .page-comptes-main .section-subtitle-comptes {
+    font-size: 0.66rem;
+    margin-bottom: 10px !important;
+  }
+
+  .page-comptes-index .users-grid.page-comptes-grid.comptes-acces-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .comptes-acces-card__head {
+    padding: 0.5rem 0.55rem 0.55rem;
+  }
+
+  .comptes-acces-card__avatar {
+    width: 28px;
+    height: 28px;
+    font-size: 0.75rem;
+  }
+
+  .comptes-acces-card__name {
+    font-size: 0.66rem;
+  }
+
+  .comptes-acces-card__email {
+    font-size: 0.54rem;
+  }
+
+  .comptes-acces-card__body {
+    padding: 0.5rem 0.55rem 0.6rem;
+    gap: 0.4rem;
+  }
+
+  .comptes-acces-card__meta {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.25rem;
+  }
+
+  .comptes-acces-card__meta-tile {
+    padding: 0.28rem 0.32rem;
+    gap: 0.22rem;
+    border-radius: 5px;
+  }
+
+  .comptes-acces-card__meta-ic {
+    width: 1rem;
+    height: 1rem;
+    font-size: 0.48rem;
+    border-radius: 4px;
+  }
+
+  .comptes-acces-card__meta-label {
+    font-size: 0.36rem;
+    letter-spacing: 0.03em;
+  }
+
+  .comptes-acces-card__meta-value {
+    font-size: 0.52rem;
+  }
+
+  .comptes-acces-card__meta-hint {
+    font-size: 0.44rem;
+    display: none;
+  }
+
+  .comptes-acces-card__btn {
+    min-height: 1.65rem;
+    font-size: 0.54rem;
+    padding: 0.28rem 0.35rem;
   }
 
   .comptes-acces-card__toolbar {
     flex-direction: column;
+    gap: 0.28rem;
   }
 
   .comptes-acces-card__btn--activity,
@@ -1079,10 +1471,56 @@
 
   .comptes-acces-card__role-row {
     flex-direction: column;
+    gap: 0.3rem;
   }
 
   .comptes-acces-card__btn--save {
     width: 100%;
+  }
+
+  .comptes-acces-card__select {
+    font-size: 0.64rem;
+    min-height: 1.75rem;
+  }
+
+  .comptes-acces-card__self-hint {
+    font-size: 0.58rem;
+  }
+
+  .page-comptes-index .empty-state.page-comptes-empty {
+    padding: 24px 14px 20px;
+  }
+
+  .page-comptes-empty__icon {
+    font-size: 2rem;
+  }
+
+  .page-comptes-empty p {
+    font-size: 12px;
+  }
+
+  .page-comptes-empty__btn {
+    min-height: 34px;
+    padding: 8px 14px;
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 480px) {
+  .page-comptes-index .page-comptes-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .page-comptes-index .users-grid.page-comptes-grid.comptes-acces-grid {
+    gap: 6px;
+  }
+
+  .page-comptes-index .comptes-header-bar h1 {
+    font-size: 0.82rem;
+  }
+
+  .page-comptes-index .comptes-lead {
+    font-size: 8px;
   }
 }
 
@@ -1126,35 +1564,4 @@
   gap: 8px;
   padding: 12px 22px;
   border-radius: 10px;
-}
-
-@media (max-width: 720px) {
-  .page-comptes-index .comptes-header-bar {
-    flex-direction: column;
-    align-items: stretch;
-    padding: 20px 18px;
-  }
-
-  .page-comptes-hero__actions {
-    width: 100%;
-  }
-
-  .page-comptes-hero__actions .page-comptes-cta,
-  .page-comptes-hero__actions .page-comptes-cta--secondary,
-  .page-comptes-hero__actions .page-comptes-cta--ghost,
-  .page-comptes-hero__actions .page-comptes-cta--employes {
-    width: 100%;
-    justify-content: center;
-  }
-
-  .page-comptes-main {
-    padding: 18px 14px 24px;
-    border-radius: 16px;
-  }
-}
-
-@media (max-width: 480px) {
-  .page-comptes-kpis {
-    grid-template-columns: 1fr !important;
-  }
 }
