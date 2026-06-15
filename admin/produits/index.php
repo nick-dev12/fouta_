@@ -43,17 +43,32 @@ if ($has_fournisseur_filtre) {
     $fournisseurs_filtre = get_all_fournisseurs_ordered_by_nom();
 }
 
-$produits = get_all_produits();
-$categories = get_all_categories();
 $recherche = trim($_GET['recherche'] ?? '');
 $categorie_id = isset($_GET['categorie_id']) ? (int) $_GET['categorie_id'] : 0;
 $marque_id = isset($_GET['marque_id']) ? (int) $_GET['marque_id'] : 0;
 $fournisseur_id = isset($_GET['fournisseur_id']) ? (int) $_GET['fournisseur_id'] : 0;
 
-if (!empty($produits)) {
-    $produits = array_values(array_filter($produits, function ($produit) use ($categorie_id, $marque_id, $fournisseur_id) {
-        return produit_admin_liste_pass_filtres($produit, '', $categorie_id, $marque_id, $fournisseur_id);
-    }));
+$categories = get_all_categories();
+
+$per_page = ADMIN_PRODUITS_LISTE_PER_PAGE;
+$page = max(1, (int) ($_GET['page'] ?? 1));
+$total_produits = count_admin_produits_liste($categorie_id, $marque_id, $fournisseur_id);
+$total_pages = max(1, (int) ceil($total_produits / $per_page));
+if ($page > $total_pages) {
+    $page = $total_pages;
+}
+$offset = ($page - 1) * $per_page;
+$produits = get_admin_produits_liste_paginated($categorie_id, $marque_id, $fournisseur_id, $offset, $per_page);
+
+$pagination_query_base = [];
+if ($categorie_id > 0) {
+    $pagination_query_base['categorie_id'] = $categorie_id;
+}
+if ($marque_id > 0) {
+    $pagination_query_base['marque_id'] = $marque_id;
+}
+if ($fournisseur_id > 0) {
+    $pagination_query_base['fournisseur_id'] = $fournisseur_id;
 }
 
 $filtres_form_classes = 'admin-filters-bar page-produits-filters';
@@ -102,24 +117,34 @@ if (!empty($fournisseurs_filtre)) {
             </div>
         <?php endif; ?>
 
-        <section class="produits-section page-produits-section" aria-labelledby="produits-section-heading">
+        <section class="produits-section page-produits-section" aria-labelledby="produits-section-heading"
+            data-produits-index-page
+            data-ajax-url="ajax_live_search.php"
+            data-ajax-context="index"
+            data-total-catalog="<?php echo (int) $total_produits; ?>"
+            data-id-main-wrap="page-produits-main-wrap"
+            data-id-main-grid="page-produits-grid"
+            data-id-live-wrap="page-produits-live-wrap"
+            data-id-live-grid="page-produits-live-grid"
+            data-id-live-empty="page-produits-live-empty"
+            data-id-live-meta="page-produits-live-meta"
+            data-id-pagination="page-produits-pagination"
+            data-id-count="page-produits-count"
+            data-id-catalog-empty="page-produits-catalog-empty">
             <div class="section-title page-produits-section__head">
                 <h2 id="produits-section-heading"><i class="fas fa-th-large" aria-hidden="true"></i> Tous les produits
-                    <span class="page-produits-count" id="page-produits-count" aria-live="polite">(<?php echo count($produits); ?>)</span>
+                    <span class="page-produits-count" id="page-produits-count" aria-live="polite">(<?php echo (int) $total_produits; ?>)</span>
                 </h2>
             </div>
 
             <form method="GET" action="" class="<?php echo htmlspecialchars($filtres_form_classes, ENT_QUOTES, 'UTF-8'); ?>"
-                data-produits-live-search-form
-                data-live-grid="page-produits-grid"
-                data-live-count="page-produits-count"
-                data-live-empty="page-produits-live-empty">
+                data-produits-index-form>
                 <div class="admin-filter-field page-produits-filters__search">
                     <label for="recherche">Recherche</label>
                     <input type="text" id="recherche" name="recherche"
                         placeholder="Nom, description… — filtre en direct"
                         value="<?php echo htmlspecialchars($recherche); ?>" autocomplete="off" inputmode="search"
-                        data-live-search-input>
+                        data-produits-index-search>
                 </div>
                 <div class="admin-filter-field page-produits-filters__categorie">
                     <label for="categorie_id">Catégorie</label>
@@ -168,8 +193,8 @@ if (!empty($fournisseurs_filtre)) {
                 </div>
             </form>
 
-            <?php if (empty($produits)): ?>
-                <div class="empty-state page-produits-empty">
+            <?php if ($total_produits === 0): ?>
+                <div class="empty-state page-produits-empty" id="page-produits-catalog-empty">
                     <div class="page-produits-empty__icon" aria-hidden="true"><i class="fas fa-box-open"></i></div>
                     <p class="page-produits-empty__title">Aucun produit à afficher</p>
                     <p class="page-produits-empty__hint">Élargissez la recherche, réinitialisez les filtres (catégorie, marque, fournisseur…) ou <a
@@ -181,109 +206,59 @@ if (!empty($fournisseurs_filtre)) {
                         </a>
                     <?php endif; ?>
                 </div>
-            <?php else: ?>
-                <ul class="produits-grid page-produits-grid" id="page-produits-grid" role="list"
-                    data-total="<?php echo count($produits); ?>">
+            <?php endif; ?>
+
+            <div id="page-produits-main-wrap" <?php echo $total_produits === 0 ? 'hidden' : ''; ?>>
+                <?php if ($total_produits > 0): ?>
+                <ul class="produits-grid page-produits-grid" id="page-produits-grid" role="list">
                     <?php foreach ($produits as $produit): ?>
-                        <?php
-                        $pcm_search_blob = produit_admin_liste_search_blob($produit);
-                        $pcm_nom_norm = produits_recherche_normalize((string) ($produit['nom'] ?? ''));
-                        $pcm_ident = strtoupper(trim((string) ($produit['identifiant_interne'] ?? '')));
-                        ?>
-                        <li class="produit-card produit-card--admin produit-card-linkable"
-                            data-href="ajuster-stock.php?id=<?php echo (int) $produit['id']; ?>" role="listitem"
-                            data-produit-search="<?php echo htmlspecialchars($pcm_search_blob, ENT_QUOTES, 'UTF-8'); ?>"
-                            data-produit-nom="<?php echo htmlspecialchars($pcm_nom_norm, ENT_QUOTES, 'UTF-8'); ?>"
-                            data-produit-ident="<?php echo htmlspecialchars($pcm_ident, ENT_QUOTES, 'UTF-8'); ?>"
-                            data-categorie-id="<?php echo (int) ($produit['categorie_id'] ?? 0); ?>"
-                            data-marque-id="<?php echo (int) ($produit['marque_id'] ?? 0); ?>"
-                            data-fournisseur-id="<?php echo (int) ($produit['fournisseur_id'] ?? 0); ?>">
-                            <?php
-                            $statut_class = 'statut-actif';
-                            if ($produit['statut'] == 'inactif') {
-                                $statut_class = 'statut-inactif';
-                            } elseif ($produit['statut'] == 'rupture_stock') {
-                                $statut_class = 'statut-rupture';
-                            }
-                            $statut_label = ucfirst(str_replace('_', ' ', (string) ($produit['statut'] ?? '')));
-                            ?>
-                            <span
-                                class="statut-badge produit-card__statut <?php echo $statut_class; ?>"><?php echo htmlspecialchars($statut_label, ENT_QUOTES, 'UTF-8'); ?></span>
-                            <div class="produit-card-media">
-                                <?php
-                                $img_principale = '';
-                                if (!empty($produit['image_principale'])) {
-                                    $img_principale = trim((string) $produit['image_principale']);
-                                }
-                                if ($img_principale !== ''):
-                                    ?>
-                                    <img src="/upload/<?php echo htmlspecialchars($img_principale, ENT_QUOTES, 'UTF-8'); ?>"
-                                        alt="<?php echo htmlspecialchars((string) ($produit['nom'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
-                                        class="produit-card-image"
-                                        onerror="this.onerror=null;var w=document.createElement('div');w.className='produit-card-media-placeholder';w.setAttribute('role','img');w.setAttribute('aria-label','Sans image');w.innerHTML='<i class=\'fas fa-truck\' aria-hidden=\'true\'></i>';this.replaceWith(w);"
-                                        width="300" height="300" loading="lazy" decoding="async">
-                                <?php else: ?>
-                                    <div class="produit-card-media-placeholder" role="img" aria-label="Pas d'image">
-                                        <i class="fas fa-truck" aria-hidden="true"></i>
-                                    </div>
-                                <?php endif; ?>
-                            </div>
-                            <div class="produit-card-body">
-                                <h3 class="produit-card-nom"><?php echo produits_card_heading_inner_html($produit, 20); ?></h3>
-                                <?php
-                                $pcm_four = function_exists('produits_fournisseur_nom_affichage')
-                                    ? produits_fournisseur_nom_affichage($produit) : '';
-                                ?>
-                                <?php if ($pcm_four !== ''): ?>
-                                    <p class="produit-card-fournisseur"><i class="fas fa-truck-field" aria-hidden="true"></i>
-                                        <?php echo htmlspecialchars($pcm_four, ENT_QUOTES, 'UTF-8'); ?></p>
-                                <?php endif; ?>
-                                <p class="produit-card-categorie">
-                                    <i class="fas fa-tag" aria-hidden="true"></i>
-                                    <?php echo htmlspecialchars((string) ($produit['categorie_nom'] ?? 'Sans catégorie'), ENT_QUOTES, 'UTF-8'); ?>
-                                </p>
-                                <p class="produit-card-prix">
-                                    <?php echo number_format((float) ($produit['prix'] ?? 0), 0, ',', ' '); ?>
-                                    <span class="prix-unite">FCFA</span>
-                                    <?php if (!empty($produit['prix_promotion'])): ?>
-                                        <span class="prix-promo">
-                                            (Promo: <?php echo number_format((float) $produit['prix_promotion'], 0, ',', ' '); ?>
-                                            FCFA)
-                                        </span>
-                                    <?php endif; ?>
-                                </p>
-                                <p class="produit-card-stock">
-                                    <i class="fas fa-cubes" aria-hidden="true"></i>
-                                    <span class="produit-card-stock__label">Stock</span>
-                                    <span class="stock-value"><?php echo $produit['stock']; ?></span>
-                                </p>
-                                <div class="produit-card-actions produit-card-actions--admin">
-                                    <a href="modifier.php?id=<?php echo $produit['id']; ?>" class="btn-card btn-edit">
-                                        <i class="fas fa-edit" aria-hidden="true"></i> Modifier
-                                    </a>
-                                    <a href="supprimer.php?id=<?php echo $produit['id']; ?>" class="btn-card btn-delete"
-                                        data-delete-confirm="true"
-                                        data-delete-name="<?php echo htmlspecialchars((string) ($produit['nom'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
-                                        <i class="fas fa-trash" aria-hidden="true"></i> Supprimer
-                                    </a>
-                                </div>
-                            </div>
-                        </li>
+                        <?php include __DIR__ . '/includes/carte_produit_liste.php'; ?>
                     <?php endforeach; ?>
                 </ul>
+
+                <?php if ($total_pages > 1): ?>
+                <nav class="page-produits-pagination" id="page-produits-pagination" aria-label="Pagination du catalogue">
+                    <?php if ($page > 1): ?>
+                        <?php $prev_q = array_merge($pagination_query_base, ['page' => $page - 1]); ?>
+                        <a href="index.php?<?php echo htmlspecialchars(http_build_query($prev_q), ENT_QUOTES, 'UTF-8'); ?>" class="page-produits-pagination__link">
+                            <i class="fas fa-chevron-left" aria-hidden="true"></i> Précédent
+                        </a>
+                    <?php endif; ?>
+
+                    <span class="page-produits-pagination__info">
+                        Page <?php echo (int) $page; ?> / <?php echo (int) $total_pages; ?>
+                        <span class="page-produits-pagination__detail">(<?php echo (int) $per_page; ?> par page · <?php echo (int) $total_produits; ?> au total)</span>
+                    </span>
+
+                    <?php if ($page < $total_pages): ?>
+                        <?php $next_q = array_merge($pagination_query_base, ['page' => $page + 1]); ?>
+                        <a href="index.php?<?php echo htmlspecialchars(http_build_query($next_q), ENT_QUOTES, 'UTF-8'); ?>" class="page-produits-pagination__link">
+                            Suivant <i class="fas fa-chevron-right" aria-hidden="true"></i>
+                        </a>
+                    <?php endif; ?>
+                </nav>
+                <?php endif; ?>
+                <?php else: ?>
+                <ul class="produits-grid page-produits-grid" id="page-produits-grid" role="list" hidden></ul>
+                <?php endif; ?>
+            </div>
+
+            <div id="page-produits-live-wrap" class="page-produits-live-wrap" hidden>
+                <p class="page-produits-live-meta" id="page-produits-live-meta" aria-live="polite" hidden></p>
+                <ul class="produits-grid page-produits-grid page-produits-live-grid" id="page-produits-live-grid" role="list"></ul>
                 <div class="empty-state page-produits-empty page-produits-empty--live" id="page-produits-live-empty" hidden>
                     <div class="page-produits-empty__icon" aria-hidden="true"><i class="fas fa-search"></i></div>
                     <p class="page-produits-empty__title">Aucun produit ne correspond</p>
                     <p class="page-produits-empty__hint">Modifiez les mots de recherche ou les filtres pour élargir les résultats.</p>
                 </div>
-            <?php endif; ?>
+            </div>
         </section>
 
     </div><!-- .page-produits-admin -->
 
     <?php include '../includes/footer.php'; ?>
 
-    <script src="/js/admin-produits-live-search.js<?php echo asset_version_query(); ?>"></script>
+    <script src="/js/admin-produits-index-search.js<?php echo asset_version_query(); ?>"></script>
 
     <!-- Modal de confirmation de suppression -->
     <div class="delete-confirm-overlay" id="deleteConfirmOverlay"></div>
@@ -312,17 +287,19 @@ if (!empty($fournisseurs_filtre)) {
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            // Navigation par clic sur les cards
-            document.querySelectorAll('.produit-card-linkable').forEach(function (card) {
-                card.addEventListener('click', function (event) {
-                    if (event.target.closest('a, button, input, select, textarea, form')) {
-                        return;
-                    }
-                    var href = card.getAttribute('data-href');
-                    if (href) {
-                        window.location.href = href;
-                    }
-                });
+            // Navigation par clic sur les cards (délégation — grille paginée + résultats live)
+            document.addEventListener('click', function (event) {
+                var card = event.target.closest('.page-produits-section .produit-card-linkable');
+                if (!card) {
+                    return;
+                }
+                if (event.target.closest('a, button, input, select, textarea, form')) {
+                    return;
+                }
+                var href = card.getAttribute('data-href');
+                if (href) {
+                    window.location.href = href;
+                }
             });
 
             // Modal de confirmation de suppression
@@ -371,13 +348,15 @@ if (!empty($fournisseurs_filtre)) {
                 currentDeleteLink = null;
             }
 
-            // Gestion des clics sur les liens de suppression
-            document.querySelectorAll('a[data-delete-confirm="true"]').forEach(function (link) {
-                link.addEventListener('click', function (event) {
-                    event.preventDefault();
-                    positionModal(link);
-                    showModal(link);
-                });
+            // Gestion des clics sur les liens de suppression (délégation)
+            document.addEventListener('click', function (event) {
+                var link = event.target.closest('.page-produits-section a[data-delete-confirm="true"]');
+                if (!link) {
+                    return;
+                }
+                event.preventDefault();
+                positionModal(link);
+                showModal(link);
             });
 
             // Boutons de la modal

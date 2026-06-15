@@ -33,7 +33,6 @@ $marques_filtre = [];
 $fournisseurs_filtre = [];
 if ($admin_show_catalogue) {
     $categories = get_all_categories();
-    $produits = get_all_produits();
     if (produits_has_column('marque_id')) {
         require_once __DIR__ . '/../models/model_marques.php';
         if (marques_table_ok()) {
@@ -44,12 +43,27 @@ if ($admin_show_catalogue) {
         require_once __DIR__ . '/../models/model_fournisseurs.php';
         $fournisseurs_filtre = get_all_fournisseurs_ordered_by_nom();
     }
-}
 
-if ($admin_show_catalogue && !empty($produits)) {
-    $produits = array_values(array_filter($produits, function ($produit) use ($categorie_id, $marque_id, $fournisseur_id) {
-        return produit_admin_liste_pass_filtres($produit, '', $categorie_id, $marque_id, $fournisseur_id);
-    }));
+    $per_page = ADMIN_PRODUITS_LISTE_PER_PAGE;
+    $page = max(1, (int) ($_GET['page'] ?? 1));
+    $total_produits = count_admin_produits_liste($categorie_id, $marque_id, $fournisseur_id);
+    $total_pages = max(1, (int) ceil($total_produits / $per_page));
+    if ($page > $total_pages) {
+        $page = $total_pages;
+    }
+    $offset = ($page - 1) * $per_page;
+    $produits = get_admin_produits_liste_paginated($categorie_id, $marque_id, $fournisseur_id, $offset, $per_page);
+
+    $pagination_query_base = [];
+    if ($categorie_id > 0) {
+        $pagination_query_base['categorie_id'] = $categorie_id;
+    }
+    if ($marque_id > 0) {
+        $pagination_query_base['marque_id'] = $marque_id;
+    }
+    if ($fournisseur_id > 0) {
+        $pagination_query_base['fournisseur_id'] = $fournisseur_id;
+    }
 }
 
 $dashboard_filtres_classes = 'admin-filters-bar page-dashboard-filters';
@@ -218,18 +232,28 @@ if (!empty($fournisseurs_filtre)) {
         <!-- Section produits (gestion des stocks) -->
         <?php if ($admin_show_catalogue): ?>
 
-        <section class="produits-section produits-section--dashboard" aria-label="Catalogue produits">
+        <section class="produits-section produits-section--dashboard" aria-label="Catalogue produits"
+            data-produits-index-page
+            data-ajax-url="produits/ajax_live_search.php"
+            data-ajax-context="dashboard"
+            data-total-catalog="<?php echo (int) $total_produits; ?>"
+            data-id-main-wrap="page-dashboard-main-wrap"
+            data-id-main-grid="page-dashboard-produits-grid"
+            data-id-live-wrap="page-dashboard-live-wrap"
+            data-id-live-grid="page-dashboard-live-grid"
+            data-id-live-empty="page-dashboard-live-empty"
+            data-id-live-meta="page-dashboard-live-meta"
+            data-id-pagination="page-dashboard-pagination"
+            data-id-catalog-empty="page-dashboard-catalog-empty">
 
             <form method="GET" action="" class="<?php echo htmlspecialchars($dashboard_filtres_classes, ENT_QUOTES, 'UTF-8'); ?>"
-                data-produits-live-search-form
-                data-live-grid="page-dashboard-produits-grid"
-                data-live-empty="page-dashboard-live-empty">
+                data-produits-index-form>
                 <div class="admin-filter-field page-dashboard-filters__search">
                     <label for="recherche">Recherche</label>
                     <input type="text" id="recherche" name="recherche"
                         placeholder="Nom, description… — filtre en direct"
                         value="<?php echo htmlspecialchars($recherche); ?>" autocomplete="off" inputmode="search"
-                        data-live-search-input>
+                        data-produits-index-search>
                 </div>
                 <div class="admin-filter-field page-dashboard-filters__categorie">
                     <label for="categorie_id">Catégorie</label>
@@ -281,8 +305,8 @@ if (!empty($fournisseurs_filtre)) {
                 </div>
             </form>
 
-            <?php if (empty($produits)): ?>
-                <div class="empty-state">
+            <?php if ($total_produits === 0): ?>
+                <div class="empty-state" id="page-dashboard-catalog-empty">
                     <i class="fas fa-box-open"></i>
                     <p>Aucun produit enregistré pour le moment.</p>
                     <?php if (!admin_is_restricted_admin_account()): ?>
@@ -291,98 +315,41 @@ if (!empty($fournisseurs_filtre)) {
                     </a>
                     <?php endif; ?>
                 </div>
-            <?php else: ?>
-                <!-- Grille de produits -->
-                <div class="produits-grid page-dashboard-produits-grid" id="page-dashboard-produits-grid"
-                    data-total="<?php echo count($produits); ?>">
-                    <?php foreach ($produits as $produit): ?>
-                        <?php
-                        $statut_class = 'statut-actif';
-                        if ($produit['statut'] == 'inactif') {
-                            $statut_class = 'statut-inactif';
-                        } elseif ($produit['statut'] == 'rupture_stock') {
-                            $statut_class = 'statut-rupture';
-                        }
-                        $statut_label = ucfirst(str_replace('_', ' ', (string) ($produit['statut'] ?? '')));
-                        $img_catalogue = '';
-                        if (!empty($produit['image_principale'])) {
-                            $img_catalogue = trim((string) $produit['image_principale']);
-                        }
-                        $pcm_search_blob = produit_admin_liste_search_blob($produit);
-                        $pcm_nom_norm = produits_recherche_normalize((string) ($produit['nom'] ?? ''));
-                        $pcm_ident = strtoupper(trim((string) ($produit['identifiant_interne'] ?? '')));
-                        ?>
-                        <div class="produit-card produit-card-linkable produit-card--dashboard"
-                            data-href="produits/ajuster-stock.php?id=<?php echo (int) $produit['id']; ?>"
-                            data-produit-search="<?php echo htmlspecialchars($pcm_search_blob, ENT_QUOTES, 'UTF-8'); ?>"
-                            data-produit-nom="<?php echo htmlspecialchars($pcm_nom_norm, ENT_QUOTES, 'UTF-8'); ?>"
-                            data-produit-ident="<?php echo htmlspecialchars($pcm_ident, ENT_QUOTES, 'UTF-8'); ?>"
-                            data-categorie-id="<?php echo (int) ($produit['categorie_id'] ?? 0); ?>"
-                            data-marque-id="<?php echo (int) ($produit['marque_id'] ?? 0); ?>"
-                            data-fournisseur-id="<?php echo (int) ($produit['fournisseur_id'] ?? 0); ?>">
-                            <span class="statut-badge <?php echo $statut_class; ?>"><?php echo htmlspecialchars($statut_label, ENT_QUOTES, 'UTF-8'); ?></span>
-                            <div class="produit-card-media">
-                                <?php if ($img_catalogue !== ''): ?>
-                                <img src="/upload/<?php echo htmlspecialchars($img_catalogue, ENT_QUOTES, 'UTF-8'); ?>"
-                                    alt="<?php echo htmlspecialchars((string) ($produit['nom'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" class="produit-card-image"
-                                    onerror="this.onerror=null;var w=document.createElement('div');w.className='produit-card-media-placeholder';w.setAttribute('role','img');w.setAttribute('aria-label','Sans image');w.innerHTML='<i class=\'fas fa-truck\' aria-hidden=\'true\'></i>';this.replaceWith(w);">
-                                <?php else: ?>
-                                <div class="produit-card-media-placeholder" role="img" aria-label="Pas d'image">
-                                    <i class="fas fa-truck" aria-hidden="true"></i>
-                                </div>
-                                <?php endif; ?>
-                            </div>
-                            <div class="produit-card-body">
-                                <h3 class="produit-card-nom"><?php echo produits_card_heading_inner_html($produit, 20); ?></h3>
-                                <?php
-                            $pcm_four = function_exists('produits_fournisseur_nom_affichage')
-                                ? produits_fournisseur_nom_affichage($produit) : '';
-                            ?>
-                                <?php if ($pcm_four !== ''): ?>
-                                <p class="produit-card-fournisseur"><i class="fas fa-truck-field" aria-hidden="true"></i> <?php echo htmlspecialchars($pcm_four, ENT_QUOTES, 'UTF-8'); ?></p>
-                                <?php endif; ?>
-                                <p class="produit-card-categorie">
-                                    <i class="fas fa-tag" aria-hidden="true"></i>
-                                    <?php echo htmlspecialchars((string) ($produit['categorie_nom'] ?? 'Sans catégorie'), ENT_QUOTES, 'UTF-8'); ?>
-                                </p>
-                                <p class="produit-card-prix">
-                                    <span class="prix-montant"><?php echo number_format((float) ($produit['prix'] ?? 0), 0, ',', ' '); ?></span>
-                                    <span class="prix-unite">FCFA</span>
-                                    <?php if (!empty($produit['prix_promotion'])): ?>
-                                        <span class="prix-promo">
-                                            Promo <?php echo number_format((float) $produit['prix_promotion'], 0, ',', ' '); ?> FCFA
-                                        </span>
-                                    <?php endif; ?>
-                                </p>
-                                <p class="produit-card-stock">
-                                    <i class="fas fa-cubes" aria-hidden="true"></i>
-                                    Stock <span class="stock-value"><?php echo (int) ($produit['stock'] ?? 0); ?></span>
-                                </p>
-                                <div class="produit-card-actions">
-                                    <a href="produits/modifier.php?id=<?php echo $produit['id']; ?>" class="btn-card btn-edit">
-                                        <i class="fas fa-edit"></i> Modifier
-                                    </a>
-                                    <a href="produits/supprimer.php?id=<?php echo $produit['id']; ?>"
-                                        class="btn-card btn-delete"
-                                        data-delete-confirm="true"
-                                        data-delete-name="<?php echo htmlspecialchars((string) ($produit['nom'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
-                                        <i class="fas fa-trash"></i> Supprimer
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                    <?php endforeach; ?>
+            <?php endif; ?>
+
+            <div id="page-dashboard-main-wrap" <?php echo $total_produits === 0 ? 'hidden' : ''; ?>>
+                <?php if ($total_produits > 0): ?>
+                <div class="produits-grid page-dashboard-produits-grid" id="page-dashboard-produits-grid">
+                    <?php
+                    $pcm_paths = ['base' => 'produits/', 'upload' => '/upload/'];
+                    foreach ($produits as $produit):
+                        include __DIR__ . '/includes/carte_produit_dashboard.php';
+                    endforeach;
+                    ?>
                 </div>
+                <?php
+                $pagination_href_base = 'dashboard.php';
+                $pagination_id = 'page-dashboard-pagination';
+                include __DIR__ . '/includes/pagination_catalogue.php';
+                ?>
+                <?php else: ?>
+                <div class="produits-grid page-dashboard-produits-grid" id="page-dashboard-produits-grid" hidden></div>
+                <?php endif; ?>
+            </div>
+
+            <div id="page-dashboard-live-wrap" class="page-produits-live-wrap" hidden>
+                <p class="page-produits-live-meta" id="page-dashboard-live-meta" aria-live="polite" hidden></p>
+                <div class="produits-grid page-dashboard-produits-grid page-produits-live-grid" id="page-dashboard-live-grid"></div>
                 <div class="empty-state page-dashboard-live-empty" id="page-dashboard-live-empty" hidden>
                     <i class="fas fa-search" aria-hidden="true"></i>
                     <p>Aucun produit ne correspond à votre recherche.</p>
                 </div>
-            <?php endif; ?>
+            </div>
         </section>
         <?php endif; ?>
     </div>
 
-    <script src="/js/admin-produits-live-search.js<?php echo asset_version_query(); ?>"></script>
+    <script src="/js/admin-produits-index-search.js<?php echo asset_version_query(); ?>"></script>
     <script src="https://www.gstatic.com/firebasejs/12.9.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/12.9.0/firebase-messaging-compat.js"></script>
     <?php require_once __DIR__ . '/../includes/firebase_init.php'; ?>
@@ -514,16 +481,18 @@ if (!empty($fournisseurs_filtre)) {
         }
 
         document.addEventListener('DOMContentLoaded', function () {
-            document.querySelectorAll('.produit-card-linkable').forEach(function(card) {
-                card.addEventListener('click', function(event) {
-                    if (event.target.closest('a, button, input, select, textarea, form')) {
-                        return;
-                    }
-                    var href = card.getAttribute('data-href');
-                    if (href) {
-                        window.location.href = href;
-                    }
-                });
+            document.addEventListener('click', function (event) {
+                var card = event.target.closest('.page-dashboard-home .produit-card-linkable');
+                if (!card) {
+                    return;
+                }
+                if (event.target.closest('a, button, input, select, textarea, form')) {
+                    return;
+                }
+                var href = card.getAttribute('data-href');
+                if (href) {
+                    window.location.href = href;
+                }
             });
 
             var btn = document.getElementById('btn-enable-notifications');
@@ -668,12 +637,14 @@ if (!empty($fournisseurs_filtre)) {
                 currentDeleteLink = null;
             }
 
-            document.querySelectorAll('a[data-delete-confirm="true"]').forEach(function(link) {
-                link.addEventListener('click', function(event) {
-                    event.preventDefault();
-                    positionModal(link);
-                    showModal(link);
-                });
+            document.addEventListener('click', function (event) {
+                var link = event.target.closest('a[data-delete-confirm="true"]');
+                if (!link) {
+                    return;
+                }
+                event.preventDefault();
+                positionModal(link);
+                showModal(link);
             });
 
             deleteCancel.addEventListener('click', hideModal);

@@ -306,6 +306,250 @@ function produit_admin_liste_pass_filtres(array $produit, $recherche, $categorie
     return produit_admin_liste_match_recherche($produit, $recherche);
 }
 
+/** Nombre de produits par page — liste admin catalogue */
+if (!defined('ADMIN_PRODUITS_LISTE_PER_PAGE')) {
+    define('ADMIN_PRODUITS_LISTE_PER_PAGE', 30);
+}
+
+/** Limite résultats recherche live admin (AJAX) */
+if (!defined('ADMIN_PRODUITS_LIVE_SEARCH_LIMIT')) {
+    define('ADMIN_PRODUITS_LIVE_SEARCH_LIMIT', 60);
+}
+
+/**
+ * Clause SQL AND pour filtres liste admin (catégorie, marque, fournisseur).
+ *
+ * @param int $categorie_id
+ * @param int $marque_id
+ * @param int $fournisseur_id
+ * @param array<string, int> $params
+ * @return string
+ */
+function admin_produits_liste_filtres_sql($categorie_id = 0, $marque_id = 0, $fournisseur_id = 0, array &$params = []) {
+    $parts = [];
+
+    if ($categorie_id > 0) {
+        $parts[] = 'p.categorie_id = :adm_cat_id';
+        $params['adm_cat_id'] = $categorie_id;
+    }
+
+    if ($marque_id > 0 && produits_has_column('marque_id')) {
+        $parts[] = 'p.marque_id = :adm_marque_id';
+        $params['adm_marque_id'] = $marque_id;
+    }
+
+    if ($fournisseur_id > 0 && produits_has_column('fournisseur_id')) {
+        $parts[] = 'p.fournisseur_id = :adm_fournisseur_id';
+        $params['adm_fournisseur_id'] = $fournisseur_id;
+    }
+
+    if (empty($parts)) {
+        return '';
+    }
+
+    return ' AND ' . implode(' AND ', $parts);
+}
+
+/**
+ * Conditions SQL OR pour recherche texte (liste admin).
+ *
+ * @param string $recherche
+ * @param array<string, string> $params
+ * @return string Chaîne « AND ( … ) » ou vide
+ */
+function admin_produits_liste_recherche_sql($recherche, array &$params = []) {
+    $tr = trim((string) $recherche);
+    if ($tr === '') {
+        return '';
+    }
+
+    $or = [];
+    $or[] = 'p.nom LIKE :adm_st_nom';
+    $params['adm_st_nom'] = '%' . $tr . '%';
+    $or[] = 'c.nom LIKE :adm_st_cat';
+    $params['adm_st_cat'] = '%' . $tr . '%';
+
+    if (produits_has_column('description')) {
+        $or[] = 'p.description LIKE :adm_st_desc';
+        $params['adm_st_desc'] = '%' . $tr . '%';
+    }
+    if (produits_has_column('reference_fournisseur')) {
+        $or[] = 'p.reference_fournisseur LIKE :adm_st_rf';
+        $params['adm_st_rf'] = '%' . $tr . '%';
+    }
+    if (produits_has_column('nom_fournisseur')) {
+        $or[] = 'p.nom_fournisseur LIKE :adm_st_nf';
+        $params['adm_st_nf'] = '%' . $tr . '%';
+    }
+    if (produits_has_column('fournisseur_id')) {
+        $or[] = 'f.nom LIKE :adm_st_fourn';
+        $params['adm_st_fourn'] = '%' . $tr . '%';
+    }
+    if (produits_has_column('marque_id') && function_exists('marques_table_ok') && marques_table_ok()) {
+        $or[] = 'EXISTS (SELECT 1 FROM marques adm_mx WHERE adm_mx.id = p.marque_id AND adm_mx.nom LIKE :adm_st_marque)';
+        $params['adm_st_marque'] = '%' . $tr . '%';
+    }
+    if (produits_has_column('identifiant_interne')) {
+        if (preg_match('/^FPL(\d{6}|\d{9})$/i', $tr)) {
+            $or[] = 'UPPER(TRIM(p.identifiant_interne)) = :adm_st_ident_ex';
+            $params['adm_st_ident_ex'] = strtoupper($tr);
+        } elseif (preg_match('/^\d{5}$/', $tr)) {
+            $or[] = 'p.identifiant_interne IS NOT NULL AND TRIM(p.identifiant_interne) != \'\' AND ' . produits_sql_identifiant_suffix_5_expr('p') . ' = :adm_st_suf5';
+            $params['adm_st_suf5'] = $tr;
+        } else {
+            $or[] = '(p.identifiant_interne IS NOT NULL AND TRIM(p.identifiant_interne) != \'\' AND p.identifiant_interne LIKE :adm_st_idlike)';
+            $params['adm_st_idlike'] = '%' . $tr . '%';
+        }
+    }
+
+    return ' AND (' . implode(' OR ', $or) . ')';
+}
+
+/**
+ * Nombre total de produits (liste admin, filtres select uniquement).
+ *
+ * @param int $categorie_id
+ * @param int $marque_id
+ * @param int $fournisseur_id
+ * @return int
+ */
+function count_admin_produits_liste($categorie_id = 0, $marque_id = 0, $fournisseur_id = 0) {
+    global $db;
+
+    try {
+        $jb = produits_catalog_join_bundle();
+        $joinx = $jb['join'];
+        $params = [];
+        $sql = "
+            SELECT COUNT(*) AS cnt
+            FROM produits p
+            LEFT JOIN categories c ON p.categorie_id = c.id
+            $joinx
+            WHERE 1=1
+        ";
+        $sql .= admin_produits_liste_filtres_sql($categorie_id, $marque_id, $fournisseur_id, $params);
+
+        $stmt = $db->prepare($sql);
+        foreach ($params as $k => $v) {
+            $stmt->bindValue(':' . $k, $v, is_int($v) ? PDO::PARAM_INT : PDO::PARAM_STR);
+        }
+        $stmt->execute();
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return (int) ($row['cnt'] ?? 0);
+    } catch (PDOException $e) {
+        return 0;
+    }
+}
+
+/**
+ * Produits paginés pour la liste admin (sans recherche texte — pagination serveur).
+ *
+ * @param int $categorie_id
+ * @param int $marque_id
+ * @param int $fournisseur_id
+ * @param int $offset
+ * @param int $limit
+ * @return array<int, array<string, mixed>>
+ */
+function get_admin_produits_liste_paginated($categorie_id = 0, $marque_id = 0, $fournisseur_id = 0, $offset = 0, $limit = 30) {
+    global $db;
+
+    try {
+        $jb = produits_catalog_join_bundle();
+        $selx = $jb['sel'];
+        $joinx = $jb['join'];
+        $offset = max(0, (int) $offset);
+        $limit = max(1, min(100, (int) $limit));
+        $params = [];
+
+        $sql = "
+            SELECT p.*, c.nom AS categorie_nom $selx
+            FROM produits p
+            LEFT JOIN categories c ON p.categorie_id = c.id
+            $joinx
+            WHERE 1=1
+        ";
+        $sql .= admin_produits_liste_filtres_sql($categorie_id, $marque_id, $fournisseur_id, $params);
+        $sql .= ' ORDER BY p.date_creation DESC LIMIT :adm_limit OFFSET :adm_offset';
+
+        $stmt = $db->prepare($sql);
+        foreach ($params as $k => $v) {
+            $stmt->bindValue(':' . $k, $v, is_int($v) ? PDO::PARAM_INT : PDO::PARAM_STR);
+        }
+        $stmt->bindValue(':adm_limit', $limit, PDO::PARAM_INT);
+        $stmt->bindValue(':adm_offset', $offset, PDO::PARAM_INT);
+        $stmt->execute();
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        return $rows ? $rows : [];
+    } catch (PDOException $e) {
+        return [];
+    }
+}
+
+/**
+ * Recherche live admin (AJAX) — tous statuts, limite stricte.
+ *
+ * @param string $recherche
+ * @param int $categorie_id
+ * @param int $marque_id
+ * @param int $fournisseur_id
+ * @param int $limit
+ * @return array{items: array<int, array<string, mixed>>, total: int, truncated: bool}
+ */
+function search_admin_produits_liste_live($recherche = '', $categorie_id = 0, $marque_id = 0, $fournisseur_id = 0, $limit = 60) {
+    global $db;
+
+    $recherche = trim((string) $recherche);
+    if ($recherche === '') {
+        return ['items' => [], 'total' => 0, 'truncated' => false];
+    }
+
+    $limit = max(5, min(ADMIN_PRODUITS_LIVE_SEARCH_LIMIT, (int) $limit));
+
+    try {
+        $jb = produits_catalog_join_bundle();
+        $selx = $jb['sel'];
+        $joinx = $jb['join'];
+        $params = [];
+
+        $baseFrom = "
+            FROM produits p
+            LEFT JOIN categories c ON p.categorie_id = c.id
+            $joinx
+            WHERE 1=1
+        ";
+        $baseFrom .= admin_produits_liste_filtres_sql($categorie_id, $marque_id, $fournisseur_id, $params);
+        $baseFrom .= admin_produits_liste_recherche_sql($recherche, $params);
+
+        $countSql = 'SELECT COUNT(*) AS cnt ' . $baseFrom;
+        $stmtCount = $db->prepare($countSql);
+        foreach ($params as $k => $v) {
+            $stmtCount->bindValue(':' . $k, $v, is_int($v) ? PDO::PARAM_INT : PDO::PARAM_STR);
+        }
+        $stmtCount->execute();
+        $total = (int) ($stmtCount->fetch(PDO::FETCH_ASSOC)['cnt'] ?? 0);
+
+        $sql = 'SELECT p.*, c.nom AS categorie_nom ' . $selx . $baseFrom . ' ORDER BY p.nom ASC LIMIT :adm_live_limit';
+        $stmt = $db->prepare($sql);
+        foreach ($params as $k => $v) {
+            $stmt->bindValue(':' . $k, $v, is_int($v) ? PDO::PARAM_INT : PDO::PARAM_STR);
+        }
+        $stmt->bindValue(':adm_live_limit', $limit, PDO::PARAM_INT);
+        $stmt->execute();
+        $items = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        return [
+            'items' => $items,
+            'total' => $total,
+            'truncated' => $total > count($items),
+        ];
+    } catch (PDOException $e) {
+        return ['items' => [], 'total' => 0, 'truncated' => false];
+    }
+}
+
 /**
  * Libellé marque pour une ligne produit (jointure marque_nom ou lookup marque_id).
  *
