@@ -1,11 +1,26 @@
 # Fichiers sensibles - NE JAMAIS committer
 # Clés privées Firebase (service account)
 sugar-paper-*.json
+foouta-*.json
 *-firebase-adminsdk-*.json
 *firebase*credentials*.json
 
+# Configuration Firebase mobile / web (clés API, identifiants projet)
+GoogleService-Info.plist
+google-services.json
+**/google-services.json
+**/GoogleService-Info.plist
+
+# Archives et builds locaux
+*.zip
+appfouta.zip
+
+# Configuration Flutter Firebase (clés VAPID / OAuth)
+appfouta/lib/config/firebase_auth_config.dart
+
 # Configuration base de données (identifiants)
 conn/conn.php
+conn/dconn.php
 
 # Configuration API (clés secrètes)
 config/emailjs.php
