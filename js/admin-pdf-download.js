@@ -34,6 +34,9 @@
         if (!link || !link.href) {
             return;
         }
+        if (link.hasAttribute('data-export-catalogue-async')) {
+            return;
+        }
         if (!isAdminPdfHref(link.getAttribute('href') || link.href)) {
             return;
         }

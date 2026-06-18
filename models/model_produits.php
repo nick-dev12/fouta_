@@ -2197,9 +2197,10 @@ function admin_produits_export_periode_sql($mode, $date_debut, $date_fin, array 
  * @param int $marque_id
  * @param int $fournisseur_id
  * @param int $limit
+ * @param int $offset
  * @return array<int, array<string, mixed>>
  */
-function get_admin_produits_export_catalogue($date_debut, $date_fin, $mode = 'tous', $recherche = '', $categorie_id = 0, $marque_id = 0, $fournisseur_id = 0, $limit = 500) {
+function get_admin_produits_export_catalogue($date_debut, $date_fin, $mode = 'tous', $recherche = '', $categorie_id = 0, $marque_id = 0, $fournisseur_id = 0, $limit = 500, $offset = 0) {
     global $db;
 
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date_debut) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date_fin)) {
@@ -2211,7 +2212,8 @@ function get_admin_produits_export_catalogue($date_debut, $date_fin, $mode = 'to
         $date_fin = $tmp;
     }
 
-    $limit = max(1, min(1000, (int) $limit));
+    $limit = max(1, min(5000, (int) $limit));
+    $offset = max(0, (int) $offset);
 
     try {
         $jb = produits_catalog_join_bundle();
@@ -2229,12 +2231,13 @@ function get_admin_produits_export_catalogue($date_debut, $date_fin, $mode = 'to
         $sql .= admin_produits_liste_filtres_sql($categorie_id, $marque_id, $fournisseur_id, $params);
         $sql .= admin_produits_export_periode_sql($mode, $date_debut, $date_fin, $params);
         $sql .= admin_produits_liste_recherche_sql($recherche, $params);
-        $sql .= ' ORDER BY COALESCE(p.date_modification, p.date_creation) DESC, p.id DESC LIMIT :exp_limit';
+        $sql .= ' ORDER BY COALESCE(p.date_modification, p.date_creation) DESC, p.id DESC LIMIT :exp_offset, :exp_limit';
 
         $stmt = $db->prepare($sql);
         foreach ($params as $k => $v) {
             $stmt->bindValue(':' . $k, $v, is_int($v) ? PDO::PARAM_INT : PDO::PARAM_STR);
         }
+        $stmt->bindValue(':exp_offset', $offset, PDO::PARAM_INT);
         $stmt->bindValue(':exp_limit', $limit, PDO::PARAM_INT);
         $stmt->execute();
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -2243,6 +2246,48 @@ function get_admin_produits_export_catalogue($date_debut, $date_fin, $mode = 'to
     } catch (PDOException $e) {
         return [];
     }
+}
+
+/**
+ * Charge tous les produits export (par lots) avec suivi de progression optionnel.
+ *
+ * @param callable|null $progress_callback function(int $loaded, int $total): void
+ * @return array<int, array<string, mixed>>
+ */
+function get_admin_produits_export_catalogue_all($date_debut, $date_fin, $mode = 'tous', $recherche = '', $categorie_id = 0, $marque_id = 0, $fournisseur_id = 0, $batch_size = 200, $progress_callback = null) {
+    $total = count_admin_produits_export_catalogue($date_debut, $date_fin, $mode, $recherche, $categorie_id, $marque_id, $fournisseur_id);
+    $batch_size = max(50, min(500, (int) $batch_size));
+    $all = [];
+    $offset = 0;
+
+    while ($offset < $total) {
+        $chunk = get_admin_produits_export_catalogue(
+            $date_debut,
+            $date_fin,
+            $mode,
+            $recherche,
+            $categorie_id,
+            $marque_id,
+            $fournisseur_id,
+            $batch_size,
+            $offset
+        );
+        if ($chunk === []) {
+            break;
+        }
+        foreach ($chunk as $row) {
+            $all[] = $row;
+        }
+        $offset += count($chunk);
+        if ($progress_callback !== null) {
+            $progress_callback(count($all), $total);
+        }
+        if (count($chunk) < $batch_size) {
+            break;
+        }
+    }
+
+    return $all;
 }
 
 /**

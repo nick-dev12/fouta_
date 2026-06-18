@@ -386,9 +386,9 @@ table.catalogue tr:nth-child(even) td { background: #f8fafc; }
 /**
  * @param array<int, array<string, mixed>> $produits
  * @param array<string, mixed> $meta
- * @return bool
+ * @return string|false
  */
-function export_catalogue_send_pdf(array $produits, array $meta) {
+function export_catalogue_render_pdf_binary(array $produits, array $meta) {
     export_catalogue_pdf_set_error(null);
 
     if (!is_file(__DIR__ . '/../vendor/autoload.php')) {
@@ -397,7 +397,6 @@ function export_catalogue_send_pdf(array $produits, array $meta) {
         return false;
     }
 
-    require_once __DIR__ . '/admin_pdf_response.php';
     require_once __DIR__ . '/../vendor/autoload.php';
 
     $root = realpath(__DIR__ . '/..');
@@ -421,27 +420,83 @@ function export_catalogue_send_pdf(array $produits, array $meta) {
         $dompdf->setPaper('A4', 'landscape');
         $dompdf->render();
 
-        $slug_debut = preg_replace('/[^0-9]/', '', (string) ($meta['date_debut'] ?? ''));
-        $slug_fin = preg_replace('/[^0-9]/', '', (string) ($meta['date_fin'] ?? ''));
-        $filename = 'catalogue-produits-' . $slug_debut . '-' . $slug_fin . '.pdf';
         $pdf_output = $dompdf->output();
-
         if ($pdf_output === '' || $pdf_output === false) {
             export_catalogue_pdf_set_error('Dompdf n’a produit aucun contenu PDF.');
 
             return false;
         }
 
-        if (!admin_pdf_send_binary($pdf_output, $filename)) {
-            export_catalogue_pdf_set_error('Impossible d’envoyer le PDF (en-têtes déjà envoyés).');
-
-            return false;
-        }
-
-        return true;
+        return $pdf_output;
     } catch (Throwable $e) {
         export_catalogue_pdf_set_error('Dompdf : ' . $e->getMessage());
 
         return false;
     }
+}
+
+/**
+ * Écrit le PDF catalogue sur disque (export arrière-plan).
+ *
+ * @param callable|null $on_progress function(int $percent, string $message): void
+ * @return bool
+ */
+function export_catalogue_write_pdf_file(array $produits, array $meta, $output_path, $on_progress = null) {
+    if ($on_progress !== null) {
+        $on_progress(50, 'Préparation du rendu PDF…');
+    }
+
+    $pdf_output = export_catalogue_render_pdf_binary($produits, $meta);
+    if ($pdf_output === false) {
+        return false;
+    }
+
+    if ($on_progress !== null) {
+        $on_progress(92, 'Enregistrement du fichier PDF…');
+    }
+
+    $dir = dirname($output_path);
+    if (!is_dir($dir)) {
+        @mkdir($dir, 0755, true);
+    }
+
+    if (@file_put_contents($output_path, $pdf_output, LOCK_EX) === false) {
+        export_catalogue_pdf_set_error('Impossible d’enregistrer le PDF sur le serveur.');
+
+        return false;
+    }
+
+    if ($on_progress !== null) {
+        $on_progress(98, 'Finalisation…');
+    }
+
+    return true;
+}
+
+/**
+ * @param array<int, array<string, mixed>> $produits
+ * @param array<string, mixed> $meta
+ * @return bool
+ */
+function export_catalogue_send_pdf(array $produits, array $meta) {
+    export_catalogue_pdf_set_error(null);
+
+    require_once __DIR__ . '/admin_pdf_response.php';
+
+    $pdf_output = export_catalogue_render_pdf_binary($produits, $meta);
+    if ($pdf_output === false) {
+        return false;
+    }
+
+    $slug_debut = preg_replace('/[^0-9]/', '', (string) ($meta['date_debut'] ?? ''));
+    $slug_fin = preg_replace('/[^0-9]/', '', (string) ($meta['date_fin'] ?? ''));
+    $filename = 'catalogue-produits-' . $slug_debut . '-' . $slug_fin . '.pdf';
+
+    if (!admin_pdf_send_binary($pdf_output, $filename)) {
+        export_catalogue_pdf_set_error('Impossible d’envoyer le PDF (en-têtes déjà envoyés).');
+
+        return false;
+    }
+
+    return true;
 }

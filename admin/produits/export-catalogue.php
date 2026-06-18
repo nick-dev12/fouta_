@@ -16,6 +16,7 @@ require_once __DIR__ . '/../../includes/admin_permissions.php';
 require_once __DIR__ . '/../../models/model_produits.php';
 require_once __DIR__ . '/../../models/model_categories.php';
 require_once __DIR__ . '/../../includes/export_produits_catalogue_pdf.php';
+require_once __DIR__ . '/../../includes/export_catalogue_job.php';
 
 $has_marque_filtre = produits_has_column('marque_id');
 $has_fournisseur_filtre = produits_has_column('fournisseur_id');
@@ -77,6 +78,10 @@ if (!empty($fournisseurs_filtre)) {
 }
 
 $mode_labels = export_catalogue_pdf_mode_labels();
+$export_use_async_pdf = $total_export >= EXPORT_CATALOGUE_ASYNC_MIN;
+$pdf_link_attrs = $export_use_async_pdf
+    ? ' data-export-catalogue-async data-export-query="' . htmlspecialchars($pdf_query, ENT_QUOTES, 'UTF-8') . '"'
+    : ' data-admin-pdf-download';
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -94,18 +99,20 @@ $mode_labels = export_catalogue_pdf_mode_labels();
 <body>
     <?php include '../includes/nav.php'; ?>
 
-    <div class="page-produits-admin page-produits-export">
+    <div class="page-produits-admin page-produits-export"
+        data-export-total="<?php echo (int) $total_export; ?>"
+        data-export-async-min="<?php echo (int) EXPORT_CATALOGUE_ASYNC_MIN; ?>">
         <div class="content-header dashboard-hero page-produits-hero">
             <div class="dashboard-hero-text">
                 <p class="dashboard-eyebrow">Catalogue boutique</p>
                 <h1><i class="fas fa-file-pdf" aria-hidden="true"></i> Export catalogue PDF</h1>
-                <p class="page-produits-export-lead">Produits ajoutés ou modifiés sur une période — aperçu puis export PDF avec en-tête entreprise.</p>
+                <p class="page-produits-export-lead">Produits ajoutés ou modifiés sur une période — aperçu puis export PDF avec en-tête entreprise.<?php if ($export_use_async_pdf): ?> Les exports de <?php echo (int) EXPORT_CATALOGUE_ASYNC_MIN; ?> produits ou plus sont générés <strong>en arrière-plan</strong> avec suivi de progression.<?php endif; ?></p>
                 <div class="page-produits-hero__actions">
                     <a href="index.php" class="btn-secondary page-produits-hero__btn">
                         <i class="fas fa-arrow-left" aria-hidden="true"></i> Retour à la liste
                     </a>
                     <?php if ($total_export > 0): ?>
-                    <a href="export-catalogue-pdf.php?<?php echo htmlspecialchars($pdf_query, ENT_QUOTES, 'UTF-8'); ?>" class="btn-primary page-produits-hero__btn" data-admin-pdf-download>
+                    <a href="export-catalogue-pdf.php?<?php echo htmlspecialchars($pdf_query, ENT_QUOTES, 'UTF-8'); ?>" class="btn-primary page-produits-hero__btn page-produits-export-pdf-btn"<?php echo $pdf_link_attrs; ?>>
                         <i class="fas fa-download" aria-hidden="true"></i> Télécharger le PDF (<?php echo (int) $total_export; ?>)
                     </a>
                     <?php endif; ?>
@@ -191,7 +198,7 @@ $mode_labels = export_catalogue_pdf_mode_labels();
                         <i class="fas fa-rotate-left"></i>&nbsp;Aujourd’hui
                     </a>
                     <?php if ($total_export > 0): ?>
-                    <a href="export-catalogue-pdf.php?<?php echo htmlspecialchars($pdf_query, ENT_QUOTES, 'UTF-8'); ?>" class="btn-primary btn-export-pdf-inline" data-admin-pdf-download>
+                    <a href="export-catalogue-pdf.php?<?php echo htmlspecialchars($pdf_query, ENT_QUOTES, 'UTF-8'); ?>" class="btn-primary btn-export-pdf-inline page-produits-export-pdf-btn"<?php echo $pdf_link_attrs; ?>>
                         <i class="fas fa-file-pdf"></i> PDF
                     </a>
                     <?php endif; ?>
@@ -201,7 +208,7 @@ $mode_labels = export_catalogue_pdf_mode_labels();
             <?php if ($export_truncated): ?>
             <p class="page-produits-export-truncated" role="status">
                 <i class="fas fa-info-circle" aria-hidden="true"></i>
-                Affichage limité à <?php echo count($produits_export); ?> produits sur <?php echo (int) $total_export; ?> — le PDF inclura tous les résultats (max 1000).
+                Affichage limité à <?php echo count($produits_export); ?> produits sur <?php echo (int) $total_export; ?> — le PDF inclura tous les résultats<?php echo $export_use_async_pdf ? ' (génération en arrière-plan)' : ''; ?> (max <?php echo (int) EXPORT_CATALOGUE_PDF_MAX; ?>).
             </p>
             <?php endif; ?>
 
@@ -224,6 +231,26 @@ $mode_labels = export_catalogue_pdf_mode_labels();
     </div>
 
     <?php include '../includes/footer.php'; ?>
+
+    <div class="export-catalogue-pdf-overlay" id="exportCataloguePdfOverlay" hidden></div>
+    <div class="export-catalogue-pdf-modal" id="exportCataloguePdfModal" role="dialog" aria-modal="true"
+        aria-labelledby="exportCataloguePdfTitle" hidden>
+        <div class="export-catalogue-pdf-modal__head">
+            <h3 id="exportCataloguePdfTitle"><i class="fas fa-file-pdf" aria-hidden="true"></i> Export PDF en cours</h3>
+            <p class="export-catalogue-pdf-modal__lead">Génération en arrière-plan — vous pouvez continuer à utiliser l’administration.</p>
+        </div>
+        <div class="export-catalogue-pdf-progress" aria-hidden="false">
+            <div class="export-catalogue-pdf-progress__track">
+                <div class="export-catalogue-pdf-progress__bar" id="exportCataloguePdfBar" style="width:0%"></div>
+            </div>
+            <p class="export-catalogue-pdf-progress__percent" id="exportCataloguePdfPercent">0&nbsp;%</p>
+        </div>
+        <p class="export-catalogue-pdf-modal__status" id="exportCataloguePdfStatus" aria-live="polite">Initialisation…</p>
+        <div class="export-catalogue-pdf-modal__actions">
+            <button type="button" class="btn-secondary" id="exportCataloguePdfClose" hidden>Fermer</button>
+            <a href="#" class="btn-primary" id="exportCataloguePdfDownload" hidden download>Télécharger le PDF</a>
+        </div>
+    </div>
 
     <div class="delete-confirm-overlay" id="deleteConfirmOverlay"></div>
     <div class="delete-confirm-modal" id="deleteConfirmModal" role="dialog" aria-modal="true"
@@ -323,5 +350,6 @@ $mode_labels = export_catalogue_pdf_mode_labels();
             });
         });
     </script>
+    <script src="/js/admin-export-catalogue-pdf.js<?php echo asset_version_query(); ?>"></script>
 </body>
 </html>
