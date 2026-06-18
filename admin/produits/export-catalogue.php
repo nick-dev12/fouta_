@@ -55,9 +55,36 @@ $categorie_id = isset($_GET['categorie_id']) ? (int) $_GET['categorie_id'] : 0;
 $marque_id = isset($_GET['marque_id']) ? (int) $_GET['marque_id'] : 0;
 $fournisseur_id = isset($_GET['fournisseur_id']) ? (int) $_GET['fournisseur_id'] : 0;
 
+$export_preview_per_page = 30;
+$page = isset($_GET['page']) ? max(1, (int) $_GET['page']) : 1;
+
 $total_export = count_admin_produits_export_catalogue($date_debut, $date_fin, $mode, $recherche, $categorie_id, $marque_id, $fournisseur_id);
-$produits_export = get_admin_produits_export_catalogue($date_debut, $date_fin, $mode, $recherche, $categorie_id, $marque_id, $fournisseur_id, 500);
-$export_truncated = $total_export > count($produits_export);
+$total_pages = max(1, (int) ceil($total_export / $export_preview_per_page));
+if ($page > $total_pages) {
+    $page = $total_pages;
+}
+$offset = ($page - 1) * $export_preview_per_page;
+$produits_export = get_admin_produits_export_catalogue(
+    $date_debut,
+    $date_fin,
+    $mode,
+    $recherche,
+    $categorie_id,
+    $marque_id,
+    $fournisseur_id,
+    $export_preview_per_page,
+    $offset
+);
+
+$pagination_query_base = [
+    'date_debut' => $date_debut,
+    'date_fin' => $date_fin,
+    'mode' => $mode,
+    'recherche' => $recherche,
+    'categorie_id' => $categorie_id,
+    'marque_id' => $marque_id,
+    'fournisseur_id' => $fournisseur_id,
+];
 
 $pdf_query = http_build_query([
     'date_debut' => $date_debut,
@@ -238,16 +265,6 @@ $pdf_link_attrs = $export_use_async_pdf
                 </div>
             </form>
 
-            <?php if ($export_truncated): ?>
-            <p class="page-produits-export-truncated" role="status">
-                <i class="fas fa-info-circle" aria-hidden="true"></i>
-                Affichage limité à <?php echo count($produits_export); ?> produits sur
-                <?php echo (int) $total_export; ?> — le PDF inclura tous les
-                résultats<?php echo $export_use_async_pdf ? ' (génération en arrière-plan)' : ''; ?> (max
-                <?php echo (int) EXPORT_CATALOGUE_PDF_MAX; ?>).
-            </p>
-            <?php endif; ?>
-
             <?php if ($total_export === 0): ?>
             <div class="empty-state page-produits-empty">
                 <div class="page-produits-empty__icon" aria-hidden="true"><i class="fas fa-inbox"></i></div>
@@ -262,6 +279,34 @@ $pdf_link_attrs = $export_use_async_pdf
                     <?php include __DIR__ . '/includes/carte_produit_liste.php'; ?>
                     <?php endforeach; ?>
                 </ul>
+
+                <?php if ($total_pages > 1): ?>
+                <nav class="page-produits-pagination page-produits-export-pagination" id="page-produits-export-pagination"
+                    aria-label="Pagination de l’aperçu export">
+                    <?php if ($page > 1): ?>
+                    <?php $prev_q = array_merge($pagination_query_base, ['page' => $page - 1]); ?>
+                    <a href="export-catalogue.php?<?php echo htmlspecialchars(http_build_query($prev_q), ENT_QUOTES, 'UTF-8'); ?>"
+                        class="page-produits-pagination__link">
+                        <i class="fas fa-chevron-left" aria-hidden="true"></i> Précédent
+                    </a>
+                    <?php endif; ?>
+
+                    <span class="page-produits-pagination__info">
+                        Page <?php echo (int) $page; ?> / <?php echo (int) $total_pages; ?>
+                        <span class="page-produits-pagination__detail">(<?php echo (int) $export_preview_per_page; ?> par
+                            page · <?php echo (int) $total_export; ?> au total · le PDF inclut tous les
+                            résultats)</span>
+                    </span>
+
+                    <?php if ($page < $total_pages): ?>
+                    <?php $next_q = array_merge($pagination_query_base, ['page' => $page + 1]); ?>
+                    <a href="export-catalogue.php?<?php echo htmlspecialchars(http_build_query($next_q), ENT_QUOTES, 'UTF-8'); ?>"
+                        class="page-produits-pagination__link">
+                        Suivant <i class="fas fa-chevron-right" aria-hidden="true"></i>
+                    </a>
+                    <?php endif; ?>
+                </nav>
+                <?php endif; ?>
             </div>
             <?php endif; ?>
         </section>

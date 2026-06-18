@@ -284,20 +284,52 @@ function export_catalogue_job_send_json_only(array $job) {
 }
 
 /**
- * @deprecated Utiliser spawn + send_json_only
+ * @deprecated Utiliser spawn + send_json_only + wait_or_run
  * @param array<string, mixed> $job
  */
 function export_catalogue_job_send_json_and_run(array $job) {
-    $spawned = export_catalogue_spawn_worker((string) $job['id'], (string) $job['token']);
+    export_catalogue_spawn_worker((string) $job['id'], (string) $job['token']);
     export_catalogue_job_send_json_only($job);
-    if (!$spawned) {
-        ignore_user_abort(true);
-        if (function_exists('set_time_limit')) {
-            @set_time_limit(0);
-        }
-        export_catalogue_job_run((string) $job['id'], (string) $job['token']);
+
+    ignore_user_abort(true);
+    if (function_exists('set_time_limit')) {
+        @set_time_limit(0);
     }
+    if (function_exists('ini_set')) {
+        @ini_set('memory_limit', '768M');
+        @ini_set('display_errors', '0');
+    }
+
+    export_catalogue_job_wait_or_run((string) $job['id'], (string) $job['token']);
     exit;
+}
+
+/**
+ * Attend que le worker démarre ; sinon exécute l’export dans ce processus (secours production).
+ */
+function export_catalogue_job_wait_or_run($job_id, $token, $max_wait_ms = 4000) {
+    $step_us = 200000;
+    $attempts = max(1, (int) ceil($max_wait_ms / ($step_us / 1000)));
+
+    for ($i = 0; $i < $attempts; $i++) {
+        usleep($step_us);
+        $job = export_catalogue_job_load($job_id);
+        if ($job === null) {
+            return;
+        }
+        $status = (string) ($job['status'] ?? '');
+        if (in_array($status, ['running', 'done', 'failed', 'cancelled'], true)) {
+            return;
+        }
+    }
+
+    $job = export_catalogue_job_load($job_id);
+    if ($job === null) {
+        return;
+    }
+    if (($job['status'] ?? '') === 'queued') {
+        export_catalogue_job_run($job_id, $token);
+    }
 }
 
 /**
@@ -335,9 +367,6 @@ function export_catalogue_php_binary() {
     return null;
 }
 
-/**
- * @return bool
- */
 /**
  * @return bool
  */
@@ -423,20 +452,43 @@ function export_catalogue_spawn_worker_http_request($url) {
         return false;
     }
 
+    $hosts = [];
+    $hosts[] = $parts['host'];
+    if ($parts['host'] !== '127.0.0.1' && $parts['host'] !== 'localhost') {
+        $hosts[] = '127.0.0.1';
+    }
+
+    foreach ($hosts as $host) {
+        $try = $parts;
+        $try['host'] = $host;
+        if (export_catalogue_spawn_worker_http_request_once($try)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * @param array<string, mixed> $parts
+ * @return bool
+ */
+function export_catalogue_spawn_worker_http_request_once(array $parts) {
     $scheme = ($parts['scheme'] ?? 'http') === 'https' ? 'ssl://' : '';
-    $host = $parts['host'];
+    $host = (string) $parts['host'];
     $port = isset($parts['port']) ? (int) $parts['port'] : (($parts['scheme'] ?? 'http') === 'https' ? 443 : 80);
     $path = ($parts['path'] ?? '/') . (isset($parts['query']) ? '?' . $parts['query'] : '');
 
     $errno = 0;
     $errstr = '';
-    $fp = @stream_socket_client($scheme . $host . ':' . $port, $errno, $errstr, 5);
+    $fp = @stream_socket_client($scheme . $host . ':' . $port, $errno, $errstr, 8);
     if ($fp === false) {
         return false;
     }
 
-    stream_set_timeout($fp, 2);
-    $req = "GET {$path} HTTP/1.1\r\nHost: {$host}\r\nConnection: Close\r\n\r\n";
+    stream_set_timeout($fp, 3);
+    $host_header = $_SERVER['HTTP_HOST'] ?? $host;
+    $req = "GET {$path} HTTP/1.1\r\nHost: {$host_header}\r\nConnection: Close\r\n\r\n";
     @fwrite($fp, $req);
     @fclose($fp);
 
