@@ -81,12 +81,20 @@ function export_catalogue_job_save(array $job) {
     }
     $job['updated_at'] = time();
     $path = export_catalogue_job_file_path($job['id']);
-    $json = json_encode($job, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+    if ($path === '') {
+        return false;
+    }
+    $json = json_encode($job, JSON_UNESCAPED_UNICODE);
     if ($json === false) {
         return false;
     }
 
-    return @file_put_contents($path, $json, LOCK_EX) !== false;
+    $tmp = $path . '.' . getmypid() . '.' . bin2hex(random_bytes(4)) . '.tmp';
+    if (@file_put_contents($tmp, $json) === false) {
+        return false;
+    }
+
+    return @rename($tmp, $path);
 }
 
 /**
@@ -203,11 +211,42 @@ function export_catalogue_job_pdf_output_path($job_id) {
 }
 
 /**
- * Envoie la réponse JSON au navigateur puis exécute l’export (sans worker externe).
+ * @return bool
+ */
+function export_catalogue_job_is_cancelled($job_id) {
+    $job = export_catalogue_job_load($job_id);
+
+    return is_array($job) && (($job['status'] ?? '') === 'cancelled');
+}
+
+/**
+ * @return bool
+ */
+function export_catalogue_job_cancel($job_id, $token, $admin_id) {
+    $job = export_catalogue_job_load($job_id);
+    if ($job === null || !export_catalogue_job_belongs_to_admin($job, $admin_id)) {
+        return false;
+    }
+    if (!export_catalogue_job_token_valid($job, $token)) {
+        return false;
+    }
+    if (($job['status'] ?? '') === 'done') {
+        return true;
+    }
+    $job['status'] = 'cancelled';
+    $job['progress'] = 0;
+    $job['message'] = 'Export annulé';
+    $job['error'] = '';
+
+    return export_catalogue_job_save($job);
+}
+
+/**
+ * Envoie la réponse JSON de démarrage (sans bloquer sur l’export).
  *
  * @param array<string, mixed> $job
  */
-function export_catalogue_job_send_json_and_run(array $job) {
+function export_catalogue_job_send_json_only(array $job) {
     $payload = json_encode([
         'ok' => true,
         'job_id' => $job['id'],
@@ -242,17 +281,22 @@ function export_catalogue_job_send_json_and_run(array $job) {
     } else {
         @flush();
     }
+}
 
-    ignore_user_abort(true);
-    if (function_exists('set_time_limit')) {
-        @set_time_limit(0);
+/**
+ * @deprecated Utiliser spawn + send_json_only
+ * @param array<string, mixed> $job
+ */
+function export_catalogue_job_send_json_and_run(array $job) {
+    $spawned = export_catalogue_spawn_worker((string) $job['id'], (string) $job['token']);
+    export_catalogue_job_send_json_only($job);
+    if (!$spawned) {
+        ignore_user_abort(true);
+        if (function_exists('set_time_limit')) {
+            @set_time_limit(0);
+        }
+        export_catalogue_job_run((string) $job['id'], (string) $job['token']);
     }
-    if (function_exists('ini_set')) {
-        @ini_set('memory_limit', '768M');
-        @ini_set('display_errors', '0');
-    }
-
-    export_catalogue_job_run((string) $job['id'], (string) $job['token']);
     exit;
 }
 
@@ -294,27 +338,49 @@ function export_catalogue_php_binary() {
 /**
  * @return bool
  */
-function export_catalogue_spawn_worker($job_id, $token) {
+/**
+ * @return bool
+ */
+function export_catalogue_spawn_worker_cli($job_id, $token) {
     $worker = realpath(__DIR__ . '/../admin/produits/export-catalogue-pdf-worker.php');
     if ($worker === false) {
-        return export_catalogue_spawn_worker_http($job_id, $token);
+        return false;
     }
 
     $php = export_catalogue_php_binary();
-    if ($php !== null) {
-        $cmd = escapeshellarg($php) . ' ' . escapeshellarg($worker) . ' '
-            . escapeshellarg($job_id) . ' ' . escapeshellarg($token);
-        if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
-            @pclose(@popen('cmd /c start "" /B ' . $cmd, 'r'));
+    if ($php === null) {
+        return false;
+    }
 
-            return true;
-        }
-        @exec($cmd . ' > /dev/null 2>&1 &');
+    $cmd = escapeshellarg($php) . ' ' . escapeshellarg($worker) . ' '
+        . escapeshellarg($job_id) . ' ' . escapeshellarg($token);
+    if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+        @pclose(@popen('cmd /c start "" /B ' . $cmd, 'r'));
 
         return true;
     }
+    @exec($cmd . ' > /dev/null 2>&1 &');
 
-    return export_catalogue_spawn_worker_http($job_id, $token);
+    return true;
+}
+
+/**
+ * @return bool
+ */
+function export_catalogue_spawn_worker($job_id, $token) {
+    if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+        if (export_catalogue_spawn_worker_cli($job_id, $token)) {
+            return true;
+        }
+
+        return export_catalogue_spawn_worker_http($job_id, $token);
+    }
+
+    if (export_catalogue_spawn_worker_http($job_id, $token)) {
+        return true;
+    }
+
+    return export_catalogue_spawn_worker_cli($job_id, $token);
 }
 
 /**
@@ -324,14 +390,34 @@ function export_catalogue_spawn_worker($job_id, $token) {
  */
 function export_catalogue_spawn_worker_http($job_id, $token) {
     require_once __DIR__ . '/site_url.php';
-    $base = rtrim(get_site_base_url(), '/');
-    if ($base === '') {
+
+    $base_url = rtrim(get_site_base_url(), '/');
+    $root_path = rtrim(get_public_root_uri_path(), '/');
+    $worker_path = $root_path . '/admin/produits/export-catalogue-pdf-worker.php?job='
+        . rawurlencode($job_id) . '&token=' . rawurlencode($token);
+
+    if ($base_url !== '') {
+        $url = $base_url . $worker_path;
+        if (export_catalogue_spawn_worker_http_request($url)) {
+            return true;
+        }
+    }
+
+    $host = $_SERVER['HTTP_HOST'] ?? '';
+    if ($host === '') {
         return false;
     }
 
-    $url = $base . '/admin/produits/export-catalogue-pdf-worker.php?job='
-        . rawurlencode($job_id) . '&token=' . rawurlencode($token);
+    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    $url = $scheme . '://' . $host . $worker_path;
 
+    return export_catalogue_spawn_worker_http_request($url);
+}
+
+/**
+ * @return bool
+ */
+function export_catalogue_spawn_worker_http_request($url) {
     $parts = parse_url($url);
     if ($parts === false || empty($parts['host'])) {
         return false;
@@ -342,11 +428,14 @@ function export_catalogue_spawn_worker_http($job_id, $token) {
     $port = isset($parts['port']) ? (int) $parts['port'] : (($parts['scheme'] ?? 'http') === 'https' ? 443 : 80);
     $path = ($parts['path'] ?? '/') . (isset($parts['query']) ? '?' . $parts['query'] : '');
 
-    $fp = @fsockopen($scheme . $host, $port, $errno, $errstr, 3);
+    $errno = 0;
+    $errstr = '';
+    $fp = @stream_socket_client($scheme . $host . ':' . $port, $errno, $errstr, 5);
     if ($fp === false) {
         return false;
     }
 
+    stream_set_timeout($fp, 2);
     $req = "GET {$path} HTTP/1.1\r\nHost: {$host}\r\nConnection: Close\r\n\r\n";
     @fwrite($fp, $req);
     @fclose($fp);
@@ -478,6 +567,9 @@ function export_catalogue_job_run($job_id, $token) {
     if (($job['status'] ?? '') === 'done') {
         return true;
     }
+    if (($job['status'] ?? '') === 'cancelled') {
+        return false;
+    }
 
     if (function_exists('set_time_limit')) {
         @set_time_limit(0);
@@ -505,7 +597,11 @@ function export_catalogue_job_run($job_id, $token) {
         return false;
     }
 
-    $progress_load = function ($loaded, $total_count) use (&$job) {
+    $progress_load = function ($loaded, $total_count) use (&$job, $job_id) {
+        if (export_catalogue_job_is_cancelled($job_id)) {
+            export_catalogue_job_fail($job, 'Export annulé.');
+            throw new RuntimeException('cancelled');
+        }
         $pct = 5 + (int) floor(35 * $loaded / max(1, $total_count));
         export_catalogue_job_update_progress(
             $job,
@@ -515,22 +611,37 @@ function export_catalogue_job_run($job_id, $token) {
         );
     };
 
-    $produits = get_admin_produits_export_catalogue_all(
-        (string) ($filters['date_debut'] ?? ''),
-        (string) ($filters['date_fin'] ?? ''),
-        (string) ($filters['mode'] ?? 'tous'),
-        (string) ($filters['recherche'] ?? ''),
-        (int) ($filters['categorie_id'] ?? 0),
-        (int) ($filters['marque_id'] ?? 0),
-        (int) ($filters['fournisseur_id'] ?? 0),
-        EXPORT_CATALOGUE_BATCH_SIZE,
-        $progress_load
-    );
+    try {
+        $produits = get_admin_produits_export_catalogue_all(
+            (string) ($filters['date_debut'] ?? ''),
+            (string) ($filters['date_fin'] ?? ''),
+            (string) ($filters['mode'] ?? 'tous'),
+            (string) ($filters['recherche'] ?? ''),
+            (int) ($filters['categorie_id'] ?? 0),
+            (int) ($filters['marque_id'] ?? 0),
+            (int) ($filters['fournisseur_id'] ?? 0),
+            EXPORT_CATALOGUE_BATCH_SIZE,
+            $progress_load
+        );
+    } catch (RuntimeException $e) {
+        if ($e->getMessage() === 'cancelled') {
+            return false;
+        }
+        throw $e;
+    }
 
-    export_catalogue_job_update_progress($job, 45, 'Construction du document PDF…', 'running');
+    if (export_catalogue_job_is_cancelled($job_id)) {
+        export_catalogue_job_fail($job, 'Export annulé.');
+        return false;
+    }
+
+    export_catalogue_job_update_progress($job, 42, 'Construction du document PDF…', 'running');
 
     $output_path = export_catalogue_job_pdf_output_path($job_id);
-    $ok = export_catalogue_write_pdf_file($produits, $meta, $output_path, function ($pct, $msg) use (&$job) {
+    $ok = export_catalogue_write_pdf_file($produits, $meta, $output_path, function ($pct, $msg) use (&$job, $job_id) {
+        if (export_catalogue_job_is_cancelled($job_id)) {
+            return;
+        }
         export_catalogue_job_update_progress($job, $pct, $msg, 'running');
     });
 

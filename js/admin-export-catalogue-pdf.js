@@ -1,17 +1,64 @@
 /**
- * Export catalogue PDF en arrière-plan — barre de progression dans l’en-tête.
+ * Export catalogue PDF — suivi persistant (localStorage + polling global admin).
  */
 (function () {
     'use strict';
 
+    var STORAGE_KEY = 'fouta_export_catalogue_job';
+    var POLL_MS = 800;
     var pollTimer = null;
     var doneTimer = null;
-    var activeJob = null;
     var frameId = 'adminPdfDownloadFrame';
-    var exportRunning = false;
+    var floaterId = 'exportCataloguePdfFloater';
 
     function qs(id) {
         return document.getElementById(id);
+    }
+
+    function getAdminBase() {
+        var path = window.location.pathname || '';
+        var m = path.match(/^(.*\/admin\/)/);
+        return m ? m[1] : '/admin/';
+    }
+
+    function endpoint(name) {
+        return getAdminBase() + 'produits/export-catalogue-pdf-' + name + '.php';
+    }
+
+    function isExportPage() {
+        return document.querySelector('.page-produits-export') !== null;
+    }
+
+    function loadStoredJob() {
+        try {
+            var raw = localStorage.getItem(STORAGE_KEY);
+            if (!raw) {
+                return null;
+            }
+            var data = JSON.parse(raw);
+            if (!data || !data.job_id || !data.token) {
+                return null;
+            }
+            return data;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function saveStoredJob(job) {
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(job));
+        } catch (e) {
+            /* quota */
+        }
+    }
+
+    function clearStoredJob() {
+        try {
+            localStorage.removeItem(STORAGE_KEY);
+        } catch (e) {
+            /* ignore */
+        }
     }
 
     function ensureFrame() {
@@ -29,6 +76,36 @@
         return frame;
     }
 
+    function ensureFloater() {
+        var el = document.getElementById(floaterId);
+        if (el) {
+            return el;
+        }
+        el = document.createElement('div');
+        el.id = floaterId;
+        el.className = 'export-catalogue-floater';
+        el.hidden = true;
+        el.setAttribute('role', 'status');
+        el.setAttribute('aria-live', 'polite');
+        el.innerHTML = ''
+            + '<div class="export-catalogue-floater__inner">'
+            + '  <div class="export-catalogue-floater__head">'
+            + '    <span class="export-catalogue-floater__title"><i class="fas fa-file-pdf" aria-hidden="true"></i> Export catalogue</span>'
+            + '    <span class="export-catalogue-floater__percent" data-export-pct>0 %</span>'
+            + '  </div>'
+            + '  <p class="export-catalogue-floater__status" data-export-status>En cours…</p>'
+            + '  <div class="export-catalogue-floater__track"><div class="export-catalogue-floater__bar" data-export-bar></div></div>'
+            + '  <div class="export-catalogue-floater__actions">'
+            + '    <button type="button" class="btn-secondary export-catalogue-floater__cancel" data-export-cancel>'
+            + '      <i class="fas fa-times" aria-hidden="true"></i> Annuler'
+            + '    </button>'
+            + '  </div>'
+            + '</div>';
+        document.body.appendChild(el);
+        el.querySelector('[data-export-cancel]').addEventListener('click', onCancelClick);
+        return el;
+    }
+
     function setPdfButtonsDisabled(disabled) {
         document.querySelectorAll('[data-export-catalogue-async]').forEach(function (el) {
             if (disabled) {
@@ -41,26 +118,43 @@
         });
     }
 
-    function showProgressPanel() {
-        var panel = qs('exportCataloguePdfProgress');
-        var actions = qs('exportCataloguePdfHeroActions');
-        var cancelBtn = qs('exportCataloguePdfCancel');
-        if (panel) {
-            panel.hidden = false;
-            panel.setAttribute('aria-busy', 'true');
+    function showUi(force) {
+        if (!force) {
+            var stored = loadStoredJob();
+            if (!stored || stored.cancelled) {
+                hideUi();
+                return;
+            }
         }
-        if (actions) {
-            actions.hidden = true;
-        }
-        if (cancelBtn) {
-            cancelBtn.hidden = false;
-            cancelBtn.innerHTML = '<i class="fas fa-times" aria-hidden="true"></i> Annuler';
-        }
+
         setPdfButtonsDisabled(true);
-        exportRunning = true;
+
+        if (isExportPage()) {
+            var panel = qs('exportCataloguePdfProgress');
+            var actions = qs('exportCataloguePdfHeroActions');
+            var cancelBtn = qs('exportCataloguePdfCancel');
+            if (panel) {
+                panel.hidden = false;
+                panel.setAttribute('aria-busy', 'true');
+            }
+            if (actions) {
+                actions.hidden = true;
+            }
+            if (cancelBtn) {
+                cancelBtn.hidden = false;
+                cancelBtn.innerHTML = '<i class="fas fa-times" aria-hidden="true"></i> Annuler';
+            }
+            var floater = document.getElementById(floaterId);
+            if (floater) {
+                floater.hidden = true;
+            }
+        } else {
+            var floaterEl = ensureFloater();
+            floaterEl.hidden = false;
+        }
     }
 
-    function hideProgressPanel() {
+    function hideUi() {
         var panel = qs('exportCataloguePdfProgress');
         var actions = qs('exportCataloguePdfHeroActions');
         if (panel) {
@@ -70,8 +164,45 @@
         if (actions) {
             actions.hidden = false;
         }
+        var floater = document.getElementById(floaterId);
+        if (floater) {
+            floater.hidden = true;
+        }
         setPdfButtonsDisabled(false);
-        exportRunning = false;
+    }
+
+    function setProgress(percent, message) {
+        var p = Math.max(0, Math.min(100, parseInt(percent, 10) || 0));
+        var msg = message || '';
+
+        var bar = qs('exportCataloguePdfBar');
+        var pct = qs('exportCataloguePdfPercent');
+        var status = qs('exportCataloguePdfStatus');
+        if (bar) {
+            bar.style.width = p + '%';
+        }
+        if (pct) {
+            pct.textContent = p + ' %';
+        }
+        if (status && msg) {
+            status.textContent = msg;
+        }
+
+        var floater = document.getElementById(floaterId);
+        if (floater && !floater.hidden) {
+            var fBar = floater.querySelector('[data-export-bar]');
+            var fPct = floater.querySelector('[data-export-pct]');
+            var fStatus = floater.querySelector('[data-export-status]');
+            if (fBar) {
+                fBar.style.width = p + '%';
+            }
+            if (fPct) {
+                fPct.textContent = p + ' %';
+            }
+            if (fStatus && msg) {
+                fStatus.textContent = msg;
+            }
+        }
     }
 
     function stopPolling() {
@@ -83,52 +214,6 @@
             clearTimeout(doneTimer);
             doneTimer = null;
         }
-        activeJob = null;
-    }
-
-    function cancelExport() {
-        stopPolling();
-        hideProgressPanel();
-    }
-
-    function setProgress(percent, message) {
-        var bar = qs('exportCataloguePdfBar');
-        var pct = qs('exportCataloguePdfPercent');
-        var status = qs('exportCataloguePdfStatus');
-        var p = Math.max(0, Math.min(100, parseInt(percent, 10) || 0));
-        if (bar) {
-            bar.style.width = p + '%';
-        }
-        if (pct) {
-            pct.textContent = p + ' %';
-        }
-        if (status && message) {
-            status.textContent = message;
-        }
-    }
-
-    function showDone(downloadUrl, filename) {
-        var cancelBtn = qs('exportCataloguePdfCancel');
-        setProgress(100, 'Export terminé — téléchargement du PDF…');
-        if (cancelBtn) {
-            cancelBtn.hidden = true;
-        }
-        ensureFrame().src = downloadUrl;
-
-        doneTimer = setTimeout(function () {
-            stopPolling();
-            hideProgressPanel();
-        }, 2500);
-    }
-
-    function showError(message) {
-        var cancelBtn = qs('exportCataloguePdfCancel');
-        setProgress(0, message || 'Une erreur est survenue.');
-        if (cancelBtn) {
-            cancelBtn.hidden = false;
-            cancelBtn.innerHTML = '<i class="fas fa-times" aria-hidden="true"></i> Fermer';
-        }
-        stopPolling();
     }
 
     function parseJsonResponse(res) {
@@ -152,50 +237,146 @@
         });
     }
 
+    function triggerDownload(downloadUrl) {
+        ensureFrame().src = downloadUrl;
+    }
+
+    function finishSuccess(downloadUrl, filename) {
+        var stored = loadStoredJob();
+        setProgress(100, 'Export terminé — téléchargement du PDF…');
+
+        if (stored && !stored.downloaded && downloadUrl) {
+            stored.downloaded = true;
+            saveStoredJob(stored);
+            triggerDownload(downloadUrl);
+        }
+
+        doneTimer = setTimeout(function () {
+            stopPolling();
+            clearStoredJob();
+            hideUi();
+        }, 3000);
+    }
+
+    function finishError(message) {
+        var stored = loadStoredJob();
+        if (stored) {
+            stored.failed = true;
+            saveStoredJob(stored);
+        }
+        setProgress(0, message || 'Une erreur est survenue.');
+
+        var cancelBtn = qs('exportCataloguePdfCancel');
+        if (cancelBtn) {
+            cancelBtn.hidden = false;
+            cancelBtn.innerHTML = '<i class="fas fa-times" aria-hidden="true"></i> Fermer';
+        }
+
+        var floater = document.getElementById(floaterId);
+        if (floater && !floater.hidden) {
+            var btn = floater.querySelector('[data-export-cancel]');
+            if (btn) {
+                btn.innerHTML = '<i class="fas fa-times" aria-hidden="true"></i> Fermer';
+            }
+        }
+
+        stopPolling();
+    }
+
     function pollStatus() {
-        if (!activeJob) {
+        var stored = loadStoredJob();
+        if (!stored || stored.cancelled) {
+            stopPolling();
+            hideUi();
             return;
         }
-        var url = 'export-catalogue-pdf-status.php?job=' + encodeURIComponent(activeJob.job_id)
-            + '&token=' + encodeURIComponent(activeJob.token);
+
+        var url = endpoint('status') + '?job=' + encodeURIComponent(stored.job_id)
+            + '&token=' + encodeURIComponent(stored.token);
 
         fetch(url, { credentials: 'same-origin', cache: 'no-store' })
             .then(parseJsonResponse)
             .then(function (data) {
-                if (!activeJob) {
+                var current = loadStoredJob();
+                if (!current || current.cancelled) {
                     return;
                 }
                 if (!data || !data.ok) {
-                    showError((data && data.error) ? data.error : 'Statut indisponible.');
+                    finishError((data && data.error) ? data.error : 'Statut indisponible.');
                     return;
                 }
 
                 setProgress(data.progress, data.message);
 
                 if (data.status === 'done' && data.download_url) {
-                    if (pollTimer) {
-                        clearInterval(pollTimer);
-                        pollTimer = null;
-                    }
-                    showDone(data.download_url, data.filename);
+                    stopPolling();
+                    finishSuccess(data.download_url, data.filename);
                 } else if (data.status === 'failed') {
-                    showError(data.error || data.message || 'Échec de l’export.');
+                    finishError(data.error || data.message || 'Échec de l’export.');
+                } else if (data.status === 'cancelled') {
+                    clearStoredJob();
+                    stopPolling();
+                    hideUi();
                 }
             })
             .catch(function () {
-                /* réseau temporaire — on réessaie au prochain tick */
+                /* réseau temporaire */
             });
     }
 
-    function startAsyncExport(query) {
-        if (exportRunning) {
+    function startPolling() {
+        if (pollTimer) {
+            return;
+        }
+        showUi();
+        pollStatus();
+        pollTimer = setInterval(pollStatus, POLL_MS);
+    }
+
+    function onCancelClick() {
+        var stored = loadStoredJob();
+        if (!stored) {
+            hideUi();
             return;
         }
 
-        showProgressPanel();
+        if (stored.failed) {
+            clearStoredJob();
+            hideUi();
+            return;
+        }
+
+        stored.cancelled = true;
+        saveStoredJob(stored);
+
+        fetch(endpoint('cancel'), {
+            method: 'POST',
+            credentials: 'same-origin',
+            cache: 'no-store',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+            },
+            body: 'job=' + encodeURIComponent(stored.job_id) + '&token=' + encodeURIComponent(stored.token)
+        }).catch(function () {
+            /* ignore */
+        });
+
+        stopPolling();
+        clearStoredJob();
+        hideUi();
+    }
+
+    function startAsyncExport(query) {
+        var existing = loadStoredJob();
+        if (existing && existing.job_id && existing.token && !existing.cancelled && !existing.failed && !existing.downloaded) {
+            startPolling();
+            return;
+        }
+
+        showUi(true);
         setProgress(0, 'Démarrage de l’export…');
 
-        fetch('export-catalogue-pdf-start.php', {
+        fetch(endpoint('start'), {
             method: 'POST',
             credentials: 'same-origin',
             cache: 'no-store',
@@ -206,24 +387,36 @@
         })
             .then(parseJsonResponse)
             .then(function (data) {
-                if (!exportRunning) {
-                    return;
-                }
                 if (!data || !data.ok) {
-                    showError((data && data.error) ? data.error : 'Impossible de démarrer l’export.');
+                    finishError((data && data.error) ? data.error : 'Impossible de démarrer l’export.');
                     return;
                 }
-                activeJob = {
+                saveStoredJob({
                     job_id: data.job_id,
-                    token: data.token
-                };
-                setProgress(3, 'Tâche créée — préparation du catalogue…');
-                pollStatus();
-                pollTimer = setInterval(pollStatus, 1500);
+                    token: data.token,
+                    cancelled: false,
+                    downloaded: false,
+                    failed: false,
+                    started_at: Date.now()
+                });
+                startPolling();
             })
             .catch(function (err) {
-                showError((err && err.message) ? err.message : 'Erreur réseau lors du démarrage de l’export.');
+                finishError((err && err.message) ? err.message : 'Erreur réseau lors du démarrage de l’export.');
             });
+    }
+
+    function resumeIfNeeded() {
+        var stored = loadStoredJob();
+        if (!stored || stored.cancelled || stored.failed) {
+            if (stored && (stored.cancelled || stored.failed)) {
+                clearStoredJob();
+            }
+            return;
+        }
+        if (stored.job_id && stored.token) {
+            startPolling();
+        }
     }
 
     document.addEventListener('click', function (event) {
@@ -246,18 +439,13 @@
     document.addEventListener('DOMContentLoaded', function () {
         var cancelBtn = qs('exportCataloguePdfCancel');
         if (cancelBtn) {
-            cancelBtn.addEventListener('click', function () {
-                if (exportRunning && activeJob) {
-                    cancelExport();
-                    return;
-                }
-                hideProgressPanel();
-            });
+            cancelBtn.addEventListener('click', onCancelClick);
         }
 
-        var page = document.querySelector('.page-produits-export');
-        if (page && window.location.search.indexOf('async_pdf=1') !== -1) {
-            var firstBtn = page.querySelector('[data-export-catalogue-async]');
+        resumeIfNeeded();
+
+        if (isExportPage() && window.location.search.indexOf('async_pdf=1') !== -1) {
+            var firstBtn = document.querySelector('[data-export-catalogue-async]');
             if (firstBtn) {
                 var q = firstBtn.getAttribute('data-export-query') || '';
                 if (q !== '') {

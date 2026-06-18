@@ -20,6 +20,12 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
 require_once __DIR__ . '/../includes/require_access_json.php';
 require_once __DIR__ . '/../../includes/export_catalogue_job.php';
 
+$admin_id = (int) $_SESSION['admin_id'];
+
+if (function_exists('session_write_close')) {
+    session_write_close();
+}
+
 while (ob_get_level() > 0) {
     ob_end_clean();
 }
@@ -43,7 +49,7 @@ if ($job === null) {
     exit;
 }
 
-if (!export_catalogue_job_belongs_to_admin($job, (int) $_SESSION['admin_id'])) {
+if (!export_catalogue_job_belongs_to_admin($job, $admin_id)) {
     http_response_code(403);
     echo json_encode(['ok' => false, 'error' => 'Accès refusé.'], JSON_UNESCAPED_UNICODE);
     exit;

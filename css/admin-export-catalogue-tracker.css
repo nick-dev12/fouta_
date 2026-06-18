@@ -1,0 +1,77 @@
+/**
+ * Bandeau flottant — suivi export catalogue PDF (toutes pages admin).
+ */
+
+.export-catalogue-floater {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 11000;
+  width: min(92vw, 360px);
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: var(--blanc, #fff);
+  border: 1px solid rgba(53, 100, 166, 0.2);
+  box-shadow: 0 12px 36px rgba(53, 100, 166, 0.22);
+}
+
+.export-catalogue-floater__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.export-catalogue-floater__title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--couleur-dominante, #3564a6);
+}
+
+.export-catalogue-floater__percent {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--couleur-dominante, #3564a6);
+}
+
+.export-catalogue-floater__status {
+  margin: 0 0 8px;
+  font-size: 0.84rem;
+  color: var(--texte-fonce, #0d0d0d);
+  line-height: 1.35;
+}
+
+.export-catalogue-floater__track {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(53, 100, 166, 0.15);
+  overflow: hidden;
+}
+
+.export-catalogue-floater__bar {
+  height: 100%;
+  width: 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #3564a6, #4a7ab8);
+  transition: width 0.35s ease;
+}
+
+.export-catalogue-floater__actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+.export-catalogue-floater__cancel {
+  font-size: 0.82rem;
+}
+
+@media (max-width: 639px) {
+  .export-catalogue-floater {
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    width: auto;
+  }
+}

@@ -367,7 +367,6 @@ $pdf_link_attrs = $export_use_async_pdf
         });
     });
     </script>
-    <script src="/js/admin-export-catalogue-pdf.js<?php echo asset_version_query(); ?>"></script>
 </body>
 
 </html>
