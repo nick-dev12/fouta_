@@ -19,6 +19,8 @@
         });
     })();
 </script>
+<?php require_once __DIR__ . '/../../includes/asset_version.php'; ?>
+<script src="/js/admin-pdf-download.js<?php echo asset_version_query(); ?>"></script>
 </body>
 </html>
 

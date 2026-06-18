@@ -2151,4 +2151,142 @@ function get_produits_by_stock_article($stock_article_id)
     return [];
 }
 
+/**
+ * Filtre date pour export catalogue admin.
+ *
+ * @param string $mode complet|ajout|modification|tous
+ * @param string $date_debut Y-m-d
+ * @param string $date_fin Y-m-d
+ * @param array<string, mixed> $params
+ * @return string SQL AND …
+ */
+function admin_produits_export_periode_sql($mode, $date_debut, $date_fin, array &$params) {
+    $allowed = ['complet', 'ajout', 'modification', 'tous'];
+    $mode = in_array($mode, $allowed, true) ? $mode : 'tous';
+
+    if ($mode === 'complet') {
+        return '';
+    }
+
+    $debut = $date_debut . ' 00:00:00';
+    $fin = $date_fin . ' 23:59:59';
+    $params['exp_debut'] = $debut;
+    $params['exp_fin'] = $fin;
+
+    if ($mode === 'ajout') {
+        return ' AND p.date_creation BETWEEN :exp_debut AND :exp_fin';
+    }
+    if ($mode === 'modification') {
+        return ' AND p.date_modification IS NOT NULL AND p.date_modification BETWEEN :exp_debut AND :exp_fin';
+    }
+
+    return ' AND (
+        p.date_creation BETWEEN :exp_debut AND :exp_fin
+        OR (p.date_modification IS NOT NULL AND p.date_modification BETWEEN :exp_debut AND :exp_fin)
+    )';
+}
+
+/**
+ * Produits pour export catalogue (période, recherche, filtres).
+ *
+ * @param string $date_debut Y-m-d
+ * @param string $date_fin Y-m-d
+ * @param string $mode complet|ajout|modification|tous
+ * @param string $recherche
+ * @param int $categorie_id
+ * @param int $marque_id
+ * @param int $fournisseur_id
+ * @param int $limit
+ * @return array<int, array<string, mixed>>
+ */
+function get_admin_produits_export_catalogue($date_debut, $date_fin, $mode = 'tous', $recherche = '', $categorie_id = 0, $marque_id = 0, $fournisseur_id = 0, $limit = 500) {
+    global $db;
+
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date_debut) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date_fin)) {
+        return [];
+    }
+    if ($date_debut > $date_fin) {
+        $tmp = $date_debut;
+        $date_debut = $date_fin;
+        $date_fin = $tmp;
+    }
+
+    $limit = max(1, min(1000, (int) $limit));
+
+    try {
+        $jb = produits_catalog_join_bundle();
+        $selx = $jb['sel'];
+        $joinx = $jb['join'];
+        $params = [];
+
+        $sql = "
+            SELECT p.*, c.nom AS categorie_nom $selx
+            FROM produits p
+            LEFT JOIN categories c ON p.categorie_id = c.id
+            $joinx
+            WHERE 1=1
+        ";
+        $sql .= admin_produits_liste_filtres_sql($categorie_id, $marque_id, $fournisseur_id, $params);
+        $sql .= admin_produits_export_periode_sql($mode, $date_debut, $date_fin, $params);
+        $sql .= admin_produits_liste_recherche_sql($recherche, $params);
+        $sql .= ' ORDER BY COALESCE(p.date_modification, p.date_creation) DESC, p.id DESC LIMIT :exp_limit';
+
+        $stmt = $db->prepare($sql);
+        foreach ($params as $k => $v) {
+            $stmt->bindValue(':' . $k, $v, is_int($v) ? PDO::PARAM_INT : PDO::PARAM_STR);
+        }
+        $stmt->bindValue(':exp_limit', $limit, PDO::PARAM_INT);
+        $stmt->execute();
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        return $rows ? $rows : [];
+    } catch (PDOException $e) {
+        return [];
+    }
+}
+
+/**
+ * Nombre de produits pour export catalogue (même filtres).
+ */
+function count_admin_produits_export_catalogue($date_debut, $date_fin, $mode = 'tous', $recherche = '', $categorie_id = 0, $marque_id = 0, $fournisseur_id = 0) {
+    global $db;
+
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date_debut) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date_fin)) {
+        return 0;
+    }
+    if ($date_debut > $date_fin) {
+        $tmp = $date_debut;
+        $date_debut = $date_fin;
+        $date_fin = $tmp;
+    }
+
+    try {
+        $jb = produits_catalog_join_bundle();
+        $joinx = $jb['join'];
+        $params = [];
+
+        $sql = "
+            SELECT COUNT(*) AS cnt
+            FROM produits p
+            LEFT JOIN categories c ON p.categorie_id = c.id
+            $joinx
+            WHERE 1=1
+        ";
+        $sql .= admin_produits_liste_filtres_sql($categorie_id, $marque_id, $fournisseur_id, $params);
+        $sql .= admin_produits_export_periode_sql($mode, $date_debut, $date_fin, $params);
+        $sql .= admin_produits_liste_recherche_sql($recherche, $params);
+
+        $stmt = $db->prepare($sql);
+        foreach ($params as $k => $v) {
+            $stmt->bindValue(':' . $k, $v, is_int($v) ? PDO::PARAM_INT : PDO::PARAM_STR);
+        }
+        $stmt->execute();
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return (int) ($row['cnt'] ?? 0);
+    } catch (PDOException $e) {
+        return 0;
+    }
+}
+
 ?>

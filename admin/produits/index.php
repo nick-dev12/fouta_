@@ -106,6 +106,9 @@ if (!empty($fournisseurs_filtre)) {
                         <a href="ajouter.php" class="btn-primary page-produits-hero__btn">
                             <i class="fas fa-upload" aria-hidden="true"></i> Publier un produit
                         </a>
+                        <a href="export-catalogue.php" class="btn-secondary page-produits-hero__btn">
+                            <i class="fas fa-file-pdf" aria-hidden="true"></i> Export catalogue PDF
+                        </a>
                     <?php endif; ?>
                 </div>
             </div>

@@ -4,6 +4,9 @@
  * GET id=…&type=barcode|qrcode
  */
 
+require_once __DIR__ . '/../../includes/admin_pdf_response.php';
+admin_pdf_request_begin();
+
 session_start();
 
 if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
@@ -18,30 +21,41 @@ $type = isset($_GET['type']) ? strtolower(trim((string) $_GET['type'])) : '';
 
 if ($produit_id <= 0 || !in_array($type, ['barcode', 'qrcode'], true)) {
     http_response_code(400);
+    header('Content-Type: text/plain; charset=utf-8');
     echo 'Paramètres invalides.';
     exit;
 }
 
 require_once __DIR__ . '/../../models/model_produits.php';
 require_once __DIR__ . '/../../includes/export_stock_codes_pdf.php';
+require_once __DIR__ . '/../../includes/site_url.php';
 
 $produit = get_produit_by_id($produit_id);
 if (!$produit) {
     http_response_code(404);
+    header('Content-Type: text/plain; charset=utf-8');
     echo 'Produit introuvable.';
     exit;
+}
+
+$code_fpl = ensure_produit_identifiant_interne($produit_id);
+if ($code_fpl !== null && $code_fpl !== '') {
+    $produit['identifiant_interne'] = $code_fpl;
 }
 
 $ok = false;
 if ($type === 'barcode') {
     $ok = stock_send_barcode_pdf($produit);
 } else {
-    $stock_info_url = get_site_base_url() . '/stock-info.php?id=' . $produit_id;
+    $stock_info_url = rtrim(get_site_base_url(), '/') . '/stock-info.php?id=' . $produit_id;
     $ok = stock_send_qrcode_pdf($produit, $stock_info_url);
 }
 
 if (!$ok) {
-    http_response_code(500);
-    echo 'Impossible de générer le PDF. Vérifiez que le code-barres ou le QR code est disponible.';
-    exit;
+    admin_pdf_send_error_html(
+        'Export PDF impossible',
+        stock_codes_pdf_get_last_error() ?: 'Impossible de générer le PDF.',
+        'ajuster-stock.php?id=' . (int) $produit_id,
+        'Retour à l’ajustement stock'
+    );
 }
