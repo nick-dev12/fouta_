@@ -6,8 +6,10 @@
 
     var STORAGE_KEY = 'fouta_export_catalogue_job';
     var POLL_MS = 800;
+    var QUEUED_STALL_MS = 4000;
     var pollTimer = null;
     var doneTimer = null;
+    var queuedSince = 0;
     var frameId = 'adminPdfDownloadFrame';
     var floaterId = 'exportCataloguePdfFloater';
 
@@ -241,6 +243,29 @@
         ensureFrame().src = downloadUrl;
     }
 
+    function fireRun() {
+        var stored = loadStoredJob();
+        if (!stored || !stored.job_id || !stored.token || stored.cancelled) {
+            return;
+        }
+        try {
+            fetch(endpoint('run'), {
+                method: 'POST',
+                credentials: 'same-origin',
+                cache: 'no-store',
+                keepalive: true,
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+                },
+                body: 'job=' + encodeURIComponent(stored.job_id) + '&token=' + encodeURIComponent(stored.token)
+            }).catch(function () {
+                /* fire-and-forget : le serveur poursuit via ignore_user_abort */
+            });
+        } catch (e) {
+            /* ignore */
+        }
+    }
+
     function finishSuccess(downloadUrl, filename) {
         var stored = loadStoredJob();
         setProgress(100, 'Export terminé — téléchargement du PDF…');
@@ -309,14 +334,26 @@
                 setProgress(data.progress, data.message);
 
                 if (data.status === 'done' && data.download_url) {
+                    queuedSince = 0;
                     stopPolling();
                     finishSuccess(data.download_url, data.filename);
                 } else if (data.status === 'failed') {
+                    queuedSince = 0;
                     finishError(data.error || data.message || 'Échec de l’export.');
                 } else if (data.status === 'cancelled') {
+                    queuedSince = 0;
                     clearStoredJob();
                     stopPolling();
                     hideUi();
+                } else if (data.status === 'queued') {
+                    if (queuedSince === 0) {
+                        queuedSince = Date.now();
+                    } else if (Date.now() - queuedSince > QUEUED_STALL_MS) {
+                        queuedSince = Date.now();
+                        fireRun();
+                    }
+                } else {
+                    queuedSince = 0;
                 }
             })
             .catch(function () {
@@ -328,6 +365,7 @@
         if (pollTimer) {
             return;
         }
+        queuedSince = 0;
         showUi();
         pollStatus();
         pollTimer = setInterval(pollStatus, POLL_MS);
@@ -399,6 +437,7 @@
                     failed: false,
                     started_at: Date.now()
                 });
+                fireRun();
                 startPolling();
             })
             .catch(function (err) {
@@ -415,6 +454,9 @@
             return;
         }
         if (stored.job_id && stored.token) {
+            if (!stored.downloaded) {
+                fireRun();
+            }
             startPolling();
         }
     }

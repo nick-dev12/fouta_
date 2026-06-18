@@ -86,4 +86,5 @@ if ($job === null) {
     exit;
 }
 
-export_catalogue_job_send_json_and_run($job);
+export_catalogue_job_send_json_only($job);
+exit;

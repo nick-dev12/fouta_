@@ -613,15 +613,17 @@ function export_catalogue_job_run($job_id, $token) {
     if ($job === null || !export_catalogue_job_token_valid($job, $token)) {
         return false;
     }
-    if (($job['status'] ?? '') === 'running') {
+    $current_status = (string) ($job['status'] ?? '');
+    if ($current_status === 'running' || $current_status === 'done') {
         return true;
     }
-    if (($job['status'] ?? '') === 'done') {
-        return true;
-    }
-    if (($job['status'] ?? '') === 'cancelled') {
+    if ($current_status === 'cancelled') {
         return false;
     }
+
+    // Revendique la tâche immédiatement pour éviter une double exécution
+    // (un worker serveur et l’appel navigateur peuvent arriver en parallèle).
+    export_catalogue_job_update_progress($job, max(1, (int) ($job['progress'] ?? 0)), 'Démarrage de l’export…', 'running');
 
     if (function_exists('set_time_limit')) {
         @set_time_limit(0);
@@ -634,7 +636,7 @@ function export_catalogue_job_run($job_id, $token) {
     require_once __DIR__ . '/export_produits_catalogue_pdf.php';
     require_once __DIR__ . '/../models/model_produits.php';
 
-    export_catalogue_job_update_progress($job, 2, 'Démarrage de l’export…', 'running');
+    export_catalogue_job_update_progress($job, 2, 'Préparation des données…', 'running');
 
     $filters = is_array($job['filters'] ?? null) ? $job['filters'] : [];
     $meta = is_array($job['meta'] ?? null) ? $job['meta'] : export_catalogue_build_meta_from_filters($filters);
