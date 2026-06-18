@@ -388,7 +388,7 @@ $can_pdf_qrcode = ($stock_info_url !== '');
                             <i class="fas fa-print" aria-hidden="true"></i> Imprimer le code-barres
                         </button>
                         <?php if ($can_pdf_barcode): ?>
-                        <a href="<?php echo htmlspecialchars($pdf_barcode_href, ENT_QUOTES, 'UTF-8'); ?>" class="btn-download-pdf page-ajuster-stock-pdf-btn" target="_blank" rel="noopener">
+                        <a href="<?php echo htmlspecialchars($pdf_barcode_href, ENT_QUOTES, 'UTF-8'); ?>" class="btn-download-pdf page-ajuster-stock-pdf-btn" data-admin-pdf-download>
                             <i class="fas fa-file-pdf" aria-hidden="true"></i> Télécharger PDF
                         </a>
                         <?php endif; ?>
@@ -408,7 +408,7 @@ $can_pdf_qrcode = ($stock_info_url !== '');
                             <i class="fas fa-print" aria-hidden="true"></i> Imprimer le QR code
                         </button>
                         <?php if ($can_pdf_qrcode): ?>
-                        <a href="<?php echo htmlspecialchars($pdf_qrcode_href, ENT_QUOTES, 'UTF-8'); ?>" class="btn-download-pdf page-ajuster-stock-pdf-btn" target="_blank" rel="noopener">
+                        <a href="<?php echo htmlspecialchars($pdf_qrcode_href, ENT_QUOTES, 'UTF-8'); ?>" class="btn-download-pdf page-ajuster-stock-pdf-btn" data-admin-pdf-download>
                             <i class="fas fa-file-pdf" aria-hidden="true"></i> Télécharger PDF
                         </a>
                         <?php endif; ?>
@@ -500,12 +500,12 @@ $can_pdf_qrcode = ($stock_info_url !== '');
             </article>
             <div class="fpl-etiquette-print-actions page-ajuster-stock-code-actions">
                 <?php if ($can_pdf_barcode): ?>
-                <a href="<?php echo htmlspecialchars($pdf_barcode_href, ENT_QUOTES, 'UTF-8'); ?>" class="btn-download-pdf page-ajuster-stock-pdf-btn" target="_blank" rel="noopener">
+                <a href="<?php echo htmlspecialchars($pdf_barcode_href, ENT_QUOTES, 'UTF-8'); ?>" class="btn-download-pdf page-ajuster-stock-pdf-btn" data-admin-pdf-download>
                     <i class="fas fa-file-pdf" aria-hidden="true"></i> Code-barres (PDF)
                 </a>
                 <?php endif; ?>
                 <?php if ($can_pdf_qrcode): ?>
-                <a href="<?php echo htmlspecialchars($pdf_qrcode_href, ENT_QUOTES, 'UTF-8'); ?>" class="btn-download-pdf page-ajuster-stock-pdf-btn" target="_blank" rel="noopener">
+                <a href="<?php echo htmlspecialchars($pdf_qrcode_href, ENT_QUOTES, 'UTF-8'); ?>" class="btn-download-pdf page-ajuster-stock-pdf-btn" data-admin-pdf-download>
                     <i class="fas fa-file-pdf" aria-hidden="true"></i> QR code (PDF)
                 </a>
                 <?php endif; ?>
