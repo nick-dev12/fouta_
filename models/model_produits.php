@@ -2236,6 +2236,10 @@ function get_admin_produits_export_catalogue($date_debut, $date_fin, $mode = 'to
         $date_fin = $tmp;
     }
 
+    if (!$db) {
+        return [];
+    }
+
     $limit = max(1, min(5000, (int) $limit));
     $offset = max(0, (int) $offset);
 
@@ -2329,6 +2333,10 @@ function count_admin_produits_export_catalogue($date_debut, $date_fin, $mode = '
         $tmp = $date_debut;
         $date_debut = $date_fin;
         $date_fin = $tmp;
+    }
+
+    if (!$db) {
+        return 0;
     }
 
     try {

@@ -2,18 +2,75 @@
  * Export catalogue produits (admin/produits/export-catalogue.php)
  */
 
-.page-produits-export-lead {
-  margin: 8px 0 0;
-  font-size: 0.92rem;
-  color: var(--gris-moyen, #737373);
-  max-width: 640px;
-}
-
 .page-produits-export .page-produits-hero__actions {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
   align-items: center;
+}
+
+.page-produits-export-progress {
+  margin: 14px 0 4px;
+  padding: 14px 16px;
+  max-width: 640px;
+  border-radius: 12px;
+  background: rgba(53, 100, 166, 0.08);
+  border: 1px solid rgba(53, 100, 166, 0.18);
+}
+
+.page-produits-export-progress__row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.page-produits-export-progress__status {
+  margin: 0;
+  flex: 1;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--texte-fonce, #0d0d0d);
+  line-height: 1.4;
+}
+
+.page-produits-export-progress__percent {
+  flex-shrink: 0;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--couleur-dominante, #3564a6);
+}
+
+.page-produits-export-progress__track {
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(53, 100, 166, 0.15);
+  overflow: hidden;
+}
+
+.page-produits-export-progress__bar {
+  height: 100%;
+  width: 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #3564a6, #4a7ab8);
+  transition: width 0.35s ease;
+}
+
+.page-produits-export-progress__actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
+.page-produits-export-progress__cancel {
+  font-size: 0.875rem;
+}
+
+.page-produits-export [data-export-catalogue-async].is-export-disabled {
+  pointer-events: none;
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .page-produits-export-filters {
@@ -135,80 +192,4 @@
     width: 100%;
     justify-content: center;
   }
-}
-
-.export-catalogue-pdf-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(13, 13, 13, 0.45);
-  z-index: 12000;
-}
-
-.export-catalogue-pdf-modal {
-  position: fixed;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 12001;
-  width: min(92vw, 440px);
-  padding: 22px 20px 18px;
-  border-radius: 14px;
-  background: var(--blanc, #fff);
-  box-shadow: 0 16px 48px rgba(53, 100, 166, 0.22);
-  border: 1px solid rgba(53, 100, 166, 0.15);
-}
-
-.export-catalogue-pdf-modal__head h3 {
-  margin: 0 0 6px;
-  font-size: 1.05rem;
-  color: var(--couleur-dominante, #3564a6);
-}
-
-.export-catalogue-pdf-modal__lead {
-  margin: 0 0 14px;
-  font-size: 0.875rem;
-  color: var(--gris-moyen, #737373);
-  line-height: 1.4;
-}
-
-.export-catalogue-pdf-progress__track {
-  height: 12px;
-  border-radius: 999px;
-  background: rgba(53, 100, 166, 0.12);
-  overflow: hidden;
-}
-
-.export-catalogue-pdf-progress__bar {
-  height: 100%;
-  width: 0;
-  border-radius: 999px;
-  background: linear-gradient(90deg, #3564a6, #4a7ab8);
-  transition: width 0.35s ease;
-}
-
-.export-catalogue-pdf-progress__percent {
-  margin: 8px 0 0;
-  font-size: 0.82rem;
-  font-weight: 700;
-  color: var(--couleur-dominante, #3564a6);
-  text-align: right;
-}
-
-.export-catalogue-pdf-modal__status {
-  margin: 12px 0 16px;
-  font-size: 0.875rem;
-  color: var(--texte-fonce, #0d0d0d);
-  min-height: 2.6em;
-}
-
-.export-catalogue-pdf-modal__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  justify-content: flex-end;
-}
-
-.export-catalogue-pdf-modal__actions .btn-primary,
-.export-catalogue-pdf-modal__actions .btn-secondary {
-  text-decoration: none;
 }

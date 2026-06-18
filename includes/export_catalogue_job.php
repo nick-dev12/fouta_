@@ -13,6 +13,18 @@ if (!defined('EXPORT_CATALOGUE_PDF_MAX')) {
     define('EXPORT_CATALOGUE_PDF_MAX', 5000);
 }
 
+require_once __DIR__ . '/../conn/conn.php';
+
+/**
+ * Vérifie que la connexion PDO globale est disponible.
+ */
+function export_catalogue_require_db() {
+    global $db;
+    if (!isset($db) || !($db instanceof PDO)) {
+        throw new RuntimeException('Connexion à la base de données impossible.');
+    }
+}
+
 /**
  * @return string
  */
@@ -380,7 +392,7 @@ function export_catalogue_job_cleanup_old() {
  * @return array<string, mixed>
  */
 function export_catalogue_build_meta_from_filters(array $filters) {
-    require_once __DIR__ . '/../conn/conn.php';
+    export_catalogue_require_db();
     require_once __DIR__ . '/export_produits_catalogue_pdf.php';
 
     $date_debut = (string) ($filters['date_debut'] ?? date('Y-m-d'));
@@ -474,7 +486,7 @@ function export_catalogue_job_run($job_id, $token) {
         @ini_set('memory_limit', '768M');
     }
 
-    require_once __DIR__ . '/../conn/conn.php';
+    export_catalogue_require_db();
     require_once __DIR__ . '/export_produits_catalogue_pdf.php';
     require_once __DIR__ . '/../models/model_produits.php';
 

@@ -1,12 +1,14 @@
 /**
- * Export catalogue PDF en arrière-plan + barre de progression.
+ * Export catalogue PDF en arrière-plan — barre de progression dans l’en-tête.
  */
 (function () {
     'use strict';
 
     var pollTimer = null;
+    var doneTimer = null;
     var activeJob = null;
     var frameId = 'adminPdfDownloadFrame';
+    var exportRunning = false;
 
     function qs(id) {
         return document.getElementById(id);
@@ -27,31 +29,66 @@
         return frame;
     }
 
-    function showModal() {
-        var overlay = qs('exportCataloguePdfOverlay');
-        var modal = qs('exportCataloguePdfModal');
-        if (overlay) {
-            overlay.hidden = false;
-        }
-        if (modal) {
-            modal.hidden = false;
-        }
+    function setPdfButtonsDisabled(disabled) {
+        document.querySelectorAll('[data-export-catalogue-async]').forEach(function (el) {
+            if (disabled) {
+                el.setAttribute('aria-disabled', 'true');
+                el.classList.add('is-export-disabled');
+            } else {
+                el.removeAttribute('aria-disabled');
+                el.classList.remove('is-export-disabled');
+            }
+        });
     }
 
-    function hideModal() {
-        var overlay = qs('exportCataloguePdfOverlay');
-        var modal = qs('exportCataloguePdfModal');
-        if (overlay) {
-            overlay.hidden = true;
+    function showProgressPanel() {
+        var panel = qs('exportCataloguePdfProgress');
+        var actions = qs('exportCataloguePdfHeroActions');
+        var cancelBtn = qs('exportCataloguePdfCancel');
+        if (panel) {
+            panel.hidden = false;
+            panel.setAttribute('aria-busy', 'true');
         }
-        if (modal) {
-            modal.hidden = true;
+        if (actions) {
+            actions.hidden = true;
         }
+        if (cancelBtn) {
+            cancelBtn.hidden = false;
+            cancelBtn.innerHTML = '<i class="fas fa-times" aria-hidden="true"></i> Annuler';
+        }
+        setPdfButtonsDisabled(true);
+        exportRunning = true;
+    }
+
+    function hideProgressPanel() {
+        var panel = qs('exportCataloguePdfProgress');
+        var actions = qs('exportCataloguePdfHeroActions');
+        if (panel) {
+            panel.hidden = true;
+            panel.setAttribute('aria-busy', 'false');
+        }
+        if (actions) {
+            actions.hidden = false;
+        }
+        setPdfButtonsDisabled(false);
+        exportRunning = false;
+    }
+
+    function stopPolling() {
         if (pollTimer) {
             clearInterval(pollTimer);
             pollTimer = null;
         }
+        if (doneTimer) {
+            clearTimeout(doneTimer);
+            doneTimer = null;
+        }
         activeJob = null;
+    }
+
+    function cancelExport() {
+        stopPolling();
+        hideProgressPanel();
     }
 
     function setProgress(percent, message) {
@@ -71,36 +108,27 @@
     }
 
     function showDone(downloadUrl, filename) {
-        var closeBtn = qs('exportCataloguePdfClose');
-        var dl = qs('exportCataloguePdfDownload');
-        var title = qs('exportCataloguePdfTitle');
-        if (title) {
-            title.innerHTML = '<i class="fas fa-check-circle" aria-hidden="true"></i> PDF prêt';
-        }
-        setProgress(100, 'Export terminé — téléchargement en cours…');
-        if (closeBtn) {
-            closeBtn.hidden = false;
-        }
-        if (dl) {
-            dl.href = downloadUrl;
-            dl.hidden = false;
-            if (filename) {
-                dl.setAttribute('download', filename);
-            }
+        var cancelBtn = qs('exportCataloguePdfCancel');
+        setProgress(100, 'Export terminé — téléchargement du PDF…');
+        if (cancelBtn) {
+            cancelBtn.hidden = true;
         }
         ensureFrame().src = downloadUrl;
+
+        doneTimer = setTimeout(function () {
+            stopPolling();
+            hideProgressPanel();
+        }, 2500);
     }
 
     function showError(message) {
-        var closeBtn = qs('exportCataloguePdfClose');
-        var title = qs('exportCataloguePdfTitle');
-        if (title) {
-            title.innerHTML = '<i class="fas fa-exclamation-triangle" aria-hidden="true"></i> Export impossible';
-        }
+        var cancelBtn = qs('exportCataloguePdfCancel');
         setProgress(0, message || 'Une erreur est survenue.');
-        if (closeBtn) {
-            closeBtn.hidden = false;
+        if (cancelBtn) {
+            cancelBtn.hidden = false;
+            cancelBtn.innerHTML = '<i class="fas fa-times" aria-hidden="true"></i> Fermer';
         }
+        stopPolling();
     }
 
     function parseJsonResponse(res) {
@@ -134,12 +162,11 @@
         fetch(url, { credentials: 'same-origin', cache: 'no-store' })
             .then(parseJsonResponse)
             .then(function (data) {
+                if (!activeJob) {
+                    return;
+                }
                 if (!data || !data.ok) {
                     showError((data && data.error) ? data.error : 'Statut indisponible.');
-                    if (pollTimer) {
-                        clearInterval(pollTimer);
-                        pollTimer = null;
-                    }
                     return;
                 }
 
@@ -152,10 +179,6 @@
                     }
                     showDone(data.download_url, data.filename);
                 } else if (data.status === 'failed') {
-                    if (pollTimer) {
-                        clearInterval(pollTimer);
-                        pollTimer = null;
-                    }
                     showError(data.error || data.message || 'Échec de l’export.');
                 }
             })
@@ -165,17 +188,12 @@
     }
 
     function startAsyncExport(query) {
-        showModal();
-        setProgress(0, 'Démarrage de l’export en arrière-plan…');
+        if (exportRunning) {
+            return;
+        }
 
-        var closeBtn = qs('exportCataloguePdfClose');
-        var dl = qs('exportCataloguePdfDownload');
-        if (closeBtn) {
-            closeBtn.hidden = true;
-        }
-        if (dl) {
-            dl.hidden = true;
-        }
+        showProgressPanel();
+        setProgress(0, 'Démarrage de l’export…');
 
         fetch('export-catalogue-pdf-start.php', {
             method: 'POST',
@@ -188,6 +206,9 @@
         })
             .then(parseJsonResponse)
             .then(function (data) {
+                if (!exportRunning) {
+                    return;
+                }
                 if (!data || !data.ok) {
                     showError((data && data.error) ? data.error : 'Impossible de démarrer l’export.');
                     return;
@@ -207,7 +228,7 @@
 
     document.addEventListener('click', function (event) {
         var link = event.target.closest('[data-export-catalogue-async]');
-        if (!link) {
+        if (!link || link.classList.contains('is-export-disabled')) {
             return;
         }
         event.preventDefault();
@@ -223,13 +244,15 @@
     });
 
     document.addEventListener('DOMContentLoaded', function () {
-        var closeBtn = qs('exportCataloguePdfClose');
-        var overlay = qs('exportCataloguePdfOverlay');
-        if (closeBtn) {
-            closeBtn.addEventListener('click', hideModal);
-        }
-        if (overlay) {
-            overlay.addEventListener('click', hideModal);
+        var cancelBtn = qs('exportCataloguePdfCancel');
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', function () {
+                if (exportRunning && activeJob) {
+                    cancelExport();
+                    return;
+                }
+                hideProgressPanel();
+            });
         }
 
         var page = document.querySelector('.page-produits-export');

@@ -107,11 +107,27 @@ $pdf_link_attrs = $export_use_async_pdf
             <div class="dashboard-hero-text">
                 <p class="dashboard-eyebrow">Catalogue boutique</p>
                 <h1><i class="fas fa-file-pdf" aria-hidden="true"></i> Export catalogue PDF</h1>
-                <p class="page-produits-export-lead">Produits ajoutés ou modifiés sur une période — aperçu puis export
-                    PDF avec en-tête entreprise.<?php if ($export_use_async_pdf): ?> Les exports de
-                    <?php echo (int) EXPORT_CATALOGUE_ASYNC_MIN; ?> produits ou plus sont générés <strong>en
-                        arrière-plan</strong> avec suivi de progression.<?php endif; ?></p>
-                <div class="page-produits-hero__actions">
+
+                <div class="page-produits-export-progress" id="exportCataloguePdfProgress" hidden
+                    role="status" aria-live="polite" aria-busy="false">
+                    <div class="page-produits-export-progress__row">
+                        <p class="page-produits-export-progress__status" id="exportCataloguePdfStatus">
+                            Initialisation…
+                        </p>
+                        <span class="page-produits-export-progress__percent" id="exportCataloguePdfPercent">0&nbsp;%</span>
+                    </div>
+                    <div class="page-produits-export-progress__track">
+                        <div class="page-produits-export-progress__bar" id="exportCataloguePdfBar" style="width:0%"></div>
+                    </div>
+                    <div class="page-produits-export-progress__actions">
+                        <button type="button" class="btn-secondary page-produits-export-progress__cancel"
+                            id="exportCataloguePdfCancel">
+                            <i class="fas fa-times" aria-hidden="true"></i> Annuler
+                        </button>
+                    </div>
+                </div>
+
+                <div class="page-produits-hero__actions" id="exportCataloguePdfHeroActions">
 
                     <a href="index.php" class="btn-secondary page-produits-hero__btn">
                         <i class="fas fa-arrow-left" aria-hidden="true"></i> Retour à la liste
@@ -252,28 +268,6 @@ $pdf_link_attrs = $export_use_async_pdf
     </div>
 
     <?php include '../includes/footer.php'; ?>
-
-    <div class="export-catalogue-pdf-overlay" id="exportCataloguePdfOverlay" hidden></div>
-    <div class="export-catalogue-pdf-modal" id="exportCataloguePdfModal" role="dialog" aria-modal="true"
-        aria-labelledby="exportCataloguePdfTitle" hidden>
-        <div class="export-catalogue-pdf-modal__head">
-            <h3 id="exportCataloguePdfTitle"><i class="fas fa-file-pdf" aria-hidden="true"></i> Export PDF en cours</h3>
-            <p class="export-catalogue-pdf-modal__lead">Génération en arrière-plan — vous pouvez continuer à utiliser
-                l’administration.</p>
-        </div>
-        <div class="export-catalogue-pdf-progress" aria-hidden="false">
-            <div class="export-catalogue-pdf-progress__track">
-                <div class="export-catalogue-pdf-progress__bar" id="exportCataloguePdfBar" style="width:0%"></div>
-            </div>
-            <p class="export-catalogue-pdf-progress__percent" id="exportCataloguePdfPercent">0&nbsp;%</p>
-        </div>
-        <p class="export-catalogue-pdf-modal__status" id="exportCataloguePdfStatus" aria-live="polite">Initialisation…
-        </p>
-        <div class="export-catalogue-pdf-modal__actions">
-            <button type="button" class="btn-secondary" id="exportCataloguePdfClose" hidden>Fermer</button>
-            <a href="#" class="btn-primary" id="exportCataloguePdfDownload" hidden download>Télécharger le PDF</a>
-        </div>
-    </div>
 
     <div class="delete-confirm-overlay" id="deleteConfirmOverlay"></div>
     <div class="delete-confirm-modal" id="deleteConfirmModal" role="dialog" aria-modal="true"
