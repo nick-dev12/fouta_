@@ -1,30 +1,35 @@
 <?php
 /**
- * Démarre un export catalogue PDF en arrière-plan (JSON).
+ * Démarre un export catalogue PDF en arrière-plan (JSON puis traitement).
  */
+
+ob_start();
 
 session_start();
 
-header('Content-Type: application/json; charset=utf-8');
-
 if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
+    while (ob_get_level() > 0) {
+        ob_end_clean();
+    }
+    header('Content-Type: application/json; charset=utf-8');
     http_response_code(401);
-    echo json_encode(['ok' => false, 'error' => 'Non authentifié']);
+    echo json_encode(['ok' => false, 'error' => 'Non authentifié'], JSON_UNESCAPED_UNICODE);
     exit;
 }
 
-require_once __DIR__ . '/../includes/require_access.php';
+require_once __DIR__ . '/../includes/require_access_json.php';
 require_once __DIR__ . '/../../includes/export_catalogue_job.php';
 
+$source = array_merge($_GET, $_POST);
+
 $filters = [
-    'date_debut' => trim($_GET['date_debut'] ?? $_POST['date_debut'] ?? date('Y-m-d')),
-    'date_fin' => trim($_GET['date_fin'] ?? $_POST['date_fin'] ?? date('Y-m-d')),
-    'mode' => isset($_GET['mode']) || isset($_POST['mode'])
-        ? strtolower(trim((string) ($_GET['mode'] ?? $_POST['mode'] ?? 'tous'))) : 'tous',
-    'recherche' => trim($_GET['recherche'] ?? $_POST['recherche'] ?? ''),
-    'categorie_id' => (int) ($_GET['categorie_id'] ?? $_POST['categorie_id'] ?? 0),
-    'marque_id' => (int) ($_GET['marque_id'] ?? $_POST['marque_id'] ?? 0),
-    'fournisseur_id' => (int) ($_GET['fournisseur_id'] ?? $_POST['fournisseur_id'] ?? 0),
+    'date_debut' => trim($source['date_debut'] ?? date('Y-m-d')),
+    'date_fin' => trim($source['date_fin'] ?? date('Y-m-d')),
+    'mode' => isset($source['mode']) ? strtolower(trim((string) $source['mode'])) : 'tous',
+    'recherche' => trim($source['recherche'] ?? ''),
+    'categorie_id' => (int) ($source['categorie_id'] ?? 0),
+    'marque_id' => (int) ($source['marque_id'] ?? 0),
+    'fournisseur_id' => (int) ($source['fournisseur_id'] ?? 0),
 ];
 
 if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $filters['date_debut'])) {
@@ -37,38 +42,48 @@ if (!in_array($filters['mode'], ['complet', 'ajout', 'modification', 'tous'], tr
     $filters['mode'] = 'tous';
 }
 
-$meta = export_catalogue_build_meta_from_filters($filters);
+try {
+    $meta = export_catalogue_build_meta_from_filters($filters);
+} catch (Throwable $e) {
+    while (ob_get_level() > 0) {
+        ob_end_clean();
+    }
+    header('Content-Type: application/json; charset=utf-8');
+    http_response_code(500);
+    echo json_encode(['ok' => false, 'error' => 'Erreur serveur : ' . $e->getMessage()], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
 $total = (int) ($meta['total'] ?? 0);
 
 if ($total <= 0) {
+    while (ob_get_level() > 0) {
+        ob_end_clean();
+    }
+    header('Content-Type: application/json; charset=utf-8');
     http_response_code(400);
-    echo json_encode(['ok' => false, 'error' => 'Aucun produit à exporter.']);
+    echo json_encode(['ok' => false, 'error' => 'Aucun produit à exporter.'], JSON_UNESCAPED_UNICODE);
     exit;
 }
 if ($total > EXPORT_CATALOGUE_PDF_MAX) {
+    while (ob_get_level() > 0) {
+        ob_end_clean();
+    }
+    header('Content-Type: application/json; charset=utf-8');
     http_response_code(400);
-    echo json_encode(['ok' => false, 'error' => 'Maximum ' . EXPORT_CATALOGUE_PDF_MAX . ' produits par export.']);
+    echo json_encode(['ok' => false, 'error' => 'Maximum ' . EXPORT_CATALOGUE_PDF_MAX . ' produits par export.'], JSON_UNESCAPED_UNICODE);
     exit;
 }
 
 $job = export_catalogue_job_create((int) $_SESSION['admin_id'], $filters, $meta);
 if ($job === null) {
+    while (ob_get_level() > 0) {
+        ob_end_clean();
+    }
+    header('Content-Type: application/json; charset=utf-8');
     http_response_code(500);
-    echo json_encode(['ok' => false, 'error' => 'Impossible de créer la tâche d’export.']);
+    echo json_encode(['ok' => false, 'error' => export_catalogue_job_last_setup_error()], JSON_UNESCAPED_UNICODE);
     exit;
 }
 
-if (!export_catalogue_spawn_worker($job['id'], $job['token'])) {
-    export_catalogue_job_fail($job, 'Impossible de lancer le worker en arrière-plan.');
-    http_response_code(500);
-    echo json_encode(['ok' => false, 'error' => 'Impossible de démarrer l’export en arrière-plan.']);
-    exit;
-}
-
-echo json_encode([
-    'ok' => true,
-    'job_id' => $job['id'],
-    'token' => $job['token'],
-    'total' => $total,
-    'async' => true,
-]);
+export_catalogue_job_send_json_and_run($job);

@@ -3,7 +3,6 @@
  * Téléchargement PDF export catalogue — petits volumes (synchrone).
  * Au-delà de EXPORT_CATALOGUE_ASYNC_MIN produits, utiliser l’export arrière-plan.
  */
-
 require_once __DIR__ . '/../../includes/admin_pdf_response.php';
 admin_pdf_request_begin();
 

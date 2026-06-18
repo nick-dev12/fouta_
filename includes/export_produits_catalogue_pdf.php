@@ -12,21 +12,24 @@ $GLOBALS['export_catalogue_pdf_last_error'] = null;
 /**
  * @param string $message
  */
-function export_catalogue_pdf_set_error($message) {
+function export_catalogue_pdf_set_error($message)
+{
     $GLOBALS['export_catalogue_pdf_last_error'] = (string) $message;
 }
 
 /**
  * @return string|null
  */
-function export_catalogue_pdf_get_last_error() {
+function export_catalogue_pdf_get_last_error()
+{
     return isset($GLOBALS['export_catalogue_pdf_last_error']) ? $GLOBALS['export_catalogue_pdf_last_error'] : null;
 }
 
 /**
  * @return string
  */
-function export_catalogue_pdf_escape($text) {
+function export_catalogue_pdf_escape($text)
+{
     return htmlspecialchars((string) $text, ENT_QUOTES, 'UTF-8');
 }
 
@@ -35,7 +38,8 @@ function export_catalogue_pdf_escape($text) {
  *
  * @return array<string, string>
  */
-function export_catalogue_pdf_mode_labels() {
+function export_catalogue_pdf_mode_labels()
+{
     return [
         'complet' => 'Tous les produits',
         'ajout' => 'Produits ajoutés (période)',
@@ -48,7 +52,8 @@ function export_catalogue_pdf_mode_labels() {
  * @param string $mode
  * @return string
  */
-function export_catalogue_pdf_mode_label($mode) {
+function export_catalogue_pdf_mode_label($mode)
+{
     $labels = export_catalogue_pdf_mode_labels();
     $mode = (string) $mode;
 
@@ -59,7 +64,8 @@ function export_catalogue_pdf_mode_label($mode) {
  * @param string $date_ymd Y-m-d
  * @return string
  */
-function export_catalogue_pdf_format_date($date_ymd) {
+function export_catalogue_pdf_format_date($date_ymd)
+{
     $date_ymd = trim((string) $date_ymd);
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date_ymd)) {
         return $date_ymd;
@@ -74,7 +80,8 @@ function export_catalogue_pdf_format_date($date_ymd) {
  * @param array<string, mixed> $meta
  * @return string
  */
-function export_catalogue_build_filtres_header_html(array $meta) {
+function export_catalogue_build_filtres_header_html(array $meta)
+{
     $mode = (string) ($meta['mode'] ?? 'tous');
     $mode_label = trim((string) ($meta['mode_label'] ?? ''));
     if ($mode_label === '') {
@@ -137,7 +144,8 @@ function export_catalogue_build_filtres_header_html(array $meta) {
  * @param array<string, mixed> $meta
  * @return string
  */
-function export_catalogue_pdf_doc_title(array $meta) {
+function export_catalogue_pdf_doc_title(array $meta)
+{
     $mode_label = trim((string) ($meta['mode_label'] ?? ''));
     if ($mode_label === '') {
         $mode_label = export_catalogue_pdf_mode_label((string) ($meta['mode'] ?? 'tous'));
@@ -153,7 +161,8 @@ function export_catalogue_pdf_doc_title(array $meta) {
  * @param int $max_px
  * @return string
  */
-function export_catalogue_image_file_to_thumb_data_uri($full_path, $max_px = 64) {
+function export_catalogue_image_file_to_thumb_data_uri($full_path, $max_px = 64)
+{
     $raw = @file_get_contents($full_path);
     if ($raw === false || $raw === '') {
         return '';
@@ -213,7 +222,8 @@ function export_catalogue_image_file_to_thumb_data_uri($full_path, $max_px = 64)
  * @param array<string, mixed> $produit
  * @return string data URI ou chaîne vide
  */
-function export_catalogue_produit_image_data_uri(array $produit) {
+function export_catalogue_produit_image_data_uri(array $produit)
+{
     $img = trim((string) ($produit['image_principale'] ?? ''));
     if ($img === '') {
         return '';
@@ -231,7 +241,8 @@ function export_catalogue_produit_image_data_uri(array $produit) {
 /**
  * @return string data URI logo entreprise
  */
-function export_catalogue_logo_data_uri() {
+function export_catalogue_logo_data_uri()
+{
     $name = get_site_logo_relative_filename();
     if ($name === '') {
         return '';
@@ -255,7 +266,8 @@ function export_catalogue_logo_data_uri() {
  * @param array<string, mixed> $meta date_debut, date_fin, mode, recherche, total
  * @return string HTML
  */
-function export_catalogue_build_pdf_html(array $produits, array $meta) {
+function export_catalogue_build_pdf_html(array $produits, array $meta)
+{
     $ent = get_entreprise_config();
     $logo = export_catalogue_logo_data_uri();
 
@@ -388,7 +400,9 @@ table.catalogue tr:nth-child(even) td { background: #f8fafc; }
  * @param array<string, mixed> $meta
  * @return string|false
  */
-function export_catalogue_render_pdf_binary(array $produits, array $meta) {
+
+function export_catalogue_render_pdf_binary(array $produits, array $meta)
+{
     export_catalogue_pdf_set_error(null);
 
     if (!is_file(__DIR__ . '/../vendor/autoload.php')) {
@@ -441,7 +455,8 @@ function export_catalogue_render_pdf_binary(array $produits, array $meta) {
  * @param callable|null $on_progress function(int $percent, string $message): void
  * @return bool
  */
-function export_catalogue_write_pdf_file(array $produits, array $meta, $output_path, $on_progress = null) {
+function export_catalogue_write_pdf_file(array $produits, array $meta, $output_path, $on_progress = null)
+{
     if ($on_progress !== null) {
         $on_progress(50, 'Préparation du rendu PDF…');
     }
@@ -478,7 +493,8 @@ function export_catalogue_write_pdf_file(array $produits, array $meta, $output_p
  * @param array<string, mixed> $meta
  * @return bool
  */
-function export_catalogue_send_pdf(array $produits, array $meta) {
+function export_catalogue_send_pdf(array $produits, array $meta)
+{
     export_catalogue_pdf_set_error(null);
 
     require_once __DIR__ . '/admin_pdf_response.php';

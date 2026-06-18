@@ -44,3 +44,4 @@
         ensureFrame().src = link.href;
     });
 })();
+

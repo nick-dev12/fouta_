@@ -103,6 +103,27 @@
         }
     }
 
+    function parseJsonResponse(res) {
+        return res.text().then(function (text) {
+            var data = null;
+            if (text) {
+                try {
+                    data = JSON.parse(text);
+                } catch (e) {
+                    data = null;
+                }
+            }
+            if (!data) {
+                var snippet = (text || '').replace(/\s+/g, ' ').trim().slice(0, 180);
+                throw new Error(snippet !== '' ? snippet : ('Réponse serveur invalide (HTTP ' + res.status + ').'));
+            }
+            if (!res.ok && data.error) {
+                throw new Error(data.error);
+            }
+            return data;
+        });
+    }
+
     function pollStatus() {
         if (!activeJob) {
             return;
@@ -111,9 +132,7 @@
             + '&token=' + encodeURIComponent(activeJob.token);
 
         fetch(url, { credentials: 'same-origin', cache: 'no-store' })
-            .then(function (res) {
-                return res.json();
-            })
+            .then(parseJsonResponse)
             .then(function (data) {
                 if (!data || !data.ok) {
                     showError((data && data.error) ? data.error : 'Statut indisponible.');
@@ -158,13 +177,16 @@
             dl.hidden = true;
         }
 
-        fetch('export-catalogue-pdf-start.php?' + query, {
+        fetch('export-catalogue-pdf-start.php', {
+            method: 'POST',
             credentials: 'same-origin',
-            cache: 'no-store'
+            cache: 'no-store',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+            },
+            body: query
         })
-            .then(function (res) {
-                return res.json();
-            })
+            .then(parseJsonResponse)
             .then(function (data) {
                 if (!data || !data.ok) {
                     showError((data && data.error) ? data.error : 'Impossible de démarrer l’export.');
@@ -178,8 +200,8 @@
                 pollStatus();
                 pollTimer = setInterval(pollStatus, 1500);
             })
-            .catch(function () {
-                showError('Erreur réseau lors du démarrage de l’export.');
+            .catch(function (err) {
+                showError((err && err.message) ? err.message : 'Erreur réseau lors du démarrage de l’export.');
             });
     }
 

@@ -93,8 +93,10 @@
     grid-column: span 2;
   }
 
-  .page-produits-export-filters--has-marque .page-produits-export-filters__search,
-  .page-produits-export-filters--has-fournisseur .page-produits-export-filters__search {
+  .page-produits-export-filters--has-marque
+    .page-produits-export-filters__search,
+  .page-produits-export-filters--has-fournisseur
+    .page-produits-export-filters__search {
     grid-column: 1 / -1;
   }
 }
@@ -104,7 +106,8 @@
     grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 
-  .page-produits-export-filters--has-marque.page-produits-export-filters--has-fournisseur .page-produits-export-filters__search {
+  .page-produits-export-filters--has-marque.page-produits-export-filters--has-fournisseur
+    .page-produits-export-filters__search {
     grid-column: span 2;
   }
 }

@@ -3,7 +3,6 @@
  * Worker export catalogue PDF (CLI ou HTTP fire-and-forget).
  * Usage CLI : php export-catalogue-pdf-worker.php JOB_ID TOKEN
  */
-
 require_once __DIR__ . '/../../includes/export_catalogue_job.php';
 
 $job_id = '';

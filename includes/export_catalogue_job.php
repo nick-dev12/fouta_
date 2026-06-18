@@ -19,10 +19,31 @@ if (!defined('EXPORT_CATALOGUE_PDF_MAX')) {
 function export_catalogue_jobs_dir() {
     $dir = __DIR__ . '/../upload/temp/export_catalogue_jobs';
     if (!is_dir($dir)) {
-        @mkdir($dir, 0755, true);
+        if (!@mkdir($dir, 0755, true) && !is_dir($dir)) {
+            return '';
+        }
+    }
+    $files = $dir . '/files';
+    if (!is_dir($files)) {
+        @mkdir($files, 0755, true);
     }
 
-    return $dir;
+    return is_dir($dir) && is_writable($dir) ? $dir : '';
+}
+
+/**
+ * @return string
+ */
+function export_catalogue_job_last_setup_error() {
+    $dir = __DIR__ . '/../upload/temp/export_catalogue_jobs';
+    if (!is_dir(dirname($dir))) {
+        return 'Le dossier upload/temp/ est inaccessible. Vérifiez les droits d’écriture.';
+    }
+    if (!is_dir($dir) || !is_writable($dir)) {
+        return 'Impossible d’écrire dans upload/temp/export_catalogue_jobs/. Vérifiez les permissions.';
+    }
+
+    return 'Impossible d’enregistrer la tâche d’export.';
 }
 
 /**
@@ -30,8 +51,12 @@ function export_catalogue_jobs_dir() {
  */
 function export_catalogue_job_file_path($job_id) {
     $job_id = preg_replace('/[^a-zA-Z0-9_-]/', '', (string) $job_id);
+    $dir = export_catalogue_jobs_dir();
+    if ($dir === '') {
+        return '';
+    }
 
-    return export_catalogue_jobs_dir() . '/' . $job_id . '.json';
+    return $dir . '/' . $job_id . '.json';
 }
 
 /**
@@ -76,6 +101,10 @@ function export_catalogue_job_load($job_id) {
  * @return array<string, mixed>|null
  */
 function export_catalogue_job_create($admin_id, array $filters, array $meta) {
+    if (export_catalogue_jobs_dir() === '') {
+        return null;
+    }
+
     export_catalogue_job_cleanup_old();
 
     $job_id = 'exp_' . bin2hex(random_bytes(12));
@@ -149,12 +178,70 @@ function export_catalogue_job_complete(array &$job) {
  * @return string
  */
 function export_catalogue_job_pdf_output_path($job_id) {
-    $dir = export_catalogue_jobs_dir() . '/files';
-    if (!is_dir($dir)) {
-        @mkdir($dir, 0755, true);
+    $dir = export_catalogue_jobs_dir();
+    if ($dir === '') {
+        return '';
+    }
+    $files = $dir . '/files';
+    if (!is_dir($files)) {
+        @mkdir($files, 0755, true);
     }
 
-    return $dir . '/' . preg_replace('/[^a-zA-Z0-9_-]/', '', (string) $job_id) . '.pdf';
+    return $files . '/' . preg_replace('/[^a-zA-Z0-9_-]/', '', (string) $job_id) . '.pdf';
+}
+
+/**
+ * Envoie la réponse JSON au navigateur puis exécute l’export (sans worker externe).
+ *
+ * @param array<string, mixed> $job
+ */
+function export_catalogue_job_send_json_and_run(array $job) {
+    $payload = json_encode([
+        'ok' => true,
+        'job_id' => $job['id'],
+        'token' => $job['token'],
+        'total' => (int) ($job['total'] ?? 0),
+        'async' => true,
+    ], JSON_UNESCAPED_UNICODE);
+
+    if ($payload === false) {
+        http_response_code(500);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['ok' => false, 'error' => 'Erreur encodage JSON.'], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    while (ob_get_level() > 0) {
+        ob_end_clean();
+    }
+
+    if (function_exists('session_write_close')) {
+        session_write_close();
+    }
+
+    header('Content-Type: application/json; charset=utf-8');
+    header('Content-Length: ' . strlen($payload));
+    header('Cache-Control: no-store, no-cache, must-revalidate');
+    header('Connection: close');
+    echo $payload;
+
+    if (function_exists('fastcgi_finish_request')) {
+        fastcgi_finish_request();
+    } else {
+        @flush();
+    }
+
+    ignore_user_abort(true);
+    if (function_exists('set_time_limit')) {
+        @set_time_limit(0);
+    }
+    if (function_exists('ini_set')) {
+        @ini_set('memory_limit', '768M');
+        @ini_set('display_errors', '0');
+    }
+
+    export_catalogue_job_run((string) $job['id'], (string) $job['token']);
+    exit;
 }
 
 /**

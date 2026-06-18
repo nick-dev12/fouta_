@@ -10,7 +10,8 @@ require_once __DIR__ . '/../conn/conn.php';
 /**
  * Indique si une colonne existe sur la table produits (cache SHOW COLUMNS)
  */
-function produits_has_column($name) {
+function produits_has_column($name)
+{
     static $cols = null;
     global $db;
     if ($cols === null) {
@@ -36,7 +37,8 @@ function produits_has_column($name) {
  * @param array<string, mixed> $row
  * @return mixed|null
  */
-function produits_assoc_ci(array $row, $key) {
+function produits_assoc_ci(array $row, $key)
+{
     $key = (string) $key;
     if (array_key_exists($key, $row)) {
         return $row[$key];
@@ -57,7 +59,8 @@ function produits_assoc_ci(array $row, $key) {
  * @param array $p Ligne produit (champs image_principale, images)
  * @return array<int, string>
  */
-function produits_galerie_web_urls($p) {
+function produits_galerie_web_urls($p)
+{
     $galerie = [];
     if (!empty($p['images'])) {
         $dec = json_decode((string) $p['images'], true);
@@ -91,7 +94,8 @@ function produits_galerie_web_urls($p) {
  * @param int $max_len
  * @return string
  */
-function produits_description_excerpt($description, $max_len = 30) {
+function produits_description_excerpt($description, $max_len = 30)
+{
     $raw = (string) $description;
     if ($raw === '') {
         return '';
@@ -121,7 +125,8 @@ function produits_description_excerpt($description, $max_len = 30) {
  * @param string|null $description
  * @return string
  */
-function produits_description_plain_text($description) {
+function produits_description_plain_text($description)
+{
     $raw = (string) $description;
     if ($raw === '') {
         return '';
@@ -140,7 +145,8 @@ function produits_description_plain_text($description) {
  * @param string $text
  * @return string
  */
-function produits_recherche_normalize($text) {
+function produits_recherche_normalize($text)
+{
     $t = function_exists('mb_strtolower') ? mb_strtolower((string) $text) : strtolower((string) $text);
 
     return trim(preg_replace('/\s+/u', ' ', $t));
@@ -153,7 +159,8 @@ function produits_recherche_normalize($text) {
  * @param string $recherche
  * @return bool
  */
-function produit_admin_liste_match_recherche(array $produit, $recherche) {
+function produit_admin_liste_match_recherche(array $produit, $recherche)
+{
     $recherche = trim((string) $recherche);
     if ($recherche === '') {
         return true;
@@ -215,7 +222,8 @@ function produit_admin_liste_match_recherche(array $produit, $recherche) {
  * @param array<string, mixed> $produit
  * @return array<int, string>
  */
-function produit_admin_liste_search_champs(array $produit) {
+function produit_admin_liste_search_champs(array $produit)
+{
     $champs = [
         (string) ($produit['nom'] ?? ''),
         produits_description_plain_text($produit['description'] ?? ''),
@@ -266,7 +274,8 @@ function produit_admin_liste_search_champs(array $produit) {
  * @param array<string, mixed> $produit
  * @return string
  */
-function produit_admin_liste_search_blob(array $produit) {
+function produit_admin_liste_search_blob(array $produit)
+{
     return produits_recherche_normalize(implode(' ', produit_admin_liste_search_champs($produit)));
 }
 
@@ -280,7 +289,8 @@ function produit_admin_liste_search_blob(array $produit) {
  * @param int $fournisseur_id
  * @return bool
  */
-function produit_admin_liste_pass_filtres(array $produit, $recherche, $categorie_id = 0, $marque_id = 0, $fournisseur_id = 0) {
+function produit_admin_liste_pass_filtres(array $produit, $recherche, $categorie_id = 0, $marque_id = 0, $fournisseur_id = 0)
+{
     if ($categorie_id > 0 && (int) ($produit['categorie_id'] ?? 0) !== $categorie_id) {
         return false;
     }
@@ -325,7 +335,8 @@ if (!defined('ADMIN_PRODUITS_LIVE_SEARCH_LIMIT')) {
  * @param array<string, int> $params
  * @return string
  */
-function admin_produits_liste_filtres_sql($categorie_id = 0, $marque_id = 0, $fournisseur_id = 0, array &$params = []) {
+function admin_produits_liste_filtres_sql($categorie_id = 0, $marque_id = 0, $fournisseur_id = 0, array &$params = [])
+{
     $parts = [];
 
     if ($categorie_id > 0) {
@@ -357,7 +368,8 @@ function admin_produits_liste_filtres_sql($categorie_id = 0, $marque_id = 0, $fo
  * @param array<string, string> $params
  * @return string Chaîne « AND ( … ) » ou vide
  */
-function admin_produits_liste_recherche_sql($recherche, array &$params = []) {
+function admin_produits_liste_recherche_sql($recherche, array &$params = [])
+{
     $tr = trim((string) $recherche);
     if ($tr === '') {
         return '';
@@ -413,7 +425,8 @@ function admin_produits_liste_recherche_sql($recherche, array &$params = []) {
  * @param int $fournisseur_id
  * @return int
  */
-function count_admin_produits_liste($categorie_id = 0, $marque_id = 0, $fournisseur_id = 0) {
+function count_admin_produits_liste($categorie_id = 0, $marque_id = 0, $fournisseur_id = 0)
+{
     global $db;
 
     try {
@@ -452,7 +465,8 @@ function count_admin_produits_liste($categorie_id = 0, $marque_id = 0, $fourniss
  * @param int $limit
  * @return array<int, array<string, mixed>>
  */
-function get_admin_produits_liste_paginated($categorie_id = 0, $marque_id = 0, $fournisseur_id = 0, $offset = 0, $limit = 30) {
+function get_admin_produits_liste_paginated($categorie_id = 0, $marque_id = 0, $fournisseur_id = 0, $offset = 0, $limit = 30)
+{
     global $db;
 
     try {
@@ -498,7 +512,8 @@ function get_admin_produits_liste_paginated($categorie_id = 0, $marque_id = 0, $
  * @param int $limit
  * @return array{items: array<int, array<string, mixed>>, total: int, truncated: bool}
  */
-function search_admin_produits_liste_live($recherche = '', $categorie_id = 0, $marque_id = 0, $fournisseur_id = 0, $limit = 60) {
+function search_admin_produits_liste_live($recherche = '', $categorie_id = 0, $marque_id = 0, $fournisseur_id = 0, $limit = 60)
+{
     global $db;
 
     $recherche = trim((string) $recherche);
@@ -556,7 +571,8 @@ function search_admin_produits_liste_live($recherche = '', $categorie_id = 0, $m
  * @param array<string, mixed> $row
  * @return string
  */
-function produits_marque_libelle_from_row(array $row) {
+function produits_marque_libelle_from_row(array $row)
+{
     $raw = produits_assoc_ci($row, 'marque_libelle_catalogue');
     if ($raw === null) {
         $raw = produits_assoc_ci($row, 'pcn_marque_join_nom');
@@ -601,7 +617,8 @@ function produits_marque_libelle_from_row(array $row) {
  * @param string|null $nom_override Remplace le nom principal (ex. nom + variante)
  * @return string HTML interne à placer dans &lt;h3 class="produit-card-nom"&gt;
  */
-function produits_card_heading_inner_html(array $produit, $desc_max_len = 20, $nom_override = null) {
+function produits_card_heading_inner_html(array $produit, $desc_max_len = 20, $nom_override = null)
+{
     if ($nom_override !== null && trim((string) $nom_override) !== '') {
         $nom_raw = trim((string) $nom_override);
     } else {
@@ -629,7 +646,8 @@ function produits_card_heading_inner_html(array $produit, $desc_max_len = 20, $n
  * @param array<string, mixed> $row
  * @return string
  */
-function produits_fournisseur_nom_affichage($row) {
+function produits_fournisseur_nom_affichage($row)
+{
     $t = trim((string) ($row['fournisseur_table_nom'] ?? ''));
     if ($t !== '') {
         return $t;
@@ -649,7 +667,8 @@ function produits_fournisseur_nom_affichage($row) {
  *
  * @return array{sel: string, join: string}
  */
-function produits_catalog_join_bundle() {
+function produits_catalog_join_bundle()
+{
     static $cache = null;
     if ($cache !== null) {
         return $cache;
@@ -681,7 +700,8 @@ function produits_catalog_join_bundle() {
 /**
  * Génère le prochain identifiant interne FPLXXXXXX (6 chiffres)
  */
-function generate_next_identifiant_interne_produit() {
+function generate_next_identifiant_interne_produit()
+{
     global $db;
     if (!$db || !produits_has_column('identifiant_interne')) {
         return null;
@@ -1980,7 +2000,8 @@ function parse_options_with_surcharge($raw)
         return $v !== '' && $v !== '[]' && $v !== '[ ]' && strtolower($v) !== 'null';
     }));
     return array_map(function ($x) {
-        return ['v' => $x, 's' => 0]; }, $arr);
+        return ['v' => $x, 's' => 0];
+    }, $arr);
 }
 
 /**
@@ -2160,7 +2181,8 @@ function get_produits_by_stock_article($stock_article_id)
  * @param array<string, mixed> $params
  * @return string SQL AND …
  */
-function admin_produits_export_periode_sql($mode, $date_debut, $date_fin, array &$params) {
+function admin_produits_export_periode_sql($mode, $date_debut, $date_fin, array &$params)
+{
     $allowed = ['complet', 'ajout', 'modification', 'tous'];
     $mode = in_array($mode, $allowed, true) ? $mode : 'tous';
 
@@ -2200,7 +2222,9 @@ function admin_produits_export_periode_sql($mode, $date_debut, $date_fin, array 
  * @param int $offset
  * @return array<int, array<string, mixed>>
  */
-function get_admin_produits_export_catalogue($date_debut, $date_fin, $mode = 'tous', $recherche = '', $categorie_id = 0, $marque_id = 0, $fournisseur_id = 0, $limit = 500, $offset = 0) {
+
+function get_admin_produits_export_catalogue($date_debut, $date_fin, $mode = 'tous', $recherche = '', $categorie_id = 0, $marque_id = 0, $fournisseur_id = 0, $limit = 500, $offset = 0)
+{
     global $db;
 
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date_debut) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date_fin)) {
@@ -2254,7 +2278,8 @@ function get_admin_produits_export_catalogue($date_debut, $date_fin, $mode = 'to
  * @param callable|null $progress_callback function(int $loaded, int $total): void
  * @return array<int, array<string, mixed>>
  */
-function get_admin_produits_export_catalogue_all($date_debut, $date_fin, $mode = 'tous', $recherche = '', $categorie_id = 0, $marque_id = 0, $fournisseur_id = 0, $batch_size = 200, $progress_callback = null) {
+function get_admin_produits_export_catalogue_all($date_debut, $date_fin, $mode = 'tous', $recherche = '', $categorie_id = 0, $marque_id = 0, $fournisseur_id = 0, $batch_size = 200, $progress_callback = null)
+{
     $total = count_admin_produits_export_catalogue($date_debut, $date_fin, $mode, $recherche, $categorie_id, $marque_id, $fournisseur_id);
     $batch_size = max(50, min(500, (int) $batch_size));
     $all = [];
@@ -2293,7 +2318,8 @@ function get_admin_produits_export_catalogue_all($date_debut, $date_fin, $mode =
 /**
  * Nombre de produits pour export catalogue (même filtres).
  */
-function count_admin_produits_export_catalogue($date_debut, $date_fin, $mode = 'tous', $recherche = '', $categorie_id = 0, $marque_id = 0, $fournisseur_id = 0) {
+function count_admin_produits_export_catalogue($date_debut, $date_fin, $mode = 'tous', $recherche = '', $categorie_id = 0, $marque_id = 0, $fournisseur_id = 0)
+{
     global $db;
 
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date_debut) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date_fin)) {

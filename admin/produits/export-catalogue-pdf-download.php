@@ -2,7 +2,6 @@
 /**
  * Téléchargement du PDF catalogue généré en arrière-plan.
  */
-
 require_once __DIR__ . '/../../includes/admin_pdf_response.php';
 admin_pdf_request_begin();
 

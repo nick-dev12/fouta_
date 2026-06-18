@@ -85,6 +85,7 @@ $pdf_link_attrs = $export_use_async_pdf
 ?>
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
     <?php include __DIR__ . '/../../includes/favicon.php'; ?>
     <meta charset="UTF-8">
@@ -96,51 +97,63 @@ $pdf_link_attrs = $export_use_async_pdf
     <link rel="stylesheet" href="/css/admin-produits-index.css<?php echo asset_version_query(); ?>">
     <link rel="stylesheet" href="/css/admin-produits-export.css<?php echo asset_version_query(); ?>">
 </head>
+
 <body>
     <?php include '../includes/nav.php'; ?>
 
-    <div class="page-produits-admin page-produits-export"
-        data-export-total="<?php echo (int) $total_export; ?>"
+    <div class="page-produits-admin page-produits-export" data-export-total="<?php echo (int) $total_export; ?>"
         data-export-async-min="<?php echo (int) EXPORT_CATALOGUE_ASYNC_MIN; ?>">
         <div class="content-header dashboard-hero page-produits-hero">
             <div class="dashboard-hero-text">
                 <p class="dashboard-eyebrow">Catalogue boutique</p>
                 <h1><i class="fas fa-file-pdf" aria-hidden="true"></i> Export catalogue PDF</h1>
-                <p class="page-produits-export-lead">Produits ajoutés ou modifiés sur une période — aperçu puis export PDF avec en-tête entreprise.<?php if ($export_use_async_pdf): ?> Les exports de <?php echo (int) EXPORT_CATALOGUE_ASYNC_MIN; ?> produits ou plus sont générés <strong>en arrière-plan</strong> avec suivi de progression.<?php endif; ?></p>
+                <p class="page-produits-export-lead">Produits ajoutés ou modifiés sur une période — aperçu puis export
+                    PDF avec en-tête entreprise.<?php if ($export_use_async_pdf): ?> Les exports de
+                    <?php echo (int) EXPORT_CATALOGUE_ASYNC_MIN; ?> produits ou plus sont générés <strong>en
+                        arrière-plan</strong> avec suivi de progression.<?php endif; ?></p>
                 <div class="page-produits-hero__actions">
+
                     <a href="index.php" class="btn-secondary page-produits-hero__btn">
                         <i class="fas fa-arrow-left" aria-hidden="true"></i> Retour à la liste
                     </a>
                     <?php if ($total_export > 0): ?>
-                    <a href="export-catalogue-pdf.php?<?php echo htmlspecialchars($pdf_query, ENT_QUOTES, 'UTF-8'); ?>" class="btn-primary page-produits-hero__btn page-produits-export-pdf-btn"<?php echo $pdf_link_attrs; ?>>
-                        <i class="fas fa-download" aria-hidden="true"></i> Télécharger le PDF (<?php echo (int) $total_export; ?>)
+                    <a href="export-catalogue-pdf.php?<?php echo htmlspecialchars($pdf_query, ENT_QUOTES, 'UTF-8'); ?>"
+                        class="btn-primary page-produits-hero__btn page-produits-export-pdf-btn"
+                        <?php echo $pdf_link_attrs; ?>>
+                        <i class="fas fa-download" aria-hidden="true"></i> Télécharger le PDF
+                        (<?php echo (int) $total_export; ?>)
                     </a>
                     <?php endif; ?>
                 </div>
             </div>
         </div>
 
-        <section class="produits-section page-produits-section page-produits-export-section" aria-labelledby="export-section-heading">
+        <section class="produits-section page-produits-section page-produits-export-section"
+            aria-labelledby="export-section-heading">
             <div class="section-title page-produits-section__head">
                 <h2 id="export-section-heading"><i class="fas fa-filter" aria-hidden="true"></i> Filtres d’export
                     <span class="page-produits-count" aria-live="polite">(<?php echo (int) $total_export; ?>)</span>
                 </h2>
             </div>
 
-            <form method="GET" action="" class="<?php echo htmlspecialchars($filtres_form_classes, ENT_QUOTES, 'UTF-8'); ?>">
+            <form method="GET" action=""
+                class="<?php echo htmlspecialchars($filtres_form_classes, ENT_QUOTES, 'UTF-8'); ?>">
                 <div class="admin-filter-field page-produits-export-filters__period">
                     <label for="date_debut">Du</label>
-                    <input type="date" id="date_debut" name="date_debut" value="<?php echo htmlspecialchars($date_debut, ENT_QUOTES, 'UTF-8'); ?>" required>
+                    <input type="date" id="date_debut" name="date_debut"
+                        value="<?php echo htmlspecialchars($date_debut, ENT_QUOTES, 'UTF-8'); ?>" required>
                 </div>
                 <div class="admin-filter-field page-produits-export-filters__period">
                     <label for="date_fin">Au</label>
-                    <input type="date" id="date_fin" name="date_fin" value="<?php echo htmlspecialchars($date_fin, ENT_QUOTES, 'UTF-8'); ?>" required>
+                    <input type="date" id="date_fin" name="date_fin"
+                        value="<?php echo htmlspecialchars($date_fin, ENT_QUOTES, 'UTF-8'); ?>" required>
                 </div>
                 <div class="admin-filter-field page-produits-export-filters__mode">
                     <label for="mode">Type</label>
                     <select id="mode" name="mode">
                         <?php foreach ($mode_labels as $k => $label): ?>
-                        <option value="<?php echo htmlspecialchars($k, ENT_QUOTES, 'UTF-8'); ?>" <?php echo $mode === $k ? 'selected' : ''; ?>>
+                        <option value="<?php echo htmlspecialchars($k, ENT_QUOTES, 'UTF-8'); ?>"
+                            <?php echo $mode === $k ? 'selected' : ''; ?>>
                             <?php echo htmlspecialchars($label, ENT_QUOTES, 'UTF-8'); ?>
                         </option>
                         <?php endforeach; ?>
@@ -148,17 +161,17 @@ $pdf_link_attrs = $export_use_async_pdf
                 </div>
                 <div class="admin-filter-field page-produits-export-filters__search">
                     <label for="recherche">Recherche</label>
-                    <input type="text" id="recherche" name="recherche"
-                        placeholder="Nom, description, FPL, fournisseur…"
-                        value="<?php echo htmlspecialchars($recherche, ENT_QUOTES, 'UTF-8'); ?>"
-                        autocomplete="off" inputmode="search">
+                    <input type="text" id="recherche" name="recherche" placeholder="Nom, description, FPL, fournisseur…"
+                        value="<?php echo htmlspecialchars($recherche, ENT_QUOTES, 'UTF-8'); ?>" autocomplete="off"
+                        inputmode="search">
                 </div>
                 <div class="admin-filter-field page-produits-export-filters__categorie">
                     <label for="categorie_id">Catégorie</label>
                     <select id="categorie_id" name="categorie_id">
                         <option value="0">Toutes les catégories</option>
                         <?php foreach ($categories as $categorie): ?>
-                        <option value="<?php echo (int) $categorie['id']; ?>" <?php echo $categorie_id === (int) $categorie['id'] ? 'selected' : ''; ?>>
+                        <option value="<?php echo (int) $categorie['id']; ?>"
+                            <?php echo $categorie_id === (int) $categorie['id'] ? 'selected' : ''; ?>>
                             <?php echo htmlspecialchars($categorie['nom']); ?>
                         </option>
                         <?php endforeach; ?>
@@ -170,7 +183,8 @@ $pdf_link_attrs = $export_use_async_pdf
                     <select id="marque_id" name="marque_id">
                         <option value="0">Toutes les marques</option>
                         <?php foreach ($marques_filtre as $marque): ?>
-                        <option value="<?php echo (int) $marque['id']; ?>" <?php echo $marque_id === (int) $marque['id'] ? 'selected' : ''; ?>>
+                        <option value="<?php echo (int) $marque['id']; ?>"
+                            <?php echo $marque_id === (int) $marque['id'] ? 'selected' : ''; ?>>
                             <?php echo htmlspecialchars($marque['nom']); ?>
                         </option>
                         <?php endforeach; ?>
@@ -183,7 +197,8 @@ $pdf_link_attrs = $export_use_async_pdf
                     <select id="fournisseur_id" name="fournisseur_id">
                         <option value="0">Tous les fournisseurs</option>
                         <?php foreach ($fournisseurs_filtre as $fournisseur): ?>
-                        <option value="<?php echo (int) $fournisseur['id']; ?>" <?php echo $fournisseur_id === (int) $fournisseur['id'] ? 'selected' : ''; ?>>
+                        <option value="<?php echo (int) $fournisseur['id']; ?>"
+                            <?php echo $fournisseur_id === (int) $fournisseur['id'] ? 'selected' : ''; ?>>
                             <?php echo htmlspecialchars($fournisseur['nom']); ?>
                         </option>
                         <?php endforeach; ?>
@@ -198,7 +213,9 @@ $pdf_link_attrs = $export_use_async_pdf
                         <i class="fas fa-rotate-left"></i>&nbsp;Aujourd’hui
                     </a>
                     <?php if ($total_export > 0): ?>
-                    <a href="export-catalogue-pdf.php?<?php echo htmlspecialchars($pdf_query, ENT_QUOTES, 'UTF-8'); ?>" class="btn-primary btn-export-pdf-inline page-produits-export-pdf-btn"<?php echo $pdf_link_attrs; ?>>
+                    <a href="export-catalogue-pdf.php?<?php echo htmlspecialchars($pdf_query, ENT_QUOTES, 'UTF-8'); ?>"
+                        class="btn-primary btn-export-pdf-inline page-produits-export-pdf-btn"
+                        <?php echo $pdf_link_attrs; ?>>
                         <i class="fas fa-file-pdf"></i> PDF
                     </a>
                     <?php endif; ?>
@@ -208,7 +225,10 @@ $pdf_link_attrs = $export_use_async_pdf
             <?php if ($export_truncated): ?>
             <p class="page-produits-export-truncated" role="status">
                 <i class="fas fa-info-circle" aria-hidden="true"></i>
-                Affichage limité à <?php echo count($produits_export); ?> produits sur <?php echo (int) $total_export; ?> — le PDF inclura tous les résultats<?php echo $export_use_async_pdf ? ' (génération en arrière-plan)' : ''; ?> (max <?php echo (int) EXPORT_CATALOGUE_PDF_MAX; ?>).
+                Affichage limité à <?php echo count($produits_export); ?> produits sur
+                <?php echo (int) $total_export; ?> — le PDF inclura tous les
+                résultats<?php echo $export_use_async_pdf ? ' (génération en arrière-plan)' : ''; ?> (max
+                <?php echo (int) EXPORT_CATALOGUE_PDF_MAX; ?>).
             </p>
             <?php endif; ?>
 
@@ -216,13 +236,14 @@ $pdf_link_attrs = $export_use_async_pdf
             <div class="empty-state page-produits-empty">
                 <div class="page-produits-empty__icon" aria-hidden="true"><i class="fas fa-inbox"></i></div>
                 <p class="page-produits-empty__title">Aucun produit pour cette période</p>
-                <p class="page-produits-empty__hint">Modifiez les dates, le type, la recherche ou les filtres catégorie / marque / fournisseur.</p>
+                <p class="page-produits-empty__hint">Modifiez les dates, le type, la recherche ou les filtres catégorie
+                    / marque / fournisseur.</p>
             </div>
             <?php else: ?>
             <div id="page-produits-export-wrap">
                 <ul class="produits-grid page-produits-grid" id="page-produits-export-grid" role="list">
                     <?php foreach ($produits_export as $produit): ?>
-                        <?php include __DIR__ . '/includes/carte_produit_liste.php'; ?>
+                    <?php include __DIR__ . '/includes/carte_produit_liste.php'; ?>
                     <?php endforeach; ?>
                 </ul>
             </div>
@@ -237,7 +258,8 @@ $pdf_link_attrs = $export_use_async_pdf
         aria-labelledby="exportCataloguePdfTitle" hidden>
         <div class="export-catalogue-pdf-modal__head">
             <h3 id="exportCataloguePdfTitle"><i class="fas fa-file-pdf" aria-hidden="true"></i> Export PDF en cours</h3>
-            <p class="export-catalogue-pdf-modal__lead">Génération en arrière-plan — vous pouvez continuer à utiliser l’administration.</p>
+            <p class="export-catalogue-pdf-modal__lead">Génération en arrière-plan — vous pouvez continuer à utiliser
+                l’administration.</p>
         </div>
         <div class="export-catalogue-pdf-progress" aria-hidden="false">
             <div class="export-catalogue-pdf-progress__track">
@@ -245,7 +267,8 @@ $pdf_link_attrs = $export_use_async_pdf
             </div>
             <p class="export-catalogue-pdf-progress__percent" id="exportCataloguePdfPercent">0&nbsp;%</p>
         </div>
-        <p class="export-catalogue-pdf-modal__status" id="exportCataloguePdfStatus" aria-live="polite">Initialisation…</p>
+        <p class="export-catalogue-pdf-modal__status" id="exportCataloguePdfStatus" aria-live="polite">Initialisation…
+        </p>
         <div class="export-catalogue-pdf-modal__actions">
             <button type="button" class="btn-secondary" id="exportCataloguePdfClose" hidden>Fermer</button>
             <a href="#" class="btn-primary" id="exportCataloguePdfDownload" hidden download>Télécharger le PDF</a>
@@ -277,79 +300,80 @@ $pdf_link_attrs = $export_use_async_pdf
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            document.addEventListener('click', function (event) {
-                var card = event.target.closest('.page-produits-section .produit-card-linkable');
-                if (!card) {
-                    return;
-                }
-                if (event.target.closest('a, button, input, select, textarea, form')) {
-                    return;
-                }
-                var href = card.getAttribute('data-href');
-                if (href) {
-                    window.location.href = href;
-                }
-            });
-
-            var deleteOverlay = document.getElementById('deleteConfirmOverlay');
-            var deleteModal = document.getElementById('deleteConfirmModal');
-            var deleteProduct = document.getElementById('deleteConfirmProduct');
-            var deleteCancel = document.getElementById('deleteConfirmCancel');
-            var deleteConfirm = document.getElementById('deleteConfirmConfirm');
-            var currentDeleteLink = null;
-
-            function positionModal(triggerElement) {
-                var rect = triggerElement.getBoundingClientRect();
-                var modalWidth = deleteModal.offsetWidth || 360;
-                var modalHeight = deleteModal.offsetHeight || 300;
-                var left = rect.left + (rect.width / 2) - (modalWidth / 2);
-                var top = rect.top + rect.height + 10;
-                if (left < 10) left = 10;
-                if (left + modalWidth > window.innerWidth - 10) {
-                    left = window.innerWidth - modalWidth - 10;
-                }
-                if (top + modalHeight > window.innerHeight - 10) {
-                    top = rect.top - modalHeight - 10;
-                }
-                if (top < 10) top = 10;
-                deleteModal.style.left = left + 'px';
-                deleteModal.style.top = top + 'px';
+    document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('click', function(event) {
+            var card = event.target.closest('.page-produits-section .produit-card-linkable');
+            if (!card) {
+                return;
             }
-
-            function showModal(link) {
-                currentDeleteLink = link;
-                deleteProduct.textContent = link.getAttribute('data-delete-name') || 'ce produit';
-                deleteOverlay.classList.add('visible');
-                deleteModal.classList.add('visible', 'animated');
-                deleteCancel.focus();
+            if (event.target.closest('a, button, input, select, textarea, form')) {
+                return;
             }
-
-            function hideModal() {
-                deleteOverlay.classList.remove('visible');
-                deleteModal.classList.remove('visible', 'animated');
-                currentDeleteLink = null;
+            var href = card.getAttribute('data-href');
+            if (href) {
+                window.location.href = href;
             }
-
-            document.addEventListener('click', function (event) {
-                var link = event.target.closest('.page-produits-section a[data-delete-confirm="true"]');
-                if (!link) {
-                    return;
-                }
-                event.preventDefault();
-                positionModal(link);
-                showModal(link);
-            });
-
-            deleteCancel.addEventListener('click', hideModal);
-            deleteOverlay.addEventListener('click', hideModal);
-            deleteConfirm.addEventListener('click', function () {
-                if (currentDeleteLink) {
-                    window.location.href = currentDeleteLink.href;
-                }
-            });
         });
+
+        var deleteOverlay = document.getElementById('deleteConfirmOverlay');
+        var deleteModal = document.getElementById('deleteConfirmModal');
+        var deleteProduct = document.getElementById('deleteConfirmProduct');
+        var deleteCancel = document.getElementById('deleteConfirmCancel');
+        var deleteConfirm = document.getElementById('deleteConfirmConfirm');
+        var currentDeleteLink = null;
+
+        function positionModal(triggerElement) {
+            var rect = triggerElement.getBoundingClientRect();
+            var modalWidth = deleteModal.offsetWidth || 360;
+            var modalHeight = deleteModal.offsetHeight || 300;
+            var left = rect.left + (rect.width / 2) - (modalWidth / 2);
+            var top = rect.top + rect.height + 10;
+            if (left < 10) left = 10;
+            if (left + modalWidth > window.innerWidth - 10) {
+                left = window.innerWidth - modalWidth - 10;
+            }
+            if (top + modalHeight > window.innerHeight - 10) {
+                top = rect.top - modalHeight - 10;
+            }
+            if (top < 10) top = 10;
+            deleteModal.style.left = left + 'px';
+            deleteModal.style.top = top + 'px';
+        }
+
+        function showModal(link) {
+            currentDeleteLink = link;
+            deleteProduct.textContent = link.getAttribute('data-delete-name') || 'ce produit';
+            deleteOverlay.classList.add('visible');
+            deleteModal.classList.add('visible', 'animated');
+            deleteCancel.focus();
+        }
+
+        function hideModal() {
+            deleteOverlay.classList.remove('visible');
+            deleteModal.classList.remove('visible', 'animated');
+            currentDeleteLink = null;
+        }
+
+        document.addEventListener('click', function(event) {
+            var link = event.target.closest('.page-produits-section a[data-delete-confirm="true"]');
+            if (!link) {
+                return;
+            }
+            event.preventDefault();
+            positionModal(link);
+            showModal(link);
+        });
+
+        deleteCancel.addEventListener('click', hideModal);
+        deleteOverlay.addEventListener('click', hideModal);
+        deleteConfirm.addEventListener('click', function() {
+            if (currentDeleteLink) {
+                window.location.href = currentDeleteLink.href;
+            }
+        });
+    });
     </script>
     <script src="/js/admin-export-catalogue-pdf.js<?php echo asset_version_query(); ?>"></script>
 </body>
+
 </html>
