@@ -29,6 +29,7 @@ if ($produit_id <= 0 || !in_array($type, ['barcode', 'qrcode'], true)) {
 require_once __DIR__ . '/../../models/model_produits.php';
 require_once __DIR__ . '/../../includes/export_stock_codes_pdf.php';
 require_once __DIR__ . '/../../includes/site_url.php';
+require_once __DIR__ . '/../../includes/produit_emplacement_entrepot.php';
 
 $produit = get_produit_by_id($produit_id);
 if (!$produit) {
@@ -47,7 +48,7 @@ $ok = false;
 if ($type === 'barcode') {
     $ok = stock_send_barcode_pdf($produit);
 } else {
-    $stock_info_url = rtrim(get_site_base_url(), '/') . '/stock-info.php?id=' . $produit_id;
+    $stock_info_url = produit_emplacement_stock_info_url($produit_id, $produit);
     $ok = stock_send_qrcode_pdf($produit, $stock_info_url);
 }
 

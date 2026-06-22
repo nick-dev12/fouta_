@@ -361,8 +361,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
                 </div>
                 <div class="pm-card__body">
             <?php
-            $etage_val = isset($_POST['etage']) ? $_POST['etage'] : ($produit['etage'] ?? '');
-            $rayon_val = isset($_POST['numero_rayon']) ? $_POST['numero_rayon'] : ($produit['numero_rayon'] ?? '');
+            require_once __DIR__ . '/../../includes/produit_emplacement_entrepot.php';
+            if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+                $emplacement_form_vals = produit_emplacement_from_source($_POST);
+            } else {
+                $emplacement_form_vals = produit_emplacement_from_produit($produit);
+            }
             ?>
             <?php if ($has_ident_col): ?>
             <div class="form-group">
@@ -380,18 +384,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
                 <i class="fas fa-info-circle"></i> Référence FPL : activez la colonne <code>identifiant_interne</code> (migrations).
             </p>
             <?php endif; ?>
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="etage"><i class="fas fa-warehouse"></i> Étage (entrepôt)</label>
-                    <input type="text" id="etage" name="etage" placeholder="Ex. RDC, 1, 2"
-                        value="<?php echo htmlspecialchars((string) $etage_val); ?>">
-                </div>
-                <div class="form-group">
-                    <label for="numero_rayon">N° de rayon</label>
-                    <input type="text" id="numero_rayon" name="numero_rayon" placeholder="Ex. A12"
-                        value="<?php echo htmlspecialchars((string) $rayon_val); ?>">
-                </div>
-            </div>
+            <p class="form-hint pm-hint pm-emplacement-intro">Repères pour localiser le produit en entrepôt (tous les champs sont facultatifs).</p>
+            <?php produit_emplacement_render_form_fields($emplacement_form_vals); ?>
                 </div>
             </section>
 

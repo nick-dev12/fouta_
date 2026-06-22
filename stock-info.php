@@ -36,7 +36,11 @@ if (!empty($produit['prix_promotion']) && (float) $produit['prix_promotion'] < $
 $valeur_stock_actuel = $stock_actuel * $prix_produit;
 $valeur_ventes = $quantite_vendue * $prix_produit;
 
+$emplacement_vals = produit_emplacement_from_produit($produit);
+$emplacement_resume = produit_emplacement_resume_court($emplacement_vals);
+
 require_once __DIR__ . '/includes/site_url.php';
+require_once __DIR__ . '/includes/produit_emplacement_entrepot.php';
 $base = get_site_base_url();
 if (file_exists(__DIR__ . '/includes/asset_version.php')) {
     require_once __DIR__ . '/includes/asset_version.php';
@@ -154,6 +158,45 @@ if (file_exists(__DIR__ . '/includes/asset_version.php')) {
             margin-top: 4px;
         }
 
+        .emplacement-card {
+            margin-top: 0;
+        }
+
+        .emplacement-list {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .emplacement-item {
+            background: #f0f6fc;
+            border-radius: 10px;
+            padding: 12px;
+            border: 1px solid rgba(53, 100, 166, 0.2);
+            text-align: center;
+        }
+
+        .emplacement-item .label {
+            font-size: 11px;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 4px;
+        }
+
+        .emplacement-item .value {
+            font-size: 15px;
+            font-weight: 700;
+            color: #3564a6;
+        }
+
+        .emplacement-resume {
+            font-size: 13px;
+            color: #475569;
+            margin-bottom: 16px;
+            line-height: 1.5;
+        }
+
         .brand {
             text-align: center;
             margin-top: 24px;
@@ -211,6 +254,39 @@ if (file_exists(__DIR__ . '/includes/asset_version.php')) {
                 <div class="detail"><?php echo $quantite_vendue; ?> vendu(s)</div>
             </div>
         </div>
+
+        <?php if (produit_emplacement_a_des_donnees($emplacement_vals)): ?>
+        <div class="card emplacement-card">
+            <h2 style="font-size: 16px; margin-bottom: 12px; color: #1f2937;">
+                <i class="fas fa-map-pin" aria-hidden="true"></i> Emplacement entrepôt
+            </h2>
+            <?php if ($emplacement_resume !== ''): ?>
+            <p class="emplacement-resume"><?php echo htmlspecialchars($emplacement_resume); ?></p>
+            <?php endif; ?>
+            <div class="emplacement-list">
+                <?php
+                $etapes_stock = [
+                    ['col' => 'etage', 'label' => 'Étage'],
+                    ['col' => 'numero_rayon', 'label' => 'Rayon'],
+                    ['col' => 'allee', 'label' => 'Allée'],
+                    ['col' => 'zone_emplacement', 'label' => 'Zone'],
+                    ['col' => 'position_emplacement', 'label' => 'Position'],
+                    ['col' => 'barre_rayon', 'label' => 'Barre'],
+                ];
+                foreach ($etapes_stock as $etape):
+                    $col = $etape['col'];
+                    if (empty($emplacement_vals[$col])) {
+                        continue;
+                    }
+                ?>
+                <div class="emplacement-item">
+                    <div class="label"><?php echo htmlspecialchars($etape['label']); ?></div>
+                    <div class="value"><?php echo htmlspecialchars(produit_emplacement_option_label($col, $emplacement_vals[$col])); ?></div>
+                </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+        <?php endif; ?>
 
         <p class="brand">FOUTA POIDS LOURDS — Pièces poids lourds</p>
     </div>

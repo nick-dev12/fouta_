@@ -5,6 +5,7 @@
 
 require_once __DIR__ . '/barcode_fpl.php';
 require_once __DIR__ . '/site_url.php';
+require_once __DIR__ . '/produit_emplacement_entrepot.php';
 
 /** @var string|null Dernière erreur PDF codes stock (diagnostic admin) */
 $GLOBALS['stock_codes_pdf_last_error'] = null;
@@ -251,6 +252,17 @@ function stock_generate_barcode_png_bytes($produit_id, $produit = null) {
         return '';
     }
 
+    $vals = [];
+    if (is_array($produit)) {
+        $vals = produit_emplacement_from_produit($produit);
+    } else {
+        $row = get_produit_by_id($produit_id);
+        if ($row) {
+            $vals = produit_emplacement_from_produit($row);
+        }
+    }
+    $payload = produit_emplacement_barcode_payload($code, $vals);
+
     require_once __DIR__ . '/../vendor/autoload.php';
 
     try {
@@ -258,7 +270,7 @@ function stock_generate_barcode_png_bytes($produit_id, $produit = null) {
         if (function_exists('imagecreate')) {
             $generator->useGd();
         }
-        $png = $generator->getBarcode($code, $generator::TYPE_CODE_128, 2, 56);
+        $png = $generator->getBarcode($payload, $generator::TYPE_CODE_128, 2, 56);
         if ($png === false || $png === '') {
             stock_codes_pdf_set_error('Génération code-barres impossible (extension PHP GD requise).');
             return '';

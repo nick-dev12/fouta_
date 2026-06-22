@@ -39,14 +39,22 @@ if (!$produit) {
 }
 
 require_once __DIR__ . '/../../includes/barcode_fpl.php';
+require_once __DIR__ . '/../../includes/produit_emplacement_entrepot.php';
 $code_fpl_live = ensure_produit_identifiant_interne($produit_id);
 if ($code_fpl_live !== null && $code_fpl_live !== '') {
     $produit['identifiant_interne'] = $code_fpl_live;
 }
-if (get_barcode_produit_web_path($produit_id) === '') {
+$emplacement_vals_sync = produit_emplacement_from_produit($produit);
+if (produit_emplacement_a_des_donnees($emplacement_vals_sync)) {
+    generer_barcode_produit_fpl($produit_id);
+    generer_qrcode_produit($produit_id);
+} elseif (get_barcode_produit_web_path($produit_id) === '') {
     generer_barcode_produit_fpl($produit_id);
 }
 $barcode_url = get_barcode_produit_web_path($produit_id);
+$barcode_payload = !empty($produit['identifiant_interne'])
+    ? produit_emplacement_barcode_payload($produit['identifiant_interne'], $emplacement_vals_sync)
+    : '';
 
 $quantite_vendue = get_quantite_vendue_produit($produit_id);
 $stock_actuel = (int) ($produit['stock'] ?? 0);
@@ -74,10 +82,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
 
 // QR code : utiliser le fichier sauvegardé ou générer à la volée
 $qr_code_data_uri = '';
-$stock_info_url = '';
+$stock_info_url = produit_emplacement_stock_info_url($produit_id, $produit);
 $qr_file = __DIR__ . '/../../upload/qrcodes/produit_' . $produit_id . '.png';
 require_once __DIR__ . '/../../includes/site_url.php';
-$stock_info_url = get_site_base_url() . '/stock-info.php?id=' . $produit_id;
 if (file_exists($qr_file)) {
     $qr_code_data_uri = 'data:image/png;base64,' . base64_encode(file_get_contents($qr_file));
 } elseif (file_exists(__DIR__ . '/../../vendor/autoload.php')) {
@@ -220,8 +227,8 @@ $can_pdf_qrcode = ($stock_info_url !== '');
     $prod_fournisseur = produits_fournisseur_nom_affichage($produit);
     $prod_ref_fournisseur = (produits_has_column('reference_fournisseur') ? trim((string) ($produit['reference_fournisseur'] ?? '')) : '');
     $meta_ref = !empty($produit['identifiant_interne']) ? trim((string) $produit['identifiant_interne']) : '';
-    $meta_etage = isset($produit['etage']) && (string) $produit['etage'] !== '' ? trim((string) $produit['etage']) : '';
-    $meta_rayon = isset($produit['numero_rayon']) && (string) $produit['numero_rayon'] !== '' ? trim((string) $produit['numero_rayon']) : '';
+    require_once __DIR__ . '/../../includes/produit_emplacement_entrepot.php';
+    $emplacement_vals = produit_emplacement_from_produit($produit);
     ?>
     <div class="produit-preview page-ajuster-stock-preview" aria-label="Aperçu produit">
         <div class="page-ajuster-stock-preview__media">
@@ -237,11 +244,10 @@ $can_pdf_qrcode = ($stock_info_url !== '');
                 <span class="pas-preview-sep">·</span>
                 <span class="pas-preview-marque"><?php echo htmlspecialchars($prod_marque); ?></span>
                 <?php endif; ?>
-                <?php if ($prod_description !== ''): ?>
-                <span class="pas-preview-sep">·</span>
-                <span class="pas-preview-desc"><?php echo htmlspecialchars(substr($prod_description, 0, 100)) . (strlen($prod_description) > 100 ? '…' : ''); ?></span>
-                <?php endif; ?>
             </h3>
+            <?php if ($prod_description !== ''): ?>
+            <p class="pas-preview-desc"><?php echo htmlspecialchars($prod_description); ?></p>
+            <?php endif; ?>
 
             <!-- Prix -->
             <span class="prix page-ajuster-stock-preview__prix">
@@ -274,10 +280,8 @@ $can_pdf_qrcode = ($stock_info_url !== '');
             </div>
             <?php endif; ?>
 
-            <!-- Mini-cartes : référence FPL, étage, rayon -->
-            <?php if ($meta_ref !== '' || $meta_etage !== '' || $meta_rayon !== ''): ?>
-            <div class="page-ajuster-stock-meta-cards" role="list" aria-label="Informations magasin">
-                <?php if ($meta_ref !== ''): ?>
+            <?php if ($meta_ref !== ''): ?>
+            <div class="page-ajuster-stock-meta-cards" role="list" aria-label="Référence produit">
                 <div class="page-ajuster-stock-meta-card" role="listitem">
                     <span class="page-ajuster-stock-meta-card__ic" aria-hidden="true"><i class="fas fa-barcode"></i></span>
                     <div class="page-ajuster-stock-meta-card__body">
@@ -285,27 +289,10 @@ $can_pdf_qrcode = ($stock_info_url !== '');
                         <span class="page-ajuster-stock-meta-card__value"><?php echo htmlspecialchars($meta_ref); ?></span>
                     </div>
                 </div>
-                <?php endif; ?>
-                <?php if ($meta_etage !== ''): ?>
-                <div class="page-ajuster-stock-meta-card" role="listitem">
-                    <span class="page-ajuster-stock-meta-card__ic" aria-hidden="true"><i class="fas fa-layer-group"></i></span>
-                    <div class="page-ajuster-stock-meta-card__body">
-                        <span class="page-ajuster-stock-meta-card__label">Étage</span>
-                        <span class="page-ajuster-stock-meta-card__value"><?php echo htmlspecialchars($meta_etage); ?></span>
-                    </div>
-                </div>
-                <?php endif; ?>
-                <?php if ($meta_rayon !== ''): ?>
-                <div class="page-ajuster-stock-meta-card" role="listitem">
-                    <span class="page-ajuster-stock-meta-card__ic" aria-hidden="true"><i class="fas fa-th-large"></i></span>
-                    <div class="page-ajuster-stock-meta-card__body">
-                        <span class="page-ajuster-stock-meta-card__label">N° rayon</span>
-                        <span class="page-ajuster-stock-meta-card__value"><?php echo htmlspecialchars($meta_rayon); ?></span>
-                    </div>
-                </div>
-                <?php endif; ?>
             </div>
             <?php endif; ?>
+
+            <?php produit_emplacement_render_apercu($emplacement_vals); ?>
         </div>
     </div>
 
@@ -381,7 +368,10 @@ $can_pdf_qrcode = ($stock_info_url !== '');
                         $barcode_ver = is_file($barcode_fs) ? (int) filemtime($barcode_fs) : 1;
                         ?>
                         <img src="<?php echo htmlspecialchars($barcode_url); ?>?v=<?php echo $barcode_ver; ?>" alt="Code-barres <?php echo htmlspecialchars($produit['identifiant_interne']); ?>" class="barcode-fpl-img page-ajuster-stock-barcode-img" width="280" height="100">
-                        <div class="barcode-fpl-code"><?php echo htmlspecialchars($produit['identifiant_interne']); ?></div>
+                        <div class="barcode-fpl-code"><?php echo htmlspecialchars($barcode_payload !== '' ? $barcode_payload : $produit['identifiant_interne']); ?></div>
+                        <?php if ($barcode_payload !== '' && strpos($barcode_payload, ';') !== false): ?>
+                        <p class="barcode-fpl-emplacement page-ajuster-stock-aux__desc"><?php echo htmlspecialchars(produit_emplacement_resume_court($emplacement_vals_sync)); ?></p>
+                        <?php endif; ?>
                     </div>
                     <div class="barcode-fpl-actions page-ajuster-stock-aux__actions page-ajuster-stock-code-actions">
                         <button type="button" class="btn-primary btn-print-barcode page-ajuster-stock-print-btn" onclick="imprimerCodeBarresFPL()">
@@ -398,11 +388,14 @@ $can_pdf_qrcode = ($stock_info_url !== '');
                 <?php if (!empty($qr_code_data_uri)): ?>
                 <div class="stock-form-block qr-code-block page-ajuster-stock-aux" id="qr-code-print-area" data-qr="<?php echo htmlspecialchars($qr_code_data_uri); ?>" data-nom="<?php echo htmlspecialchars($produit['nom']); ?>">
                     <h3 class="page-ajuster-stock-aux__title"><i class="fas fa-qrcode" aria-hidden="true"></i> QR code du produit</h3>
-                    <p class="qr-code-desc page-ajuster-stock-aux__desc">Scannez ce QR code pour afficher les détails du stock sur mobile.</p>
+                    <p class="qr-code-desc page-ajuster-stock-aux__desc">Scannez ce QR code pour afficher les détails du stock et l’emplacement en entrepôt sur mobile.</p>
                     <div class="qr-code-wrap page-ajuster-stock-qr-wrap">
                         <img src="<?php echo htmlspecialchars($qr_code_data_uri); ?>" alt="QR Code - <?php echo htmlspecialchars($produit['nom']); ?>" class="qr-code-img" width="180" height="180">
                     </div>
                     <p class="qr-code-produit"><?php echo htmlspecialchars($produit['nom']); ?></p>
+                    <?php if (produit_emplacement_a_des_donnees($emplacement_vals_sync)): ?>
+                    <p class="qr-code-emplacement page-ajuster-stock-aux__desc"><?php echo htmlspecialchars(produit_emplacement_resume_court($emplacement_vals_sync)); ?></p>
+                    <?php endif; ?>
                     <div class="qr-code-actions page-ajuster-stock-aux__actions page-ajuster-stock-code-actions">
                         <button type="button" class="btn-primary btn-print-qr page-ajuster-stock-print-btn" onclick="imprimerQRCode()">
                             <i class="fas fa-print" aria-hidden="true"></i> Imprimer le QR code

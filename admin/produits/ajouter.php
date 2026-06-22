@@ -55,6 +55,8 @@ $has_marque_col = produits_has_column('marque_id');
 $has_ref_fourn_col = produits_has_column('reference_fournisseur');
 require_once __DIR__ . '/../../models/model_marques.php';
 $marques_catalogue = ($has_marque_col && marques_table_ok()) ? get_all_marques_ordered_by_nom() : [];
+require_once __DIR__ . '/../../includes/produit_emplacement_entrepot.php';
+$emplacement_form_vals = produit_emplacement_from_source($_POST);
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -177,6 +179,8 @@ $marques_catalogue = ($has_marque_col && marques_table_ok()) ? get_all_marques_o
                             <?php endif; ?>
                         </div>
                     </section>
+
+                    <section class="pm-card" aria-labelledby="pm-sec-prix-add">
                         <div class="pm-card__head">
                             <span class="pm-card__icon" aria-hidden="true"><i class="fas fa-coins"></i></span>
                             <div>
@@ -280,18 +284,8 @@ $marques_catalogue = ($has_marque_col && marques_table_ok()) ? get_all_marques_o
                                 <i class="fas fa-info-circle" aria-hidden="true"></i> Activez la colonne <code>identifiant_interne</code> (migrations) pour activer la référence FPL automatique sur ce formulaire.
                             </p>
                             <?php endif; ?>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label for="etage"><i class="fas fa-warehouse"></i> Étage (entrepôt)</label>
-                                    <input type="text" id="etage" name="etage" placeholder="Ex. RDC, 1, 2"
-                                        value="<?php echo isset($_POST['etage']) ? htmlspecialchars($_POST['etage']) : ''; ?>">
-                                </div>
-                                <div class="form-group">
-                                    <label for="numero_rayon">N° de rayon</label>
-                                    <input type="text" id="numero_rayon" name="numero_rayon" placeholder="Ex. A12"
-                                        value="<?php echo isset($_POST['numero_rayon']) ? htmlspecialchars($_POST['numero_rayon']) : ''; ?>">
-                                </div>
-                            </div>
+                            <p class="form-hint pm-hint pm-emplacement-intro">Repères pour localiser le produit en entrepôt (tous les champs sont facultatifs).</p>
+                            <?php produit_emplacement_render_form_fields($emplacement_form_vals); ?>
                         </div>
                     </section>
 

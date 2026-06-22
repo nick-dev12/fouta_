@@ -9,6 +9,7 @@ require_once __DIR__ . '/../models/model_marques.php';
 require_once __DIR__ . '/../models/model_sous_categories.php';
 require_once __DIR__ . '/../includes/barcode_fpl.php';
 require_once __DIR__ . '/../includes/fouta_upload_limits.php';
+require_once __DIR__ . '/../includes/produit_emplacement_entrepot.php';
 
 /**
  * Génère et sauvegarde le QR code d'un produit (pointant vers stock-info.php)
@@ -22,8 +23,9 @@ function generer_qrcode_produit($produit_id)
     }
     require_once __DIR__ . '/../vendor/autoload.php';
     require_once __DIR__ . '/../includes/site_url.php';
-    $base = get_site_base_url();
-    $url = $base . '/stock-info.php?id=' . (int) $produit_id;
+    $produit_id = (int) $produit_id;
+    $produit = get_produit_by_id($produit_id);
+    $url = produit_emplacement_stock_info_url($produit_id, $produit ?: []);
     $dir = __DIR__ . '/../upload/qrcodes/';
     if (!is_dir($dir)) {
         @mkdir($dir, 0755, true);
@@ -447,8 +449,7 @@ function process_add_produit()
 
     // Si aucune erreur, créer le produit
     if (empty($errors)) {
-        $etage = isset($_POST['etage']) ? trim($_POST['etage']) : '';
-        $numero_rayon = isset($_POST['numero_rayon']) ? trim($_POST['numero_rayon']) : '';
+        $emplacement = produit_emplacement_from_source($_POST);
         $admin_session_id = isset($_SESSION['admin_id']) ? (int) $_SESSION['admin_id'] : 0;
         $data = [
             'nom' => $nom,
@@ -466,9 +467,10 @@ function process_add_produit()
             'couleurs' => $couleurs,
             'taille' => $taille,
             'statut' => $stock > 0 ? $statut : 'rupture_stock',
-            'etage' => $etage !== '' ? $etage : null,
-            'numero_rayon' => $numero_rayon !== '' ? $numero_rayon : null
         ];
+        foreach ($emplacement as $col => $val) {
+            $data[$col] = $val;
+        }
         if (produits_has_column('prix_achat')) {
             $data['prix_achat'] = $prix_achat;
         }
@@ -816,8 +818,7 @@ function process_update_produit($produit_id)
 
     // Si aucune erreur, mettre à jour le produit
     if (empty($errors)) {
-        $etage = isset($_POST['etage']) ? trim($_POST['etage']) : '';
-        $numero_rayon = isset($_POST['numero_rayon']) ? trim($_POST['numero_rayon']) : '';
+        $emplacement = produit_emplacement_from_source($_POST);
         $admin_session_id = isset($_SESSION['admin_id']) ? (int) $_SESSION['admin_id'] : 0;
         $data = [
             'nom' => $nom,
@@ -836,9 +837,10 @@ function process_update_produit($produit_id)
             'taille' => $taille,
             'statut' => $stock > 0 ? $statut : 'rupture_stock',
             'stock_article_id' => null,
-            'etage' => $etage !== '' ? $etage : null,
-            'numero_rayon' => $numero_rayon !== '' ? $numero_rayon : null
         ];
+        foreach ($emplacement as $col => $val) {
+            $data[$col] = $val;
+        }
         if (produits_has_column('prix_achat')) {
             $data['prix_achat'] = $prix_achat;
         }
@@ -938,7 +940,22 @@ function process_update_produit($produit_id)
                 $new_id = strtoupper(trim((string) $nouvel_identifiant));
                 if ($old_id !== $new_id) {
                     generer_barcode_produit_fpl($produit_id);
+                    generer_qrcode_produit($produit_id);
                 }
+            }
+            $old_emplacement = produit_emplacement_from_produit($produit);
+            $emplacement_modifie = false;
+            foreach ($emplacement as $col => $val) {
+                $ancien = isset($old_emplacement[$col]) ? (string) $old_emplacement[$col] : '';
+                $nouveau = $val !== null ? (string) $val : '';
+                if ($ancien !== $nouveau) {
+                    $emplacement_modifie = true;
+                    break;
+                }
+            }
+            if ($emplacement_modifie) {
+                generer_barcode_produit_fpl($produit_id);
+                generer_qrcode_produit($produit_id);
             }
         } else {
             $errors[] = 'Une erreur est survenue lors de la modification du produit.';

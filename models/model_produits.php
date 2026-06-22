@@ -255,6 +255,18 @@ function produit_admin_liste_search_champs(array $produit)
         if (produits_has_column('numero_rayon')) {
             $champs[] = (string) ($produit['numero_rayon'] ?? '');
         }
+        if (produits_has_column('allee')) {
+            $champs[] = (string) ($produit['allee'] ?? '');
+        }
+        if (produits_has_column('zone_emplacement')) {
+            $champs[] = (string) ($produit['zone_emplacement'] ?? '');
+        }
+        if (produits_has_column('position_emplacement')) {
+            $champs[] = (string) ($produit['position_emplacement'] ?? '');
+        }
+        if (produits_has_column('barre_rayon')) {
+            $champs[] = (string) ($produit['barre_rayon'] ?? '');
+        }
         if (produits_has_column('couleurs')) {
             $champs[] = (string) ($produit['couleurs'] ?? '');
         }
@@ -1747,6 +1759,26 @@ function create_produit($data)
             $vals .= ", :numero_rayon";
             $params['numero_rayon'] = isset($data['numero_rayon']) && $data['numero_rayon'] !== '' ? trim($data['numero_rayon']) : null;
         }
+        if (produits_has_column('allee')) {
+            $cols .= ", allee";
+            $vals .= ", :allee";
+            $params['allee'] = isset($data['allee']) && $data['allee'] !== '' && $data['allee'] !== null ? (int) $data['allee'] : null;
+        }
+        if (produits_has_column('zone_emplacement')) {
+            $cols .= ", zone_emplacement";
+            $vals .= ", :zone_emplacement";
+            $params['zone_emplacement'] = isset($data['zone_emplacement']) && $data['zone_emplacement'] !== '' && $data['zone_emplacement'] !== null ? (int) $data['zone_emplacement'] : null;
+        }
+        if (produits_has_column('position_emplacement')) {
+            $cols .= ", position_emplacement";
+            $vals .= ", :position_emplacement";
+            $params['position_emplacement'] = isset($data['position_emplacement']) && $data['position_emplacement'] !== '' && $data['position_emplacement'] !== null ? (int) $data['position_emplacement'] : null;
+        }
+        if (produits_has_column('barre_rayon')) {
+            $cols .= ", barre_rayon";
+            $vals .= ", :barre_rayon";
+            $params['barre_rayon'] = isset($data['barre_rayon']) && $data['barre_rayon'] !== '' && $data['barre_rayon'] !== null ? (int) $data['barre_rayon'] : null;
+        }
         if (produits_has_column('fournisseur_id')) {
             $cols .= ", fournisseur_id";
             $vals .= ", :fournisseur_id";
@@ -1862,6 +1894,22 @@ function update_produit($id, $data)
         if (produits_has_column('numero_rayon')) {
             $sets .= ", numero_rayon = :numero_rayon";
             $params['numero_rayon'] = isset($data['numero_rayon']) && $data['numero_rayon'] !== '' ? trim($data['numero_rayon']) : null;
+        }
+        if (produits_has_column('allee')) {
+            $sets .= ", allee = :allee";
+            $params['allee'] = isset($data['allee']) && $data['allee'] !== '' && $data['allee'] !== null ? (int) $data['allee'] : null;
+        }
+        if (produits_has_column('zone_emplacement')) {
+            $sets .= ", zone_emplacement = :zone_emplacement";
+            $params['zone_emplacement'] = isset($data['zone_emplacement']) && $data['zone_emplacement'] !== '' && $data['zone_emplacement'] !== null ? (int) $data['zone_emplacement'] : null;
+        }
+        if (produits_has_column('position_emplacement')) {
+            $sets .= ", position_emplacement = :position_emplacement";
+            $params['position_emplacement'] = isset($data['position_emplacement']) && $data['position_emplacement'] !== '' && $data['position_emplacement'] !== null ? (int) $data['position_emplacement'] : null;
+        }
+        if (produits_has_column('barre_rayon')) {
+            $sets .= ", barre_rayon = :barre_rayon";
+            $params['barre_rayon'] = isset($data['barre_rayon']) && $data['barre_rayon'] !== '' && $data['barre_rayon'] !== null ? (int) $data['barre_rayon'] : null;
         }
         if (produits_has_column('fournisseur_id')) {
             $sets .= ", fournisseur_id = :fournisseur_id";

@@ -43,6 +43,7 @@ if (!produits_has_column('identifiant_interne')) {
 }
 
 require_once __DIR__ . '/../includes/site_url.php';
+require_once __DIR__ . '/../includes/produit_emplacement_entrepot.php';
 $base = get_site_base_url();
 
 function api_produit_fpl_format_row(array $p, $base_url)
@@ -61,9 +62,13 @@ function api_produit_fpl_format_row(array $p, $base_url)
         'categorie_nom' => $p['categorie_nom'] ?? '',
         'etage' => isset($p['etage']) && $p['etage'] !== '' ? $p['etage'] : null,
         'numero_rayon' => isset($p['numero_rayon']) && $p['numero_rayon'] !== '' ? $p['numero_rayon'] : null,
+        'allee' => isset($p['allee']) && $p['allee'] !== '' ? (int) $p['allee'] : null,
+        'zone_emplacement' => isset($p['zone_emplacement']) && $p['zone_emplacement'] !== '' ? (int) $p['zone_emplacement'] : null,
+        'position_emplacement' => isset($p['position_emplacement']) && $p['position_emplacement'] !== '' ? (int) $p['position_emplacement'] : null,
+        'barre_rayon' => isset($p['barre_rayon']) && $p['barre_rayon'] !== '' ? (int) $p['barre_rayon'] : null,
         'image_principale' => $p['image_principale'] ?? '',
         'url_fiche' => $base_url . '/produit.php?id=' . (int) $p['id'],
-        'url_stock_info' => $base_url . '/stock-info.php?id=' . (int) $p['id'],
+        'url_stock_info' => produit_emplacement_stock_info_url((int) $p['id'], $p),
     ];
 }
 
@@ -95,6 +100,7 @@ if (preg_match('/^\d{5}$/', $code)) {
 }
 
 $code = strtoupper($code);
+$code = produit_emplacement_extraire_fpl_du_scan($code);
 if (!preg_match('/^FPL(\d{6}|\d{9})$/', $code)) {
     http_response_code(400);
     echo json_encode([

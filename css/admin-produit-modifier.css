@@ -1120,3 +1120,17 @@ body.pm-modal-open {
   background: rgba(53, 100, 166, 0.18);
   border-color: var(--couleur-dominante, #3564a6);
 }
+
+.pm-emplacement-intro {
+  margin: 0 0 12px;
+}
+
+.pm-emplacement-row .form-group select {
+  width: 100%;
+}
+
+@media (max-width: 639px) {
+  .pm-emplacement-row.form-row {
+    flex-direction: column;
+  }
+}

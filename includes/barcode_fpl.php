@@ -4,6 +4,7 @@
  */
 
 require_once __DIR__ . '/../models/model_produits.php';
+require_once __DIR__ . '/produit_emplacement_entrepot.php';
 
 /**
  * Génère et enregistre le PNG sous upload/barcodes/produit_{id}.png
@@ -30,6 +31,10 @@ function generer_barcode_produit_fpl($produit_id)
         return false;
     }
 
+    $produit = get_produit_by_id($produit_id);
+    $vals = $produit ? produit_emplacement_from_produit($produit) : [];
+    $payload = produit_emplacement_barcode_payload($code, $vals);
+
     $dir = __DIR__ . '/../upload/barcodes/';
     if (!is_dir($dir)) {
         @mkdir($dir, 0755, true);
@@ -41,7 +46,7 @@ function generer_barcode_produit_fpl($produit_id)
         if (function_exists('imagecreate')) {
             $generator->useGd();
         }
-        $png = $generator->getBarcode($code, $generator::TYPE_CODE_128, 2, 56);
+        $png = $generator->getBarcode($payload, $generator::TYPE_CODE_128, 2, 56);
         if ($png === false || $png === '') {
             return false;
         }
