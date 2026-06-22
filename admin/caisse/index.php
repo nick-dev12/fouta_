@@ -426,7 +426,7 @@ if ($preview_recu !== null && $total_ttc > 0) {
                                         class="caisse-ref"><?php echo htmlspecialchars(trim($pr['identifiant_interne'] ?? '') ?: '—'); ?></code>
                                 </td>
                                 <?php endif; ?>
-                                <td><?php echo number_format($pu, 0, ',', ' '); ?></td>
+                                <td><?php echo $pu > 0 ? number_format($pu, 0, ',', ' ') : '—'; ?></td>
                                 <td><?php echo $stk; ?></td>
                                 <td class="caisse-results-act">
                                     <form method="post" action="post.php" class="caisse-inline-add">
@@ -502,6 +502,7 @@ if ($preview_recu !== null && $total_ttc > 0) {
                                 $p_stock = get_produit_by_id((int) ($line['produit_id'] ?? 0));
                                 $prix_catalogue = $p_stock ? round((float) caisse_prix_unitaire_produit($p_stock), 2) : $pu;
                                 $prix_manuel = !empty($line['prix_manuel']);
+                                $sans_prix_catalogue = $prix_catalogue <= 0;
                                 $stock_dispo = $p_stock ? (int) ($p_stock['stock'] ?? 0) : $q;
                                 $key_safe = preg_replace('/[^a-zA-Z0-9_-]/', '_', $key);
                                 $ref_produit = '';
@@ -531,11 +532,14 @@ if ($preview_recu !== null && $total_ttc > 0) {
                                                 name="prix_ligne[<?php echo htmlspecialchars($key, ENT_QUOTES, 'UTF-8'); ?>]"
                                                 id="prix_<?php echo htmlspecialchars($key_safe); ?>"
                                                 form="caisse-generer-ticket-form"
-                                                class="caisse-prix-input<?php echo $prix_manuel ? ' caisse-prix-input--manuel' : ''; ?>"
-                                                value="<?php echo htmlspecialchars((string) (int) round($pu)); ?>"
+                                                class="caisse-prix-input<?php echo ($prix_manuel || $sans_prix_catalogue) ? ' caisse-prix-input--manuel' : ''; ?>"
+                                                value="<?php echo $pu > 0 ? htmlspecialchars((string) (int) round($pu)) : ''; ?>"
                                                 inputmode="decimal"
                                                 autocomplete="off"
-                                                title="Prix catalogue : <?php echo number_format($prix_catalogue, 0, ',', ' '); ?> FCFA — enregistré à la génération du ticket"
+                                                placeholder="<?php echo $sans_prix_catalogue ? 'Prix à saisir' : ''; ?>"
+                                                title="<?php echo $sans_prix_catalogue
+                                                    ? 'Aucun prix catalogue — saisissez le montant avant de générer le ticket'
+                                                    : ('Prix catalogue : ' . number_format($prix_catalogue, 0, ',', ' ') . ' FCFA — enregistré à la génération du ticket'); ?>"
                                                 data-line-key="<?php echo htmlspecialchars($key, ENT_QUOTES, 'UTF-8'); ?>"
                                                 required>
                                         </div>

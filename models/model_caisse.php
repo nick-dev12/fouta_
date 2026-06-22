@@ -370,24 +370,29 @@ function caisse_cart_add_produit(array &$cart, array $produit, $quantite = 1)
     }
 
     $pu = caisse_prix_unitaire_produit($produit);
-    if ($pu <= 0) {
-        return ['ok' => false, 'error' => 'Prix invalide pour ce produit.'];
-    }
+    $sans_prix_catalogue = $pu <= 0;
 
     if (isset($cart['lines'][$key])) {
         $cart['lines'][$key]['quantite'] = $ex + $quantite;
         if (empty($cart['lines'][$key]['prix_manuel'])) {
-            $cart['lines'][$key]['prix_unitaire'] = $pu;
+            $cart['lines'][$key]['prix_unitaire'] = max(0.0, $pu);
+            if ($sans_prix_catalogue) {
+                $cart['lines'][$key]['prix_manuel'] = 1;
+            }
         }
         $cart['lines'][$key]['nom'] = $produit['nom'] ?? '';
     } else {
-        $cart['lines'][$key] = [
+        $line = [
             'produit_id' => (int) $produit['id'],
             'nom' => $produit['nom'] ?? '',
-            'prix_unitaire' => $pu,
+            'prix_unitaire' => max(0.0, $pu),
             'quantite' => $quantite,
             'remise_ligne_pct' => 0.0,
         ];
+        if ($sans_prix_catalogue) {
+            $line['prix_manuel'] = 1;
+        }
+        $cart['lines'][$key] = $line;
     }
     return ['ok' => true];
 }
@@ -405,7 +410,12 @@ function caisse_cart_set_prix_ligne(array &$cart, $line_key, $prix_saisi)
     }
     $prix = caisse_parse_montant_saisi($prix_saisi);
     if ($prix === null || $prix <= 0) {
-        return ['ok' => false, 'error' => 'Le prix unitaire doit être un montant supérieur à zéro.'];
+        $nom_ligne = trim((string) ($cart['lines'][$key]['nom'] ?? ''));
+        $msg = 'Le prix unitaire doit être un montant supérieur à zéro.';
+        if ($nom_ligne !== '') {
+            $msg = 'Indiquez un prix unitaire pour « ' . $nom_ligne . ' ».';
+        }
+        return ['ok' => false, 'error' => $msg];
     }
     $prix = round($prix, 2);
 
