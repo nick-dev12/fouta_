@@ -256,19 +256,21 @@
   }
 
   function buildCardHeading(p) {
-    var parts = ['<span class="pcn-nom">' + esc(p.nom) + '</span>'];
+    var html =
+      '<h3 class="caisse-live-card-nom produit-card-nom"><span class="pcn-nom">' + esc(p.nom) + '</span></h3>';
     var marqueNom = (p.marque_nom || '').trim();
-    var descEx = (p.desc_excerpt || p.desc_short || '').trim();
     if (marqueNom) {
-      parts.push('<span class="pcn-marque">' + esc(marqueNom) + '</span>');
+      html +=
+        '<p class="caisse-live-marque-line produit-card-marque">' +
+        '<i class="fas fa-tag" aria-hidden="true"></i> ' +
+        esc(marqueNom) +
+        '</p>';
     }
+    var descEx = (p.desc_preview || p.desc_excerpt || p.desc_short || '').trim();
     if (descEx) {
-      parts.push('<span class="pcn-desc">' + esc(descEx) + '</span>');
+      html += '<p class="caisse-live-desc-line produit-card-desc">' + esc(descEx) + '</p>';
     }
-    var sep = '<span class="pcn-sep" aria-hidden="true"> · </span>';
-    return (
-      '<h3 class="caisse-live-card-nom produit-card-nom">' + parts.join(sep) + '</h3>'
-    );
+    return html;
   }
 
   function buildCardFournisseur(p) {
@@ -321,8 +323,9 @@
     var i;
     for (i = 0; i < hits.length; i++) {
       var p = hits[i];
-      var refCell = hasIdent
-        ? '<span class="caisse-live-ref"><code>' + esc(p.ref || '—') + '</code></span>'
+      var refThumb = hasIdent && (p.ref || '').trim()
+        ? '<div class="caisse-live-ref-thumb" aria-label="Référence FPL">' +
+          '<code>' + esc(p.ref) + '</code></div>'
         : '';
       var headingHtml = buildCardHeading(p);
       var fournisseurHtml = buildCardFournisseur(p);
@@ -340,26 +343,27 @@
         '<input type="hidden" name="caisse_action" value="add_product">' +
         '<input type="hidden" name="produit_id" value="' + esc(String(p.id)) + '">' +
         '<input type="hidden" name="quantite" value="1">' +
+        '<div class="caisse-live-media">' +
+        refThumb +
         '<button type="button" class="caisse-live-thumb" data-caisse-gallery="' +
         imgsAttr +
         '" title="Voir les photos">' +
         '<img src="' +
         escAttr(thumbSrc) +
-        '" alt="" loading="lazy" width="56" height="56" onerror="this.src=\'' +
+        '" alt="" loading="lazy" width="96" height="96" onerror="this.src=\'' +
         placeholderImg +
         '\'">' +
         '</button>' +
+        '</div>' +
         '<button type="submit" class="caisse-live-row-hit">' +
         headingHtml +
         fournisseurHtml +
         categorieHtml +
         refFourn +
-        '<span class="caisse-live-refs-prod">' +
-        refCell +
-        '</span>' +
         '<span class="caisse-live-meta"><strong>' +
-        fmtFcfa(p.prix) +
-        ' FCFA</strong> HT · stock ' +
+        (p.prix > 0
+          ? fmtFcfa(p.prix) + ' FCFA</strong> HT · stock '
+          : 'Prix à saisir</strong> · stock ') +
         esc(String(p.stock)) +
         '</span>' +
         '<span class="caisse-live-hint-add">Cliquer pour ajouter au panier</span>' +

@@ -252,7 +252,7 @@
   border: 1px solid rgba(53, 100, 166, 0.18);
   background: var(--fond-secondaire, #fafafa);
   overflow: hidden;
-  max-height: min(42vh, 360px);
+  max-height: min(52vh, 480px);
   overflow-y: auto;
 }
 
@@ -284,21 +284,49 @@
 .caisse-live-add-form {
   display: flex;
   flex-direction: row;
-  align-items: stretch;
-  gap: 0.65rem;
+  align-items: flex-start;
+  gap: 0.75rem;
   width: 100%;
   margin: 0;
-  padding: 0.65rem 0.85rem;
+  padding: 0.75rem 0.85rem;
   box-sizing: border-box;
+}
+
+.caisse-live-media {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.4rem;
+  width: 108px;
+}
+
+.caisse-live-ref-thumb {
+  text-align: center;
+  line-height: 1.2;
+}
+
+.caisse-live-ref-thumb code {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  padding: 0.35rem 0.4rem;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--couleur-dominante, #3564a6) 0%, var(--bleu-fonce, #2d5690) 100%);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(53, 100, 166, 0.28);
+  word-break: break-all;
 }
 
 .caisse-live-thumb {
   flex-shrink: 0;
-  width: 56px;
-  height: 56px;
+  width: 100%;
+  height: 96px;
   padding: 0;
   margin: 0;
-  border: 1px solid rgba(53, 100, 166, 0.18);
+  border: 2px solid rgba(53, 100, 166, 0.28);
   border-radius: 10px;
   overflow: hidden;
   cursor: zoom-in;
@@ -306,7 +334,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  align-self: center;
+  align-self: stretch;
   transition:
     box-shadow 0.2s ease,
     transform 0.15s ease;
@@ -353,16 +381,39 @@
 
 .caisse-live-row-hit .produit-card-nom,
 .caisse-live-row-hit .caisse-live-card-nom {
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  display: block;
+  overflow: visible;
   white-space: normal;
   line-height: 1.35;
-  font-size: 0.92rem;
+  font-size: 0.95rem;
   font-weight: 700;
   color: var(--titres);
   margin: 0;
+  width: 100%;
+}
+
+.caisse-live-marque-line,
+.caisse-live-row-hit .produit-card-marque {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--couleur-dominante, #3564a6);
+  line-height: 1.35;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.caisse-live-desc-line,
+.caisse-live-row-hit .produit-card-desc {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--gris-fonce, #4a4a4a);
+  line-height: 1.45;
+  white-space: normal;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
   width: 100%;
 }
 

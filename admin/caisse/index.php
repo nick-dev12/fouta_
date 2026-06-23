@@ -111,12 +111,12 @@ foreach ($caisse_catalog_rows as $pr) {
     if (function_exists('produits_has_column') && produits_has_column('reference_fournisseur')) {
         $refF = trim((string) ($pr['reference_fournisseur'] ?? ''));
     }
+    $descPreview = function_exists('produits_description_excerpt')
+        ? produits_description_excerpt($pr['description'] ?? '', 200)
+        : mb_substr(trim(strip_tags((string) ($pr['description'] ?? ''))), 0, 200);
     $descShort = function_exists('produits_description_excerpt')
         ? produits_description_excerpt($pr['description'] ?? '', 50)
-        : '';
-    $descExcerpt = function_exists('produits_description_excerpt')
-        ? produits_description_excerpt($pr['description'] ?? '', 20)
-        : '';
+        : $descPreview;
     $marqueNom = function_exists('produits_marque_libelle_from_row')
         ? produits_marque_libelle_from_row($pr)
         : trim((string) ($pr['marque_libelle_catalogue'] ?? $pr['marque_nom'] ?? ''));
@@ -137,7 +137,8 @@ foreach ($caisse_catalog_rows as $pr) {
         'ref_f' => $refF,
         'marque_nom' => $marqueNom,
         'desc_short' => $descShort,
-        'desc_excerpt' => $descExcerpt,
+        'desc_preview' => $descPreview,
+        'desc_excerpt' => $descPreview,
         'fournisseur_nom' => $fournisseurNom,
         'categorie_nom' => $categorieNom,
         'cat_id' => (int) ($pr['categorie_id'] ?? 0),
@@ -608,7 +609,7 @@ if ($preview_recu !== null && $total_ttc > 0) {
                     </div>
                     <?php endif; ?>
 
-                    <?php if (!empty($cart['lines']) && $total_ttc > 0): ?>
+                    <?php if (!empty($cart['lines'])): ?>
                     <form method="post" action="post.php" class="caisse-generer-ticket-form" id="caisse-generer-ticket-form">
                         <input type="hidden" name="csrf_token"
                             value="<?php echo htmlspecialchars($_SESSION['admin_csrf']); ?>">
@@ -617,6 +618,9 @@ if ($preview_recu !== null && $total_ttc > 0) {
                             <?php echo !$tables_ok ? 'disabled' : ''; ?>>
                             <i class="fas fa-ticket-alt"></i> Générer le ticket
                         </button>
+                        <?php if ($total_ttc <= 0): ?>
+                        <p class="caisse-generer-ticket-hint">Saisissez le prix de chaque ligne dans le panier avant de générer le ticket.</p>
+                        <?php endif; ?>
                     </form>
                     <?php endif; ?>
                     <?php endif; ?>

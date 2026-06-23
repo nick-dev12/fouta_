@@ -561,6 +561,10 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
                 display: none !important;
             }
 
+            .facture-flash-bar {
+                display: none !important;
+            }
+
             .facture-container {
                 max-width: 100% !important;
                 width: 100% !important;
