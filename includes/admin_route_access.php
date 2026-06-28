@@ -153,6 +153,11 @@ if (!function_exists('admin_route_relative_path')) {
                     'devis/facture_mensuelle_generer.php',
                     'devis/facture_mensuelle_valider.php',
                     'devis/bl_voir.php',
+                    'devis/bl_facture.php',
+                    'devis/facture.php',
+                    'devis/details.php',
+                    'devis/br_voir.php',
+                    'devis/br_par_client.php',
                     'devis/bl_modifier.php',
                 ];
                 return in_array($p, $compta_devis, true);

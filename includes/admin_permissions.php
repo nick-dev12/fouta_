@@ -64,6 +64,16 @@ if (!function_exists('admin_current_role')) {
         return $r === 'admin' || $r === 'comptabilite' || $r === 'informaticien' || $r === 'developpeur';
     }
 
+    /** Consultation BL, factures BL et bons de retour (lecture seule pour la comptabilité). */
+    function admin_can_consulter_bl_b2b_compta() {
+        return admin_can_bl_retours_b2b() || admin_can_comptabilite();
+    }
+
+    /** Consultation devis et factures devis (lecture seule pour la comptabilité). */
+    function admin_can_consulter_devis_compta() {
+        return admin_can_devis() || admin_can_comptabilite();
+    }
+
     function admin_can_rh() {
         $r = admin_current_role();
         return $r === 'rh' || $r === 'informaticien' || $r === 'developpeur';

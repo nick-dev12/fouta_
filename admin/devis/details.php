@@ -10,7 +10,7 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
 }
 
 require_once __DIR__ . '/../../includes/admin_permissions.php';
-if (!admin_can_devis()) {
+if (!admin_can_consulter_devis_compta()) {
     header('Location: ../dashboard.php');
     exit;
 }

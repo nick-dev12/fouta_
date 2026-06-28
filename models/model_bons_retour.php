@@ -178,6 +178,45 @@ function br_create_bon_retour($bl_id, $admin_id, $notes, array $quantites_par_li
                 'total' => $r['total_ligne_ht'],
             ]);
         }
+
+        require_once __DIR__ . '/model_produits.php';
+        require_once __DIR__ . '/model_mouvements_stock.php';
+
+        foreach ($rows_insert as $r) {
+            $pid = !empty($r['produit_id']) ? (int) $r['produit_id'] : 0;
+            if ($pid <= 0) {
+                continue;
+            }
+            $q = (int) round((float) $r['quantite_retour']);
+            if ($q <= 0) {
+                continue;
+            }
+            $produit = get_produit_by_id($pid);
+            if (!$produit) {
+                throw new PDOException('Produit introuvable pour le retour stock (#' . $pid . ').');
+            }
+            $avant = (int) ($produit['stock'] ?? 0);
+            $apres = increment_produit_stock($pid, $q);
+            if ($apres === false) {
+                throw new PDOException('Impossible de réintégrer le stock pour « ' . ($r['designation'] ?? '') . ' ».');
+            }
+            $mv = [
+                'type' => 'entree',
+                'produit_id' => $pid,
+                'quantite' => $q,
+                'quantite_avant' => $avant,
+                'quantite_apres' => (int) $apres,
+                'reference_type' => 'bon_retour',
+                'reference_id' => $br_id,
+                'reference_numero' => $numero,
+                'notes' => 'Retour B2B — bon ' . $numero,
+            ];
+            if ($admin_id && (int) $admin_id > 0) {
+                $mv['admin_id'] = (int) $admin_id;
+            }
+            create_stock_mouvement($mv);
+        }
+
         $db->commit();
         return ['success' => true, 'br_id' => $br_id, 'numero_br' => $numero];
     } catch (PDOException $e) {
@@ -302,7 +341,12 @@ function br_get_lignes($bon_retour_id)
     }
     try {
         $stmt = $db->prepare('
-            SELECT * FROM bons_retour_lignes WHERE bon_retour_id = :id ORDER BY id ASC
+            SELECT l.*
+            FROM bons_retour_lignes l
+            INNER JOIN bons_retour br ON br.id = l.bon_retour_id
+            INNER JOIN bl_lignes bll ON bll.id = l.bl_ligne_id AND bll.bl_id = br.bl_id
+            WHERE l.bon_retour_id = :id AND l.quantite_retour > 0
+            ORDER BY l.id ASC
         ');
         $stmt->execute(['id' => (int) $bon_retour_id]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];

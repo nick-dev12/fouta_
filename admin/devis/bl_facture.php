@@ -11,7 +11,7 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
 require_once __DIR__ . '/../includes/require_access.php';
 
 require_once __DIR__ . '/../../includes/admin_permissions.php';
-if (!admin_can_bl_retours_b2b()) {
+if (!admin_can_consulter_bl_b2b_compta()) {
     header('Location: ../dashboard.php');
     exit;
 }

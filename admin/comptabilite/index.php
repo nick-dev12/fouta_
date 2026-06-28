@@ -311,7 +311,9 @@ $active_tab = isset($_GET['tab']) && in_array($_GET['tab'], $tab_valid, true) ? 
 
 $br_tables_ok_compta = function_exists('br_retour_tables_available') && br_retour_tables_available();
 $br_list_compta = $br_tables_ok_compta ? br_get_all_with_bl_client() : [];
+$br_clients_list_compta = $br_tables_ok_compta ? get_clients_b2b_avec_bons_retour() : [];
 $br_kpi_nb = count($br_list_compta);
+$br_kpi_nb_clients = count($br_clients_list_compta);
 $br_kpi_total_ht = 0.0;
 foreach ($br_list_compta as $br_row) {
     $br_kpi_total_ht += (float) ($br_row['total_ht_retour'] ?? 0);
@@ -1541,57 +1543,127 @@ $h_benefice = $h_gains_total - $h_depenses_ttc;
         </div>
 
         <div id="compta-panel-bons-retour" class="compta-panel compta-panel--bons-retour <?php echo $tab_bons_retour_active ? 'is-active' : ''; ?>" role="tabpanel" aria-labelledby="compta-tab-bons-retour" <?php echo $tab_bons_retour_active ? '' : 'hidden'; ?> data-compta-panel="bons_retour">
-            <div class="compta-panel-inner">
-                <?php if (!$br_tables_ok_compta): ?>
-                <p class="form-hint">Tables absentes — exécutez <code>php migrations/run_create_bons_retour_tables.php</code>.</p>
-                <?php else: ?>
-                <div class="compta-kpi-row" style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:20px;">
-                    <div class="compta-kpi-card" style="flex:1;min-width:140px;padding:16px;border:1px solid rgba(53,100,166,.15);border-radius:10px;background:#fff;">
-                        <span style="display:block;font-size:.85rem;color:#737373;">Nombre de bons</span>
-                        <strong style="font-size:1.5rem;color:#3564a6;"><?php echo (int) $br_kpi_nb; ?></strong>
-                    </div>
-                    <div class="compta-kpi-card" style="flex:1;min-width:140px;padding:16px;border:1px solid rgba(53,100,166,.15);border-radius:10px;background:#fff;">
-                        <span style="display:block;font-size:.85rem;color:#737373;">Total HT retours</span>
-                        <strong style="font-size:1.5rem;color:#3564a6;"><?php echo number_format($br_kpi_total_ht, 0, ',', ' '); ?> <small>FCFA</small></strong>
+            <div class="compta-hero compta-hero--bl compta-bl-hero compta-bl-hero--premium">
+                <div class="compta-hero__copy">
+                    <p class="compta-bl-eyebrow">B2B · Retours marchandises</p>
+                    <h2 class="compta-hero__title" id="compta-br-hero-title">Bons de retour</h2>
+                    <div class="compta-hero__actions compta-bl-hero__actions">
+                        <a href="#compta-br-clients-anchor" class="compta-btn compta-btn--primary"><i class="fas fa-people-group" aria-hidden="true"></i> Liste clients &amp; BR</a>
                     </div>
                 </div>
-                <?php if (empty($br_list_compta)): ?>
-                <p class="form-hint">Aucun bon de retour enregistré.</p>
-                <?php else: ?>
-                <div class="table-responsive">
-                    <table class="admin-table">
-                        <thead>
-                            <tr>
-                                <th>N° BR</th>
-                                <th>Date</th>
-                                <th>Client</th>
-                                <th>BL lié</th>
-                                <th class="compta-table-col-num">Montant HT</th>
-                                <th class="compta-table-col-actions">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($br_list_compta as $br_item): ?>
-                            <tr>
-                                <td><code><?php echo htmlspecialchars($br_item['numero_br'] ?? ''); ?></code></td>
-                                <td><?php echo !empty($br_item['date_retour']) ? htmlspecialchars(date('d/m/Y', strtotime($br_item['date_retour']))) : '—'; ?></td>
-                                <td><?php echo htmlspecialchars($br_item['client_nom'] ?? ''); ?></td>
-                                <td><?php echo htmlspecialchars($br_item['numero_bl'] ?? ''); ?></td>
-                                <td class="compta-table-col-num"><?php echo number_format((float) ($br_item['total_ht_retour'] ?? 0), 0, ',', ' '); ?> <small>FCFA</small></td>
-                                <td class="compta-table-actions">
-                                    <a href="../devis/br_voir.php?id=<?php echo (int) ($br_item['id'] ?? 0); ?>" class="btn-secondary btn-sm"><i class="fas fa-eye"></i> Voir</a>
-                                    <?php if (!empty($br_item['bl_id'])): ?>
-                                    <a href="../devis/bl_facture.php?id=<?php echo (int) $br_item['bl_id']; ?>" class="btn-secondary btn-sm"><i class="fas fa-file-invoice"></i> BL / Facture</a>
-                                    <?php endif; ?>
-                                </td>
-                            </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-                <?php endif; ?>
-                <?php endif; ?>
             </div>
+
+            <div class="compta-bl-body">
+
+            <?php if (!$br_tables_ok_compta): ?>
+                <div class="compta-bl-alerts" role="status">
+                    <p class="message error compta-bl-msg compta-bl-msg--standalone"><i class="fas fa-database" aria-hidden="true"></i> Tables bons de retour absentes : exécutez <code>php migrations/run_create_bons_retour_tables.php</code>.</p>
+                </div>
+            <?php else: ?>
+                <h3 class="compta-section-title compta-bl-synth-title"><i class="fas fa-undo" aria-hidden="true"></i> Bons de retour</h3>
+
+                <div class="compta-bl-kpis" aria-label="Synthèse des retours B2B">
+                    <div class="compta-bl-kpi">
+                        <span class="compta-bl-kpi__ic" aria-hidden="true"><i class="fas fa-file-alt"></i></span>
+                        <div class="compta-bl-kpi__body">
+                            <span class="compta-bl-kpi__label">Bons de retour enregistrés</span>
+                            <span class="compta-bl-kpi__value"><?php echo (int) $br_kpi_nb; ?></span>
+                        </div>
+                    </div>
+                    <div class="compta-bl-kpi">
+                        <span class="compta-bl-kpi__ic" aria-hidden="true"><i class="fas fa-file-invoice-dollar"></i></span>
+                        <div class="compta-bl-kpi__body">
+                            <span class="compta-bl-kpi__label">Total HT retours</span>
+                            <span class="compta-bl-kpi__value"><?php echo number_format($br_kpi_total_ht, 0, ',', ' '); ?> <small>FCFA</small></span>
+                        </div>
+                    </div>
+                    <div class="compta-bl-kpi">
+                        <span class="compta-bl-kpi__ic" aria-hidden="true"><i class="fas fa-users"></i></span>
+                        <div class="compta-bl-kpi__body">
+                            <span class="compta-bl-kpi__label">Clients distincts</span>
+                            <span class="compta-bl-kpi__value"><?php echo (int) $br_kpi_nb_clients; ?></span>
+                        </div>
+                    </div>
+                </div>
+            <?php endif; ?>
+
+            <h3 id="compta-br-clients-anchor" class="compta-section-title compta-section-title--spaced compta-bl-list-title"><i class="fas fa-people-group" aria-hidden="true"></i> Clients &amp; bons de retour</h3>
+
+            <?php if ($br_tables_ok_compta && empty($br_clients_list_compta)): ?>
+                <div class="compta-blank compta-bl-empty">
+                    <p><i class="fas fa-people-group" aria-hidden="true"></i> Aucun client B2B avec bon de retour pour le moment.</p>
+                </div>
+            <?php elseif ($br_tables_ok_compta && !empty($br_clients_list_compta)): ?>
+                <?php $br_nb_contacts_compta = count($br_clients_list_compta); ?>
+                <div class="bl-tab-surface compta-bl-tab-surface">
+                    <header class="bl-contacts-hero">
+                        <div class="bl-contacts-hero__icon-wrap" aria-hidden="true">
+                            <i class="fas fa-people-group"></i>
+                        </div>
+                        <div class="bl-contacts-hero__copy">
+                            <h2 class="bl-contacts-hero__title">Contacts B2B</h2>
+                            <p class="bl-contacts-hero__lead compta-bl-contacts-hero__lead">Clients ayant enregistré au moins un bon de retour.</p>
+                        </div>
+                        <div class="bl-contacts-hero__stat" title="Nombre de contacts listés">
+                            <span class="bl-contacts-hero__stat-num"><?php echo (int) $br_nb_contacts_compta; ?></span>
+                            <span class="bl-contacts-hero__stat-label">contact<?php echo $br_nb_contacts_compta > 1 ? 's' : ''; ?></span>
+                        </div>
+                    </header>
+                    <div class="compta-panel-table-wrap compta-bl-clients-table-wrap">
+                        <table class="data-table compta-bl-clients-table" aria-labelledby="compta-br-clients-anchor">
+                            <thead>
+                                <tr>
+                                    <th scope="col" class="compta-bl-clients-table__th compta-bl-clients-table__th--client"><span class="compta-bl-clients-table__th-label"><i class="fas fa-building" aria-hidden="true"></i> Client</span></th>
+                                    <th scope="col" class="compta-bl-clients-table__th"><span class="compta-bl-clients-table__th-label"><i class="fas fa-phone-alt" aria-hidden="true"></i> Téléphone</span></th>
+                                    <th scope="col" class="compta-bl-clients-table__th"><span class="compta-bl-clients-table__th-label"><i class="fas fa-envelope" aria-hidden="true"></i> Email</span></th>
+                                    <th scope="col" class="compta-table-col-num compta-bl-clients-table__th compta-bl-clients-table__th--bl"><span class="compta-bl-clients-table__th-label"><i class="fas fa-undo" aria-hidden="true"></i> BR</span></th>
+                                    <th scope="col" class="compta-table-col-actions compta-bl-clients-table__th compta-bl-clients-table__th--actions"><span class="compta-bl-clients-table__th-label"><i class="fas fa-external-link-alt" aria-hidden="true"></i> Actions</span></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    <?php foreach ($br_clients_list_compta as $cl): ?>
+                        <?php
+                        $cid = (int) $cl['id'];
+                        $nb_br_c = (int) ($cl['nb_br'] ?? 0);
+                        $rs_c = trim($cl['raison_sociale'] ?? '');
+                        $tel_raw = trim((string) ($cl['telephone'] ?? ''));
+                        $email_raw = trim((string) ($cl['email'] ?? ''));
+                        ?>
+                                <tr class="compta-bl-clients-table__row">
+                                    <td class="compta-bl-clients-table__cell compta-bl-clients-table__cell--client">
+                                        <div class="compta-bl-clients-table__client">
+                                            <span class="compta-bl-clients-table__company"><?php echo htmlspecialchars($rs_c ?: '—'); ?></span>
+                                        </div>
+                                    </td>
+                                    <td class="compta-bl-clients-table__cell compta-bl-clients-table__cell--meta">
+                                        <?php if ($tel_raw !== ''): ?>
+                                            <a class="compta-bl-clients-table__link compta-bl-clients-table__link--tel" href="tel:<?php echo htmlspecialchars(preg_replace('/\s+/', '', $tel_raw)); ?>"><?php echo htmlspecialchars($tel_raw); ?></a>
+                                        <?php else: ?>
+                                            <span class="compta-bl-clients-table__empty">—</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td class="compta-bl-clients-table__cell compta-bl-clients-table__cell--meta">
+                                        <?php if ($email_raw !== ''): ?>
+                                            <a class="compta-bl-clients-table__link compta-bl-clients-table__link--mail" href="mailto:<?php echo htmlspecialchars($email_raw); ?>"><?php echo htmlspecialchars($email_raw); ?></a>
+                                        <?php else: ?>
+                                            <span class="compta-bl-clients-table__empty">—</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td class="compta-table-col-num compta-bl-clients-table__cell compta-bl-clients-table__cell--bl">
+                                        <span class="compta-bl-clients-table__bl-pill" title="Nombre de bons de retour"><?php echo (int) $nb_br_c; ?></span>
+                                    </td>
+                                    <td class="compta-table-actions compta-bl-clients-table__cell compta-bl-clients-table__cell--cta">
+                                        <a class="compta-bl-clients-table__cta" href="../devis/br_par_client.php?id=<?php echo $cid; ?>" aria-label="Voir les bons de retour du client"><span class="compta-bl-clients-table__cta-text">Bons de retour</span><i class="fas fa-arrow-right compta-bl-clients-table__cta-ic" aria-hidden="true"></i></a>
+                                    </td>
+                                </tr>
+                    <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            <?php endif; ?>
+
+            </div><!-- .compta-bl-body -->
         </div>
     </section>
     </div>

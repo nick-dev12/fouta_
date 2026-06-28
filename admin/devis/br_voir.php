@@ -7,12 +7,13 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
 }
 
 require_once __DIR__ . '/../../includes/admin_permissions.php';
-if (!admin_can_bl_retours_b2b()) {
+if (!admin_can_consulter_bl_b2b_compta()) {
     header('Location: ../dashboard.php');
     exit;
 }
 
 require_once __DIR__ . '/../../models/model_bons_retour.php';
+require_once __DIR__ . '/../../models/model_produits.php';
 
 $br_id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 if ($br_id <= 0 || !br_retour_tables_available()) {
@@ -27,8 +28,22 @@ if (!$br) {
 }
 
 $lignes = br_get_lignes($br_id);
+$has_ident_br = function_exists('produits_has_column') && produits_has_column('identifiant_interne');
+foreach ($lignes as &$ligne_br_row) {
+    $ligne_br_row['ref_fpl'] = '';
+    $pid_br = (int) ($ligne_br_row['produit_id'] ?? 0);
+    if ($pid_br > 0 && $has_ident_br) {
+        $pr_br = get_produit_by_id($pid_br);
+        if ($pr_br && trim((string) ($pr_br['identifiant_interne'] ?? '')) !== '') {
+            $ligne_br_row['ref_fpl'] = strtoupper(trim((string) $pr_br['identifiant_interne']));
+        }
+    }
+}
+unset($ligne_br_row);
+
 $bl_id = (int) ($br['bl_id'] ?? 0);
 $total = (float) ($br['total_ht_retour'] ?? 0);
+$retour_compta = admin_can_comptabilite() && !admin_can_bl_retours_b2b();
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -47,13 +62,16 @@ $total = (float) ($br['total_ht_retour'] ?? 0);
     <div class="content-header bl-page-header">
         <div class="bl-page-header__lead">
             <h1><i class="fas fa-undo" aria-hidden="true"></i> <?php echo htmlspecialchars($br['numero_br'] ?? ''); ?></h1>
-            <p class="bl-page-header__sub"><?php echo htmlspecialchars($br['raison_sociale'] ?? ''); ?> · <?php echo !empty($br['date_retour']) ? htmlspecialchars(date('d/m/Y à H:i:s', strtotime($br['date_retour']))) : '—'; ?></p>
         </div>
         <div class="header-actions bl-page-header__actions bl-page-header__actions--stack">
             <?php if ($bl_id > 0): ?>
             <a href="bl_voir.php?id=<?php echo $bl_id; ?>" class="btn-secondary"><i class="fas fa-file-invoice" aria-hidden="true"></i> Voir le BL <?php echo htmlspecialchars($br['numero_bl'] ?? ''); ?></a>
             <?php endif; ?>
+            <?php if ($retour_compta): ?>
+            <a href="../comptabilite/index.php?tab=bons_retour" class="btn-secondary"><i class="fas fa-arrow-left" aria-hidden="true"></i> Retour comptabilité</a>
+            <?php else: ?>
             <a href="index.php?tab=br" class="btn-secondary"><i class="fas fa-list" aria-hidden="true"></i> Liste bons de retour</a>
+            <?php endif; ?>
         </div>
     </div>
 
@@ -124,21 +142,34 @@ $total = (float) ($br['total_ht_retour'] ?? 0);
                         </tr>
                     </thead>
                     <tbody>
+                        <?php if (empty($lignes)): ?>
+                        <tr>
+                            <td colspan="4" class="bl-lines-table__empty">Aucune ligne retournée enregistrée.</td>
+                        </tr>
+                        <?php else: ?>
                         <?php foreach ($lignes as $l): ?>
                         <tr>
-                            <td><?php echo htmlspecialchars($l['designation'] ?? ''); ?></td>
+                            <td>
+                                <div><?php echo htmlspecialchars($l['designation'] ?? ''); ?></div>
+                                <?php if (!empty($l['ref_fpl'])): ?>
+                                <code class="bl-ligne-ref-fpl"><?php echo htmlspecialchars($l['ref_fpl']); ?></code>
+                                <?php endif; ?>
+                            </td>
                             <td class="bl-lines-table__num"><?php echo htmlspecialchars(rtrim(rtrim(sprintf('%.4F', (float) ($l['quantite_retour'] ?? 0)), '0'), '.')); ?></td>
                             <td class="bl-lines-table__num"><?php echo number_format((float) ($l['prix_unitaire_ht'] ?? 0), 0, ',', ' '); ?></td>
                             <td class="bl-lines-table__num"><strong><?php echo number_format((float) ($l['total_ligne_ht'] ?? 0), 0, ',', ' '); ?></strong></td>
                         </tr>
                         <?php endforeach; ?>
+                        <?php endif; ?>
                     </tbody>
+                    <?php if (!empty($lignes)): ?>
                     <tfoot>
                         <tr class="bl-lines-table__foot">
                             <th scope="row" colspan="3">Total HT</th>
                             <td class="bl-lines-table__num"><?php echo number_format($total, 0, ',', ' '); ?> FCFA</td>
                         </tr>
                     </tfoot>
+                    <?php endif; ?>
                 </table>
             </div>
         </div>

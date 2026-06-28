@@ -2111,6 +2111,42 @@ function decrement_produit_stock($produit_id, $quantite)
 }
 
 /**
+ * Incrémente le stock d'un produit (retour marchandise, annulation, etc.)
+ *
+ * @param int $produit_id ID du produit
+ * @param int $quantite Quantité à ajouter
+ * @return int|false Nouvelle quantité ou false en cas d'erreur
+ */
+function increment_produit_stock($produit_id, $quantite)
+{
+    global $db;
+
+    try {
+        $produit_id = (int) $produit_id;
+        $qty = (int) $quantite;
+        if ($qty <= 0) {
+            return false;
+        }
+        $stmt = $db->prepare('SELECT stock FROM produits WHERE id = :id LIMIT 1');
+        $stmt->execute(['id' => $produit_id]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) {
+            return false;
+        }
+        $avant = (int) $row['stock'];
+
+        $stmt = $db->prepare('UPDATE produits SET stock = stock + :qty, date_modification = NOW() WHERE id = :id');
+        $stmt->execute(['id' => $produit_id, 'qty' => $qty]);
+        $stmt = $db->prepare('SELECT stock FROM produits WHERE id = :id');
+        $stmt->execute(['id' => $produit_id]);
+        $row2 = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row2 ? (int) $row2['stock'] : false;
+    } catch (PDOException $e) {
+        return false;
+    }
+}
+
+/**
  * Recherche des produits en stock pour commande manuelle
  * @param string $recherche Terme de recherche (nom produit ou catégorie)
  * @param int $limit Nombre max de résultats
