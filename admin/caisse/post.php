@@ -49,8 +49,10 @@ if ($action === 'add_scan') {
         $norm = strtoupper(preg_replace('/\s+/u', '', $code));
         $now = microtime(true);
         $last = $_SESSION['caisse_last_scan'] ?? null;
-        if (is_array($last) && isset($last['norm'], $last['t'])
-            && $last['norm'] === $norm && ($now - (float) $last['t']) < 0.45) {
+        if (
+            is_array($last) && isset($last['norm'], $last['t'])
+            && $last['norm'] === $norm && ($now - (float) $last['t']) < 0.45
+        ) {
             caisse_redirect_ok();
         }
         $_SESSION['caisse_last_scan'] = ['norm' => $norm, 't' => $now];
@@ -210,18 +212,13 @@ if ($action === 'generer_ticket') {
         $_SESSION['caisse_flash_error'] = 'Action non autorisée.';
         caisse_redirect_ok();
     }
-    $qty_errs = caisse_cart_apply_quantites_posted($cart, $_POST);
-    if (!empty($qty_errs)) {
-        $_SESSION['caisse_flash_error'] = $qty_errs[0];
+    $materialize = caisse_cart_materialize_from_post($cart, $_POST, true);
+    if (!$materialize['ok']) {
+        $_SESSION['caisse_flash_error'] = $materialize['error'] ?? 'Panier invalide — rechargez la page.';
         caisse_cart_save($cart);
         caisse_redirect_ok();
     }
-    $prix_errs = caisse_cart_apply_prix_posted($cart, $_POST);
-    if (!empty($prix_errs)) {
-        $_SESSION['caisse_flash_error'] = $prix_errs[0];
-        caisse_cart_save($cart);
-        caisse_redirect_ok();
-    }
+    caisse_cart_save($cart);
     $res = caisse_creer_ticket_en_attente((int) $_SESSION['admin_id'], $cart);
     if (!$res['ok']) {
         $_SESSION['caisse_flash_error'] = $res['error'] ?? 'Erreur lors de la génération du ticket.';
@@ -245,18 +242,13 @@ if ($action === 'encaisser') {
         caisse_cart_save($cart);
         caisse_redirect_ok();
     }
-    $qty_errs = caisse_cart_apply_quantites_posted($cart, $_POST);
-    if (!empty($qty_errs)) {
-        $_SESSION['caisse_flash_error'] = $qty_errs[0];
+    $materialize = caisse_cart_materialize_from_post($cart, $_POST, true);
+    if (!$materialize['ok']) {
+        $_SESSION['caisse_flash_error'] = $materialize['error'] ?? 'Panier invalide — rechargez la page.';
         caisse_cart_save($cart);
         caisse_redirect_ok();
     }
-    $prix_errs = caisse_cart_apply_prix_posted($cart, $_POST);
-    if (!empty($prix_errs)) {
-        $_SESSION['caisse_flash_error'] = $prix_errs[0];
-        caisse_cart_save($cart);
-        caisse_redirect_ok();
-    }
+    caisse_cart_save($cart);
     $mode = trim((string) ($_POST['mode_paiement'] ?? 'especes'));
     $totals = caisse_compute_totals($cart);
     $total = $totals['total'];

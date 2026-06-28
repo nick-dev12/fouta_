@@ -338,11 +338,7 @@
       var imgsAttr = escAttr(JSON.stringify(imgs.length ? imgs : [placeholderImg]));
       html +=
         '<li class="caisse-live-item" role="option">' +
-        '<form method="post" action="post.php" class="caisse-live-add-form">' +
-        '<input type="hidden" name="csrf_token" value="' + esc(csrf) + '">' +
-        '<input type="hidden" name="caisse_action" value="add_product">' +
-        '<input type="hidden" name="produit_id" value="' + esc(String(p.id)) + '">' +
-        '<input type="hidden" name="quantite" value="1">' +
+        '<div class="caisse-live-add-wrap" data-caisse-add-id="' + escAttr(String(p.id)) + '" role="button" tabindex="0" aria-label="Ajouter au panier">' +
         '<div class="caisse-live-media">' +
         refThumb +
         '<button type="button" class="caisse-live-thumb" data-caisse-gallery="' +
@@ -355,7 +351,7 @@
         '\'">' +
         '</button>' +
         '</div>' +
-        '<button type="submit" class="caisse-live-row-hit">' +
+        '<div class="caisse-live-row-hit">' +
         headingHtml +
         fournisseurHtml +
         categorieHtml +
@@ -367,8 +363,8 @@
         esc(String(p.stock)) +
         '</span>' +
         '<span class="caisse-live-hint-add">Cliquer pour ajouter au panier</span>' +
-        '</button>' +
-        '</form></li>';
+        '</div>' +
+        '</div></li>';
     }
     if (catalog.length >= 2500 && hits.length >= maxLive) {
       html +=
@@ -399,6 +395,28 @@
     selFournisseur.addEventListener('change', renderLive);
   }
 
+  function triggerAddFromLive(pid) {
+    pid = parseInt(pid, 10);
+    if (!pid || !window.CaissePanier) {
+      return;
+    }
+    if (typeof CaissePanier.addById === 'function') {
+      CaissePanier.addById(pid, 1);
+      return;
+    }
+    var hit = null;
+    var hi;
+    for (hi = 0; hi < catalog.length; hi++) {
+      if (Number(catalog[hi].id) === pid) {
+        hit = catalog[hi];
+        break;
+      }
+    }
+    if (hit) {
+      CaissePanier.addFromCatalog(hit, 1);
+    }
+  }
+
   var scanForm = document.getElementById('caisse-add-scan-fallback');
   var scanCodeInput = document.getElementById('caisse_add_scan_code');
   inputQ.addEventListener('keydown', function (ev) {
@@ -412,20 +430,39 @@
     var hitsQuick = collectHits(inputQ.value, catVal, marqueVal, fournisseurVal, 2);
     if (hitsQuick.length === 1) {
       ev.preventDefault();
-      var quickForm = box.querySelector('.caisse-live-add-form');
-      if (quickForm) {
-        quickForm.submit();
-      }
+      triggerAddFromLive(hitsQuick[0].id);
       return;
     }
-    if (preferScanResolve(raw) && scanForm && scanCodeInput) {
+    if (preferScanResolve(raw) && window.CaissePanier) {
       ev.preventDefault();
-      scanCodeInput.value = raw;
-      scanForm.submit();
+      CaissePanier.resolveAndAdd(raw, 1);
     }
   });
 
+  document.addEventListener('keydown', function (ev) {
+    if (ev.key !== 'Enter' && ev.key !== ' ') {
+      return;
+    }
+    var wrap = ev.target.closest && ev.target.closest('[data-caisse-add-id][role="button"]');
+    if (!wrap || (ev.target.closest && ev.target.closest('[data-caisse-gallery]'))) {
+      return;
+    }
+    if (ev.key === ' ') {
+      ev.preventDefault();
+    }
+    triggerAddFromLive(wrap.getAttribute('data-caisse-add-id'));
+  });
+
   document.addEventListener('click', function (ev) {
+    if (ev.target.closest && ev.target.closest('[data-caisse-gallery]')) {
+      return;
+    }
+    var addBtn = ev.target.closest && ev.target.closest('[data-caisse-add-id]');
+    if (addBtn) {
+      ev.preventDefault();
+      triggerAddFromLive(addBtn.getAttribute('data-caisse-add-id'));
+      return;
+    }
     if (!box.hidden && !box.contains(ev.target) && ev.target !== inputQ && !selCat.contains(ev.target)) {
       if (marqueFilterOn && selMarque.contains(ev.target)) {
         return;
@@ -446,3 +483,39 @@
     }
   });
 })();
+
+(function (global) {
+  'use strict';
+
+  function dismissLiveResults(clearQuery) {
+    var box = document.getElementById('caisse-live-results');
+    var inputQ = document.getElementById('caisse_q_live');
+    var selCat = document.getElementById('caisse_cat_live');
+    var selMarque = document.getElementById('caisse_marque_live');
+    var selFournisseur = document.getElementById('caisse_fournisseur_live');
+    if (!box) {
+      return;
+    }
+    if (clearQuery) {
+      if (inputQ) {
+        inputQ.value = '';
+      }
+      if (selCat) {
+        selCat.value = '';
+      }
+      if (selMarque) {
+        selMarque.value = '';
+      }
+      if (selFournisseur) {
+        selFournisseur.value = '';
+      }
+    }
+    box.innerHTML = '';
+    box.hidden = true;
+    box.classList.remove('is-empty');
+  }
+
+  global.CaisseLiveSearch = {
+    dismiss: dismissLiveResults
+  };
+})(window);

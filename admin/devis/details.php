@@ -23,10 +23,23 @@ if ($devis_id <= 0) {
 
 require_once __DIR__ . '/../../models/model_devis.php';
 require_once __DIR__ . '/../../models/model_factures_devis.php';
+require_once __DIR__ . '/../../models/model_produits.php';
 
 $devis = get_devis_by_id($devis_id);
 $produits = get_produits_by_devis($devis_id);
 $produits = is_array($produits) ? $produits : [];
+$has_ident_devis = function_exists('produits_has_column') && produits_has_column('identifiant_interne');
+foreach ($produits as &$produit_devis_row) {
+    $produit_devis_row['ref_fpl'] = '';
+    $pid_d = (int) ($produit_devis_row['produit_id'] ?? 0);
+    if ($pid_d > 0 && $has_ident_devis) {
+        $pr_d = get_produit_by_id($pid_d);
+        if ($pr_d && trim((string) ($pr_d['identifiant_interne'] ?? '')) !== '') {
+            $produit_devis_row['ref_fpl'] = strtoupper(trim((string) $pr_d['identifiant_interne']));
+        }
+    }
+}
+unset($produit_devis_row);
 $facture = get_facture_devis_by_devis($devis_id);
 
 if (!$devis) {
@@ -157,6 +170,9 @@ $frais = isset($devis['frais_livraison']) ? (float) $devis['frais_livraison'] : 
                         <span class="devis-detail-ligne-index" aria-hidden="true"><?php echo $idx; ?></span>
                         <div class="devis-detail-ligne-body">
                             <h4><?php echo htmlspecialchars($produit['produit_nom'] ?? $produit['nom_produit'] ?? ''); ?></h4>
+                            <?php if (!empty($produit['ref_fpl'])): ?>
+                            <p class="devis-detail-ligne-ref"><code><?php echo htmlspecialchars($produit['ref_fpl']); ?></code></p>
+                            <?php endif; ?>
                             <div class="devis-detail-ligne-stats">
                                 <span class="devis-detail-chip"><i class="fas fa-cubes" aria-hidden="true"></i> Qté <?php echo (int) $produit['quantite']; ?></span>
                                 <span class="devis-detail-chip devis-detail-chip--muted"><i class="fas fa-tag" aria-hidden="true"></i> <?php echo number_format($produit['prix_unitaire'], 0, ',', ' '); ?> FCFA / u.</span>

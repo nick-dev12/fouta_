@@ -1,6 +1,6 @@
 <?php
 /**
- * Document facture / HT pour un bon de livraison — même présentation que admin/commandes/facture.php
+ * Document bon de livraison / facture pour un BL
  */
 session_start();
 
@@ -10,7 +10,6 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
 }
 require_once __DIR__ . '/../includes/require_access.php';
 
-
 require_once __DIR__ . '/../../includes/admin_permissions.php';
 if (!admin_can_bl_retours_b2b()) {
     header('Location: ../dashboard.php');
@@ -18,6 +17,7 @@ if (!admin_can_bl_retours_b2b()) {
 }
 
 require_once __DIR__ . '/../../models/model_bl.php';
+require_once __DIR__ . '/../../models/model_produits.php';
 require_once __DIR__ . '/../../includes/fiscal_tva.php';
 
 $bl_id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
@@ -30,6 +30,12 @@ $bl = get_bl_by_id($bl_id);
 if (!$bl) {
     header('Location: index.php?tab=bl');
     exit;
+}
+
+$bl_valide = bl_est_statut_verrouille($bl['statut'] ?? 'brouillon');
+if ($bl_valide) {
+    bl_attribuer_reference_fpl_si_besoin($bl_id);
+    $bl = get_bl_by_id($bl_id);
 }
 
 $lignes = get_lignes_bl($bl_id);
@@ -47,12 +53,22 @@ $date_facture_aff = date('j', $d_bl) . ' ' . $mois[(int) date('n', $d_bl) - 1] .
 
 $produits = [];
 foreach ($lignes as $l) {
+    $ref_fpl = '';
+    $pid = (int) ($l['produit_id'] ?? 0);
+    if ($pid > 0 && function_exists('produits_has_column') && produits_has_column('identifiant_interne')) {
+        $pr = get_produit_by_id($pid);
+        if ($pr && !empty($pr['identifiant_interne'])) {
+            $ref_fpl = strtoupper(trim((string) $pr['identifiant_interne']));
+        }
+    }
     $produits[] = [
         'produit_nom' => $l['designation'] ?? '',
         'nom' => $l['designation'] ?? '',
         'prix_unitaire' => (float) ($l['prix_unitaire_ht'] ?? 0),
         'quantite' => $l['quantite'] ?? 0,
         'prix_total' => (float) ($l['total_ligne_ht'] ?? 0),
+        'ref_fpl' => $ref_fpl,
+        'identifiant_interne' => $ref_fpl,
     ];
 }
 
@@ -85,7 +101,7 @@ $entreprise_rc = 'SN.DKR.2019.M.28414';
 $entreprise_ninea = '006705654/2A2';
 $entreprise_adresse = 'Rond point Zack Mbao, Dakar';
 $entreprise_tel1 = '338700070';
-$entreprise_tel2 = '';
+$entreprise_tel2 = '338427877';
 $entreprise_site = 'https://www.foutapoidslourds.com';
 $entreprise_email = 'info@foutapoidslourds.com';
 
@@ -94,8 +110,12 @@ $whatsapp_url = '';
 $facture_back_url = 'bl_voir.php?id=' . $bl_id;
 $facture_back_label = 'Retour au bon de livraison';
 
-$facture_bl_statut_libelle = bl_libelle_statut_facture($bl['statut'] ?? 'brouillon');
-$facture_bl_statut_code = (string) ($bl['statut'] ?? 'brouillon');
+$facture_document_type_label = $bl_valide ? 'FACTURE' : 'BON DE LIVRAISON';
+$facture_numero_affichage = bl_numero_document_affichage($bl);
+$facture_bl_statut_libelle = '';
+$facture_bl_statut_code = '';
+$facture_masquer_meta_solde = true;
+$facture_masquer_tva_recap = !$bl_valide;
 $facture_show_client_zone = true;
 $facture_recap_label_ht_decomp = 'TOTAL BL';
 

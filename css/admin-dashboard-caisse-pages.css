@@ -281,7 +281,8 @@
   background: var(--bleu-pale, rgba(53, 100, 166, 0.08));
 }
 
-.caisse-live-add-form {
+.caisse-live-add-form,
+.caisse-live-add-wrap {
   display: flex;
   flex-direction: row;
   align-items: flex-start;
@@ -290,6 +291,19 @@
   margin: 0;
   padding: 0.75rem 0.85rem;
   box-sizing: border-box;
+}
+
+.caisse-live-add-wrap {
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  text-align: left;
+  font: inherit;
+}
+
+.caisse-live-add-wrap:focus-visible {
+  outline: 2px solid var(--couleur-dominante, #3564a6);
+  outline-offset: -2px;
 }
 
 .caisse-live-media {
@@ -360,20 +374,19 @@
 .caisse-live-row-hit {
   flex: 1;
   min-width: 0;
-  border: none;
-  background: transparent;
   text-align: left;
-  cursor: pointer;
   padding: 0.1rem 0.15rem 0.1rem 0;
-  font: inherit;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 0.15rem;
   border-radius: 8px;
   align-self: center;
+  pointer-events: none;
 }
 
+.caisse-live-add-wrap:hover .produit-card-nom,
+.caisse-live-add-wrap:hover .caisse-live-card-nom,
 .caisse-live-row-hit:hover .produit-card-nom,
 .caisse-live-row-hit:hover .caisse-live-card-nom {
   color: var(--couleur-dominante);
@@ -829,6 +842,26 @@ body.admin-caisse-page .caisse-ticket-view-modal--fullscreen .caisse-ticket-card
   margin-top: 4px;
   font-size: 0.72rem;
   color: var(--gris-moyen);
+}
+
+.caisse-flash-live {
+  margin: 0 0 0.75rem;
+  padding: 0.55rem 0.85rem;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.caisse-flash-live--ok {
+  background: var(--success-bg, rgba(53, 100, 166, 0.12));
+  border: 1px solid var(--success-border, #3564a6);
+  color: var(--couleur-dominante, #3564a6);
+}
+
+.caisse-flash-live--err {
+  background: var(--error-bg, rgba(255, 107, 53, 0.12));
+  border: 1px solid var(--error-border, #ff6b35);
+  color: var(--orange-fonce, #e85a2a);
 }
 
 @media print {

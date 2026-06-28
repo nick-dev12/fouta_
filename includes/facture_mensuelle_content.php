@@ -124,10 +124,20 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
         }
 
         .facture-entreprise-info h1 {
-            font-size: 28px;
+            font-size: 24px;
             font-weight: 700;
             color: #000;
             margin-bottom: 8px;
+            line-height: 1.25;
+        }
+
+        .facture-entreprise-forme-juridique {
+            font-style: italic;
+            font-weight: 500;
+            display: inline-block;
+            transform: skewX(-10deg);
+            margin-left: 0.15em;
+            letter-spacing: 0.03em;
         }
 
         .facture-entreprise-info p {
@@ -174,9 +184,18 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
             margin-top: 0;
         }
 
-        .facture-meta-kv .label {
-            font-size: 9px;
-            margin-bottom: 2px;
+        .facture-meta-kv:first-of-type .label.facture-doc-type-label {
+            font-size: 20px;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+        }
+
+        .facture-table td .facture-ligne-ref {
+            display: block;
+            margin-top: 3px;
+            font-size: 10px;
+            font-weight: 600;
+            color: #666;
         }
 
         .facture-meta-kv .value {
@@ -805,7 +824,7 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
             }
 
             .facture-entreprise-info h1 {
-                font-size: 22px;
+                font-size: 20px;
             }
 
             .facture-entreprise-info p {
@@ -948,15 +967,10 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
                         onerror="this.style.background='#fef5f9';this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext x=%2250%22 y=%2255%22 text-anchor=%22middle%22 font-size=%2240%22%3E🍰%3C/text%3E%3C/svg%3E'">
                 </div>
                 <div class="facture-entreprise-info">
-                    <h1><?php echo htmlspecialchars($entreprise_nom); ?></h1>
-                    <p>R.C : <?php echo htmlspecialchars($entreprise_rc); ?></p>
-                    <p>N.I.N.E.A : <?php echo htmlspecialchars($entreprise_ninea); ?></p>
+                    <h1><?php echo htmlspecialchars($entreprise_nom); ?> <span class="facture-entreprise-forme-juridique">SUARL</span></h1>
                     <p><?php echo htmlspecialchars($entreprise_adresse); ?></p>
                     <div class="tel">
-                        <i class="fas fa-phone"
-                            style="font-size:11px; margin-right:4px;"></i>+221 <?php echo htmlspecialchars($entreprise_tel1); ?><?php if (!empty($entreprise_tel2)): ?><br>
-                        <i class="fas fa-phone"
-                            style="font-size:11px; margin-right:4px;"></i>+221 <?php echo htmlspecialchars($entreprise_tel2); ?><?php endif; ?>
+                        +221 <?php echo htmlspecialchars($entreprise_tel1); ?><?php if (!empty($entreprise_tel2)): ?> · +221 <?php echo htmlspecialchars($entreprise_tel2); ?><?php endif; ?>
                     </div>
                     <p style="margin-top:6px;">
                         <i class="fas fa-globe" style="font-size:11px; margin-right:4px;"></i>
@@ -970,7 +984,7 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
             </div>
             <div class="facture-meta">
                 <div class="facture-meta-kv">
-                    <div class="label">FACTURE HT (B2B)</div>
+                    <div class="label facture-doc-type-label">FACTURE</div>
                     <div class="value"><?php echo htmlspecialchars($facture['numero_facture']); ?></div>
                 </div>
                 <div class="facture-meta-kv">
@@ -981,38 +995,13 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
                     <div class="label">DATE</div>
                     <div class="value"><?php echo htmlspecialchars($date_facture_aff); ?></div>
                 </div>
-                <?php if (!empty($statut_fm_label)): ?>
-                    <?php
-                    $fm_badge_extra = '';
-                    if ($fm_statut === 'payee') {
-                        $fm_badge_extra = ' facture-statut-badge--payee';
-                    } elseif ($fm_statut === 'validee') {
-                        $fm_badge_extra = ' facture-statut-badge--impayee';
-                    } elseif ($fm_statut === 'brouillon') {
-                        $fm_badge_extra = ' facture-statut-badge--brouillon';
-                    }
-                    ?>
-                    <div class="facture-meta-statuts">
-                        <span class="facture-statut-badge<?php echo $fm_badge_extra; ?>"><?php echo htmlspecialchars($statut_fm_label); ?></span>
-                        <?php if ($fm_statut === 'payee'): ?>
-                            <span class="facture-paiement-badge"><i class="fas fa-check-circle" style="margin-right:4px;"></i>Paiement : réglé</span>
-                        <?php elseif ($fm_statut === 'validee'): ?>
-                            <span class="facture-paiement-badge facture-paiement-badge--impaye"><i class="fas fa-clock" style="margin-right:4px;"></i>Paiement : en attente</span>
-                        <?php endif; ?>
-                    </div>
-                <?php endif; ?>
-                    <div class="facture-meta-kv facture-meta-kv--total">
-                    <div class="label"><?php echo $fm_tva_incl ? 'TOTAL TTC' : 'TOTAL À PAYER (TTC)'; ?></div>
-                    <div class="solde">XOF <?php echo number_format($fm_montant_total, 2, ',', ' '); ?> CFA</div>
-                </div>
             </div>
         </div>
 
         <div class="facture-billing">
             <div class="label">ADRESSE DE FACTURATION</div>
             <div class="client-name"><?php echo htmlspecialchars($client_nom); ?></div>
-            <div class="client-tel"><i class="fas fa-phone"
-                    style="font-size:11px; margin-right:4px;"></i><?php echo htmlspecialchars($client_telephone); ?>
+            <div class="client-tel">TEL : <?php echo htmlspecialchars($client_telephone); ?>
             </div>
             <?php if (!empty($adresse_livraison)): ?>
                 <div class="adresse-livraison"><i class="fas fa-map-marker-alt"
@@ -1026,8 +1015,8 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
                 <thead>
                     <tr>
                         <th>ARTICLE</th>
-                        <th>PRIX</th>
                         <th>QTÉ</th>
+                        <th>PRIX</th>
                         <th>MONTANT</th>
                     </tr>
                 </thead>
@@ -1050,9 +1039,14 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
                         $qte_ent = (int) round($qte_raw);
                         ?>
                         <tr>
-                            <td><?php echo htmlspecialchars($ligne['designation'] ?? ''); ?></td>
-                            <td><?php echo number_format((float) ($ligne['prix_unitaire_ht'] ?? 0), 2, ',', ' '); ?> CFA</td>
+                            <td><?php echo htmlspecialchars($ligne['designation'] ?? ''); ?><?php
+                                $pid_fm = (int) ($ligne['produit_id'] ?? 0);
+                                if ($pid_fm > 0) {
+                                    echo '<span class="facture-ligne-ref">Réf. FPL' . str_pad((string) $pid_fm, 6, '0', STR_PAD_LEFT) . '</span>';
+                                }
+                            ?></td>
                             <td><?php echo number_format($qte_ent, 0, ',', ' '); ?></td>
+                            <td><?php echo number_format((float) ($ligne['prix_unitaire_ht'] ?? 0), 2, ',', ' '); ?> CFA</td>
                             <td><?php echo number_format((float) ($ligne['total_ligne_ht'] ?? 0), 2, ',', ' '); ?> CFA</td>
                         </tr>
                         <?php endforeach; ?>
@@ -1125,8 +1119,8 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
                 <div class="facture-footer-entreprise-grid">
                     <div class="facture-footer-entreprise-col">
                         <div><strong>Siège Social :</strong> Rond-Point Zac Mbao</div>
-                        <div><strong>Succursale :</strong> 106, Rue Marsat x Blaise Diagne</div>
-                        <div><strong>RCCM :</strong> SN.DKR.2019.M.28414</div>
+                        <div><strong>Capital :</strong> 10 000 000 FCFA</div>
+                        <div><strong>RCCM :</strong> SN DKR2018B4276</div>
                         <div><strong>NINEA :</strong> 006705654/2A2</div>
                     </div>
                     <div class="facture-footer-entreprise-col" style="text-align: right;">

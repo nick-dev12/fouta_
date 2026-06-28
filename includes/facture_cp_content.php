@@ -49,7 +49,15 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
         .facture-entreprise { display: flex; align-items: flex-start; gap: 20px; }
         .facture-logo { width: 100px; height: 100px; border: 2px solid #3564a6; border-radius: 50%; overflow: hidden; flex-shrink: 0; }
         .facture-logo img { width: 100%; height: 100%; object-fit: cover; }
-        .facture-entreprise-info h1 { font-size: 28px; font-weight: 700; color: #000; margin-bottom: 8px; }
+        .facture-entreprise-info h1 { font-size: 24px; font-weight: 700; color: #000; margin-bottom: 8px; line-height: 1.25; }
+        .facture-entreprise-forme-juridique {
+            font-style: italic;
+            font-weight: 500;
+            display: inline-block;
+            transform: skewX(-10deg);
+            margin-left: 0.15em;
+            letter-spacing: 0.03em;
+        }
         .facture-entreprise-info p { font-size: 10px; color: #666; margin-bottom: 4px; }
         .facture-meta { text-align: right; }
         .facture-meta .label { font-size: 11px; font-weight: 700; color: #888; text-transform: uppercase; margin-bottom: 4px; }
@@ -180,7 +188,7 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
                     <img src="/image/logo-fpl.png" alt="FOUTA POIDS LOURDS">
                 </div>
                 <div class="facture-entreprise-info">
-                    <h1><?php echo htmlspecialchars($entreprise_nom); ?></h1>
+                    <h1><?php echo htmlspecialchars($entreprise_nom); ?> <span class="facture-entreprise-forme-juridique">SUARL</span></h1>
                     <p>R.C : <?php echo htmlspecialchars($entreprise_rc); ?></p>
                     <p>N.I.N.E.A : <?php echo htmlspecialchars($entreprise_ninea); ?></p>
                     <p><?php echo htmlspecialchars($entreprise_adresse); ?></p>

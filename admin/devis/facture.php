@@ -123,7 +123,7 @@ $entreprise_rc = 'SN.DKR.2019.M.28414';
 $entreprise_ninea = '006705654/2A2';
 $entreprise_adresse = 'Rond-Point Zac Mbao, Dakar';
 $entreprise_tel1 = '338700070';
-$entreprise_tel2 = '';
+$entreprise_tel2 = '338427877';
 $entreprise_site = 'https://www.foutapoidslourds.com';
 $entreprise_email = 'info@foutapoidslourds.com';
 
@@ -150,6 +150,7 @@ $facture_afficher_marquer_payee = function_exists('factures_devis_col_payee_ok')
 $facture_csrf_token = (string) ($_SESSION['admin_csrf'] ?? '');
 
 $facture_recap_label_ht_decomp = 'TOTAL DEVIS';
+$facture_document_type_label = $facture_est_payee ? 'FACTURE' : 'DEVIS';
 
 require_once __DIR__ . '/../../includes/fiscal_tva.php';
 

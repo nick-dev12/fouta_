@@ -799,7 +799,8 @@ function get_bl_fm_archive_groupes_par_client() {
                    c.id AS client_b2b_id,
                    c.raison_sociale, c.nom_contact, c.prenom_contact, c.telephone, c.email, c.adresse,
                    fm.id AS facture_mensuelle_id, fm.numero_facture AS fm_numero_facture,
-                   fm.statut AS fm_statut, fm.annee AS fm_annee, fm.mois AS fm_mois
+                   fm.statut AS fm_statut, fm.annee AS fm_annee, fm.mois AS fm_mois,
+                   fm.tva_incluse AS fm_tva_incluse, fm.total_ht AS fm_total_ht
             FROM bons_livraison b
             INNER JOIN facture_mensuelle_bl fmb ON fmb.bl_id = b.id
             INNER JOIN factures_mensuelles fm ON fm.id = fmb.facture_mensuelle_id
@@ -872,7 +873,8 @@ function get_bl_fm_archive_pour_fm_et_client($facture_mensuelle_id, $client_b2b_
                    c.id AS client_b2b_id,
                    c.raison_sociale, c.nom_contact, c.prenom_contact, c.telephone, c.email, c.adresse,
                    fm.id AS facture_mensuelle_id, fm.numero_facture AS fm_numero_facture,
-                   fm.statut AS fm_statut, fm.annee AS fm_annee, fm.mois AS fm_mois
+                   fm.statut AS fm_statut, fm.annee AS fm_annee, fm.mois AS fm_mois,
+                   fm.tva_incluse AS fm_tva_incluse, fm.total_ht AS fm_total_ht
             FROM bons_livraison b
             INNER JOIN facture_mensuelle_bl fmb ON fmb.bl_id = b.id
             INNER JOIN factures_mensuelles fm ON fm.id = fmb.facture_mensuelle_id

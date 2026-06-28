@@ -32,17 +32,12 @@ require_once __DIR__ . '/../../models/model_produits.php';
 require_once __DIR__ . '/../../models/model_categories.php';
 require_once __DIR__ . '/../../models/model_marques.php';
 
-$cart = caisse_cart_get();
-if (admin_current_role() === 'commercial' && !empty($cart['inclure_tva'])) {
-    $cart['inclure_tva'] = 0;
-    caisse_cart_save($cart);
-    $cart = caisse_cart_get();
-}
-$totals = caisse_compute_totals($cart);
-$total_ttc = (float) ($totals['total_ttc'] ?? $totals['total'] ?? 0);
-$total_ht = (float) ($totals['total_ht'] ?? 0);
-$montant_tva = (float) ($totals['montant_tva'] ?? 0);
-$taux_tva = (float) ($totals['taux_tva_pourcent'] ?? CAISSE_TVA_TAUX_POURCENT);
+// Panier géré côté client (AJAX) — suppression de l’ancien panier session
+caisse_cart_clear();
+$taux_tva = (float) CAISSE_TVA_TAUX_POURCENT;
+$total_ttc = 0.0;
+$total_ht = 0.0;
+$montant_tva = 0.0;
 
 $flash_ok = '';
 $flash_err = '';
@@ -158,7 +153,8 @@ $ticket_id = isset($_GET['ticket']) ? (int) $_GET['ticket'] : 0;
 $ticket_data = ($ticket_id > 0) ? caisse_get_vente_by_id($ticket_id) : null;
 $ticket_introuvable = ($ticket_id > 0 && !$ticket_data);
 $ticket_recap = $ticket_data ? caisse_vente_recap_fiscal_affichage($ticket_data) : null;
-$ticket_show_tva_row = $ticket_recap && abs((float) ($ticket_recap['tva'] ?? 0)) >= 0.005;
+$ticket_inclure_tva = $ticket_data && !empty($ticket_data['tva_incluse']);
+$ticket_afficher_detail_tva = $ticket_inclure_tva && $ticket_recap && abs((float) ($ticket_recap['tva'] ?? 0)) >= 0.005;
 $ticket_statut = $ticket_data ? caisse_vente_statut($ticket_data) : null;
 $masquer_zone_paiement_commercial = in_array(admin_current_role(), ['commercial', 'commercial_general'], true);
 /** Option « Inclure la TVA » : masquée pour le rôle commercial seul ; visible pour commercial_general et les autres */
@@ -169,19 +165,9 @@ $ticket_barcode_payload = $ticket_data ? caisse_ticket_valeur_code_barres($ticke
 $tables_ok = caisse_tables_exist();
 $page_title = 'Caisse';
 
-$preview_recu = isset($_SESSION['caisse_preview_recu']) ? $_SESSION['caisse_preview_recu'] : null;
-if ($preview_recu !== null && !is_numeric($preview_recu)) {
-    $preview_recu = null;
-}
+$preview_recu = null;
 $monnaie_preview = null;
 $manque_preview = null;
-if ($preview_recu !== null && $total_ttc > 0) {
-    if ($preview_recu + 0.001 >= $total_ttc) {
-        $monnaie_preview = max(0, round((float) $preview_recu - $total_ttc, 2));
-    } else {
-        $manque_preview = round($total_ttc - (float) $preview_recu, 2);
-    }
-}
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -288,16 +274,16 @@ if ($preview_recu !== null && $total_ttc > 0) {
                 </tbody>
             </table>
             <div class="caisse-ticket-tva-block">
+                <?php if ($ticket_afficher_detail_tva): ?>
                 <div class="caisse-ticket-row"><span>Total
                         HT</span><strong><?php echo number_format($ticket_recap['ht'], 0, ',', ' '); ?> FCFA</strong>
                 </div>
-                <?php if ($ticket_show_tva_row): ?>
                 <div class="caisse-ticket-row"><span>TVA
                         (<?php echo htmlspecialchars((string) CAISSE_TVA_TAUX_POURCENT); ?>
                         %)</span><strong><?php echo number_format($ticket_recap['tva'], 0, ',', ' '); ?> FCFA</strong>
                 </div>
                 <?php endif; ?>
-                <div class="caisse-ticket-row caisse-ticket-row--total"><span><?php echo $ticket_show_tva_row ? 'Total TTC' : 'Total à payer'; ?></span><strong><?php echo number_format($ticket_recap['ttc'], 0, ',', ' '); ?> FCFA</strong>
+                <div class="caisse-ticket-row caisse-ticket-row--total"><span><?php echo $ticket_afficher_detail_tva ? 'Total TTC' : 'Total à payer'; ?></span><strong><?php echo number_format($ticket_recap['ttc'], 0, ',', ' '); ?> FCFA</strong>
                 </div>
             </div>
             <?php if ($ticket_barcode_src !== ''): ?>
@@ -430,15 +416,8 @@ if ($preview_recu !== null && $total_ttc > 0) {
                                 <td><?php echo $pu > 0 ? number_format($pu, 0, ',', ' ') : '—'; ?></td>
                                 <td><?php echo $stk; ?></td>
                                 <td class="caisse-results-act">
-                                    <form method="post" action="post.php" class="caisse-inline-add">
-                                        <input type="hidden" name="csrf_token"
-                                            value="<?php echo htmlspecialchars($_SESSION['admin_csrf']); ?>">
-                                        <input type="hidden" name="caisse_action" value="add_product">
-                                        <input type="hidden" name="produit_id" value="<?php echo (int) $pr['id']; ?>">
-                                        <input type="hidden" name="quantite" value="1">
-                                        <button type="submit" class="btn-add-line"><i class="fas fa-plus"></i>
-                                            Ajouter</button>
-                                    </form>
+                                    <button type="button" class="btn-add-line caisse-inline-add-btn" data-produit-id="<?php echo (int) $pr['id']; ?>">
+                                        <i class="fas fa-plus"></i> Ajouter</button>
                                 </td>
                             </tr>
                             <?php endforeach; ?>
@@ -456,174 +435,10 @@ if ($preview_recu !== null && $total_ttc > 0) {
 
             <div class="caisse-split">
 
-                <!-- ——— Zone B : panier ——— -->
+                <!-- ——— Zone B : panier (AJAX, sans session) ——— -->
                 <section class="caisse-zone caisse-zone--b" aria-label="Panier">
-                    <div class="caisse-zone-b-head">
-                        <h2 class="caisse-zone-title"><i class="fas fa-shopping-basket"></i> B · Panier</h2>
-                        <?php if (!empty($cart['lines'])): ?>
-                        <form method="post" action="post.php" class="caisse-annuler-form"
-                            onsubmit="return confirm('Annuler toute la vente en cours ? Le panier sera vidé.');">
-                            <input type="hidden" name="csrf_token"
-                                value="<?php echo htmlspecialchars($_SESSION['admin_csrf']); ?>">
-                            <input type="hidden" name="caisse_action" value="clear_cart">
-                            <button type="submit" class="btn-annuler-vente"><i class="fas fa-times-circle"></i> Annuler
-                                la vente</button>
-                        </form>
-                        <?php endif; ?>
-                    </div>
-
-                    <?php if (empty($cart['lines'])): ?>
-                    <div class="caisse-panier-vide">
-                        <i class="fas fa-cart-arrow-down"></i>
-                        <p>Panier vide</p>
-                        <p class="caisse-panier-vide-hint">Scannez un code ou recherchez un produit ci-dessus.</p>
-                    </div>
-                    <?php else: ?>
-
-                    <div class="caisse-table-scroll">
-                        <table class="caisse-cart-table"
-                            data-remise-globale="<?php echo htmlspecialchars((string) ($totals['remise_globale_pct'] ?? 0), ENT_QUOTES, 'UTF-8'); ?>"
-                            data-tva-taux="<?php echo htmlspecialchars((string) $taux_tva, ENT_QUOTES, 'UTF-8'); ?>"
-                            data-inclure-tva="<?php echo !empty($cart['inclure_tva']) ? '1' : '0'; ?>">
-                            <thead>
-                                <tr>
-                                    <th>Produit</th>
-                                    <th>Prix HT</th>
-                                    <th>Quantité</th>
-                                    <th>Total</th>
-                                    <th class="caisse-col-actions"></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($cart['lines'] as $key => $line):
-                                $pu = (float) ($line['prix_unitaire'] ?? 0);
-                                $q = (int) ($line['quantite'] ?? 0);
-                                $rl = (float) ($line['remise_ligne_pct'] ?? 0);
-                                $tl = $pu * $q * (1 - min(100, max(0, $rl)) / 100);
-                                $p_stock = get_produit_by_id((int) ($line['produit_id'] ?? 0));
-                                $prix_catalogue = $p_stock ? round((float) caisse_prix_unitaire_produit($p_stock), 2) : $pu;
-                                $prix_manuel = !empty($line['prix_manuel']);
-                                $sans_prix_catalogue = $prix_catalogue <= 0;
-                                $stock_dispo = $p_stock ? (int) ($p_stock['stock'] ?? 0) : $q;
-                                $key_safe = preg_replace('/[^a-zA-Z0-9_-]/', '_', $key);
-                                $ref_produit = '';
-                                if ($has_ident && $p_stock && trim((string) ($p_stock['identifiant_interne'] ?? '')) !== '') {
-                                    $ref_produit = strtoupper(trim((string) $p_stock['identifiant_interne']));
-                                }
-                            ?>
-                                <tr class="caisse-cart-row" data-line-key="<?php echo htmlspecialchars($key, ENT_QUOTES, 'UTF-8'); ?>"
-                                    data-remise-ligne="<?php echo htmlspecialchars((string) $rl, ENT_QUOTES, 'UTF-8'); ?>">
-                                    <td>
-                                        <div class="caisse-cart-produit-cell">
-                                            <div class="caisse-cart-produit-line1">
-                                                <span
-                                                    class="caisse-cart-nom"><?php echo htmlspecialchars($line['nom'] ?? ''); ?></span>
-                                                <?php if ($rl > 0): ?><span
-                                                    class="caisse-cart-badge">−<?php echo htmlspecialchars((string) $rl); ?>%</span><?php endif; ?>
-                                            </div>
-                                            <?php if ($ref_produit !== ''): ?>
-                                            <span class="caisse-cart-ref"><code><?php echo htmlspecialchars($ref_produit); ?></code></span>
-                                            <?php endif; ?>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="caisse-prix-cell">
-                                            <label class="visually-hidden" for="prix_<?php echo htmlspecialchars($key_safe); ?>">Prix unitaire HT</label>
-                                            <input type="text"
-                                                name="prix_ligne[<?php echo htmlspecialchars($key, ENT_QUOTES, 'UTF-8'); ?>]"
-                                                id="prix_<?php echo htmlspecialchars($key_safe); ?>"
-                                                form="caisse-generer-ticket-form"
-                                                class="caisse-prix-input<?php echo ($prix_manuel || $sans_prix_catalogue) ? ' caisse-prix-input--manuel' : ''; ?>"
-                                                value="<?php echo $pu > 0 ? htmlspecialchars((string) (int) round($pu)) : ''; ?>"
-                                                inputmode="decimal"
-                                                autocomplete="off"
-                                                placeholder="<?php echo $sans_prix_catalogue ? 'Prix à saisir' : ''; ?>"
-                                                title="<?php echo $sans_prix_catalogue
-                                                    ? 'Aucun prix catalogue — saisissez le montant avant de générer le ticket'
-                                                    : ('Prix catalogue : ' . number_format($prix_catalogue, 0, ',', ' ') . ' FCFA — enregistré à la génération du ticket'); ?>"
-                                                data-line-key="<?php echo htmlspecialchars($key, ENT_QUOTES, 'UTF-8'); ?>"
-                                                required>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="caisse-qty-cell caisse-qty-cell--solo">
-                                            <label class="visually-hidden" for="qty_<?php echo htmlspecialchars($key_safe); ?>">Quantité</label>
-                                            <input type="number"
-                                                name="quantite_ligne[<?php echo htmlspecialchars($key, ENT_QUOTES, 'UTF-8'); ?>]"
-                                                id="qty_<?php echo htmlspecialchars($key_safe); ?>"
-                                                form="caisse-generer-ticket-form"
-                                                class="caisse-qty-input"
-                                                data-line-key="<?php echo htmlspecialchars($key, ENT_QUOTES, 'UTF-8'); ?>"
-                                                min="1" max="<?php echo max(1, $stock_dispo); ?>"
-                                                value="<?php echo $q; ?>" inputmode="numeric" required>
-                                        </div>
-                                    </td>
-                                    <td class="caisse-cart-total-ligne">
-                                        <strong class="caisse-cart-total-value"
-                                            data-line-key="<?php echo htmlspecialchars($key, ENT_QUOTES, 'UTF-8'); ?>"><?php echo number_format($tl, 0, ',', ' '); ?></strong></td>
-                                    <td>
-                                        <form method="post" action="post.php">
-                                            <input type="hidden" name="csrf_token"
-                                                value="<?php echo htmlspecialchars($_SESSION['admin_csrf']); ?>">
-                                            <input type="hidden" name="caisse_action" value="remove_line">
-                                            <input type="hidden" name="line_key"
-                                                value="<?php echo htmlspecialchars($key); ?>">
-                                            <button type="submit" class="caisse-btn-remove"
-                                                title="Supprimer la ligne"><i class="fas fa-times"></i></button>
-                                        </form>
-                                    </td>
-                                </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <details class="caisse-remise-globale-box">
-                        <summary>Remise sur ticket (%)</summary>
-                        <form method="post" action="post.php" class="caisse-remise-globale-form">
-                            <input type="hidden" name="csrf_token"
-                                value="<?php echo htmlspecialchars($_SESSION['admin_csrf']); ?>">
-                            <input type="hidden" name="caisse_action" value="set_remise_globale">
-                            <input type="number" name="remise_globale_pct"
-                                value="<?php echo htmlspecialchars((string) $totals['remise_globale_pct']); ?>" min="0"
-                                max="100" step="0.5" class="caisse-remise-input">
-                            <button type="submit" class="btn-secondary btn-sm">Appliquer</button>
-                        </form>
-                    </details>
-
-                    <?php if ($afficher_option_tva_caisse): ?>
-                    <div class="caisse-tva-option">
-                        <form method="post" action="post.php" class="caisse-tva-option-form">
-                            <input type="hidden" name="csrf_token"
-                                value="<?php echo htmlspecialchars($_SESSION['admin_csrf']); ?>">
-                            <input type="hidden" name="caisse_action" value="set_inclure_tva">
-                            <input type="hidden" name="inclure_tva" value="0">
-                            <label class="caisse-tva-option-label">
-                                <input type="checkbox" name="inclure_tva" value="1"
-                                    class="caisse-tva-option-check"
-                                    <?php echo !empty($cart['inclure_tva']) ? 'checked' : ''; ?>
-                                    onchange="this.form.submit()">
-                                <span><strong>Inclure la TVA</strong> (<?php echo htmlspecialchars((string) CAISSE_TVA_TAUX_POURCENT); ?> %) : la TVA s’ajoute au net catalogue — le total à payer augmente. <em>Sans cocher</em>, le montant affiché est le <strong>total TTC</strong> ; le ticket détaille HT + TVA.</span>
-                            </label>
-                        </form>
-                    </div>
-                    <?php endif; ?>
-
-                    <?php if (!empty($cart['lines'])): ?>
-                    <form method="post" action="post.php" class="caisse-generer-ticket-form" id="caisse-generer-ticket-form">
-                        <input type="hidden" name="csrf_token"
-                            value="<?php echo htmlspecialchars($_SESSION['admin_csrf']); ?>">
-                        <input type="hidden" name="caisse_action" value="generer_ticket">
-                        <button type="submit" class="btn-primary caisse-btn-generer-ticket"
-                            <?php echo !$tables_ok ? 'disabled' : ''; ?>>
-                            <i class="fas fa-ticket-alt"></i> Générer le ticket
-                        </button>
-                        <?php if ($total_ttc <= 0): ?>
-                        <p class="caisse-generer-ticket-hint">Saisissez le prix de chaque ligne dans le panier avant de générer le ticket.</p>
-                        <?php endif; ?>
-                    </form>
-                    <?php endif; ?>
-                    <?php endif; ?>
+                    <div id="caisse-flash-live" class="caisse-flash-live" hidden role="alert"></div>
+                    <div id="caisse-panier-mount"></div>
                 </section>
 
                 <!-- ——— Zone C : résumé + paiement ——— -->
@@ -645,42 +460,17 @@ if ($preview_recu !== null && $total_ttc > 0) {
                     <p class="caisse-recap-note">Le total à payer est TTC ; le détail HT + TVA figure sur le ticket.</p>
                     <?php endif; ?>
 
-                    <?php if (!empty($cart['lines']) && $total_ttc > 0): ?>
-                    <div class="caisse-monnaie-box">
+                    <div class="caisse-monnaie-box" id="caisse-monnaie-box" hidden>
                         <p class="caisse-monnaie-title">Espèces — aperçu monnaie</p>
-                        <form method="post" action="post.php" class="caisse-preview-form">
-                            <input type="hidden" name="csrf_token"
-                                value="<?php echo htmlspecialchars($_SESSION['admin_csrf']); ?>">
-                            <input type="hidden" name="caisse_action" value="preview_monnaie">
-                            <label class="visually-hidden" for="montant_recu_preview">Montant reçu</label>
-                            <div class="caisse-monnaie-row">
-                                <input type="text" name="montant_recu" id="montant_recu_preview" inputmode="decimal"
-                                    placeholder="Montant reçu"
-                                    value="<?php echo $preview_recu !== null ? htmlspecialchars((string) $preview_recu) : ''; ?>"
-                                    class="caisse-input-pay">
-                                <button type="submit" class="btn-secondary btn-sm">Calculer</button>
-                            </div>
-                        </form>
-                        <?php if ($preview_recu !== null): ?>
-                        <?php if ($monnaie_preview !== null): ?>
-                        <p class="caisse-monnaie-ok"><i class="fas fa-coins"></i> Monnaie à rendre :
-                            <strong><?php echo number_format($monnaie_preview, 0, ',', ' '); ?> FCFA</strong></p>
-                        <?php elseif ($manque_preview !== null): ?>
-                        <p class="caisse-monnaie-err"><i class="fas fa-exclamation-circle"></i> Montant insuffisant
-                            (manque <?php echo number_format($manque_preview, 0, ',', ' '); ?> FCFA).</p>
-                        <?php endif; ?>
-                        <?php else: ?>
-                        <p class="caisse-monnaie-note">Saisissez un montant et cliquez « Calculer » (sans enregistrer la
-                            vente).</p>
-                        <?php endif; ?>
+                        <div class="caisse-monnaie-row">
+                            <input type="text" id="montant_recu_preview" inputmode="decimal"
+                                placeholder="Montant reçu" class="caisse-input-pay">
+                            <button type="button" class="btn-secondary btn-sm" id="caisse-btn-preview-monnaie">Calculer</button>
+                        </div>
+                        <p class="caisse-monnaie-note" id="caisse-monnaie-result"></p>
                     </div>
-                    <?php endif; ?>
 
-                    <form method="post" action="post.php" class="caisse-pay-form">
-                        <input type="hidden" name="csrf_token"
-                            value="<?php echo htmlspecialchars($_SESSION['admin_csrf']); ?>">
-                        <input type="hidden" name="caisse_action" value="encaisser">
-
+                    <form class="caisse-pay-form" action="#" method="post">
                         <label for="mode_paiement">Mode de paiement</label>
                         <select name="mode_paiement" id="mode_paiement" class="caisse-select-pay" required>
                             <option value="especes">Espèces</option>
@@ -718,8 +508,7 @@ if ($preview_recu !== null && $total_ttc > 0) {
                         <textarea name="notes_vente" id="notes_vente" rows="2" class="caisse-textarea-pay"
                             placeholder="Référence…"></textarea>
 
-                        <button type="submit" class="caisse-btn-valider"
-                            <?php echo (!$tables_ok || empty($cart['lines']) || $total_ttc <= 0) ? 'disabled' : ''; ?>>
+                        <button type="submit" class="caisse-btn-valider" disabled>
                             <i class="fas fa-check"></i> Valider la vente
                         </button>
                     </form>
@@ -748,7 +537,60 @@ if ($preview_recu !== null && $total_ttc > 0) {
 
     <script type="application/json" id="caisse-catalog-json"><?php echo $caisse_catalog_json_script; ?></script>
     <script src="/js/admin-caisse-live-search.js<?php echo asset_version_query(); ?>"></script>
-    <script src="/js/admin-caisse-cart-live.js<?php echo asset_version_query(); ?>"></script>
+    <script src="/js/admin-caisse-panier.js<?php echo asset_version_query(); ?>"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        if (window.CaissePanier) {
+            CaissePanier.init({
+                api_url: 'api.php',
+                csrf: <?php echo json_encode((string) $_SESSION['admin_csrf'], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT); ?>,
+                tva_taux: <?php echo json_encode($taux_tva); ?>,
+                afficher_tva: <?php echo $afficher_option_tva_caisse ? 'true' : 'false'; ?>,
+                tables_ok: <?php echo $tables_ok ? 'true' : 'false'; ?>
+            });
+        }
+        document.querySelectorAll('.caisse-inline-add-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var pid = parseInt(btn.getAttribute('data-produit-id'), 10);
+                if (!pid || !window.CaissePanier) return;
+                if (typeof CaissePanier.addById === 'function') {
+                    CaissePanier.addById(pid, 1);
+                    return;
+                }
+                fetch('api.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({
+                        action: 'get_product',
+                        csrf_token: <?php echo json_encode((string) $_SESSION['admin_csrf']); ?>,
+                        produit_id: pid
+                    })
+                }).then(function (r) { return r.json(); }).then(function (res) {
+                    if (res.ok && res.produit) CaissePanier.addProduct(res.produit, 1);
+                });
+            });
+        });
+        var btnMon = document.getElementById('caisse-btn-preview-monnaie');
+        if (btnMon) {
+            btnMon.addEventListener('click', function () {
+                var recu = parseFloat(String(document.getElementById('montant_recu_preview').value || '').replace(',', '.')) || 0;
+                var ttcEl = document.getElementById('caisse-recap-ttc');
+                var ttc = ttcEl ? parseFloat(ttcEl.textContent.replace(/\s/g, '').replace(',', '.')) || 0 : 0;
+                var out = document.getElementById('caisse-monnaie-result');
+                if (!out) return;
+                if (recu <= 0) { out.textContent = 'Saisissez un montant.'; return; }
+                if (recu + 0.001 >= ttc) {
+                    out.innerHTML = '<span class="caisse-monnaie-ok"><i class="fas fa-coins"></i> Monnaie : <strong>' +
+                        Math.round(recu - ttc).toLocaleString('fr-FR') + ' FCFA</strong></span>';
+                } else {
+                    out.innerHTML = '<span class="caisse-monnaie-err">Manque ' +
+                        Math.round(ttc - recu).toLocaleString('fr-FR') + ' FCFA</span>';
+                }
+            });
+        }
+    });
+    </script>
 
     <script>
     (function() {

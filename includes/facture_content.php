@@ -43,6 +43,11 @@ $facture_afficher_marquer_payee = !empty($facture_afficher_marquer_payee);
 $facture_csrf_token = isset($facture_csrf_token) ? (string) $facture_csrf_token : '';
 $facture_page_flash_success = isset($facture_page_flash_success) ? (string) $facture_page_flash_success : '';
 $facture_page_flash_error = isset($facture_page_flash_error) ? (string) $facture_page_flash_error : '';
+$facture_document_type_label = isset($facture_document_type_label) && (string) $facture_document_type_label !== ''
+    ? (string) $facture_document_type_label
+    : 'FACTURE';
+$facture_masquer_meta_solde = isset($facture_masquer_meta_solde) ? (bool) $facture_masquer_meta_solde : true;
+$facture_masquer_tva_recap = !empty($facture_masquer_tva_recap);
 require_once __DIR__ . '/site_url.php';
 require_once __DIR__ . '/fiscal_tva.php';
 $facture_tva_incluse = isset($facture_tva_incluse) ? (bool) $facture_tva_incluse : (!empty($facture['tva_incluse']));
@@ -158,10 +163,20 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
         }
 
         .facture-entreprise-info h1 {
-            font-size: 28px;
+            font-size: 24px;
             font-weight: 700;
             color: #000;
             margin-bottom: 8px;
+            line-height: 1.25;
+        }
+
+        .facture-entreprise-forme-juridique {
+            font-style: italic;
+            font-weight: 500;
+            display: inline-block;
+            transform: skewX(-10deg);
+            margin-left: 0.15em;
+            letter-spacing: 0.03em;
         }
 
         .facture-entreprise-info p {
@@ -211,6 +226,21 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
         .facture-meta-kv .label {
             font-size: 9px;
             margin-bottom: 2px;
+        }
+
+        .facture-meta-kv:first-of-type .label.facture-doc-type-label {
+            font-size: 20px;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+        }
+
+        .facture-table td .facture-ligne-ref {
+            display: block;
+            margin-top: 3px;
+            font-size: 10px;
+            font-weight: 600;
+            color: #666;
+            letter-spacing: 0.02em;
         }
 
         .facture-meta-kv .value {
@@ -783,7 +813,7 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
             }
 
             .facture-entreprise-info h1 {
-                font-size: 22px;
+                font-size: 20px;
             }
 
             .facture-entreprise-info p {
@@ -922,15 +952,10 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
                         onerror="this.style.background='#fef5f9';this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext x=%2250%22 y=%2255%22 text-anchor=%22middle%22 font-size=%2240%22%3E🍰%3C/text%3E%3C/svg%3E'">
                 </div>
                 <div class="facture-entreprise-info">
-                    <h1><?php echo htmlspecialchars($entreprise_nom); ?></h1>
-                    <p>R.C : <?php echo htmlspecialchars($entreprise_rc); ?></p>
-                    <p>N.I.N.E.A : <?php echo htmlspecialchars($entreprise_ninea); ?></p>
+                    <h1><?php echo htmlspecialchars($entreprise_nom); ?> <span class="facture-entreprise-forme-juridique">SUARL</span></h1>
                     <p><?php echo htmlspecialchars($entreprise_adresse); ?></p>
                     <div class="tel">
-                        <i class="fas fa-phone"
-                            style="font-size:11px; margin-right:4px;"></i>+221 <?php echo htmlspecialchars($entreprise_tel1); ?><?php if (!empty($entreprise_tel2)): ?><br>
-                        <i class="fas fa-phone"
-                            style="font-size:11px; margin-right:4px;"></i>+221 <?php echo htmlspecialchars($entreprise_tel2); ?><?php endif; ?>
+                        +221 <?php echo htmlspecialchars($entreprise_tel1); ?><?php if (!empty($entreprise_tel2)): ?> · +221 <?php echo htmlspecialchars($entreprise_tel2); ?><?php endif; ?>
                     </div>
                     <p style="margin-top:6px;">
                         <i class="fas fa-globe" style="font-size:11px; margin-right:4px;"></i>
@@ -944,7 +969,7 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
             </div>
             <div class="facture-meta">
                 <div class="facture-meta-kv">
-                    <div class="label">FACTURE</div>
+                    <div class="label facture-doc-type-label"><?php echo htmlspecialchars($facture_document_type_label); ?></div>
                     <div class="value"><?php echo htmlspecialchars($facture_numero_affichage); ?></div>
                     <?php if ($facture_est_payee && !empty($facture['numero_facture']) && $facture['numero_facture'] !== $facture_numero_affichage): ?>
                     <div class="label" style="margin-top:6px;opacity:0.85;">Ancien n°</div>
@@ -955,12 +980,7 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
                     <div class="label">DATE</div>
                     <div class="value"><?php echo htmlspecialchars($date_facture_aff); ?></div>
                 </div>
-                <?php if ($facture_bl_statut_libelle !== ''): ?>
-                <div class="facture-meta-kv">
-                    <div class="label">STATUT DU BL</div>
-                    <div class="value facture-meta-bl-statut" style="color:<?php echo htmlspecialchars($facture_bl_meta_color); ?>;"><?php echo htmlspecialchars($facture_bl_statut_libelle); ?></div>
-                </div>
-                <?php endif; ?>
+                <?php if (!$facture_masquer_meta_solde): ?>
                 <div class="facture-meta-kv facture-meta-kv--total">
                     <div class="label"><?php echo $facture_est_payee ? 'MONTANT' : 'SOLDE DÛ'; ?></div>
                     <div class="solde">XOF <?php echo number_format($facture['montant_total'], 2, ',', ' '); ?> CFA</div>
@@ -968,14 +988,14 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
                         <div class="facture-payee-mention">Payé</div>
                     <?php endif; ?>
                 </div>
+                <?php endif; ?>
             </div>
         </div>
 
         <div class="facture-billing">
             <div class="label">ADRESSE DE FACTURATION</div>
             <div class="client-name"><?php echo htmlspecialchars($client_nom); ?></div>
-            <div class="client-tel"><i class="fas fa-phone"
-                    style="font-size:11px; margin-right:4px;"></i><?php echo htmlspecialchars($client_telephone); ?>
+            <div class="client-tel">TEL : <?php echo htmlspecialchars($client_telephone); ?>
             </div>
             <?php if ($adresse_client_display !== ''): ?>
                 <div class="adresse-livraison facture-adresse-client">
@@ -995,20 +1015,27 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
                 <thead>
                     <tr>
                         <th>ARTICLE</th>
-                        <th>PRIX<?php echo $facture_afficher_detail_tva ? ' (HT)' : ''; ?></th>
                         <th>QTÉ</th>
+                        <th>PRIX<?php echo $facture_afficher_detail_tva ? ' (HT)' : ''; ?></th>
                         <th>MONTANT<?php echo $facture_afficher_detail_tva ? ' (HT)' : ''; ?></th>
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach ($produits as $p): ?>
+                    <?php foreach ($produits as $p):
+                        $ref_ligne = trim((string) ($p['ref_fpl'] ?? $p['identifiant_interne'] ?? ''));
+                    ?>
                         <tr>
-                            <td><?php echo htmlspecialchars($p['produit_nom'] ?? $p['nom'] ?? ''); ?></td>
-                            <td><?php echo number_format((float) ($p['prix_unitaire'] ?? 0), 2, ',', ' '); ?> CFA</td>
+                            <td>
+                                <?php echo htmlspecialchars($p['produit_nom'] ?? $p['nom'] ?? ''); ?>
+                                <?php if ($ref_ligne !== ''): ?>
+                                <span class="facture-ligne-ref"><?php echo htmlspecialchars($ref_ligne); ?></span>
+                                <?php endif; ?>
+                            </td>
                             <td><?php
                             $qte_ent = (int) round((float) ($p['quantite'] ?? 0));
                             echo number_format($qte_ent, 0, ',', ' ');
                             ?></td>
+                            <td><?php echo number_format((float) ($p['prix_unitaire'] ?? 0), 2, ',', ' '); ?> CFA</td>
                             <td><?php echo number_format((float) ($p['prix_total'] ?? 0), 2, ',', ' '); ?> CFA</td>
                         </tr>
                     <?php endforeach; ?>
@@ -1037,6 +1064,7 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
                 </div>
                 <?php endif; ?>
                 <?php if ($facture_tva_incluse): ?>
+                <?php if (!$facture_masquer_tva_recap): ?>
                 <div class="row">
                     <span>TOTAL HT</span>
                     <span><?php echo number_format($facture_fiscal_ht, 2, ',', ' '); ?> CFA</span>
@@ -1045,11 +1073,13 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
                     <span>TVA <?php echo number_format($facture_fiscal_taux, 2, ',', ' '); ?>%</span>
                     <span><?php echo number_format($facture_fiscal_tva, 2, ',', ' '); ?> CFA</span>
                 </div>
+                <?php endif; ?>
                 <div class="row">
                     <span>TOTAL TTC</span>
                     <span><?php echo number_format($facture['montant_total'], 2, ',', ' '); ?> CFA</span>
                 </div>
                 <?php else: ?>
+                <?php if (!$facture_masquer_tva_recap): ?>
                 <div class="row">
                     <span><?php echo htmlspecialchars($facture_recap_label_ht_decomp); ?></span>
                     <span><?php echo number_format($facture_fiscal_ht, 2, ',', ' '); ?> CFA</span>
@@ -1058,6 +1088,7 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
                     <span>TVA <?php echo number_format($facture_fiscal_taux, 2, ',', ' '); ?>%</span>
                     <span><?php echo number_format($facture_fiscal_tva, 2, ',', ' '); ?> CFA</span>
                 </div>
+                <?php endif; ?>
                 <div class="row">
                     <span>TOTAL TTC</span>
                     <span><?php echo number_format($facture['montant_total'], 2, ',', ' '); ?> CFA</span>
@@ -1090,12 +1121,6 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
                     <span>XOF <?php echo number_format($facture['montant_total'], 2, ',', ' '); ?> CFA</span>
                 </div>
                 <?php endif; ?>
-                <?php if ($facture_bl_statut_libelle !== '' && in_array($facture_bl_statut_code, ['valide', 'paye'], true)): ?>
-                <div class="facture-reglement-row facture-reglement-row--paye">
-                    <span>STATUT (BL)</span>
-                    <span>Validé (comptabilité)</span>
-                </div>
-                <?php endif; ?>
             </div>
         </div>
 
@@ -1111,8 +1136,8 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
                 <div class="facture-footer-entreprise-grid">
                     <div class="facture-footer-entreprise-col">
                         <div><strong>Siège Social :</strong> Rond-Point Zac Mbao</div>
-                        <div><strong>Succursale :</strong> 106, Rue Marsat x Blaise Diagne</div>
-                        <div><strong>RCCM :</strong> SN.DKR.2019.M.28414</div>
+                        <div><strong>Capital :</strong> 10 000 000 FCFA</div>
+                        <div><strong>RCCM :</strong> SN DKR2018B4276</div>
                         <div><strong>NINEA :</strong> 006705654/2A2</div>
                     </div>
                     <div class="facture-footer-entreprise-col" style="text-align: right;">

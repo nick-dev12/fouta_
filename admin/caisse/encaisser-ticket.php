@@ -53,7 +53,8 @@ if ($ticket_param > 0) {
 
 $ticket_introuvable = ($numero_search !== '' || $ticket_param > 0) && !$vente;
 $ticket_recap = $vente ? caisse_vente_recap_fiscal_affichage($vente) : null;
-$ticket_show_tva_row = $ticket_recap && abs((float) ($ticket_recap['tva'] ?? 0)) >= 0.005;
+$ticket_inclure_tva = $vente && !empty($vente['tva_incluse']);
+$ticket_afficher_detail_tva = $ticket_inclure_tva && $ticket_recap && abs((float) ($ticket_recap['tva'] ?? 0)) >= 0.005;
 $ticket_statut = $vente ? caisse_vente_statut($vente) : null;
 $ticket_barcode_src = ($vente && $ticket_recap) ? caisse_ticket_get_barcode_web_path($vente) : '';
 $ticket_barcode_payload = ($vente && $ticket_recap) ? caisse_ticket_valeur_code_barres($vente) : '';
@@ -246,11 +247,11 @@ $auto_print = isset($_GET['imprimer']) && $_GET['imprimer'] === '1';
                     </tbody>
                 </table>
                     <div class="caisse-ticket-tva-block">
+                    <?php if ($ticket_afficher_detail_tva): ?>
                     <div class="caisse-ticket-row"><span>Total HT</span><strong><?php echo number_format($ticket_recap['ht'], 0, ',', ' '); ?> FCFA</strong></div>
-                    <?php if ($ticket_show_tva_row): ?>
                     <div class="caisse-ticket-row"><span>TVA (<?php echo htmlspecialchars((string) CAISSE_TVA_TAUX_POURCENT); ?> %)</span><strong><?php echo number_format($ticket_recap['tva'], 0, ',', ' '); ?> FCFA</strong></div>
                     <?php endif; ?>
-                    <div class="caisse-ticket-row caisse-ticket-row--total"><span><?php echo $ticket_show_tva_row ? 'Total TTC' : 'Total à payer'; ?></span><strong><?php echo number_format($ticket_recap['ttc'], 0, ',', ' '); ?> FCFA</strong></div>
+                    <div class="caisse-ticket-row caisse-ticket-row--total"><span><?php echo $ticket_afficher_detail_tva ? 'Total TTC' : 'Total à payer'; ?></span><strong><?php echo number_format($ticket_recap['ttc'], 0, ',', ' '); ?> FCFA</strong></div>
                 </div>
                 <?php if ($ticket_barcode_src !== ''): ?>
                 <div class="caisse-ticket-barcode-block">

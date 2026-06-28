@@ -150,8 +150,53 @@
   }
 
   function syncCartToForm(form) {
-    syncFieldToForm(form, '.caisse-prix-input');
-    syncFieldToForm(form, '.caisse-qty-input');
+    syncFieldToForm(form, '.caisse-cart-table .caisse-prix-input');
+    syncFieldToForm(form, '.caisse-cart-table .caisse-qty-input');
+  }
+
+  function cleanCartHiddenFromForm(form) {
+    if (!form) {
+      return;
+    }
+    form.querySelectorAll(
+      'input[type="hidden"][name^="prix_ligne"], input[type="hidden"][name^="quantite_ligne"], input[type="hidden"][name="panier_ligne_cle[]"], input[type="hidden"][name^="produit_ligne["]'
+    ).forEach(function (el) {
+      el.remove();
+    });
+  }
+
+  function appendHiddenField(form, name, value) {
+    var h = document.createElement('input');
+    h.type = 'hidden';
+    h.name = name;
+    h.value = value;
+    form.appendChild(h);
+  }
+
+  function syncVisibleCartRowsToForm(form) {
+    if (!form) {
+      return;
+    }
+    cleanCartHiddenFromForm(form);
+    var table = getCartTable();
+    if (!table) {
+      return;
+    }
+    table.querySelectorAll('.caisse-cart-row').forEach(function (tr) {
+      var lineKey = tr.getAttribute('data-line-key') || '';
+      var produitId = tr.getAttribute('data-produit-id') || '';
+      var prixInp = tr.querySelector('.caisse-prix-input');
+      var qtyInp = tr.querySelector('.caisse-qty-input');
+      if (!lineKey || !prixInp || !qtyInp) {
+        return;
+      }
+      appendHiddenField(form, 'panier_ligne_cle[]', lineKey);
+      if (produitId) {
+        appendHiddenField(form, 'produit_ligne[' + lineKey + ']', produitId);
+      }
+      appendHiddenField(form, prixInp.getAttribute('name'), prixInp.value);
+      appendHiddenField(form, qtyInp.getAttribute('name'), qtyInp.value);
+    });
   }
 
   function bindCartInputs() {
@@ -178,7 +223,14 @@
   var formPay = document.querySelector('.caisse-pay-form');
   if (formPay) {
     formPay.addEventListener('submit', function () {
-      syncCartToForm(formPay);
+      syncVisibleCartRowsToForm(formPay);
+    });
+  }
+
+  var formGen = document.getElementById('caisse-generer-ticket-form');
+  if (formGen) {
+    formGen.addEventListener('submit', function () {
+      syncVisibleCartRowsToForm(formGen);
     });
   }
 

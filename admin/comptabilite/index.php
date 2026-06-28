@@ -22,6 +22,7 @@ require_once __DIR__ . '/../../models/model_bl.php';
 require_once __DIR__ . '/../../models/model_depenses.php';
 require_once __DIR__ . '/../../models/model_caisse_compta.php';
 require_once __DIR__ . '/../../models/model_factures_devis.php';
+require_once __DIR__ . '/../../models/model_bons_retour.php';
 
 if (empty($_SESSION['admin_csrf'])) {
     $_SESSION['admin_csrf'] = bin2hex(random_bytes(32));
@@ -305,8 +306,16 @@ $stats_fm_mois = $fm_ok
     : ['somme_ht' => 0.0, 'nb_factures' => 0];
 $bl_clients_list_compta = $bl_tables_ok ? get_clients_b2b_avec_bl() : [];
 
-$tab_valid = ['ventes', 'depenses', 'bl', 'caisse', 'devis_payes'];
+$tab_valid = ['ventes', 'depenses', 'bl', 'caisse', 'devis_payes', 'bons_retour'];
 $active_tab = isset($_GET['tab']) && in_array($_GET['tab'], $tab_valid, true) ? $_GET['tab'] : 'ventes';
+
+$br_tables_ok_compta = function_exists('br_retour_tables_available') && br_retour_tables_available();
+$br_list_compta = $br_tables_ok_compta ? br_get_all_with_bl_client() : [];
+$br_kpi_nb = count($br_list_compta);
+$br_kpi_total_ht = 0.0;
+foreach ($br_list_compta as $br_row) {
+    $br_kpi_total_ht += (float) ($br_row['total_ht_retour'] ?? 0);
+}
 
 $factures_devis_payees_list = [];
 if (function_exists('get_factures_devis_payees_avec_devis')) {
@@ -417,6 +426,7 @@ $tab_depenses_active = $active_tab === 'depenses';
 $tab_bl_active = $active_tab === 'bl';
 $tab_caisse_active = $active_tab === 'caisse';
 $tab_devis_payes_active = $active_tab === 'devis_payes';
+$tab_bons_retour_active = $active_tab === 'bons_retour';
 
 /* Synthèse hub — cartes gains / dépenses / bénéfice (saisie dates en jour / mois / année) */
 $h_periode = isset($_GET['h_periode']) ? trim((string) $_GET['h_periode']) : 'jour';
@@ -705,6 +715,13 @@ $h_benefice = $h_gains_total - $h_depenses_ttc;
                     <span class="compta-tab__txt">
                         <span class="compta-tab__label">Devis payés</span>
                         <span class="compta-tab__hint">Factures devis réglées (FPL)</span>
+                    </span>
+                </button>
+                <button type="button" class="compta-tab compta-tab--bons-retour <?php echo $tab_bons_retour_active ? 'is-active' : ''; ?>" id="compta-tab-bons-retour" role="tab" aria-selected="<?php echo $tab_bons_retour_active ? 'true' : 'false'; ?>" aria-controls="compta-panel-bons-retour" data-compta-tab="bons_retour" <?php echo !$br_tables_ok_compta ? 'disabled title="Tables bons de retour absentes"' : ''; ?>>
+                    <span class="compta-tab__ic" aria-hidden="true"><i class="fas fa-undo"></i></span>
+                    <span class="compta-tab__txt">
+                        <span class="compta-tab__label">Bons de retour</span>
+                        <span class="compta-tab__hint">Retours B2B, montants HT</span>
                     </span>
                 </button>
             </div>
@@ -1519,6 +1536,60 @@ $h_benefice = $h_gains_total - $h_depenses_ttc;
                             </tbody>
                         </table>
                     </div>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <div id="compta-panel-bons-retour" class="compta-panel compta-panel--bons-retour <?php echo $tab_bons_retour_active ? 'is-active' : ''; ?>" role="tabpanel" aria-labelledby="compta-tab-bons-retour" <?php echo $tab_bons_retour_active ? '' : 'hidden'; ?> data-compta-panel="bons_retour">
+            <div class="compta-panel-inner">
+                <?php if (!$br_tables_ok_compta): ?>
+                <p class="form-hint">Tables absentes — exécutez <code>php migrations/run_create_bons_retour_tables.php</code>.</p>
+                <?php else: ?>
+                <div class="compta-kpi-row" style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:20px;">
+                    <div class="compta-kpi-card" style="flex:1;min-width:140px;padding:16px;border:1px solid rgba(53,100,166,.15);border-radius:10px;background:#fff;">
+                        <span style="display:block;font-size:.85rem;color:#737373;">Nombre de bons</span>
+                        <strong style="font-size:1.5rem;color:#3564a6;"><?php echo (int) $br_kpi_nb; ?></strong>
+                    </div>
+                    <div class="compta-kpi-card" style="flex:1;min-width:140px;padding:16px;border:1px solid rgba(53,100,166,.15);border-radius:10px;background:#fff;">
+                        <span style="display:block;font-size:.85rem;color:#737373;">Total HT retours</span>
+                        <strong style="font-size:1.5rem;color:#3564a6;"><?php echo number_format($br_kpi_total_ht, 0, ',', ' '); ?> <small>FCFA</small></strong>
+                    </div>
+                </div>
+                <?php if (empty($br_list_compta)): ?>
+                <p class="form-hint">Aucun bon de retour enregistré.</p>
+                <?php else: ?>
+                <div class="table-responsive">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>N° BR</th>
+                                <th>Date</th>
+                                <th>Client</th>
+                                <th>BL lié</th>
+                                <th class="compta-table-col-num">Montant HT</th>
+                                <th class="compta-table-col-actions">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($br_list_compta as $br_item): ?>
+                            <tr>
+                                <td><code><?php echo htmlspecialchars($br_item['numero_br'] ?? ''); ?></code></td>
+                                <td><?php echo !empty($br_item['date_retour']) ? htmlspecialchars(date('d/m/Y', strtotime($br_item['date_retour']))) : '—'; ?></td>
+                                <td><?php echo htmlspecialchars($br_item['client_nom'] ?? ''); ?></td>
+                                <td><?php echo htmlspecialchars($br_item['numero_bl'] ?? ''); ?></td>
+                                <td class="compta-table-col-num"><?php echo number_format((float) ($br_item['total_ht_retour'] ?? 0), 0, ',', ' '); ?> <small>FCFA</small></td>
+                                <td class="compta-table-actions">
+                                    <a href="../devis/br_voir.php?id=<?php echo (int) ($br_item['id'] ?? 0); ?>" class="btn-secondary btn-sm"><i class="fas fa-eye"></i> Voir</a>
+                                    <?php if (!empty($br_item['bl_id'])): ?>
+                                    <a href="../devis/bl_facture.php?id=<?php echo (int) $br_item['bl_id']; ?>" class="btn-secondary btn-sm"><i class="fas fa-file-invoice"></i> BL / Facture</a>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+                <?php endif; ?>
                 <?php endif; ?>
             </div>
         </div>

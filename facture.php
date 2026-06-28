@@ -37,7 +37,7 @@ $entreprise_rc = 'SN.DKR.2019.M.28414';
 $entreprise_ninea = '006705654/2A2';
 $entreprise_adresse = 'Rond point Zack Mbao, Dakar';
 $entreprise_tel1 = '338700070';
-$entreprise_tel2 = '';
+$entreprise_tel2 = '338427877';
 $entreprise_site = 'https://www.foutapoidslourds.com';
 $entreprise_email = 'info@foutapoidslourds.com';
 

@@ -18,6 +18,7 @@ if (empty($_SESSION['admin_csrf'])) {
 
 require_once __DIR__ . '/../../models/model_bl.php';
 require_once __DIR__ . '/../../models/model_bons_retour.php';
+require_once __DIR__ . '/../../models/model_produits.php';
 
 $bl_id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 if ($bl_id <= 0 || !bl_tables_available()) {
@@ -32,6 +33,18 @@ if (!$bl) {
 }
 
 $lignes = get_lignes_bl($bl_id);
+$has_ident_bl = function_exists('produits_has_column') && produits_has_column('identifiant_interne');
+foreach ($lignes as &$ligne_bl_row) {
+    $ligne_bl_row['ref_fpl'] = '';
+    $pid_bl = (int) ($ligne_bl_row['produit_id'] ?? 0);
+    if ($pid_bl > 0 && $has_ident_bl) {
+        $pr_bl = get_produit_by_id($pid_bl);
+        if ($pr_bl && trim((string) ($pr_bl['identifiant_interne'] ?? '')) !== '') {
+            $ligne_bl_row['ref_fpl'] = strtoupper(trim((string) $pr_bl['identifiant_interne']));
+        }
+    }
+}
+unset($ligne_bl_row);
 $st = $bl['statut'] ?? 'brouillon';
 $lib_statut = bl_libelle_statut($st);
 $client_b2b_id = (int) ($bl['client_b2b_id'] ?? 0);
@@ -67,15 +80,24 @@ $total_ht = (float) ($bl['total_ht'] ?? 0);
             </p>
         </div>
         <div class="header-actions bl-page-header__actions bl-page-header__actions--stack bl-voir-header-actions">
+            <button type="button" class="btn-back bl-act-btn" onclick="history.back()">
+                <span class="bl-act-btn__ic" aria-hidden="true"><i class="fas fa-arrow-left"></i></span>
+                <span class="bl-act-btn__label">Retour</span>
+            </button>
             <?php if ($client_b2b_id > 0): ?>
                 <a href="bl_par_client.php?id=<?php echo $client_b2b_id; ?>" class="bl-act-btn bl-act-btn--client">
                     <span class="bl-act-btn__ic" aria-hidden="true"><i class="fas fa-building"></i></span>
                     <span class="bl-act-btn__label">Tous les BL du client</span>
                 </a>
             <?php endif; ?>
+            <?php
+            $bl_doc_valide = bl_est_statut_verrouille($st);
+            $bl_doc_btn_label = $bl_doc_valide ? 'Facture' : 'Bon de livraison';
+            $bl_doc_btn_ic = $bl_doc_valide ? 'fa-file-invoice' : 'fa-truck-loading';
+            ?>
             <a href="bl_facture.php?id=<?php echo (int) $bl_id; ?>" class="bl-act-btn bl-act-btn--facture">
-                <span class="bl-act-btn__ic" aria-hidden="true"><i class="fas fa-file-invoice"></i></span>
-                <span class="bl-act-btn__label">Facture</span>
+                <span class="bl-act-btn__ic" aria-hidden="true"><i class="fas <?php echo htmlspecialchars($bl_doc_btn_ic); ?>"></i></span>
+                <span class="bl-act-btn__label"><?php echo htmlspecialchars($bl_doc_btn_label); ?></span>
             </a>
             <?php if (!bl_est_statut_verrouille($st)): ?>
             <a href="bl_modifier.php?id=<?php echo (int) $bl_id; ?>" class="bl-act-btn bl-act-btn--edit">
@@ -220,7 +242,12 @@ $total_ht = (float) ($bl['total_ht'] ?? 0);
                         <?php else: ?>
                             <?php foreach ($lignes as $l): ?>
                             <tr>
-                                <td><?php echo htmlspecialchars($l['designation'] ?? ''); ?></td>
+                                <td>
+                                    <div><?php echo htmlspecialchars($l['designation'] ?? ''); ?></div>
+                                    <?php if (!empty($l['ref_fpl'])): ?>
+                                    <code class="bl-ligne-ref-fpl"><?php echo htmlspecialchars($l['ref_fpl']); ?></code>
+                                    <?php endif; ?>
+                                </td>
                                 <td class="bl-lines-table__num"><?php echo htmlspecialchars((string) ($l['quantite'] ?? '')); ?></td>
                                 <td class="bl-lines-table__num"><?php echo number_format((float) ($l['prix_unitaire_ht'] ?? 0), 0, ',', ' '); ?></td>
                                 <td class="bl-lines-table__num"><strong><?php echo number_format((float) ($l['total_ligne_ht'] ?? 0), 0, ',', ' '); ?></strong></td>

@@ -21,6 +21,8 @@ if (!admin_can_comptabilite()) {
 require_once __DIR__ . '/../../models/model_bl.php';
 require_once __DIR__ . '/../../models/model_factures_mensuelles.php';
 
+require_once __DIR__ . '/../../includes/fiscal_tva.php';
+
 if (!bl_tables_available() || !factures_mensuelles_table_ok()) {
     header('Location: index.php?tab=bl');
     exit;
@@ -28,6 +30,10 @@ if (!bl_tables_available() || !factures_mensuelles_table_ok()) {
 
 $groupes_all = get_bl_fm_archive_groupes_par_client();
 $client_filter = isset($_GET['client']) ? (int) $_GET['client'] : 0;
+$arch_type = isset($_GET['type']) ? (string) $_GET['type'] : 'ht';
+if (!in_array($arch_type, ['ht', 'ttc'], true)) {
+    $arch_type = 'ht';
+}
 $detail_client = null;
 $detail_bls = [];
 
@@ -42,32 +48,44 @@ if ($client_filter > 0) {
 }
 
 $factures_groupees = [];
+$factures_groupees = [];
 $kpi_arch_nb_fm = 0;
 $kpi_arch_nb_bl = 0;
-$kpi_arch_ca_ht = 0.0;
+$kpi_arch_total_paye = 0.0;
+$kpi_arch_total_impaye = 0.0;
 $arch_derniere_fm_id = 0;
 if ($client_filter > 0 && $detail_client && !empty($detail_bls)) {
     $kpi_arch_nb_bl = count($detail_bls);
     $par_fm = [];
+    $taux_arch = fiscal_taux_tva_pourcent();
     foreach ($detail_bls as $b) {
-        $kpi_arch_ca_ht += (float) ($b['total_ht'] ?? 0);
         $fmid = (int) ($b['facture_mensuelle_id'] ?? 0);
         if ($fmid <= 0) {
             continue;
         }
         if (!isset($par_fm[$fmid])) {
+            $fm_tva_incl = !empty($b['fm_tva_incluse']);
+            $fm_total_ht = (float) ($b['fm_total_ht'] ?? 0);
+            if ($fm_total_ht <= 0) {
+                $fm_total_ht = (float) ($b['total_ht'] ?? 0);
+            }
             $par_fm[$fmid] = [
                 'id' => $fmid,
                 'numero' => (string) ($b['fm_numero_facture'] ?? ''),
                 'statut' => (string) ($b['fm_statut'] ?? ''),
                 'mois' => (int) ($b['fm_mois'] ?? 0),
                 'annee' => (int) ($b['fm_annee'] ?? 0),
+                'tva_incluse' => $fm_tva_incl,
+                'total_ht' => $fm_total_ht,
                 'nb_bl' => 0,
                 'somme_bl_ht' => 0.0,
             ];
         }
         $par_fm[$fmid]['nb_bl']++;
         $par_fm[$fmid]['somme_bl_ht'] += (float) ($b['total_ht'] ?? 0);
+        if ((float) ($par_fm[$fmid]['total_ht'] ?? 0) <= 0) {
+            $par_fm[$fmid]['total_ht'] = $par_fm[$fmid]['somme_bl_ht'];
+        }
     }
     uasort($par_fm, static function ($a, $b) {
         if ($a['annee'] !== $b['annee']) {
@@ -75,9 +93,26 @@ if ($client_filter > 0 && $detail_client && !empty($detail_bls)) {
         }
         return $b['mois'] <=> $a['mois'];
     });
-    $factures_groupees = array_values($par_fm);
+    $factures_groupees_all = array_values($par_fm);
+    $factures_groupees = array_values(array_filter($factures_groupees_all, static function ($fg) use ($arch_type) {
+        $incl = !empty($fg['tva_incluse']);
+        return ($arch_type === 'ttc') ? $incl : !$incl;
+    }));
     $kpi_arch_nb_fm = count($factures_groupees);
     $arch_derniere_fm_id = (int) ($factures_groupees[0]['id'] ?? 0);
+    foreach ($factures_groupees as $fg) {
+        $ht_fg = (float) ($fg['total_ht'] ?? $fg['somme_bl_ht'] ?? 0);
+        if (!empty($fg['tva_incluse'])) {
+            $mont_fg = fiscal_decomposer_net_ht($ht_fg, true, $taux_arch)['montant_ttc'];
+        } else {
+            $mont_fg = $ht_fg;
+        }
+        if (($fg['statut'] ?? '') === 'payee') {
+            $kpi_arch_total_paye += $mont_fg;
+        } else {
+            $kpi_arch_total_impaye += $mont_fg;
+        }
+    }
 }
 
 $nb_clients = count($groupes_all);
@@ -109,14 +144,10 @@ $mois_fr = ['', 'janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet'
         </div>
         <div class="header-actions bl-page-header__actions">
             <?php if (!$vue_liste): ?>
-                <a href="bl-factures-archives.php" class="btn-back"><i class="fas fa-arrow-left" aria-hidden="true"></i> Tous les dossiers</a>
+                <a href="bl-factures-archives.php" class="btn-back"><i class="fas fa-arrow-left" aria-hidden="true"></i> Retour</a>
+            <?php else: ?>
+                <a href="index.php?tab=bl" class="btn-back"><i class="fas fa-arrow-left" aria-hidden="true"></i> Retour</a>
             <?php endif; ?>
-            <?php if (!$vue_liste && $arch_derniere_fm_id > 0): ?>
-                <a href="../devis/facture_mensuelle.php?id=<?php echo (int) $arch_derniere_fm_id; ?>" class="btn-primary" style="text-decoration:none;display:inline-flex;align-items:center;gap:8px;">
-                    <i class="fas fa-file-invoice-dollar" aria-hidden="true"></i> Voir la dernière facture HT
-                </a>
-            <?php endif; ?>
-            <a href="index.php?tab=bl" class="btn-back"><i class="fas fa-calculator" aria-hidden="true"></i> Comptabilité (BL)</a>
         </div>
     </div>
 
@@ -129,7 +160,7 @@ $mois_fr = ['', 'janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet'
                 <?php else: ?>
                     <strong><?php echo (int) $kpi_arch_nb_fm; ?></strong> facture<?php echo $kpi_arch_nb_fm > 1 ? 's' : ''; ?> ·
                     <strong><?php echo (int) $kpi_arch_nb_bl; ?></strong> BL ·
-                    Total HT : <strong><?php echo number_format($kpi_arch_ca_ht, 0, ',', ' '); ?> FCFA</strong>
+                    <?php echo $arch_type === 'ttc' ? 'Factures TTC' : 'Notes de prix HT'; ?>
                 <?php endif; ?>
             </p>
         </div>
@@ -295,7 +326,7 @@ $mois_fr = ['', 'janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet'
                         </div>
                         <div class="bl-client-banner__stat">
                             <span class="bl-client-banner__stat-num"><?php echo (int) $kpi_arch_nb_fm; ?></span>
-                            <span class="bl-client-banner__stat-label">facture<?php echo $kpi_arch_nb_fm > 1 ? 's' : ''; ?> HT</span>
+                            <span class="bl-client-banner__stat-label"><?php echo $arch_type === 'ttc' ? 'factures TTC' : 'notes HT'; ?></span>
                         </div>
                     </header>
 
@@ -315,18 +346,39 @@ $mois_fr = ['', 'janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet'
                             </div>
                         </div>
                         <div class="compta-bl-kpi" role="listitem">
-                            <div class="compta-bl-kpi__ic" aria-hidden="true"><i class="fas fa-coins"></i></div>
+                            <div class="compta-bl-kpi__ic" aria-hidden="true"><i class="fas fa-check-circle"></i></div>
                             <div class="compta-bl-kpi__body">
-                                <span class="compta-bl-kpi__label">Total HT</span>
-                                <span class="compta-bl-kpi__value"><?php echo number_format($kpi_arch_ca_ht, 0, ',', ' '); ?> <small>FCFA</small></span>
+                                <span class="compta-bl-kpi__label">Total factures payées</span>
+                                <span class="compta-bl-kpi__value"><?php echo number_format($kpi_arch_total_paye, 0, ',', ' '); ?> <small>FCFA</small></span>
+                            </div>
+                        </div>
+                        <div class="compta-bl-kpi" role="listitem">
+                            <div class="compta-bl-kpi__ic" aria-hidden="true"><i class="fas fa-clock"></i></div>
+                            <div class="compta-bl-kpi__body">
+                                <span class="compta-bl-kpi__label">Total factures impayées</span>
+                                <span class="compta-bl-kpi__value"><?php echo number_format($kpi_arch_total_impaye, 0, ',', ' '); ?> <small>FCFA</small></span>
                             </div>
                         </div>
                     </div>
 
+                    <nav class="admin-devis-bl-tabs bl-arch-type-tabs" aria-label="Type de factures" style="margin-bottom:20px;">
+                        <a href="bl-factures-archives.php?client=<?php echo (int) $cid; ?>&amp;type=ht"
+                            class="admin-tab<?php echo $arch_type === 'ht' ? ' is-active' : ''; ?>">
+                            <i class="fas fa-file-alt" aria-hidden="true"></i> Note de prix HT
+                        </a>
+                        <a href="bl-factures-archives.php?client=<?php echo (int) $cid; ?>&amp;type=ttc"
+                            class="admin-tab<?php echo $arch_type === 'ttc' ? ' is-active' : ''; ?>">
+                            <i class="fas fa-file-invoice-dollar" aria-hidden="true"></i> Facture TTC
+                        </a>
+                    </nav>
+
                     <div class="bl-list-section" style="padding-top:0;">
-                        <h2 class="bl-list-section__title" id="bl-arch-factures-list"><i class="fas fa-file-invoice-dollar" aria-hidden="true"></i> Factures du client</h2>
+                        <h2 class="bl-list-section__title" id="bl-arch-factures-list">
+                            <i class="fas fa-file-invoice-dollar" aria-hidden="true"></i>
+                            <?php echo $arch_type === 'ttc' ? 'Factures TTC du client' : 'Notes de prix HT du client'; ?>
+                        </h2>
                         <?php if (empty($factures_groupees)): ?>
-                            <p class="form-hint" role="status">Aucune facture avec BL pour ce dossier.</p>
+                            <p class="form-hint" role="status">Aucune <?php echo $arch_type === 'ttc' ? 'facture TTC' : 'note de prix HT'; ?> avec BL pour ce dossier.</p>
                         <?php else: ?>
                         <div class="bl-fm-archive-table-wrap">
                             <table class="data-table bl-fm-archive-table" aria-labelledby="bl-arch-factures-list">
@@ -336,7 +388,7 @@ $mois_fr = ['', 'janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet'
                                         <th scope="col">Période</th>
                                         <th scope="col">Statut</th>
                                         <th scope="col" class="bl-fm-archive-table__col-num">BL</th>
-                                        <th scope="col" class="bl-fm-archive-table__col-num">Total HT</th>
+                                        <th scope="col" class="bl-fm-archive-table__col-num"><?php echo $arch_type === 'ttc' ? 'Total TTC' : 'Total HT'; ?></th>
                                         <th scope="col" class="bl-fm-archive-table__col-actions">Actions</th>
                                     </tr>
                                 </thead>
@@ -353,7 +405,12 @@ $mois_fr = ['', 'janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet'
                                     $fst_label = ($fst === 'payee') ? 'Payé' : 'Impayé';
                                     $fst_slug = ($fst === 'payee') ? 'paye' : 'impaye';
                                     $nb_bl_fg = (int) ($fg['nb_bl'] ?? 0);
-                                    $sum_fg = (float) ($fg['somme_bl_ht'] ?? 0);
+                                    $ht_fg = (float) ($fg['total_ht'] ?? $fg['somme_bl_ht'] ?? 0);
+                                    if (!empty($fg['tva_incluse'])) {
+                                        $sum_fg = fiscal_decomposer_net_ht($ht_fg, true)['montant_ttc'];
+                                    } else {
+                                        $sum_fg = $ht_fg;
+                                    }
                                     $ref_facture = $fnum !== '' ? $fnum : ('#' . $fid);
                                     ?>
                                     <tr>

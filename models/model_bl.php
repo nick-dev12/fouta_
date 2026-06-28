@@ -75,7 +75,7 @@ function bl_libelle_statut($st)
         case 'paye':
             return 'Validé (comptabilité)';
         default:
-            return 'Brouillon';
+            return 'Non validé';
     }
 }
 
@@ -89,7 +89,7 @@ function bl_libelle_statut_facture($st)
         case 'paye':
             return 'Validé';
         default:
-            return 'Brouillon';
+            return 'Non validé';
     }
 }
 
@@ -103,7 +103,7 @@ function bl_libelle_statut_court($st)
         case 'paye':
             return 'Validé (compta)';
         default:
-            return 'Brouillon';
+            return 'Non validé';
     }
 }
 
@@ -124,6 +124,106 @@ function bl_row_apply_statut_bl(array $row)
 function bl_est_statut_verrouille($st) {
     $st = (string) $st;
     return $st === 'valide' || $st === 'paye';
+}
+
+/**
+ * Colonne numero_reference_fpl sur bons_livraison
+ */
+function bl_numero_reference_fpl_column_ok()
+{
+    global $db;
+    static $ok = null;
+    if ($ok !== null) {
+        return $ok;
+    }
+    $ok = false;
+    if (!bl_tables_available() || !$db) {
+        return false;
+    }
+    try {
+        $db->query('SELECT numero_reference_fpl FROM bons_livraison LIMIT 1');
+        $ok = true;
+    } catch (PDOException $e) {
+        $ok = false;
+    }
+    return $ok;
+}
+
+/**
+ * @return string ex. FPL000003
+ */
+function generate_numero_reference_fpl_bl()
+{
+    global $db;
+    if (!bl_tables_available() || !$db) {
+        return 'FPL' . str_pad('1', 6, '0', STR_PAD_LEFT);
+    }
+    $max = 0;
+    if (bl_numero_reference_fpl_column_ok()) {
+        try {
+            $stmt = $db->query("
+                SELECT numero_reference_fpl FROM bons_livraison
+                WHERE numero_reference_fpl IS NOT NULL AND numero_reference_fpl LIKE 'FPL%'
+                ORDER BY id DESC LIMIT 200
+            ");
+            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                $raw = (string) ($row['numero_reference_fpl'] ?? '');
+                if (preg_match('/^FPL(\d+)$/', $raw, $m)) {
+                    $n = (int) $m[1];
+                    if ($n > $max) {
+                        $max = $n;
+                    }
+                }
+            }
+        } catch (PDOException $e) {
+            $max = 0;
+        }
+    }
+    return 'FPL' . str_pad((string) ($max + 1), 6, '0', STR_PAD_LEFT);
+}
+
+/**
+ * Attribue une référence FPL au BL validé (idempotent).
+ */
+function bl_attribuer_reference_fpl_si_besoin($bl_id)
+{
+    global $db;
+    $bl_id = (int) $bl_id;
+    if ($bl_id <= 0 || !bl_numero_reference_fpl_column_ok()) {
+        return null;
+    }
+    $bl = get_bl_by_id($bl_id);
+    if (!$bl) {
+        return null;
+    }
+    $ex = trim((string) ($bl['numero_reference_fpl'] ?? ''));
+    if ($ex !== '') {
+        return $ex;
+    }
+    $num = generate_numero_reference_fpl_bl();
+    try {
+        $stmt = $db->prepare('UPDATE bons_livraison SET numero_reference_fpl = :n, date_modification = NOW() WHERE id = :id AND (numero_reference_fpl IS NULL OR numero_reference_fpl = \'\')');
+        $stmt->execute(['n' => $num, 'id' => $bl_id]);
+        return $num;
+    } catch (PDOException $e) {
+        error_log('[bl_attribuer_reference_fpl_si_besoin] ' . $e->getMessage());
+        return null;
+    }
+}
+
+/**
+ * Numéro affiché sur document BL / facture selon statut.
+ */
+function bl_numero_document_affichage(array $bl)
+{
+    $st = (string) ($bl['statut'] ?? 'brouillon');
+    if (bl_est_statut_verrouille($st)) {
+        $fpl = trim((string) ($bl['numero_reference_fpl'] ?? ''));
+        if ($fpl !== '') {
+            return $fpl;
+        }
+    }
+    return (string) ($bl['numero_bl'] ?? '');
 }
 
 /**
@@ -366,6 +466,8 @@ function update_bl_statut($bl_id, $statut) {
         $ok = $row && (string) ($row['statut'] ?? '') === $statut;
         if (!$ok) {
             error_log('[update_bl_statut] Échec persistance statut BL id=' . (int) $bl_id . ' attendu=' . $statut . ' lu=' . ($row['statut'] ?? 'null'));
+        } elseif ($statut === 'valide') {
+            bl_attribuer_reference_fpl_si_besoin($bl_id);
         }
         return $ok;
     } catch (PDOException $e) {

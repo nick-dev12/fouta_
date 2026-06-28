@@ -514,6 +514,207 @@ function caisse_cart_apply_quantites_posted(array &$cart, array $post)
 }
 
 /**
+ * Reconstruit le panier à partir des lignes réellement envoyées (prix + quantité).
+ * Seules les clés présentes dans le POST sont conservées — ignore les lignes fantômes en session.
+ *
+ * @return array{ok:bool, error?:string}
+ */
+function caisse_cart_materialize_from_post(array &$cart, array $post, $require_snapshot = false)
+{
+    $qty_lignes = isset($post['quantite_ligne']) && is_array($post['quantite_ligne']) ? $post['quantite_ligne'] : [];
+    $prix_lignes = isset($post['prix_ligne']) && is_array($post['prix_ligne']) ? $post['prix_ligne'] : [];
+    $produit_lignes = isset($post['produit_ligne']) && is_array($post['produit_ligne']) ? $post['produit_ligne'] : [];
+    $snapshot = isset($post['panier_ligne_cle']) && is_array($post['panier_ligne_cle']) ? $post['panier_ligne_cle'] : [];
+
+    $keys_to_process = [];
+    if (!empty($snapshot)) {
+        foreach ($snapshot as $raw_key) {
+            $key = trim((string) $raw_key);
+            if ($key !== '') {
+                $keys_to_process[] = $key;
+            }
+        }
+        $keys_to_process = array_values(array_unique($keys_to_process));
+    } else {
+        foreach (array_keys($qty_lignes) as $raw_key) {
+            $key = trim((string) $raw_key);
+            if ($key !== '' && array_key_exists($key, $prix_lignes)) {
+                $keys_to_process[] = $key;
+            }
+        }
+    }
+
+    if ($require_snapshot && empty($keys_to_process)) {
+        return ['ok' => false, 'error' => 'Panier incomplet — rechargez la page puis réessayez.'];
+    }
+    if (empty($keys_to_process)) {
+        return ['ok' => false, 'error' => 'Aucune ligne dans le panier — rechargez la page.'];
+    }
+
+    require_once __DIR__ . '/model_produits.php';
+
+    $new_lines = [];
+    $errs = [];
+
+    foreach ($keys_to_process as $key) {
+        if (!array_key_exists($key, $qty_lignes) || !array_key_exists($key, $prix_lignes)) {
+            $errs[] = 'Données manquantes pour une ligne du panier.';
+            continue;
+        }
+
+        $pid = (int) ($produit_lignes[$key] ?? ($cart['lines'][$key]['produit_id'] ?? 0));
+        if ($pid <= 0 && preg_match('/^p(\d+)$/', $key, $m)) {
+            $pid = (int) $m[1];
+        }
+        if ($pid <= 0) {
+            $errs[] = 'Produit introuvable pour une ligne du panier.';
+            continue;
+        }
+
+        $p = get_produit_by_id($pid);
+        if (!$p || ($p['statut'] ?? '') !== 'actif') {
+            $errs[] = 'Produit introuvable ou inactif.';
+            continue;
+        }
+
+        $remise = isset($cart['lines'][$key]['remise_ligne_pct'])
+            ? (float) $cart['lines'][$key]['remise_ligne_pct']
+            : 0.0;
+
+        $work = $cart;
+        $work['lines'] = [
+            $key => [
+                'produit_id' => $pid,
+                'nom' => (string) ($p['nom'] ?? ''),
+                'prix_unitaire' => 0.0,
+                'quantite' => 1,
+                'remise_ligne_pct' => $remise,
+            ],
+        ];
+
+        $res_qty = caisse_cart_set_quantite_ligne($work, $key, $qty_lignes[$key]);
+        if (!$res_qty['ok']) {
+            $errs[] = $res_qty['error'] ?? 'Quantité invalide.';
+            continue;
+        }
+        $res_prix = caisse_cart_set_prix_ligne($work, $key, $prix_lignes[$key]);
+        if (!$res_prix['ok']) {
+            $errs[] = $res_prix['error'] ?? 'Prix invalide.';
+            continue;
+        }
+        $new_lines[$key] = $work['lines'][$key];
+    }
+
+    if (!empty($errs)) {
+        return ['ok' => false, 'error' => $errs[0]];
+    }
+    if (empty($new_lines)) {
+        return ['ok' => false, 'error' => 'Aucune ligne valide dans le panier — rechargez la page.'];
+    }
+
+    $cart['lines'] = $new_lines;
+    return ['ok' => true];
+}
+
+/**
+ * Construit un panier caisse strictement depuis un payload JSON (sans session).
+ * Chaque ligne est rechargée depuis la BDD via produit_id.
+ *
+ * @return array{ok:bool, cart?:array, error?:string}
+ */
+function caisse_build_cart_from_payload(array $payload)
+{
+    $lines_in = isset($payload['lines']) && is_array($payload['lines']) ? $payload['lines'] : [];
+    if (empty($lines_in)) {
+        return ['ok' => false, 'error' => 'Panier vide.'];
+    }
+
+    $cart = [
+        'lines' => [],
+        'remise_globale_pct' => min(100, max(0, (float) ($payload['remise_globale_pct'] ?? 0))),
+        'inclure_tva' => !empty($payload['inclure_tva']) ? 1 : 0,
+    ];
+
+    $seen = [];
+    foreach ($lines_in as $idx => $raw) {
+        if (!is_array($raw)) {
+            return ['ok' => false, 'error' => 'Ligne panier invalide.'];
+        }
+        $pid = (int) ($raw['produit_id'] ?? 0);
+        if ($pid <= 0) {
+            return ['ok' => false, 'error' => 'Identifiant produit manquant (ligne ' . ($idx + 1) . ').'];
+        }
+        if (isset($seen[$pid])) {
+            return ['ok' => false, 'error' => 'Produit en double dans le panier.'];
+        }
+        $seen[$pid] = true;
+
+        $p = get_produit_by_id($pid);
+        if (!$p || ($p['statut'] ?? '') !== 'actif') {
+            $nom_err = trim((string) ($raw['nom'] ?? ''));
+            return ['ok' => false, 'error' => 'Produit introuvable ou inactif' . ($nom_err !== '' ? ' : « ' . $nom_err . ' »' : '') . '.'];
+        }
+
+        $qty = (int) ($raw['quantite'] ?? 0);
+        if ($qty <= 0) {
+            return ['ok' => false, 'error' => 'Quantité invalide pour « ' . ($p['nom'] ?? '') . ' ».'];
+        }
+        $stock = (int) ($p['stock'] ?? 0);
+        if ($qty > $stock) {
+            return ['ok' => false, 'error' => 'Stock insuffisant pour « ' . ($p['nom'] ?? '') . ' » (disponible : ' . $stock . ').'];
+        }
+
+        $prix = caisse_parse_montant_saisi($raw['prix_unitaire'] ?? null);
+        if ($prix === null || $prix <= 0) {
+            return ['ok' => false, 'error' => 'Prix invalide pour « ' . ($p['nom'] ?? '') . ' ».'];
+        }
+        $prix = round($prix, 2);
+
+        $remise = min(100, max(0, (float) ($raw['remise_ligne_pct'] ?? 0)));
+        $key = caisse_line_key($pid);
+        $prix_catalogue = round((float) caisse_prix_unitaire_produit($p), 2);
+        $line = [
+            'produit_id' => $pid,
+            'nom' => (string) ($p['nom'] ?? ''),
+            'prix_unitaire' => $prix,
+            'quantite' => $qty,
+            'remise_ligne_pct' => $remise,
+        ];
+        if ($prix_catalogue <= 0 || abs($prix - $prix_catalogue) >= 0.005) {
+            $line['prix_manuel'] = 1;
+        }
+        $cart['lines'][$key] = $line;
+    }
+
+    if (empty($cart['lines'])) {
+        return ['ok' => false, 'error' => 'Aucune ligne valide dans le panier.'];
+    }
+
+    return ['ok' => true, 'cart' => $cart];
+}
+
+/**
+ * Formate un produit pour l’API panier caisse (AJAX).
+ */
+function caisse_produit_api_format(array $p)
+{
+    $ref = '';
+    if (function_exists('produits_has_column') && produits_has_column('identifiant_interne')) {
+        $ref = strtoupper(trim((string) ($p['identifiant_interne'] ?? '')));
+    }
+    $prix = round((float) caisse_prix_unitaire_produit($p), 2);
+
+    return [
+        'id' => (int) ($p['id'] ?? 0),
+        'nom' => (string) ($p['nom'] ?? ''),
+        'ref' => $ref,
+        'prix' => $prix,
+        'stock' => (int) ($p['stock'] ?? 0),
+        'sans_prix_catalogue' => $prix <= 0,
+    ];
+}
+
+/**
  * Numéro provisoire (INSERT) — remplacé par caisse_ventes_appliquer_numero_officiel() juste après création
  */
 function caisse_generer_numero_ticket_provisoire()
@@ -798,6 +999,14 @@ function caisse_creer_ticket_en_attente($admin_id, array $cart)
                 'remise_ligne_pct' => $rl,
                 'total_ligne' => $total_ligne,
             ]);
+        }
+
+        $nb_attendu = count($cart['lines']);
+        $stmtCnt = $db->prepare('SELECT COUNT(*) FROM caisse_vente_lignes WHERE vente_id = :id');
+        $stmtCnt->execute(['id' => $vente_id]);
+        $nb_insere = (int) $stmtCnt->fetchColumn();
+        if ($nb_insere !== $nb_attendu) {
+            throw new PDOException('Nombre de lignes ticket incohérent (attendu ' . $nb_attendu . ', obtenu ' . $nb_insere . ').');
         }
 
         $numero_final = caisse_ventes_appliquer_numero_officiel($vente_id);
