@@ -1,12 +1,27 @@
 <?php
 /**
  * Colonnes facture_bl_payee / date_paiement_bl sur bons_livraison.
- * Usage : php migrations/run_add_bl_facture_paiement.php
+ * Usage CLI : php migrations/run_add_bl_facture_paiement.php
+ * Usage web : http://localhost/.../migrations/run_add_bl_facture_paiement.php
  */
 require_once __DIR__ . '/../conn/conn.php';
 
+$is_cli = (PHP_SAPI === 'cli');
+if (!$is_cli) {
+    header('Content-Type: text/plain; charset=utf-8');
+}
+
+function migration_bl_paiement_err($message)
+{
+    if (defined('STDERR') && PHP_SAPI === 'cli') {
+        fwrite(STDERR, $message);
+    } else {
+        echo $message;
+    }
+}
+
 if (!$db) {
-    fwrite(STDERR, "Connexion BDD impossible.\n");
+    migration_bl_paiement_err("Connexion BDD impossible.\n");
     exit(1);
 }
 
@@ -22,11 +37,14 @@ foreach ($statements as $sql) {
         echo "+ OK : " . substr($sql, 0, 80) . "…\n";
     } catch (PDOException $e) {
         $msg = $e->getMessage();
-        if (stripos($msg, 'Duplicate column') !== false || stripos($msg, 'Duplicate key name') !== false) {
+        if (stripos($msg, 'Duplicate column') !== false
+            || stripos($msg, 'Duplicate key name') !== false
+            || stripos($msg, 'already exists') !== false
+            || stripos($msg, 'déjà utilisé') !== false) {
             echo "~ déjà appliqué : " . substr($sql, 0, 60) . "…\n";
             continue;
         }
-        fwrite(STDERR, "Erreur : {$msg}\n");
+        migration_bl_paiement_err("Erreur : {$msg}\n");
         exit(1);
     }
 }
