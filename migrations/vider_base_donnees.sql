@@ -18,6 +18,8 @@ SET FOREIGN_KEY_CHECKS = 0;
 
 TRUNCATE TABLE `admin_password_reset`;
 TRUNCATE TABLE `admin`;
+TRUNCATE TABLE `bons_retour_lignes`;
+TRUNCATE TABLE `bons_retour`;
 TRUNCATE TABLE `bl_lignes`;
 TRUNCATE TABLE `bons_livraison`;
 TRUNCATE TABLE `caisse_vente_lignes`;

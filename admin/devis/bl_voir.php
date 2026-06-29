@@ -46,7 +46,8 @@ foreach ($lignes as &$ligne_bl_row) {
 }
 unset($ligne_bl_row);
 $st = $bl['statut'] ?? 'brouillon';
-$lib_statut = bl_libelle_statut($st);
+$lib_statut = bl_libelle_statut_affichage($bl);
+$st_badge = bl_est_facture_payee($bl) ? 'paye' : $st;
 $client_b2b_id = (int) ($bl['client_b2b_id'] ?? 0);
 
 $total_ht = (float) ($bl['total_ht'] ?? 0);
@@ -72,12 +73,6 @@ $total_ht = (float) ($bl['total_ht'] ?? 0);
                 <span class="bl-voir-ic bl-voir-ic--hero" aria-hidden="true"><i class="fas fa-file-invoice"></i></span>
                 <span><?php echo htmlspecialchars($bl['numero_bl']); ?></span>
             </h1>
-            <p class="bl-page-header__sub">
-                <span class="bl-voir-header-meta"><i class="fas fa-building" aria-hidden="true"></i> <?php echo htmlspecialchars($bl['raison_sociale'] ?? ''); ?></span>
-                <?php if (!empty($bl['date_bl'])): ?>
-                    <span class="bl-voir-header-meta"><i class="fas fa-calendar-day" aria-hidden="true"></i> <?php echo htmlspecialchars($bl['date_bl']); ?></span>
-                <?php endif; ?>
-            </p>
         </div>
         <div class="header-actions bl-page-header__actions bl-page-header__actions--stack bl-voir-header-actions">
             <button type="button" class="btn-back bl-act-btn" onclick="history.back()">
@@ -145,7 +140,7 @@ $total_ht = (float) ($bl['total_ht'] ?? 0);
                     <span class="bl-voir-ic bl-voir-ic--statut-pill bl-voir-ic--sm" aria-hidden="true"><i class="fas fa-flag-checkered"></i></span>
                     <div class="bl-voir-hero__block-body">
                         <span class="bl-voir-hero__label">Statut</span>
-                        <span class="commande-statut statut-<?php echo htmlspecialchars($st); ?> bl-voir-hero__stat bl-statut-badge"><?php echo htmlspecialchars($lib_statut); ?></span>
+                        <span class="commande-statut statut-<?php echo htmlspecialchars($st_badge); ?> bl-voir-hero__stat bl-statut-badge"><?php echo htmlspecialchars($lib_statut); ?></span>
                     </div>
                 </div>
             </div>

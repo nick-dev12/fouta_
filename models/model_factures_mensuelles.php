@@ -51,6 +51,10 @@ function get_bl_valides_non_factures($client_b2b_id) {
     if ($client_b2b_id <= 0 || !factures_mensuelles_table_ok()) {
         return [];
     }
+    if (!function_exists('bl_sql_exclure_factures_payees')) {
+        require_once __DIR__ . '/model_bl.php';
+    }
+    $filtre_payee = bl_sql_exclure_factures_payees('b');
     try {
         $stmt = $db->prepare('
             SELECT b.*
@@ -59,6 +63,7 @@ function get_bl_valides_non_factures($client_b2b_id) {
             WHERE b.client_b2b_id = :cid
               AND b.statut IN (\'valide\', \'paye\')
               AND f.id IS NULL
+              ' . $filtre_payee . '
             ORDER BY b.date_creation ASC, b.id ASC
         ');
         $stmt->execute(['cid' => $client_b2b_id]);
@@ -81,14 +86,19 @@ function facture_mensuelle_compte_bl_client($client_b2b_id) {
     if ($client_b2b_id <= 0 || !factures_mensuelles_table_ok()) {
         return $empty;
     }
+    if (!function_exists('bl_sql_exclure_factures_payees')) {
+        require_once __DIR__ . '/model_bl.php';
+    }
+    $filtre_payee = bl_sql_exclure_factures_payees('b');
     try {
         $stmt = $db->prepare('SELECT COUNT(*) FROM bons_livraison WHERE client_b2b_id = :cid');
         $stmt->execute(['cid' => $client_b2b_id]);
         $brouillon_total = (int) $stmt->fetchColumn();
 
         $stmt = $db->prepare('
-            SELECT COUNT(*) FROM bons_livraison
-            WHERE client_b2b_id = :cid AND statut IN (\'valide\', \'paye\')
+            SELECT COUNT(*) FROM bons_livraison b
+            WHERE b.client_b2b_id = :cid AND b.statut IN (\'valide\', \'paye\')
+            ' . $filtre_payee . '
         ');
         $stmt->execute(['cid' => $client_b2b_id]);
         $eligible = (int) $stmt->fetchColumn();
@@ -134,7 +144,7 @@ function facture_mensuelle_message_aucun_bl($client_b2b_id) {
         return 'Aucun bon de livraison au statut « Validé (comptabilité) » pour ce client.';
     }
     if ($c['sans_lien'] === 0 && $c['deja_lies'] > 0) {
-        return 'Tous les bons de livraison validés sont déjà rattachés à une facture mensuelle. Ils ne peuvent figurer qu’une seule fois. Utilisez « Voir la facture » (brouillon du mois) ou ouvrez la facture concernée dans l’onglet Comptabilité — il n’y a rien de nouveau à ajouter.';
+        return 'Tous les bons de livraison validés sont déjà rattachés à une facture mensuelle ou marqués payés individuellement. Utilisez « Voir la facture » (brouillon du mois) ou ouvrez la facture concernée dans l’onglet Comptabilité — il n’y a rien de nouveau à ajouter.';
     }
     return 'Aucun bon de livraison validé en attente de facturation.';
 }

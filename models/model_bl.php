@@ -4,6 +4,7 @@
  */
 require_once __DIR__ . '/../conn/conn.php';
 require_once __DIR__ . '/../includes/fiscal_tva.php';
+require_once __DIR__ . '/../includes/fiscal_numerotation_factures.php';
 
 function bl_tables_available() {
     global $db;
@@ -80,6 +81,17 @@ function bl_libelle_statut($st)
 }
 
 /**
+ * Libellé statut BL tenant compte du paiement individuel de la facture.
+ */
+function bl_libelle_statut_affichage(array $bl)
+{
+    if (bl_est_facture_payee($bl)) {
+        return 'Payé';
+    }
+    return bl_libelle_statut($bl['statut'] ?? 'brouillon');
+}
+
+/**
  * Libellés courts pour documents imprimés (facture BL — sans mention « comptabilité »)
  */
 function bl_libelle_statut_facture($st)
@@ -150,36 +162,14 @@ function bl_numero_reference_fpl_column_ok()
 }
 
 /**
- * @return string ex. FPL000003
+ * @return string ex. 2519
  */
 function generate_numero_reference_fpl_bl()
 {
-    global $db;
-    if (!bl_tables_available() || !$db) {
-        return 'FPL' . str_pad('1', 6, '0', STR_PAD_LEFT);
+    if (!function_exists('fiscal_prochain_numero_facture_bl')) {
+        require_once __DIR__ . '/../includes/fiscal_numerotation_factures.php';
     }
-    $max = 0;
-    if (bl_numero_reference_fpl_column_ok()) {
-        try {
-            $stmt = $db->query("
-                SELECT numero_reference_fpl FROM bons_livraison
-                WHERE numero_reference_fpl IS NOT NULL AND numero_reference_fpl LIKE 'FPL%'
-                ORDER BY id DESC LIMIT 200
-            ");
-            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-                $raw = (string) ($row['numero_reference_fpl'] ?? '');
-                if (preg_match('/^FPL(\d+)$/', $raw, $m)) {
-                    $n = (int) $m[1];
-                    if ($n > $max) {
-                        $max = $n;
-                    }
-                }
-            }
-        } catch (PDOException $e) {
-            $max = 0;
-        }
-    }
-    return 'FPL' . str_pad((string) ($max + 1), 6, '0', STR_PAD_LEFT);
+    return fiscal_prochain_numero_facture_bl();
 }
 
 /**
@@ -224,6 +214,98 @@ function bl_numero_document_affichage(array $bl)
         }
     }
     return (string) ($bl['numero_bl'] ?? '');
+}
+
+/**
+ * Colonnes paiement facture BL (facture_bl_payee, date_paiement_bl)
+ */
+function bl_col_facture_payee_ok()
+{
+    global $db;
+    static $ok = null;
+    if ($ok !== null) {
+        return $ok;
+    }
+    $ok = false;
+    if (!bl_tables_available() || !$db) {
+        return false;
+    }
+    try {
+        $db->query('SELECT facture_bl_payee, date_paiement_bl FROM bons_livraison LIMIT 1');
+        $ok = true;
+    } catch (PDOException $e) {
+        $ok = false;
+    }
+    return $ok;
+}
+
+/**
+ * @param array|string|int $bl Ligne BL ou id
+ */
+function bl_est_facture_payee($bl)
+{
+    if (!bl_col_facture_payee_ok()) {
+        return false;
+    }
+    if (is_array($bl)) {
+        return !empty($bl['facture_bl_payee']);
+    }
+    $row = get_bl_by_id((int) $bl);
+    return $row && !empty($row['facture_bl_payee']);
+}
+
+/**
+ * Filtre SQL : exclure les BL dont la facture individuelle est payée.
+ */
+function bl_sql_exclure_factures_payees($alias = 'b')
+{
+    if (!bl_col_facture_payee_ok()) {
+        return '';
+    }
+    $a = preg_replace('/[^a-zA-Z0-9_]/', '', (string) $alias);
+    if ($a === '') {
+        $a = 'b';
+    }
+    return ' AND COALESCE(' . $a . '.facture_bl_payee, 0) = 0';
+}
+
+/**
+ * Marque la facture d'un BL validé comme payée (exclut le BL des factures mensuelles groupées).
+ *
+ * @return array{ok:bool,error?:string}
+ */
+function marquer_bl_facture_payee($bl_id)
+{
+    global $db;
+    $bl_id = (int) $bl_id;
+    if ($bl_id <= 0 || !bl_col_facture_payee_ok()) {
+        return ['ok' => false, 'error' => 'Opération indisponible (migration requise).'];
+    }
+    $bl = get_bl_by_id($bl_id);
+    if (!$bl) {
+        return ['ok' => false, 'error' => 'Bon de livraison introuvable.'];
+    }
+    if (!bl_est_statut_verrouille($bl['statut'] ?? '')) {
+        return ['ok' => false, 'error' => 'Validez d’abord le bon de livraison avant de le marquer comme payé.'];
+    }
+    if (bl_est_facture_payee($bl)) {
+        return ['ok' => false, 'error' => 'Cette facture est déjà marquée comme payée.'];
+    }
+    try {
+        $stmt = $db->prepare('
+            UPDATE bons_livraison
+            SET facture_bl_payee = 1, date_paiement_bl = NOW(), date_modification = NOW()
+            WHERE id = :id AND statut = \'valide\' AND COALESCE(facture_bl_payee, 0) = 0
+        ');
+        $stmt->execute(['id' => $bl_id]);
+        if ($stmt->rowCount() < 1) {
+            return ['ok' => false, 'error' => 'Impossible d’enregistrer le paiement.'];
+        }
+        return ['ok' => true];
+    } catch (PDOException $e) {
+        error_log('[marquer_bl_facture_payee] ' . $e->getMessage());
+        return ['ok' => false, 'error' => 'Erreur lors de l’enregistrement du paiement.'];
+    }
 }
 
 /**

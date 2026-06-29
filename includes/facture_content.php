@@ -12,6 +12,7 @@
  * $facture_bl_statut_code (string, optionnel): brouillon | valide (ou ancien paye) — couleur du libellé
  * $facture_show_client_zone (bool, optionnel): zone réservée au client en bas de page (signature)
  * $facture_recap_label_ht_decomp (string, optionnel): libellé ligne « base HT » lorsque TVA non en sus (ex. TOTAL BL, TOTAL DEVIS)
+ * $facture_recap_label_total (string, optionnel): libellé ligne total final (ex. TOTAL TTC, TOTAL)
  */
 $adresse_livraison = $adresse_livraison ?? '';
 $adresse_client_display = isset($adresse_client_display) ? trim((string) $adresse_client_display) : trim((string) ($commande['adresse_client'] ?? ''));
@@ -40,6 +41,9 @@ if (!isset($facture_numero_affichage) || (string) $facture_numero_affichage === 
     $facture_numero_affichage = (string) $facture_numero_affichage;
 }
 $facture_afficher_marquer_payee = !empty($facture_afficher_marquer_payee);
+$facture_marquer_payee_confirm = isset($facture_marquer_payee_confirm) && (string) $facture_marquer_payee_confirm !== ''
+    ? (string) $facture_marquer_payee_confirm
+    : 'Confirmer le paiement ? La facture passera au numéro FPL et sera retirée des devis à suivre.';
 $facture_csrf_token = isset($facture_csrf_token) ? (string) $facture_csrf_token : '';
 $facture_page_flash_success = isset($facture_page_flash_success) ? (string) $facture_page_flash_success : '';
 $facture_page_flash_error = isset($facture_page_flash_error) ? (string) $facture_page_flash_error : '';
@@ -48,6 +52,9 @@ $facture_document_type_label = isset($facture_document_type_label) && (string) $
     : 'FACTURE';
 $facture_masquer_meta_solde = isset($facture_masquer_meta_solde) ? (bool) $facture_masquer_meta_solde : true;
 $facture_masquer_tva_recap = !empty($facture_masquer_tva_recap);
+$facture_recap_label_total = isset($facture_recap_label_total) && (string) $facture_recap_label_total !== ''
+    ? (string) $facture_recap_label_total
+    : 'TOTAL TTC';
 require_once __DIR__ . '/site_url.php';
 require_once __DIR__ . '/fiscal_tva.php';
 $facture_tva_incluse = isset($facture_tva_incluse) ? (bool) $facture_tva_incluse : (!empty($facture['tva_incluse']));
@@ -921,7 +928,7 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
             <a href="javascript:window.print();"><i class="fas fa-print"></i> Imprimer</a>
             <?php if ($facture_afficher_marquer_payee): ?>
                 <form method="post" action="" class="facture-form-marquer-paye"
-                    onsubmit='return confirm("Confirmer le paiement ? La facture passera au num\u00e9ro FPL et sera retir\u00e9e des devis \u00e0 suivre.");'>
+                    onsubmit="return confirm(<?php echo json_encode($facture_marquer_payee_confirm, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>);">
                     <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($facture_csrf_token, ENT_QUOTES, 'UTF-8'); ?>">
                     <button type="submit" name="marquer_facture_payee" value="1" class="btn-marquer-paye">
                         <i class="fas fa-check-circle" aria-hidden="true"></i> Marquer comme payé
@@ -1075,7 +1082,7 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
                 </div>
                 <?php endif; ?>
                 <div class="row">
-                    <span>TOTAL TTC</span>
+                    <span><?php echo htmlspecialchars($facture_recap_label_total); ?></span>
                     <span><?php echo number_format($facture['montant_total'], 2, ',', ' '); ?> CFA</span>
                 </div>
                 <?php else: ?>
@@ -1090,7 +1097,7 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
                 </div>
                 <?php endif; ?>
                 <div class="row">
-                    <span>TOTAL TTC</span>
+                    <span><?php echo htmlspecialchars($facture_recap_label_total); ?></span>
                     <span><?php echo number_format($facture['montant_total'], 2, ',', ' '); ?> CFA</span>
                 </div>
                 <?php endif; ?>

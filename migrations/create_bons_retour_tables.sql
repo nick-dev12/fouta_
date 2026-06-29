@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS `bons_retour` (
   UNIQUE KEY `uk_bons_retour_numero` (`numero_br`),
   KEY `idx_bons_retour_bl` (`bl_id`),
   KEY `idx_bons_retour_date` (`date_retour`),
-  CONSTRAINT `fk_bons_retour_bl` FOREIGN KEY (`bl_id`) REFERENCES `bons_livraison` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
+  CONSTRAINT `fk_bons_retour_bl` FOREIGN KEY (`bl_id`) REFERENCES `bons_livraison` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `bons_retour_lignes` (
@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS `bons_retour_lignes` (
   KEY `idx_brl_bon_retour` (`bon_retour_id`),
   KEY `idx_brl_bl_ligne` (`bl_ligne_id`),
   CONSTRAINT `fk_brl_bon_retour` FOREIGN KEY (`bon_retour_id`) REFERENCES `bons_retour` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `fk_brl_bl_ligne` FOREIGN KEY (`bl_ligne_id`) REFERENCES `bl_lignes` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
+  CONSTRAINT `fk_brl_bl_ligne` FOREIGN KEY (`bl_ligne_id`) REFERENCES `bl_lignes` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 SET FOREIGN_KEY_CHECKS = 1;
