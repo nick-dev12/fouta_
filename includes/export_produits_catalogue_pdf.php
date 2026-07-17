@@ -262,6 +262,174 @@ function export_catalogue_logo_data_uri()
 }
 
 /**
+ * @param array<string, mixed> $produit
+ * @return string
+ */
+function export_catalogue_format_prix_fcfa($value, $with_suffix = false)
+{
+    if ($value === null || $value === '') {
+        return '—';
+    }
+    $formatted = number_format((float) $value, 0, ',', ' ');
+
+    return $with_suffix ? $formatted . ' FCFA' : $formatted;
+}
+
+/**
+ * Prix pour l’export catalogue : tiret si absent ou ≤ 0.
+ *
+ * @param mixed $value
+ * @return string
+ */
+function export_catalogue_format_prix_fcfa_export($value, $with_suffix = true)
+{
+    if ($value === null || $value === '' || (float) $value <= 0) {
+        return '—';
+    }
+
+    return export_catalogue_format_prix_fcfa($value, $with_suffix);
+}
+
+/**
+ * Stock pour l’export catalogue : tiret si absent, sinon entier.
+ *
+ * @param mixed $value
+ * @return string
+ */
+function export_catalogue_format_stock_export($value)
+{
+    if ($value === null || $value === '') {
+        return '—';
+    }
+
+    return (string) (int) $value;
+}
+
+/**
+ * @param array<string, mixed> $produit
+ * @return string|null null si colonne absente
+ */
+function export_catalogue_produit_prix_achat_affichage(array $produit)
+{
+    if (!function_exists('produits_has_column') || !produits_has_column('prix_achat')) {
+        return null;
+    }
+
+    return export_catalogue_format_prix_fcfa_export($produit['prix_achat'] ?? null, true);
+}
+
+/**
+ * @return bool
+ */
+function export_catalogue_has_prix_achat_column()
+{
+    return function_exists('produits_has_column') && produits_has_column('prix_achat');
+}
+
+/**
+ * Définition des colonnes du tableau PDF (largeurs explicites pour Dompdf).
+ *
+ * @return array<int, array{key: string, label: string, width: string, class: string}>
+ */
+function export_catalogue_pdf_table_columns($has_prix_achat)
+{
+    $cols = [
+        ['key' => 'img', 'label' => 'Image', 'width' => '5%', 'class' => 'col-img'],
+        ['key' => 'nom', 'label' => 'Produit', 'width' => '18%', 'class' => 'col-nom'],
+        ['key' => 'cat', 'label' => 'Catégorie', 'width' => '9%', 'class' => 'col-text'],
+        ['key' => 'four', 'label' => 'Fournisseur', 'width' => '9%', 'class' => 'col-text'],
+    ];
+
+    if ($has_prix_achat) {
+        $cols[] = ['key' => 'prix_achat', 'label' => 'Prix achat', 'width' => '10%', 'class' => 'col-num col-prix-achat'];
+        $cols[] = ['key' => 'prix', 'label' => 'Prix vente', 'width' => '10%', 'class' => 'col-num col-prix'];
+        $cols[] = ['key' => 'promo', 'label' => 'Promo', 'width' => '9%', 'class' => 'col-num col-promo'];
+        $cols[] = ['key' => 'stock', 'label' => 'Stock', 'width' => '8%', 'class' => 'col-num col-stock'];
+        $cols[] = ['key' => 'creation', 'label' => 'Création', 'width' => '11%', 'class' => 'col-date'];
+        $cols[] = ['key' => 'modification', 'label' => 'Modification', 'width' => '11%', 'class' => 'col-date'];
+    } else {
+        $cols[1]['width'] = '22%';
+        $cols[] = ['key' => 'prix', 'label' => 'Prix vente', 'width' => '10%', 'class' => 'col-num col-prix'];
+        $cols[] = ['key' => 'promo', 'label' => 'Promo', 'width' => '8%', 'class' => 'col-num col-promo'];
+        $cols[] = ['key' => 'stock', 'label' => 'Stock', 'width' => '8%', 'class' => 'col-num col-stock'];
+        $cols[] = ['key' => 'creation', 'label' => 'Création', 'width' => '12%', 'class' => 'col-date'];
+        $cols[] = ['key' => 'modification', 'label' => 'Modification', 'width' => '12%', 'class' => 'col-date'];
+    }
+
+    return $cols;
+}
+
+/**
+ * @param string $tag th|td
+ * @param string $width
+ * @param string $class
+ * @param string $inner_html
+ * @return string
+ */
+function export_catalogue_pdf_table_cell($tag, $width, $class, $inner_html)
+{
+    $tag = $tag === 'th' ? 'th' : 'td';
+    $class_attr = $class !== '' ? ' class="' . export_catalogue_pdf_escape($class) . '"' : '';
+    $style = 'width:' . $width;
+    if (strpos($class, 'col-num') !== false) {
+        $style .= ';text-align:center';
+    }
+    $style_attr = ' style="' . export_catalogue_pdf_escape($style) . '"';
+
+    return '<' . $tag . $class_attr . $style_attr . '>' . $inner_html . '</' . $tag . '>';
+}
+
+/**
+ * Contenu HTML des cellules d’une ligne produit (ordre identique aux colonnes).
+ *
+ * @param array<string, mixed> $produit
+ * @return array<string, string>
+ */
+function export_catalogue_pdf_row_cell_contents(array $produit, $has_prix_achat)
+{
+    $img_uri = export_catalogue_produit_image_data_uri($produit);
+    $img_cell = $img_uri !== ''
+        ? '<img src="' . export_catalogue_pdf_escape($img_uri) . '" alt="" class="prod-img">'
+        : '<span class="prod-no-img">—</span>';
+
+    $ident = trim((string) ($produit['identifiant_interne'] ?? ''));
+    $marque = function_exists('produits_marque_libelle_from_row') ? produits_marque_libelle_from_row($produit) : '';
+    $fourn = function_exists('produits_fournisseur_nom_affichage') ? produits_fournisseur_nom_affichage($produit) : '';
+    $prix = export_catalogue_format_prix_fcfa_export($produit['prix'] ?? null, true);
+    $promo = export_catalogue_format_prix_fcfa_export($produit['prix_promotion'] ?? null, true);
+    $dc = !empty($produit['date_creation']) ? date('d/m/Y H:i', strtotime((string) $produit['date_creation'])) : '—';
+    $dm = !empty($produit['date_modification']) ? date('d/m/Y H:i', strtotime((string) $produit['date_modification'])) : '—';
+
+    $nom_html = '<strong>' . export_catalogue_pdf_escape($produit['nom'] ?? '') . '</strong>';
+    if ($ident !== '') {
+        $nom_html .= '<br><span class="muted">Réf. ' . export_catalogue_pdf_escape($ident) . '</span>';
+    }
+    if ($marque !== '') {
+        $nom_html .= '<br><span class="muted">' . export_catalogue_pdf_escape($marque) . '</span>';
+    }
+
+    $cells = [
+        'img' => $img_cell,
+        'nom' => $nom_html,
+        'cat' => export_catalogue_pdf_escape($produit['categorie_nom'] ?? '—'),
+        'four' => export_catalogue_pdf_escape($fourn !== '' ? $fourn : '—'),
+        'prix' => export_catalogue_pdf_escape($prix),
+        'promo' => export_catalogue_pdf_escape($promo),
+        'stock' => export_catalogue_pdf_escape(export_catalogue_format_stock_export($produit['stock'] ?? null)),
+        'creation' => export_catalogue_pdf_escape($dc),
+        'modification' => export_catalogue_pdf_escape($dm),
+    ];
+
+    if ($has_prix_achat) {
+        $cells['prix_achat'] = export_catalogue_pdf_escape(
+            export_catalogue_format_prix_fcfa_export($produit['prix_achat'] ?? null, true)
+        );
+    }
+
+    return $cells;
+}
+
+/**
  * @param array<int, array<string, mixed>> $produits
  * @param array<string, mixed> $meta date_debut, date_fin, mode, recherche, total
  * @return string HTML
@@ -270,6 +438,9 @@ function export_catalogue_build_pdf_html(array $produits, array $meta, $on_progr
 {
     $ent = get_entreprise_config();
     $logo = export_catalogue_logo_data_uri();
+    $has_prix_achat = export_catalogue_has_prix_achat_column();
+    $columns = export_catalogue_pdf_table_columns($has_prix_achat);
+    $col_count = count($columns);
 
     $doc_title = export_catalogue_pdf_doc_title($meta);
     $filtres_header_html = export_catalogue_build_filtres_header_html($meta);
@@ -277,37 +448,23 @@ function export_catalogue_build_pdf_html(array $produits, array $meta, $on_progr
     $total = (int) ($meta['total'] ?? count($produits));
     $count = count($produits);
 
+    $header_cells = '';
+    foreach ($columns as $col) {
+        $header_cells .= export_catalogue_pdf_table_cell('th', $col['width'], $col['class'], export_catalogue_pdf_escape($col['label']));
+    }
+
     $rows_html = '';
     $i = 0;
     foreach ($produits as $p) {
         $i++;
-        $img_uri = export_catalogue_produit_image_data_uri($p);
-        $img_cell = $img_uri !== ''
-            ? '<img src="' . export_catalogue_pdf_escape($img_uri) . '" alt="" class="prod-img">'
-            : '<span class="prod-no-img">—</span>';
-
-        $ident = trim((string) ($p['identifiant_interne'] ?? ''));
-        $marque = function_exists('produits_marque_libelle_from_row') ? produits_marque_libelle_from_row($p) : '';
-        $fourn = function_exists('produits_fournisseur_nom_affichage') ? produits_fournisseur_nom_affichage($p) : '';
-        $prix = number_format((float) ($p['prix'] ?? 0), 0, ',', ' ');
-        $promo = !empty($p['prix_promotion']) ? number_format((float) $p['prix_promotion'], 0, ',', ' ') . ' FCFA' : '—';
-        $dc = !empty($p['date_creation']) ? date('d/m/Y H:i', strtotime((string) $p['date_creation'])) : '—';
-        $dm = !empty($p['date_modification']) ? date('d/m/Y H:i', strtotime((string) $p['date_modification'])) : '—';
-
-        $rows_html .= '<tr>
-            <td class="col-img">' . $img_cell . '</td>
-            <td class="col-nom"><strong>' . export_catalogue_pdf_escape($p['nom'] ?? '') . '</strong>'
-            . ($ident !== '' ? '<br><span class="muted">Réf. ' . export_catalogue_pdf_escape($ident) . '</span>' : '')
-            . ($marque !== '' ? '<br><span class="muted">' . export_catalogue_pdf_escape($marque) . '</span>' : '')
-            . '</td>
-            <td>' . export_catalogue_pdf_escape($p['categorie_nom'] ?? '—') . '</td>
-            <td>' . export_catalogue_pdf_escape($fourn !== '' ? $fourn : '—') . '</td>
-            <td class="num">' . export_catalogue_pdf_escape($prix) . '</td>
-            <td class="num">' . export_catalogue_pdf_escape($promo) . '</td>
-            <td class="num">' . export_catalogue_pdf_escape((string) (int) ($p['stock'] ?? 0)) . '</td>
-            <td class="date">' . export_catalogue_pdf_escape($dc) . '</td>
-            <td class="date">' . export_catalogue_pdf_escape($dm) . '</td>
-        </tr>';
+        $cell_contents = export_catalogue_pdf_row_cell_contents($p, $has_prix_achat);
+        $row_cells = '';
+        foreach ($columns as $col) {
+            $key = $col['key'];
+            $inner = $cell_contents[$key] ?? '—';
+            $row_cells .= export_catalogue_pdf_table_cell('td', $col['width'], $col['class'], $inner);
+        }
+        $rows_html .= '<tr>' . $row_cells . '</tr>';
 
         if ($on_progress !== null && ($i % 5 === 0 || $i === $count)) {
             $pct = 42 + (int) floor(28 * $i / max(1, $count));
@@ -316,7 +473,7 @@ function export_catalogue_build_pdf_html(array $produits, array $meta, $on_progr
     }
 
     if ($rows_html === '') {
-        $rows_html = '<tr><td colspan="9" class="empty">Aucun produit pour les critères sélectionnés.</td></tr>';
+        $rows_html = '<tr><td colspan="' . $col_count . '" class="empty">Aucun produit pour les critères sélectionnés.</td></tr>';
     }
 
     $logo_html = $logo !== ''
@@ -329,7 +486,7 @@ function export_catalogue_build_pdf_html(array $produits, array $meta, $on_progr
 <meta charset="utf-8">
 <title>Export catalogue produits</title>
 <style>
-@page { margin: 14mm 10mm 16mm 10mm; }
+@page { margin: 12mm 8mm 14mm 8mm; }
 body { font-family: DejaVu Sans, sans-serif; font-size: 9px; color: #0d0d0d; margin: 0; }
 .header { display: table; width: 100%; margin-bottom: 14px; border-bottom: 2px solid #3564a6; padding-bottom: 10px; }
 .header-left { display: table-cell; vertical-align: top; width: 58%; }
@@ -346,16 +503,18 @@ body { font-family: DejaVu Sans, sans-serif; font-size: 9px; color: #0d0d0d; mar
 .doc-filtre__label { display: block; font-size: 7px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.04em; color: #3564a6; margin-bottom: 1px; }
 .doc-filtre__value { color: #0d0d0d; }
 .doc-filtre__value strong { color: #0d0d0d; }
-table.catalogue { width: 100%; border-collapse: collapse; margin-top: 8px; }
-table.catalogue th { background: #3564a6; color: #fff; font-size: 8px; text-transform: uppercase; padding: 6px 4px; text-align: left; }
-table.catalogue td { border-bottom: 1px solid #e5e5e5; padding: 5px 4px; vertical-align: middle; font-size: 8.5px; }
+table.catalogue { width: 100%; border-collapse: collapse; margin-top: 8px; table-layout: fixed; }
+table.catalogue th { background: #3564a6; color: #fff; font-size: 7.5px; text-transform: uppercase; padding: 6px 4px; text-align: left; vertical-align: middle; word-wrap: break-word; overflow: hidden; }
+table.catalogue td { border-bottom: 1px solid #e5e5e5; padding: 5px 4px; vertical-align: top; font-size: 8px; word-wrap: break-word; overflow-wrap: break-word; overflow: hidden; }
 table.catalogue tr:nth-child(even) td { background: #f8fafc; }
-.col-img { width: 42px; text-align: center; }
-.prod-img { width: 38px; height: 38px; object-fit: cover; border-radius: 4px; border: 1px solid #ddd; }
+.col-img { text-align: center; vertical-align: middle !important; }
+.prod-img { width: 34px; height: 34px; object-fit: cover; border-radius: 4px; border: 1px solid #ddd; display: block; margin: 0 auto; }
 .prod-no-img { color: #999; }
-.col-nom { min-width: 120px; }
-.num { text-align: right; white-space: nowrap; }
-.date { white-space: nowrap; font-size: 7.5px; color: #555; }
+.col-nom { line-height: 1.35; }
+.col-text { line-height: 1.35; }
+.col-num { text-align: center; vertical-align: middle; }
+table.catalogue th.col-num { text-align: center; }
+.col-date { font-size: 7.5px; color: #555; vertical-align: top; line-height: 1.3; }
 .muted { color: #666; font-size: 7.5px; }
 .empty { text-align: center; padding: 20px; color: #666; }
 .footer { margin-top: 12px; font-size: 7.5px; color: #777; text-align: center; border-top: 1px solid #eee; padding-top: 8px; }
@@ -384,17 +543,7 @@ table.catalogue tr:nth-child(even) td { background: #f8fafc; }
 </div>
 <table class="catalogue">
     <thead>
-        <tr>
-            <th>Image</th>
-            <th>Produit</th>
-            <th>Catégorie</th>
-            <th>Fournisseur</th>
-            <th>Prix FCFA</th>
-            <th>Promo</th>
-            <th>Stock</th>
-            <th>Création</th>
-            <th>Modification</th>
-        </tr>
+        <tr>' . $header_cells . '</tr>
     </thead>
     <tbody>' . $rows_html . '</tbody>
 </table>

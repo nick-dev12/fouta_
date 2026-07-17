@@ -106,6 +106,7 @@ if (!empty($fournisseurs_filtre)) {
 
 $mode_labels = export_catalogue_pdf_mode_labels();
 $export_use_async_pdf = $total_export >= EXPORT_CATALOGUE_ASYNC_MIN;
+$export_has_prix_achat = export_catalogue_has_prix_achat_column();
 $pdf_link_attrs = $export_use_async_pdf
     ? ' data-export-catalogue-async data-export-query="' . htmlspecialchars($pdf_query, ENT_QUOTES, 'UTF-8') . '"'
     : ' data-admin-pdf-download';
@@ -274,11 +275,85 @@ $pdf_link_attrs = $export_use_async_pdf
             </div>
             <?php else: ?>
             <div id="page-produits-export-wrap">
-                <ul class="produits-grid page-produits-grid" id="page-produits-export-grid" role="list">
-                    <?php foreach ($produits_export as $produit): ?>
-                    <?php include __DIR__ . '/includes/carte_produit_liste.php'; ?>
-                    <?php endforeach; ?>
-                </ul>
+                <div class="page-produits-export-table-wrap">
+                    <table class="page-produits-export-table" aria-label="Aperçu export catalogue">
+                        <colgroup>
+                            <col class="page-produits-export-table__col-img">
+                            <col class="page-produits-export-table__col-nom">
+                            <col class="page-produits-export-table__col-cat">
+                            <col class="page-produits-export-table__col-four">
+                            <?php if ($export_has_prix_achat): ?>
+                            <col class="page-produits-export-table__col-prix-achat">
+                            <?php endif; ?>
+                            <col class="page-produits-export-table__col-prix">
+                            <col class="page-produits-export-table__col-promo">
+                            <col class="page-produits-export-table__col-stock">
+                            <col class="page-produits-export-table__col-date">
+                            <col class="page-produits-export-table__col-date">
+                        </colgroup>
+                        <thead>
+                            <tr>
+                                <th scope="col">Image</th>
+                                <th scope="col">Produit</th>
+                                <th scope="col">Catégorie</th>
+                                <th scope="col">Fournisseur</th>
+                                <?php if ($export_has_prix_achat): ?>
+                                <th scope="col" class="page-produits-export-table__num">Prix achat</th>
+                                <?php endif; ?>
+                                <th scope="col" class="page-produits-export-table__num">Prix vente</th>
+                                <th scope="col" class="page-produits-export-table__num">Promo</th>
+                                <th scope="col" class="page-produits-export-table__num">Stock</th>
+                                <th scope="col">Création</th>
+                                <th scope="col">Modification</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($produits_export as $produit): ?>
+                            <?php
+                            $img = trim((string) ($produit['image_principale'] ?? ''));
+                            $img_url = $img !== '' ? '/upload/' . ltrim(str_replace('\\', '/', $img), '/') : '';
+                            $ident = trim((string) ($produit['identifiant_interne'] ?? ''));
+                            $marque = function_exists('produits_marque_libelle_from_row') ? produits_marque_libelle_from_row($produit) : '';
+                            $fourn = function_exists('produits_fournisseur_nom_affichage') ? produits_fournisseur_nom_affichage($produit) : '';
+                            $prix_achat_aff = $export_has_prix_achat ? export_catalogue_produit_prix_achat_affichage($produit) : null;
+                            $prix_vente_aff = export_catalogue_format_prix_fcfa_export($produit['prix'] ?? null, true);
+                            $promo_aff = export_catalogue_format_prix_fcfa_export($produit['prix_promotion'] ?? null, true);
+                            $stock_aff = export_catalogue_format_stock_export($produit['stock'] ?? null);
+                            $dc_aff = !empty($produit['date_creation']) ? date('d/m/Y H:i', strtotime((string) $produit['date_creation'])) : '—';
+                            $dm_aff = !empty($produit['date_modification']) ? date('d/m/Y H:i', strtotime((string) $produit['date_modification'])) : '—';
+                            ?>
+                            <tr>
+                                <td class="page-produits-export-table__img">
+                                    <?php if ($img_url !== ''): ?>
+                                    <img src="<?php echo htmlspecialchars($img_url, ENT_QUOTES, 'UTF-8'); ?>" alt="" width="44" height="44" loading="lazy">
+                                    <?php else: ?>
+                                    <span class="page-produits-export-table__no-img">—</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td class="page-produits-export-table__nom">
+                                    <strong><?php echo htmlspecialchars($produit['nom'] ?? ''); ?></strong>
+                                    <?php if ($ident !== ''): ?>
+                                    <span class="page-produits-export-table__meta">Réf. <?php echo htmlspecialchars($ident); ?></span>
+                                    <?php endif; ?>
+                                    <?php if ($marque !== ''): ?>
+                                    <span class="page-produits-export-table__meta"><?php echo htmlspecialchars($marque); ?></span>
+                                    <?php endif; ?>
+                                </td>
+                                <td><?php echo htmlspecialchars($produit['categorie_nom'] ?? '—'); ?></td>
+                                <td><?php echo htmlspecialchars($fourn !== '' ? $fourn : '—'); ?></td>
+                                <?php if ($export_has_prix_achat): ?>
+                                <td class="page-produits-export-table__num"><?php echo htmlspecialchars($prix_achat_aff ?? '—'); ?></td>
+                                <?php endif; ?>
+                                <td class="page-produits-export-table__num"><?php echo htmlspecialchars($prix_vente_aff); ?></td>
+                                <td class="page-produits-export-table__num"><?php echo htmlspecialchars($promo_aff); ?></td>
+                                <td class="page-produits-export-table__num"><?php echo htmlspecialchars($stock_aff); ?></td>
+                                <td class="page-produits-export-table__date"><?php echo htmlspecialchars($dc_aff); ?></td>
+                                <td class="page-produits-export-table__date"><?php echo htmlspecialchars($dm_aff); ?></td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
 
                 <?php if ($total_pages > 1): ?>
                 <nav class="page-produits-pagination page-produits-export-pagination" id="page-produits-export-pagination"
@@ -340,20 +415,6 @@ $pdf_link_attrs = $export_use_async_pdf
 
     <script>
     document.addEventListener('DOMContentLoaded', function() {
-        document.addEventListener('click', function(event) {
-            var card = event.target.closest('.page-produits-section .produit-card-linkable');
-            if (!card) {
-                return;
-            }
-            if (event.target.closest('a, button, input, select, textarea, form')) {
-                return;
-            }
-            var href = card.getAttribute('data-href');
-            if (href) {
-                window.location.href = href;
-            }
-        });
-
         var deleteOverlay = document.getElementById('deleteConfirmOverlay');
         var deleteModal = document.getElementById('deleteConfirmModal');
         var deleteProduct = document.getElementById('deleteConfirmProduct');
