@@ -1,9 +1,14 @@
 /**
- * Étiquette FPL — gabarit FIXE (500px), pas de responsive sur la carte.
- * Couleurs : --fpl-accent, --fpl-accent-dark (inline sur .fpl-etiq--fixed ; accent marque #19377d)
+ * Étiquette FPL — maquette 70 × 70 mm (Zebra ZD420, 203 dpi / 8 dots·mm⁻¹).
+ *
+ * Disposition conforme à l'étiquette de référence :
+ * - Bande navy haute 70×6 mm, écusson logo suspendu en HAUT GAUCHE (fond 15×11 + pointe 10 mm)
+ * - Colonne gauche 30 mm : réf « FPL01 807570 », nom, sous-titre gris, QR 17 mm encadré gris
+ * - Trait vertical navy 1 mm sur toute la hauteur du corps
+ * - Colonne droite : compatibilité (2 lignes en haut), photo produit au centre,
+ *   code-barres 24×9 mm centré, « 1 pcs » en bas à droite
+ * - Bande navy basse 70×6 mm : adresse + tél / web / mail
  */
-
-/* Aucune règle @media ne modifie les dimensions de .fpl-etiq--fixed */
 
 .fpl-etiquette-sheet-wrap {
   margin-top: 0.75rem;
@@ -13,115 +18,162 @@
   max-width: none;
 }
 
-/* Carte : largeur figée, pas de max-width:100% ni % internes */
+.fpl-etiq-preview-scale {
+  width: 70mm;
+  height: 70mm;
+  transform: scale(2.2);
+  transform-origin: top left;
+  margin: 0 0 calc(70mm * 1.2) 0;
+}
+
+.fpl-etiq-preview-meta {
+  margin: 0 0 0.65rem;
+  font-size: 0.78rem;
+  color: #4a4a4a;
+  font-weight: 600;
+}
+
+.fpl-etiq-preview-meta code {
+  font-size: 0.75rem;
+  color: #3564a6;
+}
+
+/* ——— Carte 70 × 70 mm ——— */
 .fpl-etiq.fpl-etiq--fixed {
   --fpl-accent: #19377d;
   --fpl-accent-dark: #00155b;
+  --fpl-w: 70mm;
+  --fpl-h: 70mm;
+  --fpl-band: 6mm;
+  --fpl-divider: 1mm;
+  --fpl-grey: 1mm;
+  --fpl-zone-left: 30mm;
+  --fpl-logo-w: 15mm;
+  --fpl-logo-h: 11mm;
+  --fpl-triangle: 10mm;
+  --fpl-gap-ref: 3mm;
+  --fpl-gap-qr: 2mm;
+  --fpl-qr: 20mm;
+  --fpl-bc-w: 24mm;
+  --fpl-bc-h: 9mm;
+  /* Écusson : profondeur totale depuis le haut de l'étiquette */
+  --fpl-shield-w: 17mm;
+  --fpl-shield-h: 21mm;
+
   position: relative;
-  width: 500px;
-  min-width: 500px;
-  max-width: 500px;
+  display: flex;
+  flex-direction: column;
+  width: var(--fpl-w);
+  height: var(--fpl-h);
+  min-width: var(--fpl-w);
+  max-width: var(--fpl-w);
+  min-height: var(--fpl-h);
+  max-height: var(--fpl-h);
   box-sizing: border-box;
   margin: 0;
-  font-family:
-    "Segoe UI",
-    system-ui,
-    -apple-system,
-    Roboto,
-    "Helvetica Neue",
-    Arial,
-    sans-serif;
-  border: 1px solid #c8c8c8;
+  padding: 0;
+  overflow: hidden;
+  background: #ffffff;
+  border: 0.15mm solid #c8c8c8;
   border-radius: 0;
-  overflow: visible;
-  background: #d9d9d9;
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.14);
+  font-family: Arial, Helvetica, "Segoe UI", sans-serif;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
 }
 
-/* Empêche tout style global admin (ex. img { max-width:100% }) de comprimer QR / code-barres / photo */
 .fpl-etiq.fpl-etiq--fixed img {
   max-width: none;
 }
 
+/* ——— Bande haute 70 × 6 mm ——— */
 .fpl-etiq__header-zone {
   position: relative;
-  height: 40px;
-  width: 500px;
+  width: var(--fpl-w);
+  height: var(--fpl-band);
+  flex-shrink: 0;
+  z-index: 2;
 }
 
 .fpl-etiq__band-top {
   position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  height: 40px;
+  inset: 0;
   background: var(--fpl-accent);
 }
 
+/* Dégradé gris 1 mm sous la bande haute */
+.fpl-etiq__band-top::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(-1 * var(--fpl-grey));
+  height: var(--fpl-grey);
+  background: linear-gradient(180deg, #b5b5b5 0%, #ffffff 100%);
+}
+
+/* ——— Écusson HAUT GAUCHE : logo 15×11 + textes + pointe ——— */
 .fpl-etiq__shield {
   position: absolute;
-  left: 50%;
-  top: 6px;
-  transform: translateX(-50%);
-  margin: 0 -6px;
-  z-index: 4;
-  width: 100px;
-  min-height: 118px;
-  padding: 8px 6px 10px;
+  left: 4mm;
+  top: 0;
+  z-index: 5;
+  width: var(--fpl-shield-w);
+  height: var(--fpl-shield-h);
+  margin: 0;
+  padding: 1mm 0.8mm 3.4mm;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   text-align: center;
   color: #fff;
-  isolation: isolate;
-  clip-path: polygon(10% 0, 90% 0, 100% 12%, 100% 72%, 50% 100%, 0 72%, 0 12%);
   background: var(--fpl-accent);
-  border: 2px solid rgba(255, 255, 255, 0.22);
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.28);
+  clip-path: polygon(0 0, 100% 0, 100% 72%, 50% 100%, 0 72%);
+  filter: drop-shadow(0 0.4mm 0.5mm rgba(0, 0, 0, 0.28));
 }
 
-/* Logo FPL (fichier image) : fond noir du PNG est atténué sur l’écusson coloré */
 .fpl-etiq__shield-logo {
   display: block;
-  width: 74px;
+  width: calc(var(--fpl-shield-w) - 3mm);
+  height: var(--fpl-logo-h);
   max-width: 100%;
-  height: auto;
-  max-height: 42px;
-  margin: 0 auto 2px;
+  max-height: var(--fpl-logo-h);
   object-fit: contain;
+  object-position: center;
   flex-shrink: 0;
-  mix-blend-mode: screen;
 }
 
 .fpl-etiq__shield-line {
-  margin-top: 5px;
-  font-size: 7px;
-  font-weight: 700;
-  line-height: 1.2;
+  display: block;
+  margin-top: 0.5mm;
+  font-size: 1.15mm;
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: 0.03em;
   text-transform: uppercase;
-  letter-spacing: 0.02em;
+  white-space: nowrap;
 }
 
 .fpl-etiq__shield-line--small {
-  font-size: 6.5px;
+  margin-top: 0.2mm;
+  font-size: 1mm;
+  font-weight: 400;
+  font-style: italic;
   text-transform: none;
-  margin-top: 3px;
+  opacity: 0.9;
 }
 
-/* Zone centrale : grille diagonale fine (comme maquette) */
+/* ——— Corps ——— */
 .fpl-etiq__sheet {
-  width: 500px;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  width: var(--fpl-w);
+  min-height: 0;
   box-sizing: border-box;
-  background-color: #e4e4e4;
-  background-image: repeating-linear-gradient(
-    135deg,
-    transparent,
-    transparent 7px,
-    rgba(0, 0, 0, 0.04) 7px,
-    rgba(0, 0, 0, 0.04) 8px
-  );
+  background: #ffffff;
 }
 
 .fpl-etiq__body {
@@ -129,244 +181,195 @@
   flex-direction: row;
   flex-wrap: nowrap;
   align-items: stretch;
-  width: 500px;
-  min-height: 268px;
-  box-sizing: border-box;
-  padding: 50px 10px 12px 10px;
-}
-
-.fpl-etiq__col-left {
-  flex: 0 0 232px;
-  width: 232px;
-  box-sizing: border-box;
-  padding: 6px 6px 10px 6px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  background: transparent;
-}
-
-/* Réf. + nom + catégorie : centré verticalement dans l’espace au-dessus du QR (comme maquette) */
-.fpl-etiq__col-left-meta {
+  width: var(--fpl-w);
   flex: 1 1 auto;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-  width: 100%;
   min-height: 0;
-  padding: 4px 2px 8px;
-}
-
-.fpl-etiq__divider {
-  flex: 0 0 4px;
-  width: 4px;
-  min-width: 4px;
-  background: var(--fpl-accent);
-  align-self: stretch;
-  margin-top: 0;
-}
-
-.fpl-etiq__col-right {
-  flex: 0 0 244px;
-  width: 244px;
   box-sizing: border-box;
-  padding: 6px 6px 10px 6px;
+  padding-top: var(--fpl-grey);
+}
+
+/* Colonne gauche 30 mm */
+.fpl-etiq__col-left {
+  flex: 0 0 calc(var(--fpl-zone-left) - var(--fpl-divider));
+  width: calc(var(--fpl-zone-left) - var(--fpl-divider));
+  max-width: calc(var(--fpl-zone-left) - var(--fpl-divider));
+  box-sizing: border-box;
+  /* Réfs à 3 mm sous la pointe de l'écusson (21 mm − 6 mm de bande − 1 mm gris) */
+  padding: calc(
+      var(--fpl-shield-h) - var(--fpl-band) - var(--fpl-grey) +
+        var(--fpl-gap-ref)
+    )
+    1.4mm 1.4mm 2.4mm;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  background: transparent;
-  border-left: none;
-  min-height: 248px;
-  text-align: center;
+  align-items: flex-start;
+  justify-content: flex-start;
+  overflow: hidden;
+}
+
+.fpl-etiq__col-left-meta {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  width: 100%;
+  margin-bottom: 1.2mm;
 }
 
 .fpl-etiq__ref-big {
-  font-size: 20px;
+  font-size: 2.5mm;
   font-weight: 800;
-  color: #0a0a0a;
-  letter-spacing: 0.04em;
-  line-height: 1.12;
-  word-break: break-word;
+  color: #000;
+  letter-spacing: 0;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .fpl-etiq__nom-main {
-  font-size: 25px;
-  font-weight: 800;
+  font-size: 2mm;
+  font-weight: 700;
   color: #111;
-  margin-top: 6px;
-  line-height: 1.35;
+  margin-top: 0.45mm;
+  line-height: 1.12;
+  max-height: 5.2mm;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .fpl-etiq__cat-muted {
-  font-size: 14px;
-  color: #5c5c5c;
-  margin-top: 4px;
+  font-size: 1.75mm;
+  color: #6a6a6a;
+  margin-top: 0.25mm;
   font-weight: 500;
-  line-height: 1.3;
+  line-height: 1.1;
+  max-height: 2.2mm;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
+/* QR ~20×20 mm dans un cadre gris clair, calé en bas à gauche */
 .fpl-etiq__qr-block {
-  flex-shrink: 0;
-  margin-top: 0;
-  padding-top: 6px;
+  margin-top: auto;
+  margin-bottom: 4px;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  text-align: center;
-}
-
-.fpl-etiq__qr-mini {
-  font-size: 11px;
-  color: #222;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  font-variant-numeric: tabular-nums;
-  margin-bottom: 4px;
+  align-items: flex-start;
 }
 
 .fpl-etiq__qr-box {
   line-height: 0;
+  width: calc(var(--fpl-qr) + 2mm);
+  height: calc(var(--fpl-qr) + 2mm);
+  padding: 1mm;
+  box-sizing: border-box;
+  background: #ececec;
 }
 
 .fpl-etiq__qr-img {
   display: block;
-  width: 130px;
-  height: 130px;
-  image-rendering: auto;
+  width: var(--fpl-qr);
+  height: var(--fpl-qr);
   object-fit: contain;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
 }
 
 .fpl-etiq__qr-fallback {
-  width: 96px;
-  height: 96px;
-  border: 2px dashed #999;
+  width: calc(var(--fpl-qr) + 2mm);
+  height: calc(var(--fpl-qr) + 2mm);
+  border: 0.2mm solid #c5c5c5;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: 1.4mm;
   color: #666;
-  text-align: center;
-  padding: 8px;
-  background: rgba(255, 255, 255, 0.75);
+  background: #ececec;
   box-sizing: border-box;
 }
 
+/* Trait vertical navy 1 mm */
+.fpl-etiq__divider {
+  flex: 0 0 var(--fpl-divider);
+  width: var(--fpl-divider);
+  min-width: var(--fpl-divider);
+  background: var(--fpl-accent);
+  align-self: stretch;
+}
+
+/* Colonne droite */
+.fpl-etiq__col-right {
+  flex: 1 1 auto;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 4.6mm 2mm 0.8mm 3mm;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  overflow: hidden;
+  text-align: left;
+}
+
+/* Compatibilité : 2 lignes noires en haut à gauche */
+.fpl-etiq__compat {
+  flex: 0 0 auto;
+  width: 100%;
+  margin-bottom: 1.2mm;
+}
+
+.fpl-etiq__compat-l1,
+.fpl-etiq__compat-l2 {
+  font-size: 2.3mm;
+  font-weight: 700;
+  color: #000;
+  line-height: 1.3;
+  letter-spacing: 0.02em;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Photo produit — zone image colonne droite */
 .fpl-etiq__photo-box {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: center;
   width: 100%;
-  min-height: 64px;
-  margin: 60px 0 12px;
-  padding: 1px 6px;
-  background: rgba(255, 255, 255, 0);
-  border: 2px solid transparent;
-  border-image: none;
-  box-sizing: border-box;
-}
-
-.fpl-etiq__photo-strip {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: nowrap;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  width: 100%;
-  max-width: 100%;
+  height: 16mm;
+  max-height: 16mm;
+  min-height: 0;
+  margin: 20px 0 0.3mm;
   overflow: hidden;
-}
-
-.fpl-etiq__photo-strip--icons-only {
-  gap: 6px;
-}
-
-.fpl-etiq__photo-strip--image {
-  justify-content: center;
-  align-items: center;
-  width: 100%;
-  padding: 2px 0;
 }
 
 .fpl-etiq__photo-produit {
   display: block;
-  max-width: 100%;
   width: auto;
   height: auto;
-  max-height: 86px;
+  max-width: 100%;
+  max-height: 16mm;
   object-fit: contain;
   object-position: center;
 }
 
-.fpl-etiq__thumb {
-  position: relative;
+/* Code-barres 24×9 mm centré + « 1 pcs » bas droite */
+.fpl-etiq__barcode-wrap {
   flex: 0 0 auto;
-  width: 64px;
-  height: 64px;
-  border: 1px solid #d0d0d0;
-  border-radius: 4px;
-  background: #fff;
-  box-sizing: border-box;
-  overflow: hidden;
-}
-
-/* Rangée bus / camion / tracteur / remorque — sans photo produit */
-.fpl-etiq__thumb--icon-only {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  padding: 0;
-  border: none;
-  background: transparent;
-}
-
-.fpl-etiq__thumb-ico {
-  position: absolute;
-  top: 3px;
-  left: 3px;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  color: #fff;
-  background: var(--fpl-accent);
-  border-radius: 3px;
-  pointer-events: none;
-  line-height: 0;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-}
-
-.fpl-etiq__thumb-ico--solo {
-  position: static;
-  width: 36px;
-  height: 36px;
-  padding: 0;
-  pointer-events: auto;
-  color: var(--fpl-accent);
-  background: transparent;
-  border-radius: 0;
-  box-shadow: none;
-}
-
-.fpl-etiq__thumb-ico--solo svg {
-  width: 28px;
-  height: 28px;
-  display: block;
-}
-
-.fpl-etiq__thumb-ico--solo .fpl-etiq__thumb-fa {
-  display: block;
-  line-height: 1;
-  width: 1em;
-  height: 1em;
-  text-align: center;
+  width: 100%;
+  margin-top: auto;
+  margin-bottom: 10px;
+  padding-top: 1.5mm;
 }
 
 .fpl-etiq__barcode-line {
@@ -374,86 +377,107 @@
   align-items: center;
   justify-content: center;
   width: 100%;
-  flex: 0 0 auto;
-  height: 110px;
-  box-sizing: border-box;
-  padding: 0;
-  text-align: center;
+  height: var(--fpl-bc-h);
 }
 
 .fpl-etiq__barcode-img {
   display: block;
-  margin: 0 auto;
-  width: 210px;
-  max-width: 100%;
-  height: auto;
-  max-height: 100%;
-  object-fit: contain;
+  width: var(--fpl-bc-w);
+  height: var(--fpl-bc-h);
+  object-fit: fill;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
 }
 
+.fpl-etiq__pcs {
+  align-self: flex-end;
+  margin-top: 0.4mm;
+  font-size: 1.7mm;
+  font-weight: 700;
+  color: #111;
+  line-height: 1;
+}
+
+/* ——— Bande basse 70 × 6 mm ——— */
 .fpl-etiq__footer {
-  width: 500px;
+  width: var(--fpl-w);
+  height: var(--fpl-band);
+  min-height: var(--fpl-band);
+  max-height: var(--fpl-band);
+  flex-shrink: 0;
   box-sizing: border-box;
   background: var(--fpl-accent);
   color: #fff;
-  padding: 8px 10px 10px;
-  font-size: 8px;
-  line-height: 1.45;
+  padding: 0.5mm 1.6mm;
+  font-size: 1.3mm;
+  line-height: 1.25;
   font-weight: 600;
-}
-
-.fpl-etiq__footer-row1 {
+  overflow: hidden;
   display: flex;
-  flex-wrap: nowrap;
-  gap: 6px;
-  align-items: flex-start;
-  margin-bottom: 6px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.25mm;
 }
 
+.fpl-etiq__footer-row1,
 .fpl-etiq__footer-row2 {
   display: flex;
-  flex-wrap: wrap;
-  gap: 14px 20px;
+  flex-wrap: nowrap;
+  gap: 1mm;
   align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .fpl-etiq__footer-ico {
   flex-shrink: 0;
+  font-size: 1.15mm;
   opacity: 0.95;
 }
 
 .fpl-etiquette-print-actions {
   margin-top: 14px;
   display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
   justify-content: flex-start;
 }
 
+/* ——— Impression Zebra ZD420 : page = étiquette 70×70 mm ——— */
 @media print {
-  /* Même rendu couleurs / dégradés / fonds que à l’écran (sinon navigateur = gris cassé) */
   @page {
-    margin: 10mm;
-    size: auto;
+    size: 70mm 70mm;
+    margin: 0;
   }
 
   html,
   body {
-    margin: 0;
-    padding: 0;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 70mm !important;
+    height: 70mm !important;
     background: #fff !important;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .fpl-etiq-preview-scale {
+    transform: none !important;
+    margin: 0 !important;
+    width: 70mm !important;
+    height: 70mm !important;
   }
 
   .fpl-etiq.fpl-etiq--fixed {
+    width: 70mm !important;
+    height: 70mm !important;
+    box-shadow: none !important;
+    border: none !important;
     break-inside: avoid;
     page-break-inside: avoid;
-    /* Identique à l’affichage écran (fpl-etiq--fixed hors @media) */
-    border: 1px solid #c8c8c8 !important;
-    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.12) !important;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   .fpl-etiq.fpl-etiq--fixed * {
@@ -461,8 +485,13 @@
     print-color-adjust: exact !important;
   }
 
+  .fpl-etiq__shield {
+    filter: none !important;
+  }
+
   .fpl-etiquette-print-actions,
-  .page-ajuster-stock-aux__title {
+  .page-ajuster-stock-aux__title,
+  .fpl-etiq-preview-meta {
     display: none !important;
   }
 }

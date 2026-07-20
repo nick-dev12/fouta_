@@ -127,9 +127,10 @@ if ($categorie_id_etiq > 0) {
 }
 $fpl_couleur_hex = fpl_etiquette_couleur_pour_categorie(!empty($categorie_etiq) ? $categorie_etiq : [], $categorie_id_etiq);
 $fpl_dark_hex = fpl_etiquette_hex_adjust_rgb($fpl_couleur_hex, -34);
-$fpl_mini_qr_ref = !empty($produit['identifiant_interne'])
-    ? fpl_etiquette_mini_ref_qr($produit['identifiant_interne'])
+$fpl_ref_affichage = !empty($produit['identifiant_interne'])
+    ? fpl_etiquette_format_ref_affichage($produit['identifiant_interne'])
     : '';
+list($fpl_compat_l1, $fpl_compat_l2) = fpl_etiquette_lignes_compatibilite($produit);
 $footer_fpl = fpl_etiquette_footer_textes_par_defaut();
 $site_base_et = get_site_base_url();
 $origin_et = get_request_origin_base_url();
@@ -159,6 +160,20 @@ if (produits_has_column('image_etiquette_fpl')) {
         $fs_et = __DIR__ . '/../../upload/' . $rel_et;
         if (is_file($fs_et)) {
             $fpl_etiq_photo_abs = $origin_et . '/upload/' . str_replace('\\', '/', $rel_et) . '?v=' . (int) filemtime($fs_et);
+        }
+    }
+}
+if ($fpl_etiq_photo_abs === '') {
+    $img_princ = trim((string) ($produit['image_principale'] ?? ''));
+    if ($img_princ !== '') {
+        $rel_p = (strpos($img_princ, 'produits/') === 0) ? $img_princ : ('produits/' . ltrim($img_princ, '/'));
+        if (preg_match('#^produits/[a-zA-Z0-9_.-]+$#', $rel_p)) {
+            $fs_p = __DIR__ . '/../../upload/' . $rel_p;
+            if (is_file($fs_p)) {
+                $fpl_etiq_photo_abs = $origin_et . '/upload/' . str_replace('\\', '/', $rel_p) . '?v=' . (int) filemtime($fs_p);
+            }
+        } elseif (preg_match('#^https?://#i', $img_princ)) {
+            $fpl_etiq_photo_abs = $img_princ;
         }
     }
 }
@@ -416,72 +431,73 @@ $can_pdf_qrcode = ($stock_info_url !== '');
     <div class="fpl-etiquette-fixed-scroll">
         <div class="stock-form-block page-ajuster-stock-aux fpl-etiquette-sheet-wrap fpl-etiquette-sheet-wrap--fullwidth" id="fpl-etiquette-print-root"
             data-css-url="<?php echo htmlspecialchars($fpl_etiq_css_abs, ENT_QUOTES, 'UTF-8'); ?>">
-            <h3 class="page-ajuster-stock-aux__title"><i class="fas fa-tags" aria-hidden="true"></i> Étiquette FPL (QR + code-barres)</h3>
+            <h3 class="page-ajuster-stock-aux__title"><i class="fas fa-tags" aria-hidden="true"></i> Étiquette FPL 70×70 mm</h3>
+            <p class="fpl-etiq-preview-meta">Format d’impression <strong>70 × 70 mm</strong> · Zebra ZD420 (203 dpi ≈ 8 dots/mm · 560×560 dots) · Aperçu agrandi à l’écran</p>
 
+            <div class="fpl-etiq-preview-scale">
             <article class="fpl-etiq fpl-etiq--fixed"
                 style="--fpl-accent: <?php echo htmlspecialchars($fpl_couleur_hex, ENT_QUOTES, 'UTF-8'); ?>; --fpl-accent-dark: <?php echo htmlspecialchars($fpl_dark_hex, ENT_QUOTES, 'UTF-8'); ?>;">
                 <div class="fpl-etiq__header-zone">
                     <div class="fpl-etiq__band-top" aria-hidden="true"></div>
-                    <div class="fpl-etiq__shield">
+                    <div class="fpl-etiq__shield" aria-hidden="true">
                         <img src="<?php echo htmlspecialchars($fpl_shield_logo_url, ENT_QUOTES, 'UTF-8'); ?>?v=<?php echo (int) $fpl_shield_logo_ver; ?>"
-                            width="74"
-                            height="44"
-                            alt="FPL — Fouta Poids Lourds"
+                            width="120"
+                            height="88"
+                            alt=""
                             class="fpl-etiq__shield-logo">
                         <span class="fpl-etiq__shield-line">FOUTA POIDS LOURDS</span>
-                        <span class="fpl-etiq__shield-line fpl-etiq__shield-line--small">The Solution Suarl</span>
+                        <span class="fpl-etiq__shield-line fpl-etiq__shield-line--small">The Solution</span>
                     </div>
                 </div>
                 <div class="fpl-etiq__sheet">
                     <div class="fpl-etiq__body">
                         <div class="fpl-etiq__col-left">
                             <div class="fpl-etiq__col-left-meta">
-                                <div class="fpl-etiq__ref-big"><?php echo htmlspecialchars((string) $produit['identifiant_interne'], ENT_QUOTES, 'UTF-8'); ?></div>
+                                <div class="fpl-etiq__ref-big"><?php echo htmlspecialchars($fpl_ref_affichage !== '' ? $fpl_ref_affichage : (string) $produit['identifiant_interne'], ENT_QUOTES, 'UTF-8'); ?></div>
                                 <div class="fpl-etiq__nom-main"><?php echo htmlspecialchars((string) $produit['nom'], ENT_QUOTES, 'UTF-8'); ?></div>
                                 <div class="fpl-etiq__cat-muted"><?php echo htmlspecialchars($categorie_nom_etiq, ENT_QUOTES, 'UTF-8'); ?></div>
                             </div>
                             <div class="fpl-etiq__qr-block">
-                                <div class="fpl-etiq__qr-mini"><?php echo htmlspecialchars($fpl_mini_qr_ref !== '' ? $fpl_mini_qr_ref : '—', ENT_QUOTES, 'UTF-8'); ?></div>
                                 <?php if (!empty($qr_code_data_uri)): ?>
                                 <div class="fpl-etiq__qr-box">
-                                    <img src="<?php echo htmlspecialchars($qr_code_data_uri, ENT_QUOTES, 'UTF-8'); ?>" width="130" height="130" alt="QR Code stock" class="fpl-etiq__qr-img">
+                                    <img src="<?php echo htmlspecialchars($qr_code_data_uri, ENT_QUOTES, 'UTF-8'); ?>" width="160" height="160" alt="QR Code stock" class="fpl-etiq__qr-img">
                                 </div>
                                 <?php else: ?>
-                                <div class="fpl-etiq__qr-fallback" role="img" aria-label="QR indisponible">QR indisponible</div>
+                                <div class="fpl-etiq__qr-fallback" role="img" aria-label="QR indisponible">QR</div>
                                 <?php endif; ?>
                             </div>
                         </div>
                         <div class="fpl-etiq__divider" aria-hidden="true"></div>
                         <div class="fpl-etiq__col-right">
-                            <div class="fpl-etiq__photo-box">
-                                <?php if ($fpl_etiq_photo_abs !== ''): ?>
-                                <div class="fpl-etiq__photo-strip fpl-etiq__photo-strip--image">
-                                    <img src="<?php echo htmlspecialchars($fpl_etiq_photo_abs, ENT_QUOTES, 'UTF-8'); ?>" alt="" class="fpl-etiq__photo-produit" width="232" height="90">
-                                </div>
-                                <?php else: ?>
-                                <div class="fpl-etiq__photo-strip fpl-etiq__photo-strip--icons-only" role="list" aria-label="Pictogrammes poids lourds">
-                                    <?php for ($__etiq_vi = 0; $__etiq_vi < 4; $__etiq_vi++):
-                                        $__badge = fpl_etiquette_thumb_vehicle_badge($__etiq_vi, 28);
-                                        ?>
-                                    <div class="fpl-etiq__thumb fpl-etiq__thumb--icon-only" role="listitem">
-                                        <span class="fpl-etiq__thumb-ico fpl-etiq__thumb-ico--solo" title="<?php echo htmlspecialchars($__badge['title'], ENT_QUOTES, 'UTF-8'); ?>">
-                                            <?php echo $__badge['svg']; ?>
-                                        </span>
-                                    </div>
-                                    <?php endfor; ?>
-                                </div>
+                            <?php if ($fpl_compat_l1 !== '' || $fpl_compat_l2 !== ''): ?>
+                            <div class="fpl-etiq__compat">
+                                <?php if ($fpl_compat_l1 !== ''): ?>
+                                <div class="fpl-etiq__compat-l1"><?php echo htmlspecialchars($fpl_compat_l1, ENT_QUOTES, 'UTF-8'); ?></div>
+                                <?php endif; ?>
+                                <?php if ($fpl_compat_l2 !== ''): ?>
+                                <div class="fpl-etiq__compat-l2"><?php echo htmlspecialchars($fpl_compat_l2, ENT_QUOTES, 'UTF-8'); ?></div>
                                 <?php endif; ?>
                             </div>
-                            <div class="fpl-etiq__barcode-line">
-                                <img src="<?php echo htmlspecialchars($barcode_abs_et, ENT_QUOTES, 'UTF-8'); ?>?v=<?php echo (int) $barcode_ver_et; ?>"
-                                    width="210" height="64" alt="Code-barres <?php echo htmlspecialchars((string) $produit['identifiant_interne'], ENT_QUOTES, 'UTF-8'); ?>" class="fpl-etiq__barcode-img">
+                            <?php endif; ?>
+                            <div class="fpl-etiq__photo-box">
+                                <?php if ($fpl_etiq_photo_abs !== ''): ?>
+                                <img src="<?php echo htmlspecialchars($fpl_etiq_photo_abs, ENT_QUOTES, 'UTF-8'); ?>" alt="" class="fpl-etiq__photo-produit" width="200" height="140">
+                                <?php endif; ?>
+                            </div>
+                            <div class="fpl-etiq__barcode-wrap">
+                                <div class="fpl-etiq__barcode-line">
+                                    <img src="<?php echo htmlspecialchars($barcode_abs_et, ENT_QUOTES, 'UTF-8'); ?>?v=<?php echo (int) $barcode_ver_et; ?>"
+                                        width="192" height="72" alt="Code-barres <?php echo htmlspecialchars((string) $produit['identifiant_interne'], ENT_QUOTES, 'UTF-8'); ?>" class="fpl-etiq__barcode-img">
+                                </div>
+                                <div class="fpl-etiq__pcs">1 pcs</div>
                             </div>
                         </div>
                     </div>
                     <footer class="fpl-etiq__footer">
                         <div class="fpl-etiq__footer-row1">
-                            <span class="fpl-etiq__footer-ico" aria-hidden="true">📍</span>
-                            <span><?php echo htmlspecialchars($footer_fpl['adr'], ENT_QUOTES, 'UTF-8'); ?></span>
+                            <span><?php echo htmlspecialchars($footer_fpl['adr_rue'], ENT_QUOTES, 'UTF-8'); ?></span>
+                            <span class="fpl-etiq__footer-ico" aria-hidden="true">✉</span>
+                            <span><?php echo htmlspecialchars($footer_fpl['adr_bp'], ENT_QUOTES, 'UTF-8'); ?></span>
                         </div>
                         <div class="fpl-etiq__footer-row2">
                             <span><span class="fpl-etiq__footer-ico" aria-hidden="true">☎</span> <?php echo htmlspecialchars($footer_fpl['tels'], ENT_QUOTES, 'UTF-8'); ?></span>
@@ -491,6 +507,7 @@ $can_pdf_qrcode = ($stock_info_url !== '');
                     </footer>
                 </div>
             </article>
+            </div>
             <div class="fpl-etiquette-print-actions page-ajuster-stock-code-actions">
                 <?php if ($can_pdf_barcode): ?>
                 <a href="<?php echo htmlspecialchars($pdf_barcode_href, ENT_QUOTES, 'UTF-8'); ?>" class="btn-download-pdf page-ajuster-stock-pdf-btn" data-admin-pdf-download>
@@ -625,15 +642,17 @@ $can_pdf_qrcode = ($stock_info_url !== '');
         var node = root.querySelector('.fpl-etiq');
         if (!node || !cssHref) return;
 
-        var w = window.open('', '_blank', 'width=560,height=940');
+        var w = window.open('', '_blank', 'width=360,height=400');
         if (!w || !w.document) return;
 
         var doc = w.document;
         doc.open();
-        doc.write('<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>Étiquette FPL</title>');
+        doc.write('<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>Étiquette FPL 70×70 mm</title>');
         doc.write('<base href="' + String(baseHref).replace(/"/g, '&quot;') + '">');
         doc.write('<style>');
-        doc.write('html,body{margin:0;padding:12px;box-sizing:border-box;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}');
+        doc.write('@page{size:70mm 70mm;margin:0}');
+        doc.write('html,body{margin:0;padding:0;width:70mm;height:70mm;overflow:hidden;box-sizing:border-box;background:#fff;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}');
+        doc.write('.fpl-etiq{margin:0!important;box-shadow:none!important}');
         doc.write('</style></head><body></body></html>');
         doc.close();
 

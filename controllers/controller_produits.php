@@ -945,13 +945,23 @@ function process_update_produit($produit_id)
             }
             $old_emplacement = produit_emplacement_from_produit($produit);
             $emplacement_modifie = false;
+            if (produit_emplacement_use_referentiel()) {
+                $ancien_pid = isset($old_emplacement['entrepot_position_id']) ? (string) $old_emplacement['entrepot_position_id'] : '';
+                $nouveau_pid = isset($emplacement['entrepot_position_id']) ? (string) $emplacement['entrepot_position_id'] : '';
+                $emplacement_modifie = $ancien_pid !== $nouveau_pid;
+            }
+            if (!$emplacement_modifie) {
             foreach ($emplacement as $col => $val) {
+                if ($col === 'entrepot_position_id') {
+                    continue;
+                }
                 $ancien = isset($old_emplacement[$col]) ? (string) $old_emplacement[$col] : '';
                 $nouveau = $val !== null ? (string) $val : '';
                 if ($ancien !== $nouveau) {
                     $emplacement_modifie = true;
                     break;
                 }
+            }
             }
             if ($emplacement_modifie) {
                 generer_barcode_produit_fpl($produit_id);

@@ -33,7 +33,16 @@ if (isset($result['success']) && $result['success'] && $result['admin']) {
     $_SESSION['admin_role'] = normalize_admin_role($result['admin']['role'] ?? 'admin');
 
     require_once __DIR__ . '/../includes/post_login_welcome.php';
-    $_SESSION['just_logged_in_target'] = post_login_sanitize_next_url('/admin/dashboard.php');
+    $next_after_login = '/admin/dashboard.php';
+    if (!empty($_POST['next'])) {
+        $next_after_login = (string) $_POST['next'];
+    } elseif (!empty($_GET['next'])) {
+        $next_after_login = (string) $_GET['next'];
+    } elseif (!empty($_SESSION['admin_login_redirect'])) {
+        $next_after_login = (string) $_SESSION['admin_login_redirect'];
+        unset($_SESSION['admin_login_redirect']);
+    }
+    $_SESSION['just_logged_in_target'] = post_login_sanitize_next_url($next_after_login);
     header('Location: /post-login-welcome.php');
     exit;
 }
@@ -356,6 +365,19 @@ if (isset($_SESSION['inscription_success'])) {
             <?php endif; ?>
 
             <form method="POST" action="" id="loginForm">
+                <?php
+                $login_next = '';
+                if (!empty($_POST['next'])) {
+                    $login_next = (string) $_POST['next'];
+                } elseif (!empty($_GET['next'])) {
+                    $login_next = (string) $_GET['next'];
+                } elseif (!empty($_SESSION['admin_login_redirect'])) {
+                    $login_next = (string) $_SESSION['admin_login_redirect'];
+                }
+                if ($login_next !== ''):
+                ?>
+                <input type="hidden" name="next" value="<?php echo htmlspecialchars($login_next, ENT_QUOTES, 'UTF-8'); ?>">
+                <?php endif; ?>
                 <div class="form-group">
                     <label for="email"><i class="fas fa-envelope"></i> Email *</label>
                     <div class="input-wrapper">

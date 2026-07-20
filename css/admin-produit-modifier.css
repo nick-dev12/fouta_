@@ -1125,6 +1125,102 @@ body.pm-modal-open {
   margin: 0 0 12px;
 }
 
+.pm-emplacement-form--referentiel {
+  padding: 1rem;
+  border-radius: 14px;
+  background: linear-gradient(160deg, #fff 0%, rgba(53, 100, 166, 0.04) 100%);
+  border: 1px solid rgba(53, 100, 166, 0.16);
+}
+
+.pm-emplacement-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+}
+
+.pm-emplacement-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.65rem;
+  border-radius: 999px;
+  background: rgba(53, 100, 166, 0.1);
+  color: #3564a6;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.pm-emplacement-cascade {
+  margin-top: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed rgba(53, 100, 166, 0.18);
+}
+
+.pm-emplacement-count {
+  margin: 0 0 0.85rem;
+  padding: 0.45rem 0.75rem;
+  border-radius: 8px;
+  background: rgba(53, 100, 166, 0.08);
+  color: #3564a6;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.pm-emplacement-count[hidden] {
+  display: none !important;
+}
+
+.pm-emplacement-filters-title {
+  margin: 0.25rem 0 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #737373;
+}
+
+.pm-emplacement-cascade[hidden] {
+  display: none !important;
+}
+
+.pm-emplacement-field--etage select {
+  font-weight: 600;
+}
+
+.pm-emplacement-apercu {
+  margin-top: 1rem;
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  background: rgba(53, 100, 166, 0.08);
+  border: 1px solid rgba(53, 100, 166, 0.18);
+}
+
+.pm-emplacement-apercu[hidden] {
+  display: none !important;
+}
+
+.pm-emplacement-apercu__label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #3564a6;
+}
+
+.pm-emplacement-apercu__text {
+  margin: 0.35rem 0 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #0d0d0d;
+  line-height: 1.45;
+}
+
 .pm-emplacement-row .form-group select {
   width: 100%;
 }

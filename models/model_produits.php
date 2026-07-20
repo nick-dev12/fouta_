@@ -1779,6 +1779,12 @@ function create_produit($data)
             $vals .= ", :barre_rayon";
             $params['barre_rayon'] = isset($data['barre_rayon']) && $data['barre_rayon'] !== '' && $data['barre_rayon'] !== null ? (int) $data['barre_rayon'] : null;
         }
+        if (produits_has_column('entrepot_position_id')) {
+            $cols .= ", entrepot_position_id";
+            $vals .= ", :entrepot_position_id";
+            $epid = $data['entrepot_position_id'] ?? null;
+            $params['entrepot_position_id'] = ($epid !== null && (int) $epid > 0) ? (int) $epid : null;
+        }
         if (produits_has_column('fournisseur_id')) {
             $cols .= ", fournisseur_id";
             $vals .= ", :fournisseur_id";
@@ -1910,6 +1916,11 @@ function update_produit($id, $data)
         if (produits_has_column('barre_rayon')) {
             $sets .= ", barre_rayon = :barre_rayon";
             $params['barre_rayon'] = isset($data['barre_rayon']) && $data['barre_rayon'] !== '' && $data['barre_rayon'] !== null ? (int) $data['barre_rayon'] : null;
+        }
+        if (produits_has_column('entrepot_position_id')) {
+            $sets .= ", entrepot_position_id = :entrepot_position_id";
+            $epid = $data['entrepot_position_id'] ?? null;
+            $params['entrepot_position_id'] = ($epid !== null && (int) $epid > 0) ? (int) $epid : null;
         }
         if (produits_has_column('fournisseur_id')) {
             $sets .= ", fournisseur_id = :fournisseur_id";

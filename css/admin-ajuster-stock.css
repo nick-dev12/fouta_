@@ -837,25 +837,24 @@
   }
 }
 
-/* Étiquette FPL : bloc pleine ligne ; défilement horizontal si l’écran est étroit — la carte garde 500px */
+/* Étiquette FPL 70×70 mm — aperçu agrandi (scale) */
 .fpl-etiquette-fixed-scroll {
-  overflow-x: auto;
-  overflow-y: visible;
+  overflow: visible;
   width: 100%;
   margin: 20px 0 28px;
-  -webkit-overflow-scrolling: touch;
+  min-height: calc(70mm * 2.2 + 3rem);
 }
 
 .page-ajuster-stock .fpl-etiquette-sheet-wrap--fullwidth {
   max-width: none;
-  width: max-content;
+  width: 100%;
 }
 
 .page-ajuster-stock .fpl-etiquette-sheet-wrap--fullwidth.stock-form-block {
-  width: max-content;
+  width: 100%;
   max-width: 100%;
-  margin-left: auto;
-  margin-right: auto;
+  margin-left: 0;
+  margin-right: 0;
   box-sizing: border-box;
 }
 
@@ -1031,6 +1030,16 @@
   .fpl-etiquette-fixed-scroll {
     overflow: visible !important;
     margin: 0 !important;
+    min-height: 0 !important;
+  }
+
+  .fpl-etiq-preview-scale {
+    transform: none !important;
+    margin: 0 !important;
+  }
+
+  .fpl-etiq-preview-meta {
+    display: none !important;
   }
 
   .fpl-etiquette-sheet-wrap--fullwidth .page-ajuster-stock-aux__title,

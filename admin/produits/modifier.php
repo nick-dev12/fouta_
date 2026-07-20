@@ -355,18 +355,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
                 <div class="pm-card__head">
                     <span class="pm-card__icon" aria-hidden="true"><i class="fas fa-warehouse"></i></span>
                     <div>
-                        <h2 id="pm-sec-ref" class="pm-card__title">Référence &amp; emplacement</h2>
-                        <p class="pm-card__hint">Code interne FPL et repères entrepôt</p>
+                        <h2 id="pm-sec-ref" class="pm-card__title">Référence &amp; emplacement entrepôt</h2>
+                        <p class="pm-card__hint">Code FPL et position nommée (étage → barre → emplacement)</p>
                     </div>
                 </div>
                 <div class="pm-card__body">
             <?php
             require_once __DIR__ . '/../../includes/produit_emplacement_entrepot.php';
-            if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-                $emplacement_form_vals = produit_emplacement_from_source($_POST);
-            } else {
-                $emplacement_form_vals = produit_emplacement_from_produit($produit);
-            }
+            $emplacement_form_vals = produit_emplacement_form_values_for_form(
+                $_SERVER['REQUEST_METHOD'] === 'POST' ? $_POST : [],
+                $produit
+            );
             ?>
             <?php if ($has_ident_col): ?>
             <div class="form-group">
@@ -384,7 +383,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
                 <i class="fas fa-info-circle"></i> Référence FPL : activez la colonne <code>identifiant_interne</code> (migrations).
             </p>
             <?php endif; ?>
-            <p class="form-hint pm-hint pm-emplacement-intro">Repères pour localiser le produit en entrepôt (tous les champs sont facultatifs).</p>
             <?php produit_emplacement_render_form_fields($emplacement_form_vals); ?>
                 </div>
             </section>
@@ -1002,4 +1000,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
         })();
     </script>
     <?php endif; ?>
+    <?php require_once __DIR__ . '/../../includes/asset_version.php'; ?>
+    <script src="/js/admin-emplacement-produit.js<?php echo asset_version_query(); ?>"></script>
     <?php include '../includes/footer.php'; ?>

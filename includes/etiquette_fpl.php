@@ -196,17 +196,93 @@ function fpl_etiquette_mini_ref_qr($identifiant)
 }
 
 /**
- * Pied de page défaut « FOUTA POIDS LOURDS » — personnaliser ici ou via fichier config dédié.
+ * Affichage référence type maquette : « FPL01 807570 ».
+ */
+function fpl_etiquette_format_ref_affichage($identifiant)
+{
+    $id = strtoupper(trim((string) $identifiant));
+    if (preg_match('/^(FPL)(\d{2})(\d{4,})$/', $id, $m)) {
+        return $m[1] . $m[2] . ' ' . $m[3];
+    }
+    return $id;
+}
+
+/**
+ * Lignes compatibilité colonne droite (véhicules + réf. constructeur / fournisseur).
  *
- * @return array{entreprise:string,adr:string,tels:string,web:string,mail:string}
+ * @param array<string,mixed> $produit
+ * @return array{0:string,1:string}
+ */
+function fpl_etiquette_lignes_compatibilite(array $produit)
+{
+    $l1 = '';
+    $l2 = '';
+
+    $desc = trim((string) ($produit['description'] ?? ''));
+    if ($desc !== '') {
+        $lines = preg_split('/\R+/u', $desc) ?: [];
+        $clean = [];
+        foreach ($lines as $ln) {
+            $ln = trim(preg_replace('/\s+/u', ' ', (string) $ln));
+            if ($ln !== '') {
+                $clean[] = $ln;
+            }
+        }
+        if (isset($clean[0])) {
+            $l1 = $clean[0];
+        }
+        if (isset($clean[1]) && $l2 === '') {
+            $l2 = $clean[1];
+        }
+    }
+
+    $marque = '';
+    if (function_exists('produits_marque_libelle_from_row')) {
+        $marque = trim((string) produits_marque_libelle_from_row($produit));
+    }
+    if ($marque === '') {
+        $marque = trim((string) ($produit['marque_nom'] ?? $produit['nom_fournisseur'] ?? ''));
+    }
+    $ref_f = trim((string) ($produit['reference_fournisseur'] ?? ''));
+
+    if ($l2 === '' && ($marque !== '' || $ref_f !== '')) {
+        $l2 = trim($marque . ($marque !== '' && $ref_f !== '' ? ' ' : '') . $ref_f);
+    } elseif ($l1 === '' && $marque !== '') {
+        $l1 = $marque;
+        if ($l2 === '' && $ref_f !== '') {
+            $l2 = $ref_f;
+        }
+    }
+
+    if (function_exists('mb_substr')) {
+        if ($l1 !== '') {
+            $l1 = mb_substr($l1, 0, 48, 'UTF-8');
+        }
+        if ($l2 !== '') {
+            $l2 = mb_substr($l2, 0, 48, 'UTF-8');
+        }
+    } else {
+        $l1 = substr($l1, 0, 48);
+        $l2 = substr($l2, 0, 48);
+    }
+
+    return [$l1, $l2];
+}
+
+/**
+ * Pied de page défaut « FOUTA POIDS LOURDS » — maquette étiquette 70×70.
+ *
+ * @return array{entreprise:string,sous_nom:string,adr:string,adr_rue:string,adr_bp:string,tels:string,web:string,mail:string}
  */
 function fpl_etiquette_footer_textes_par_defaut()
 {
     return [
         'entreprise' => 'FPL — FOUTA POIDS LOURDS',
         'sous_nom' => 'The Solution Suarl',
-        'adr' => 'SG / ROND-POINT ZAC MBAO · 106 RUE MARSAT X BLAISE DIAGNE BP 7661 DAKAR (SENEGAL)',
-        'tels' => '+221 33 870 00 70 · +221 33 842 78 77',
+        'adr' => 'SG/ROND-POINT ZAC MBAO 106 RUE MARSAT X BLAISE DIAGNE BP - 7661 DAKAR (SENEGAL)',
+        'adr_rue' => 'SG/ROND-POINT ZAC MBAO 106 RUE MARSAT X BLAISE DIAGNE',
+        'adr_bp' => 'BP - 7661 DAKAR (SENEGAL)',
+        'tels' => '+221 33 870 00 70 / +221 33 842 78 77',
         'web' => 'www.foutapoidslourds.com',
         'mail' => 'info@foutapoidslourds.com',
     ];

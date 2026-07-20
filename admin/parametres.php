@@ -107,6 +107,19 @@ if (isset($_SESSION['success_message'])) {
                 </div>
             </article>
 
+            <article class="parametre-card parametre-card--emplacement-entrepot" role="listitem">
+                <div class="parametre-card__body">
+                    <div class="parametre-card__head">
+                        <div class="parametre-icon" aria-hidden="true"><i class="fas fa-warehouse"></i></div>
+                        <h3 class="parametre-title">Emplacement entrepôt</h3>
+                    </div>
+                    <a href="parametres/emplacement-entrepot.php" class="parametre-link">
+                        <span class="parametre-link__txt"><i class="fas fa-map-pin" aria-hidden="true"></i> Structure par étage (rayons, allées…)</span>
+                        <i class="fas fa-chevron-right parametre-link__chev" aria-hidden="true"></i>
+                    </a>
+                </div>
+            </article>
+
             <article class="parametre-card parametre-card--alertes-stock" role="listitem">
                 <div class="parametre-card__body">
                     <div class="parametre-card__head">

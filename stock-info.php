@@ -263,6 +263,7 @@ if (file_exists(__DIR__ . '/includes/asset_version.php')) {
             <?php if ($emplacement_resume !== ''): ?>
             <p class="emplacement-resume"><?php echo htmlspecialchars($emplacement_resume); ?></p>
             <?php endif; ?>
+            <?php if (empty($emplacement_vals['chemin_libelle'])): ?>
             <div class="emplacement-list">
                 <?php
                 $etapes_stock = [
@@ -285,6 +286,7 @@ if (file_exists(__DIR__ . '/includes/asset_version.php')) {
                 </div>
                 <?php endforeach; ?>
             </div>
+            <?php endif; ?>
         </div>
         <?php endif; ?>
 

@@ -56,7 +56,7 @@ $has_ref_fourn_col = produits_has_column('reference_fournisseur');
 require_once __DIR__ . '/../../models/model_marques.php';
 $marques_catalogue = ($has_marque_col && marques_table_ok()) ? get_all_marques_ordered_by_nom() : [];
 require_once __DIR__ . '/../../includes/produit_emplacement_entrepot.php';
-$emplacement_form_vals = produit_emplacement_from_source($_POST);
+$emplacement_form_vals = produit_emplacement_form_values_for_form($_POST);
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -268,8 +268,8 @@ $emplacement_form_vals = produit_emplacement_from_source($_POST);
                         <div class="pm-card__head">
                             <span class="pm-card__icon" aria-hidden="true"><i class="fas fa-warehouse"></i></span>
                             <div>
-                                <h2 id="pm-sec-ref-add" class="pm-card__title">Référence &amp; emplacement</h2>
-                                <p class="pm-card__hint">Référence FPL automatique et repères entrepôt</p>
+                                <h2 id="pm-sec-ref-add" class="pm-card__title">Référence &amp; emplacement entrepôt</h2>
+                                <p class="pm-card__hint">Référence FPL automatique et position nommée en entrepôt</p>
                             </div>
                         </div>
                         <div class="pm-card__body">
@@ -284,7 +284,6 @@ $emplacement_form_vals = produit_emplacement_from_source($_POST);
                                 <i class="fas fa-info-circle" aria-hidden="true"></i> Activez la colonne <code>identifiant_interne</code> (migrations) pour activer la référence FPL automatique sur ce formulaire.
                             </p>
                             <?php endif; ?>
-                            <p class="form-hint pm-hint pm-emplacement-intro">Repères pour localiser le produit en entrepôt (tous les champs sont facultatifs).</p>
                             <?php produit_emplacement_render_form_fields($emplacement_form_vals); ?>
                         </div>
                     </section>
@@ -787,4 +786,6 @@ $emplacement_form_vals = produit_emplacement_from_source($_POST);
         })();
     </script>
     <?php endif; ?>
+    <?php require_once __DIR__ . '/../../includes/asset_version.php'; ?>
+    <script src="/js/admin-emplacement-produit.js<?php echo asset_version_query(); ?>"></script>
     <?php include '../includes/footer.php'; ?>
