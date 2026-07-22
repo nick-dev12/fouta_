@@ -230,6 +230,56 @@
             apercuWrap.hidden = false;
         }
 
+        function rayonNom(data, rayonId) {
+            var rid = parseInt(rayonId, 10);
+            if (!data || rid <= 0) {
+                return '';
+            }
+            var found = '';
+            asArray(data.rayons).forEach(function (r) {
+                if (parseInt(r.id, 10) === rid) {
+                    found = r.nom || ('Rayon ' + r.numero);
+                }
+            });
+            return found;
+        }
+
+        function barresPourSelect(data) {
+            var barres = asArray(data ? data.barres : []);
+            var rayonId = rayonSel ? parseInt(rayonSel.value, 10) : 0;
+            if (rayonId > 0) {
+                barres = barres.filter(function (b) {
+                    return parseInt(b.rayon_id, 10) === rayonId;
+                });
+            }
+            return barres;
+        }
+
+        function barreLabel(data, b) {
+            var nom = b.nom || ('Barre ' + b.numero);
+            var rl = rayonNom(data, b.rayon_id);
+            if (rl) {
+                return rl + ' · ' + nom;
+            }
+            return nom;
+        }
+
+        function rebuildBarres(keep) {
+            var data = getEtageData();
+            if (!data) {
+                fillSelect(barreSel, [], 'id', function () { return ''; }, '', '— Choisir —');
+                return;
+            }
+            fillSelect(
+                barreSel,
+                barresPourSelect(data),
+                'id',
+                function (b) { return barreLabel(data, b); },
+                keep ? selection.barre_id : '',
+                rayonSel && rayonSel.value ? '— Choisir une barre —' : '— Choisir un rayon ou une barre —'
+            );
+        }
+
         function rebuildLists(keep) {
             var data = getEtageData();
             var hasEtage = !!data;
@@ -270,15 +320,7 @@
                 keep ? selection.zone_id : '',
                 '— Choisir une zone —'
             );
-            // Toutes les barres de l’étage — noms seuls, sans liaison forcée
-            fillSelect(
-                barreSel,
-                data.barres,
-                'id',
-                function (b) { return b.nom || ('Barre ' + b.numero); },
-                keep ? selection.barre_id : '',
-                '— Choisir une barre —'
-            );
+            rebuildBarres(keep);
             rebuildPositions(keep);
             updateApercu();
         }
@@ -352,12 +394,21 @@
                 onEtageChange(true);
             });
         }
-        // Rayon / allée / zone : choix libre, met seulement à jour l’aperçu
-        [rayonSel, alleeSel, zoneSel].forEach(function (sel) {
+        // Allée / zone : choix libre, met à jour l’aperçu
+        [alleeSel, zoneSel].forEach(function (sel) {
             if (sel) {
                 sel.addEventListener('change', updateApercu);
             }
         });
+        if (rayonSel) {
+            rayonSel.addEventListener('change', function () {
+                selection.barre_id = '';
+                selection.position_id = '';
+                rebuildBarres(false);
+                rebuildPositions(false);
+                updateApercu();
+            });
+        }
         if (barreSel) {
             barreSel.addEventListener('change', function () {
                 selection.position_id = '';

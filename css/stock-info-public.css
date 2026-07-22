@@ -1,0 +1,341 @@
+/**
+ * Page publique scan QR produit — stock-info.php
+ */
+
+.page-stock-info-public {
+  font-family: var(--font-corps, 'Quicksand', sans-serif);
+  background: linear-gradient(165deg, #eef4fb 0%, #f8fafc 40%, #fff 100%);
+  min-height: 100vh;
+  color: #0d0d0d;
+  padding: 1rem 1rem 2.5rem;
+}
+
+.sip-shell {
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+/* ——— En-tête marque ——— */
+.sip-brand-bar {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.85rem 1rem;
+  align-items: center;
+  padding: 1rem 1.1rem;
+  margin-bottom: 0.85rem;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #1a2744 0%, #243b6b 55%, #3564a6 100%);
+  color: #fff;
+  box-shadow: 0 10px 32px rgba(26, 39, 68, 0.28);
+}
+
+.sip-brand-bar__logo {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+  border-radius: 12px;
+  background: #fff;
+  padding: 4px;
+}
+
+.sip-brand-bar__name {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  line-height: 1.2;
+}
+
+.sip-brand-bar__tag {
+  margin: 0.15rem 0 0;
+  font-size: 0.72rem;
+  opacity: 0.85;
+  font-weight: 600;
+}
+
+.sip-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 1.15rem 1.1rem;
+  margin-bottom: 0.85rem;
+  border: 1px solid rgba(53, 100, 166, 0.12);
+  box-shadow: 0 4px 22px rgba(53, 100, 166, 0.08);
+}
+
+/* ——— Produit ——— */
+.sip-product-head {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(53, 100, 166, 0.1);
+}
+
+.sip-product-head__img {
+  width: 72px;
+  height: 72px;
+  flex-shrink: 0;
+  object-fit: cover;
+  border-radius: 12px;
+  border: 2px solid rgba(53, 100, 166, 0.15);
+  background: #f8fafc;
+}
+
+.sip-product-head__body {
+  min-width: 0;
+  flex: 1;
+}
+
+.sip-product-head__ref {
+  display: inline-block;
+  margin-bottom: 0.25rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 6px;
+  background: rgba(53, 100, 166, 0.1);
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #3564a6;
+  letter-spacing: 0.04em;
+}
+
+.sip-product-head__title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  line-height: 1.3;
+  color: #0d0d0d;
+}
+
+.sip-price-block {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem 0.75rem;
+  margin-top: 0.55rem;
+}
+
+.sip-price-block__label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #737373;
+  width: 100%;
+}
+
+.sip-price {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #3564a6;
+}
+
+.sip-price--promo {
+  color: #e85a2a;
+}
+
+.sip-price-old {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #a3a3a3;
+  text-decoration: line-through;
+}
+
+.sip-promo-badge {
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(255, 107, 53, 0.15);
+  color: #e85a2a;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+/* ——— Emplacement (mise en avant) ——— */
+.sip-location {
+  padding: 0;
+  overflow: hidden;
+  border: 2px solid rgba(53, 100, 166, 0.22);
+  box-shadow: 0 8px 28px rgba(53, 100, 166, 0.14);
+}
+
+.sip-location__banner {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.75rem 1.1rem;
+  background: linear-gradient(90deg, #3564a6 0%, #4a7ab8 100%);
+  color: #fff;
+}
+
+.sip-location__banner i {
+  font-size: 1.1rem;
+}
+
+.sip-location__banner h2 {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.sip-location__chemin {
+  margin: 0;
+  padding: 1rem 1.1rem 0.85rem;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  line-height: 1.55;
+  color: #1a2744;
+  background: linear-gradient(180deg, rgba(53, 100, 166, 0.08) 0%, #fff 100%);
+  border-bottom: 1px dashed rgba(53, 100, 166, 0.18);
+}
+
+.sip-location__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+}
+
+.sip-location__cell {
+  padding: 0.75rem 0.65rem;
+  text-align: center;
+  border-right: 1px solid rgba(53, 100, 166, 0.08);
+  border-bottom: 1px solid rgba(53, 100, 166, 0.08);
+}
+
+.sip-location__cell:nth-child(3n) {
+  border-right: none;
+}
+
+.sip-location__cell--highlight {
+  grid-column: 1 / -1;
+  background: rgba(53, 100, 166, 0.06);
+  border-right: none;
+}
+
+.sip-location__cell-label {
+  display: block;
+  font-size: 0.62rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #737373;
+  margin-bottom: 0.25rem;
+}
+
+.sip-location__cell-value {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 800;
+  color: #3564a6;
+  line-height: 1.25;
+}
+
+.sip-location__cell--highlight .sip-location__cell-value {
+  font-size: 0.9375rem;
+  color: #1a2744;
+}
+
+/* ——— Stock KPIs ——— */
+.sip-section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0 0 0.85rem;
+  font-size: 0.875rem;
+  font-weight: 800;
+  color: #0d0d0d;
+}
+
+.sip-section-title i {
+  color: #3564a6;
+}
+
+.sip-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.55rem;
+}
+
+.sip-kpi {
+  padding: 0.85rem 0.65rem;
+  border-radius: 12px;
+  text-align: center;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.sip-kpi--full {
+  grid-column: 1 / -1;
+  background: linear-gradient(135deg, rgba(53, 100, 166, 0.1) 0%, rgba(53, 100, 166, 0.04) 100%);
+  border-color: rgba(53, 100, 166, 0.2);
+}
+
+.sip-kpi__label {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #64748b;
+  margin-bottom: 0.3rem;
+}
+
+.sip-kpi__value {
+  display: block;
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.sip-kpi--total .sip-kpi__value { color: #3564a6; }
+.sip-kpi--vendu .sip-kpi__value { color: #c2410c; }
+.sip-kpi--restant .sip-kpi__value { color: #15803d; }
+.sip-kpi--valeur .sip-kpi__value { font-size: 1.15rem; color: #1a2744; }
+
+.sip-kpi__hint {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.68rem;
+  color: #94a3b8;
+}
+
+/* ——— Pied de page légal ——— */
+.sip-footer {
+  margin-top: 1rem;
+  padding: 1rem 1.1rem;
+  border-radius: 14px;
+  background: #fff;
+  border: 1px solid rgba(53, 100, 166, 0.1);
+  font-size: 0.72rem;
+  line-height: 1.55;
+  color: #64748b;
+}
+
+.sip-footer p {
+  margin: 0 0 0.35rem;
+}
+
+.sip-footer a {
+  color: #3564a6;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.sip-footer a:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 400px) {
+  .sip-location__grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .sip-location__cell:nth-child(3n) {
+    border-right: 1px solid rgba(53, 100, 166, 0.08);
+  }
+
+  .sip-location__cell:nth-child(2n) {
+    border-right: none;
+  }
+}

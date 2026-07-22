@@ -441,6 +441,128 @@ function entrepot_emplacement_enregistrer_quantites_etage($numero_etage, array $
 }
 
 /**
+ * Ajoute un nouveau niveau (un enregistrement à la fois) avec nom et quantités structurelles.
+ *
+ * @param string $nom_niveau
+ * @param array<string, mixed> $data nb_rayons, nb_allees, nb_zones, nb_positions, nb_barres
+ * @return array{success: bool, message: string, numero_etage?: int}
+ */
+function entrepot_emplacement_ajouter_niveau($nom_niveau, array $data) {
+    global $db;
+    if (!entrepot_emplacement_tables_ok()) {
+        return ['success' => false, 'message' => 'Tables absentes — exécutez migrations/run_create_entrepot_emplacement_config.php'];
+    }
+
+    $nom_niveau = trim((string) $nom_niveau);
+    if ($nom_niveau === '') {
+        return ['success' => false, 'message' => 'Le nom du niveau est obligatoire.'];
+    }
+    if (function_exists('mb_strlen') && mb_strlen($nom_niveau, 'UTF-8') > 100) {
+        return ['success' => false, 'message' => 'Le nom du niveau ne doit pas dépasser 100 caractères.'];
+    }
+    if (!function_exists('mb_strlen') && strlen($nom_niveau) > 100) {
+        return ['success' => false, 'message' => 'Le nom du niveau ne doit pas dépasser 100 caractères.'];
+    }
+
+    $nb_rayons = isset($data['nb_rayons']) ? (int) $data['nb_rayons'] : 0;
+    $nb_allees = isset($data['nb_allees']) ? (int) $data['nb_allees'] : 0;
+    $nb_zones = isset($data['nb_zones']) ? (int) $data['nb_zones'] : 0;
+    $nb_positions = isset($data['nb_positions']) ? (int) $data['nb_positions'] : 0;
+    $nb_barres = isset($data['nb_barres']) ? (int) $data['nb_barres'] : 0;
+
+    if ($nb_rayons < 1 || $nb_rayons > ENTREPOT_EMPLACEMENT_NB_RAYONS_MAX) {
+        return ['success' => false, 'message' => 'Nombre de rayons invalide (1 à ' . ENTREPOT_EMPLACEMENT_NB_RAYONS_MAX . ').'];
+    }
+    foreach ([
+        'allées' => $nb_allees,
+        'zones' => $nb_zones,
+        'positions par barre' => $nb_positions,
+        'barres par rayon' => $nb_barres,
+    ] as $label => $val) {
+        if ($val < 1 || $val > ENTREPOT_EMPLACEMENT_NB_PETIT_MAX) {
+            return ['success' => false, 'message' => 'Nombre de ' . $label . ' invalide (1 à ' . ENTREPOT_EMPLACEMENT_NB_PETIT_MAX . ').'];
+        }
+    }
+
+    $max_actuel = (int) $db->query('SELECT COALESCE(MAX(numero_etage), 0) FROM entrepot_emplacement_etage')->fetchColumn();
+    $numero = $max_actuel + 1;
+    if ($numero > ENTREPOT_EMPLACEMENT_NB_ETAGES_MAX) {
+        return ['success' => false, 'message' => 'Limite atteinte : maximum ' . ENTREPOT_EMPLACEMENT_NB_ETAGES_MAX . ' niveaux.'];
+    }
+
+    $code = entrepot_emplacement_code_court_depuis_nom($nom_niveau, $numero);
+
+    try {
+        $db->beginTransaction();
+
+        $db->prepare(
+            'INSERT INTO entrepot_emplacement_etage
+                (numero_etage, nb_rayons, nb_allees, nb_zones, nb_positions, nb_barres, date_modification)
+             VALUES (:numero_etage, :nb_rayons, :nb_allees, :nb_zones, :nb_positions, :nb_barres, NOW())'
+        )->execute([
+            ':numero_etage' => $numero,
+            ':nb_rayons' => $nb_rayons,
+            ':nb_allees' => $nb_allees,
+            ':nb_zones' => $nb_zones,
+            ':nb_positions' => $nb_positions,
+            ':nb_barres' => $nb_barres,
+        ]);
+
+        $db->prepare(
+            'INSERT INTO entrepot_emplacement_config (id, nb_etages, date_modification)
+             VALUES (1, :nb, NOW())
+             ON DUPLICATE KEY UPDATE nb_etages = VALUES(nb_etages), date_modification = NOW()'
+        )->execute([':nb' => $numero]);
+
+        $db->commit();
+    } catch (PDOException $e) {
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
+
+        return ['success' => false, 'message' => 'Erreur lors de l’ajout du niveau : ' . $e->getMessage()];
+    }
+
+    require_once __DIR__ . '/model_entrepot_referentiel.php';
+    if (entrepot_referentiel_tables_ok()) {
+        entrepot_sync_referentiel_depuis_config($numero);
+        try {
+            $db->prepare(
+                'UPDATE entrepot_etage SET nom = :nom, code = :code, date_modification = NOW() WHERE numero_etage = :n'
+            )->execute([':nom' => $nom_niveau, ':code' => $code, ':n' => $numero]);
+        } catch (PDOException $e) {
+            return [
+                'success' => true,
+                'message' => 'Niveau ' . $numero . ' créé (structure). Erreur nom référentiel : ' . $e->getMessage(),
+                'numero_etage' => $numero,
+            ];
+        }
+    }
+
+    return [
+        'success' => true,
+        'message' => 'Niveau « ' . $nom_niveau . ' » enregistré (n° ' . $numero . ').',
+        'numero_etage' => $numero,
+    ];
+}
+
+/**
+ * Code court pour un niveau (étiquettes barres, référentiel).
+ */
+function entrepot_emplacement_code_court_depuis_nom($nom, $numero) {
+    $nom = trim((string) $nom);
+    $alpha = preg_replace('/[^A-Za-z0-9]/', '', $nom);
+    if ($alpha !== '') {
+        $code = strtoupper(substr($alpha, 0, 3));
+        if ($code !== '') {
+            return $code;
+        }
+    }
+
+    return 'N' . (int) $numero;
+}
+
+/**
  * Données JSON pour le formulaire produit (limites par étage).
  *
  * @return array<int, array{nb_rayons: int, nb_allees: int, nb_zones: int, nb_positions: int, nb_barres: int}>

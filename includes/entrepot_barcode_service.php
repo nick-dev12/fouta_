@@ -7,7 +7,7 @@ require_once __DIR__ . '/site_url.php';
 
 /**
  * @param int $barre_id
- * @return string URL scan admin
+ * @return string URL publique affichée au scan QR (sans authentification)
  */
 function entrepot_barre_scan_url($barre_id) {
     $barre = entrepot_get_barre_by_id($barre_id);
@@ -15,7 +15,7 @@ function entrepot_barre_scan_url($barre_id) {
         return '';
     }
 
-    return rtrim(get_site_base_url(), '/') . '/admin/entrepot/barre-info.php?c=' . rawurlencode((string) $barre['code_scan']);
+    return rtrim(get_site_base_url(), '/') . '/barre-info.php?c=' . rawurlencode((string) $barre['code_scan']);
 }
 
 /**
@@ -137,4 +137,38 @@ function entrepot_generer_codes_barre($barre_id) {
     $ok2 = generer_qrcode_barre($barre_id);
 
     return $ok1 || $ok2;
+}
+
+/**
+ * Régénère les QR de toutes les barres (après changement d’URL publique).
+ *
+ * @return array{success: bool, message: string, count: int}
+ */
+function entrepot_regenerer_qrcodes_toutes_barres() {
+    global $db;
+    if (!entrepot_referentiel_tables_ok()) {
+        return ['success' => false, 'message' => 'Tables référentiel absentes.', 'count' => 0];
+    }
+    $count = 0;
+    try {
+        $ids = $db->query('SELECT id FROM entrepot_barre ORDER BY id ASC')->fetchAll(PDO::FETCH_COLUMN);
+        foreach ($ids as $id) {
+            $bid = (int) $id;
+            if ($bid <= 0) {
+                continue;
+            }
+            entrepot_barre_generer_code_scan($bid);
+            if (generer_qrcode_barre($bid)) {
+                $count++;
+            }
+        }
+    } catch (PDOException $e) {
+        return ['success' => false, 'message' => $e->getMessage(), 'count' => $count];
+    }
+
+    return [
+        'success' => true,
+        'message' => $count . ' QR code(s) barre régénéré(s) (URL publique).',
+        'count' => $count,
+    ];
 }

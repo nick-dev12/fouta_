@@ -1,0 +1,571 @@
+/**
+ * Page publique scan QR barre entrepôt — barre-info.php
+ */
+
+.page-barre-info-public {
+  font-family: var(--font-corps, 'Quicksand', sans-serif);
+  background: linear-gradient(165deg, #eef4fb 0%, #f8fafc 45%, #fff 100%);
+  min-height: 100vh;
+  color: #0d0d0d;
+  padding: 1rem 1rem 2.5rem;
+}
+
+.bip-shell {
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.bip-shell--narrow {
+  max-width: 480px;
+}
+
+/* ——— Scan vide ——— */
+.bip-card--scan {
+  text-align: center;
+  padding: 2rem 1.35rem;
+  margin-top: 1.5rem;
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid rgba(53, 100, 166, 0.12);
+  box-shadow: 0 4px 22px rgba(53, 100, 166, 0.08);
+}
+
+.bip-scan-icon {
+  width: 3.75rem;
+  height: 3.75rem;
+  margin: 0 auto 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  background: linear-gradient(145deg, #3564a6, #2d5690);
+  color: #fff;
+  font-size: 1.65rem;
+}
+
+.bip-title {
+  margin: 0 0 0.45rem;
+  font-size: 1.25rem;
+  font-weight: 800;
+}
+
+.bip-lead {
+  margin: 0 0 1.15rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: #4a4a4a;
+}
+
+.bip-alert {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 10px;
+  background: rgba(255, 107, 53, 0.12);
+  color: #c2410c;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.bip-form label {
+  display: block;
+  margin-bottom: 0.4rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #737373;
+}
+
+.bip-form__row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.bip-form__row input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid rgba(53, 100, 166, 0.25);
+  border-radius: 10px;
+  font-size: 0.9375rem;
+  font-family: inherit;
+}
+
+.bip-form__row input:focus {
+  outline: none;
+  border-color: #3564a6;
+  box-shadow: 0 0 0 3px rgba(53, 100, 166, 0.15);
+}
+
+.bip-btn {
+  padding: 0.65rem 1rem;
+  border: none;
+  border-radius: 10px;
+  background: #3564a6;
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.875rem;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.bip-btn:hover {
+  background: #2d5690;
+}
+
+/* ——— En-tête principal ——— */
+.bip-masthead {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  margin-bottom: 0.85rem;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 12px 40px rgba(26, 39, 68, 0.2);
+  border: 1px solid rgba(53, 100, 166, 0.15);
+}
+
+.bip-masthead__brand {
+  padding: 1.25rem 1.35rem;
+  background: linear-gradient(160deg, #1a2744 0%, #243b6b 50%, #2d5690 100%);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.bip-masthead__brand-top {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.bip-masthead__logo {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  border-radius: 12px;
+  background: #fff;
+  padding: 5px;
+  flex-shrink: 0;
+}
+
+.bip-masthead__company {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+}
+
+.bip-masthead__tagline {
+  margin: 0.2rem 0 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  opacity: 0.88;
+  font-style: italic;
+}
+
+.bip-masthead__legal {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.72rem;
+  line-height: 1.55;
+  opacity: 0.92;
+}
+
+.bip-masthead__legal li {
+  margin-bottom: 0.2rem;
+}
+
+.bip-masthead__legal a {
+  color: #b8d4f5;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.bip-masthead__legal a:hover {
+  text-decoration: underline;
+  color: #fff;
+}
+
+.bip-masthead__barre {
+  padding: 1.25rem 1.35rem;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.bip-masthead__barre-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.bip-masthead__barre-text {
+  min-width: 0;
+  flex: 1;
+}
+
+.bip-masthead__kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0 0 0.35rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(53, 100, 166, 0.1);
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #3564a6;
+}
+
+.bip-masthead__barre-title {
+  margin: 0 0 0.35rem;
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #1a2744;
+  line-height: 1.2;
+}
+
+.bip-masthead__chemin {
+  margin: 0 0 0.45rem;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: #4a4a4a;
+  font-weight: 600;
+}
+
+.bip-masthead__code {
+  margin: 0;
+}
+
+.bip-masthead__code code {
+  padding: 0.3rem 0.6rem;
+  border-radius: 8px;
+  background: #ffe600;
+  border: 1px solid #d4c200;
+  font-size: 0.8125rem;
+  font-weight: 800;
+  color: #0d0d0d;
+}
+
+.bip-masthead__qr-wrap {
+  flex-shrink: 0;
+  text-align: center;
+}
+
+.bip-masthead__qr {
+  display: block;
+  width: 88px;
+  height: 88px;
+  border-radius: 10px;
+  border: 2px solid rgba(53, 100, 166, 0.15);
+  background: #fff;
+  padding: 4px;
+  object-fit: contain;
+}
+
+.bip-masthead__qr-label {
+  display: block;
+  margin-top: 0.3rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #737373;
+}
+
+.bip-path-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.bip-path-pill {
+  display: inline-flex;
+  flex-direction: column;
+  padding: 0.4rem 0.65rem;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  min-width: 4.5rem;
+}
+
+.bip-path-pill--accent {
+  background: rgba(53, 100, 166, 0.08);
+  border-color: rgba(53, 100, 166, 0.22);
+}
+
+.bip-path-pill__label {
+  font-size: 0.58rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #737373;
+}
+
+.bip-path-pill__value {
+  font-size: 0.8125rem;
+  font-weight: 800;
+  color: #3564a6;
+}
+
+.bip-path-pill--accent .bip-path-pill__value {
+  color: #1a2744;
+}
+
+.bip-kpis {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bip-kpis li {
+  text-align: center;
+  padding: 0.55rem 0.35rem;
+  border-radius: 10px;
+  background: rgba(53, 100, 166, 0.06);
+  border: 1px solid rgba(53, 100, 166, 0.12);
+}
+
+.bip-kpis strong {
+  display: block;
+  font-size: 1.25rem;
+  color: #3564a6;
+  line-height: 1.1;
+}
+
+.bip-kpis span {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #64748b;
+  font-weight: 700;
+}
+
+/* ——— Tableau produits ——— */
+.bip-table-card {
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid rgba(53, 100, 166, 0.12);
+  box-shadow: 0 4px 22px rgba(53, 100, 166, 0.08);
+  overflow: hidden;
+  margin-bottom: 0.85rem;
+}
+
+.bip-table-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.85rem 1.15rem;
+  background: linear-gradient(90deg, rgba(53, 100, 166, 0.08) 0%, #fff 100%);
+  border-bottom: 1px solid rgba(53, 100, 166, 0.1);
+}
+
+.bip-table-card__title {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 800;
+  color: #0d0d0d;
+}
+
+.bip-table-card__title i {
+  color: #3564a6;
+}
+
+.bip-table-card__count {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #737373;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(53, 100, 166, 0.08);
+}
+
+.bip-table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.bip-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+
+.bip-table thead {
+  background: #1a2744;
+  color: #fff;
+}
+
+.bip-table th {
+  padding: 0.7rem 0.85rem;
+  text-align: left;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.bip-table td {
+  padding: 0.75rem 0.85rem;
+  border-bottom: 1px solid rgba(53, 100, 166, 0.08);
+  vertical-align: middle;
+}
+
+.bip-table tbody tr:hover {
+  background: rgba(53, 100, 166, 0.04);
+}
+
+.bip-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.bip-table__ref code {
+  padding: 0.15rem 0.4rem;
+  border-radius: 5px;
+  background: rgba(53, 100, 166, 0.1);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #3564a6;
+}
+
+.bip-table__nom {
+  font-weight: 700;
+  color: #0d0d0d;
+  max-width: 220px;
+}
+
+.bip-pos-badge {
+  display: inline-block;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(53, 100, 166, 0.1);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #3564a6;
+  white-space: nowrap;
+}
+
+.bip-stock {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: 0.8125rem;
+}
+
+.bip-stock.is-ok {
+  background: rgba(21, 128, 61, 0.12);
+  color: #15803d;
+}
+
+.bip-stock.is-low {
+  background: rgba(255, 107, 53, 0.15);
+  color: #c2410c;
+}
+
+.bip-stock.is-zero {
+  background: rgba(100, 116, 139, 0.15);
+  color: #64748b;
+}
+
+.bip-table__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: 8px;
+  background: #3564a6;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.bip-table__link:hover {
+  background: #2d5690;
+}
+
+.bip-empty {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  color: #737373;
+}
+
+.bip-empty i {
+  font-size: 2.25rem;
+  color: rgba(53, 100, 166, 0.3);
+  margin-bottom: 0.65rem;
+}
+
+.bip-empty p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.bip-rescan {
+  padding: 1rem 1.15rem;
+  background: #fff;
+  border-radius: 14px;
+  border: 1px solid rgba(53, 100, 166, 0.12);
+}
+
+.bip-rescan label {
+  display: block;
+  margin-bottom: 0.4rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #737373;
+}
+
+@media (max-width: 720px) {
+  .bip-masthead {
+    grid-template-columns: 1fr;
+  }
+
+  .bip-masthead__barre-head {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .bip-path-strip {
+    justify-content: center;
+  }
+
+  .bip-kpis {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .bip-table th:nth-child(4),
+  .bip-table td:nth-child(4) {
+    display: none;
+  }
+}

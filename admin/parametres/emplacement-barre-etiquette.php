@@ -1,6 +1,6 @@
 <?php
 /**
- * PDF étiquette barre (QR + code-barres).
+ * PDF / impression étiquette barre 90×30 mm (fond jaune, libellé + QR).
  */
 require_once __DIR__ . '/../../includes/admin_pdf_response.php';
 admin_pdf_request_begin();
@@ -33,43 +33,49 @@ if ($barre === null) {
 
 entrepot_generer_codes_barre($barre_id);
 $barre = entrepot_get_barre_by_id($barre_id);
-$chemin = entrepot_build_chemin_barre($barre_id);
-$bc_path = __DIR__ . '/../../upload/barcodes/barre_' . $barre_id . '.png';
+$etage = entrepot_get_etage_ref_by_id((int) ($barre['etage_id'] ?? 0));
+$rayon = null;
+if (!empty($barre['rayon_id'])) {
+    global $db;
+    if ($db) {
+        $st = $db->prepare('SELECT * FROM entrepot_rayon WHERE id = :id LIMIT 1');
+        $st->execute([':id' => (int) $barre['rayon_id']]);
+        $rayon = $st->fetch(PDO::FETCH_ASSOC) ?: null;
+    }
+}
+
+$libelle = entrepot_barre_etiquette_libelle($barre, $etage, $rayon);
 $qr_path = __DIR__ . '/../../upload/qrcodes/barre_' . $barre_id . '.png';
 
-function ee_label_data_uri($path) {
+function ee_barre_label_data_uri($path) {
     if (!is_file($path)) {
         return '';
     }
-    $raw = file_get_contents($path);
 
-    return 'data:image/png;base64,' . base64_encode($raw);
+    return 'data:image/png;base64,' . base64_encode((string) file_get_contents($path));
 }
 
-$bc_uri = ee_label_data_uri($bc_path);
-$qr_uri = ee_label_data_uri($qr_path);
-$nom = htmlspecialchars($barre['nom'] ?? '', ENT_QUOTES, 'UTF-8');
-$code = htmlspecialchars($barre['code_scan'] ?? '', ENT_QUOTES, 'UTF-8');
-$chemin_h = htmlspecialchars($chemin, ENT_QUOTES, 'UTF-8');
+$qr_uri = ee_barre_label_data_uri($qr_path);
+$libelle_h = htmlspecialchars($libelle, ENT_QUOTES, 'UTF-8');
 
 $html = '<!DOCTYPE html><html><head><meta charset="utf-8"><style>
-body { font-family: DejaVu Sans, sans-serif; text-align: center; padding: 24px; }
-h1 { font-size: 18px; margin: 0 0 8px; color: #3564a6; }
-p { font-size: 11px; color: #444; margin: 4px 0; }
-img { margin: 8px auto; display: block; }
-.bar { max-width: 280px; }
-.qr { width: 120px; height: 120px; }
+@page { size: 90mm 30mm; margin: 0; }
+html, body { margin: 0; padding: 0; width: 90mm; height: 30mm; }
+.ee-barre-etiq {
+  width: 90mm; height: 30mm; box-sizing: border-box;
+  padding: 2mm 3.5mm 2mm 4mm;
+  display: flex; align-items: center; justify-content: space-between;
+  background: #ffe600; font-family: DejaVu Sans, Arial, sans-serif;
+}
+.ee-barre-etiq__text { font-size: 28pt; font-weight: bold; color: #000; }
+.ee-barre-etiq__qr { width: 24mm; height: 24mm; }
 </style></head><body>
-<h1>' . $nom . '</h1>
-<p>' . $chemin_h . '</p>
-<p><strong>' . $code . '</strong></p>';
+<div class="ee-barre-etiq">
+  <span class="ee-barre-etiq__text">' . $libelle_h . '</span>';
 if ($qr_uri !== '') {
-    $html .= '<img class="qr" src="' . $qr_uri . '" alt="QR">';
+    $html .= '<img class="ee-barre-etiq__qr" src="' . $qr_uri . '" alt="QR">';
 }
-if ($bc_uri !== '') {
-    $html .= '<img class="bar" src="' . $bc_uri . '" alt="Code-barres">';
-}
-$html .= '</body></html>';
+$html .= '</div></body></html>';
 
 if (!is_file(__DIR__ . '/../../vendor/autoload.php')) {
     http_response_code(500);
@@ -82,9 +88,10 @@ use Dompdf\Dompdf;
 use Dompdf\Options;
 
 $options = new Options();
-$options->set('isRemoteEnabled', true);
+$options->set('isRemoteEnabled', false);
+$options->set('defaultFont', 'DejaVu Sans');
 $dompdf = new Dompdf($options);
 $dompdf->loadHtml($html);
-$dompdf->setPaper('A6', 'portrait');
+$dompdf->setPaper([0, 0, 255.118, 85.039], 'landscape');
 $dompdf->render();
 $dompdf->stream('etiquette-barre-' . $barre_id . '.pdf', ['Attachment' => true]);

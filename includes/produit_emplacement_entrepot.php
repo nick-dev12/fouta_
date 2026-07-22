@@ -700,7 +700,7 @@ function produit_emplacement_render_form_fields_referentiel(array $values) {
         ['id' => 'ref_rayon', 'label' => 'Rayon', 'icon' => 'fa-th-large', 'hint' => 'Choisissez le rayon voulu (nom en base).'],
         ['id' => 'ref_allee', 'label' => 'Allée', 'icon' => 'fa-road', 'hint' => 'Choisissez l’allée voulue (nom en base).'],
         ['id' => 'ref_zone', 'label' => 'Zone', 'icon' => 'fa-map-marker-alt', 'hint' => 'Choisissez la zone voulue (nom en base).'],
-        ['id' => 'ref_barre', 'label' => 'Barre', 'icon' => 'fa-grip-lines', 'hint' => 'Choisissez la barre voulue (indépendamment du rayon).'],
+        ['id' => 'ref_barre', 'label' => 'Barre', 'icon' => 'fa-grip-lines', 'hint' => 'Barres du rayon sélectionné (ou toutes si aucun rayon). Libellé : Rayon · Barre.'],
         ['id' => 'entrepot_position_id', 'label' => 'Position produit', 'icon' => 'fa-crosshairs', 'hint' => 'Emplacement exact sur la barre choisie.'],
     ];
     $pairs = array_chunk($fields, 2);

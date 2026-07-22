@@ -1,0 +1,172 @@
+/**
+ * Étiquette barre entrepôt — 90 × 30 mm (fond jaune, libellé + QR).
+ * Écran : aperçu réduit via transform.
+ * Impression : dimensions exactes 90 × 30 mm (@media print).
+ */
+
+/* ——— Gabarit physique (identique écran + impression) ——— */
+.ee-barre-etiq {
+  --ee-barre-yellow: #ffe600;
+  width: 90mm;
+  height: 30mm;
+  min-width: 90mm;
+  max-width: 90mm;
+  min-height: 30mm;
+  max-height: 30mm;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 2mm 3.5mm 2mm 4mm;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 3mm;
+  background: var(--ee-barre-yellow);
+  border: 0.15mm solid #d4c200;
+  font-family: Arial, Helvetica, "Segoe UI", sans-serif;
+  overflow: hidden;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.ee-barre-etiq__text {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 11mm;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: #000;
+  white-space: nowrap;
+}
+
+.ee-barre-etiq__qr-box {
+  flex: 0 0 24mm;
+  width: 24mm;
+  height: 24mm;
+  line-height: 0;
+  background: #fff;
+  padding: 0.5mm;
+  box-sizing: border-box;
+}
+
+.ee-barre-etiq__qr {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+/* ——— Écran : aperçu compact (ne pas confondre avec l’impression) ——— */
+@media screen {
+  .ee-barre-etiq-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.65rem 1rem;
+    margin: 0.15rem 0 0.75rem;
+  }
+
+  .ee-barre-etiq-row .ee-barre-etiq-preview-wrap {
+    margin: 0;
+    flex: 0 0 auto;
+  }
+
+  .ee-barre-etiq-preview-wrap {
+    width: calc(90mm * 0.52);
+    height: calc(30mm * 0.52);
+    overflow: hidden;
+    border-radius: 4px;
+    box-shadow: 0 2px 12px rgba(13, 13, 13, 0.1);
+  }
+
+  .ee-barre-etiq-preview-scale {
+    width: 90mm;
+    height: 30mm;
+    transform: scale(0.52);
+    transform-origin: top left;
+  }
+
+  .ee-barre-etiq {
+    box-shadow: inset 0 0 0 0.15mm rgba(0, 0, 0, 0.08);
+  }
+}
+
+.ee-barre-etiq-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+@media screen {
+  .ee-barre-etiq-row .ee-barre-etiq-actions {
+    flex: 0 1 auto;
+    margin-top: 0;
+  }
+}
+
+.ee-barre-etiq-print-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--couleur-dominante, #3564a6);
+  background: #fff;
+  border: 1px solid rgba(53, 100, 166, 0.35);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.ee-barre-etiq-print-btn:hover {
+  background: rgba(53, 100, 166, 0.08);
+}
+
+@media print {
+  @page {
+    size: 90mm 30mm;
+    margin: 0;
+  }
+
+  html,
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 90mm !important;
+    height: 30mm !important;
+    background: #fff !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .ee-barre-etiq-preview-wrap {
+    width: auto !important;
+    height: auto !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+  }
+
+  .ee-barre-etiq-preview-scale {
+    transform: none !important;
+    width: 90mm !important;
+    height: 30mm !important;
+    margin: 0 !important;
+  }
+
+  .ee-barre-etiq {
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  .ee-barre-etiq-actions,
+  .ee-barre-etiq-print-btn,
+  .ee-barre-etiq-block__label {
+    display: none !important;
+  }
+}

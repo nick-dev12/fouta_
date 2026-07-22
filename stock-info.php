@@ -1,10 +1,8 @@
 <?php
 /**
- * Page publique affichée lors du scan du QR code d'un produit
- * Affiche les détails de gestion du stock : nombre vendu, restant, total avant
- * Accessible sans authentification
+ * Page publique affichée lors du scan du QR code d'un produit.
+ * Accessible sans authentification.
  */
-
 require_once __DIR__ . '/includes/session_user.php';
 session_start();
 
@@ -17,6 +15,12 @@ if ($produit_id <= 0) {
 require_once __DIR__ . '/conn/conn.php';
 require_once __DIR__ . '/models/model_produits.php';
 require_once __DIR__ . '/models/model_commandes.php';
+require_once __DIR__ . '/includes/produit_emplacement_entrepot.php';
+require_once __DIR__ . '/includes/fpl_public_branding.php';
+
+if (file_exists(__DIR__ . '/includes/asset_version.php')) {
+    require_once __DIR__ . '/includes/asset_version.php';
+}
 
 $produit = get_produit_by_id($produit_id);
 if (!$produit) {
@@ -29,22 +33,34 @@ $stock_actuel = (int) ($produit['stock'] ?? 0);
 $nombre_total = $stock_actuel + $quantite_vendue;
 $stock_restant = $nombre_total - $quantite_vendue;
 
-$prix_produit = (float) ($produit['prix'] ?? 0);
-if (!empty($produit['prix_promotion']) && (float) $produit['prix_promotion'] < $prix_produit) {
-    $prix_produit = (float) $produit['prix_promotion'];
+$prix_catalogue = (float) ($produit['prix'] ?? 0);
+$prix_promo = null;
+if (!empty($produit['prix_promotion']) && (float) $produit['prix_promotion'] > 0) {
+    $prix_promo = (float) $produit['prix_promotion'];
 }
-$valeur_stock_actuel = $stock_actuel * $prix_produit;
-$valeur_ventes = $quantite_vendue * $prix_produit;
+$en_promotion = $prix_promo !== null && $prix_promo < $prix_catalogue;
+$prix_vente = $en_promotion ? $prix_promo : $prix_catalogue;
+
+$valeur_stock_actuel = $stock_actuel * $prix_vente;
+$valeur_ventes = $quantite_vendue * $prix_vente;
 
 $emplacement_vals = produit_emplacement_from_produit($produit);
 $emplacement_resume = produit_emplacement_resume_court($emplacement_vals);
+$a_emplacement = produit_emplacement_a_des_donnees($emplacement_vals);
 
-require_once __DIR__ . '/includes/site_url.php';
-require_once __DIR__ . '/includes/produit_emplacement_entrepot.php';
-$base = get_site_base_url();
-if (file_exists(__DIR__ . '/includes/asset_version.php')) {
-    require_once __DIR__ . '/includes/asset_version.php';
-}
+$brand = fpl_public_branding_coords();
+$logo_url = fpl_public_branding_logo_url();
+$ref_fpl = trim((string) ($produit['identifiant_interne'] ?? ''));
+$av = function_exists('asset_version_query') ? asset_version_query() : '';
+
+$etapes_emplacement = [
+    ['col' => 'etage', 'label' => 'Niveau'],
+    ['col' => 'numero_rayon', 'label' => 'Rayon'],
+    ['col' => 'allee', 'label' => 'Allée'],
+    ['col' => 'zone_emplacement', 'label' => 'Zone'],
+    ['col' => 'barre_rayon', 'label' => 'Barre'],
+    ['col' => 'position_emplacement', 'label' => 'Position'],
+];
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -53,245 +69,119 @@ if (file_exists(__DIR__ . '/includes/asset_version.php')) {
     <?php include __DIR__ . '/includes/favicon.php'; ?>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stock - <?php echo htmlspecialchars($produit['nom']); ?> - FOUTA POIDS LOURDS</title>
-    <link rel="stylesheet"
-        href="/css/variables.css<?php echo function_exists('asset_version_query') ? asset_version_query() : ''; ?>">
+    <title><?php echo htmlspecialchars($produit['nom']); ?> — FOUTA POIDS LOURDS</title>
+    <link rel="stylesheet" href="/css/variables.css<?php echo $av; ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        body {
-            font-family: var(--font-corps);
-            background: transparent;
-            min-height: 100vh;
-            padding: 24px;
-            color: var(--texte-fonce);
-        }
-
-        .container {
-            max-width: 480px;
-            margin: 0 auto;
-        }
-
-        .card {
-            background: #fff;
-            border-radius: 16px;
-            padding: 24px;
-            margin-bottom: 16px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-            border: 1px solid #e5e7eb;
-        }
-
-        .card-header {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            margin-bottom: 24px;
-            padding-bottom: 20px;
-            border-bottom: 2px solid #3564a6;
-        }
-
-        .card-header img {
-            width: 72px;
-            height: 72px;
-            object-fit: cover;
-            border-radius: 12px;
-            border: 2px solid #e5e7eb;
-        }
-
-        .card-header h1 {
-            font-size: 18px;
-            color: #1f2937;
-            flex: 1;
-        }
-
-        .stock-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
-        }
-
-        .stock-item {
-            background: #f8fafc;
-            border-radius: 12px;
-            padding: 16px;
-            text-align: center;
-            border: 1px solid #e2e8f0;
-        }
-
-        .stock-item.full {
-            grid-column: 1 / -1;
-        }
-
-        .stock-item .label {
-            font-size: 11px;
-            color: #64748b;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 6px;
-        }
-
-        .stock-item .value {
-            font-size: 24px;
-            font-weight: 700;
-        }
-
-        .stock-item.total .value {
-            color: #1e40af;
-        }
-
-        .stock-item.vendu .value {
-            color: #c2410c;
-        }
-
-        .stock-item.restant .value {
-            color: #15803d;
-        }
-
-        .stock-item .detail {
-            font-size: 11px;
-            color: #94a3b8;
-            margin-top: 4px;
-        }
-
-        .emplacement-card {
-            margin-top: 0;
-        }
-
-        .emplacement-list {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
-        }
-
-        .emplacement-item {
-            background: #f0f6fc;
-            border-radius: 10px;
-            padding: 12px;
-            border: 1px solid rgba(53, 100, 166, 0.2);
-            text-align: center;
-        }
-
-        .emplacement-item .label {
-            font-size: 11px;
-            color: #64748b;
-            text-transform: uppercase;
-            letter-spacing: 0.04em;
-            margin-bottom: 4px;
-        }
-
-        .emplacement-item .value {
-            font-size: 15px;
-            font-weight: 700;
-            color: #3564a6;
-        }
-
-        .emplacement-resume {
-            font-size: 13px;
-            color: #475569;
-            margin-bottom: 16px;
-            line-height: 1.5;
-        }
-
-        .brand {
-            text-align: center;
-            margin-top: 24px;
-            font-size: 14px;
-            color: #64748b;
-            font-weight: 600;
-        }
-
-        .brand a {
-            color: #3564a6;
-            text-decoration: none;
-        }
-    </style>
+    <link rel="stylesheet" href="/css/stock-info-public.css<?php echo $av; ?>">
 </head>
 
-<body>
-    <div class="container">
-        <div class="card">
-            <div class="card-header">
-                <img src="/upload/<?php echo htmlspecialchars($produit['image_principale'] ?? ''); ?>" alt=""
-                    onerror="this.src='/image/produit1.jpg'">
-                <h1><?php echo htmlspecialchars($produit['nom']); ?></h1>
+<body class="page-stock-info-public">
+    <div class="sip-shell">
+        <header class="sip-brand-bar">
+            <img src="<?php echo htmlspecialchars($logo_url); ?>" alt="" class="sip-brand-bar__logo" width="56" height="56">
+            <div>
+                <p class="sip-brand-bar__name"><?php echo htmlspecialchars($brand['nom']); ?></p>
+                <p class="sip-brand-bar__tag"><?php echo htmlspecialchars($brand['tagline']); ?></p>
             </div>
+        </header>
 
-            <div class="stock-grid">
-                <div class="stock-item total full">
-                    <div class="label">Nombre total (initial + entrées)</div>
-                    <div class="value"><?php echo $nombre_total; ?></div>
-                    <div class="detail">Stock initial + entrées</div>
-                </div>
-                <div class="stock-item vendu">
-                    <div class="label">Quantité vendue</div>
-                    <div class="value"><?php echo $quantite_vendue; ?></div>
-                </div>
-                <div class="stock-item restant">
-                    <div class="label">Stock restant</div>
-                    <div class="value"><?php echo $stock_restant; ?></div>
-                    <div class="detail">Total − Vendu</div>
-                </div>
+        <?php if ($a_emplacement): ?>
+        <section class="sip-card sip-location" aria-label="Emplacement entrepôt">
+            <div class="sip-location__banner">
+                <i class="fas fa-map-location-dot" aria-hidden="true"></i>
+                <h2>Emplacement en entrepôt</h2>
             </div>
-        </div>
-
-        <div class="card">
-            <div class="stock-item total" style="margin-bottom: 12px;">
-                <div class="label">Valeur du stock actuel</div>
-                <div class="value" style="font-size: 20px;">
-                    <?php echo number_format($valeur_stock_actuel, 0, ',', ' '); ?> FCFA</div>
-                <div class="detail"><?php echo $stock_actuel; ?> ×
-                    <?php echo number_format($prix_produit, 0, ',', ' '); ?> FCFA</div>
-            </div>
-            <div class="stock-item vendu">
-                <div class="label">Chiffre d'affaires (ventes)</div>
-                <div class="value" style="font-size: 20px;"><?php echo number_format($valeur_ventes, 0, ',', ' '); ?>
-                    FCFA</div>
-                <div class="detail"><?php echo $quantite_vendue; ?> vendu(s)</div>
-            </div>
-        </div>
-
-        <?php if (produit_emplacement_a_des_donnees($emplacement_vals)): ?>
-        <div class="card emplacement-card">
-            <h2 style="font-size: 16px; margin-bottom: 12px; color: #1f2937;">
-                <i class="fas fa-map-pin" aria-hidden="true"></i> Emplacement entrepôt
-            </h2>
-            <?php if ($emplacement_resume !== ''): ?>
-            <p class="emplacement-resume"><?php echo htmlspecialchars($emplacement_resume); ?></p>
+            <?php if (!empty($emplacement_vals['chemin_libelle'])): ?>
+                <p class="sip-location__chemin"><?php echo htmlspecialchars((string) $emplacement_vals['chemin_libelle']); ?></p>
+            <?php elseif ($emplacement_resume !== ''): ?>
+                <p class="sip-location__chemin"><?php echo htmlspecialchars($emplacement_resume); ?></p>
             <?php endif; ?>
-            <?php if (empty($emplacement_vals['chemin_libelle'])): ?>
-            <div class="emplacement-list">
+            <div class="sip-location__grid">
                 <?php
-                $etapes_stock = [
-                    ['col' => 'etage', 'label' => 'Étage'],
-                    ['col' => 'numero_rayon', 'label' => 'Rayon'],
-                    ['col' => 'allee', 'label' => 'Allée'],
-                    ['col' => 'zone_emplacement', 'label' => 'Zone'],
-                    ['col' => 'position_emplacement', 'label' => 'Position'],
-                    ['col' => 'barre_rayon', 'label' => 'Barre'],
-                ];
-                foreach ($etapes_stock as $etape):
+                $cells_shown = 0;
+                foreach ($etapes_emplacement as $etape):
                     $col = $etape['col'];
                     if (empty($emplacement_vals[$col])) {
                         continue;
                     }
+                    $cells_shown++;
+                    $is_pos = ($col === 'position_emplacement');
                 ?>
-                <div class="emplacement-item">
-                    <div class="label"><?php echo htmlspecialchars($etape['label']); ?></div>
-                    <div class="value"><?php echo htmlspecialchars(produit_emplacement_option_label($col, $emplacement_vals[$col])); ?></div>
+                <div class="sip-location__cell<?php echo $is_pos ? ' sip-location__cell--highlight' : ''; ?>">
+                    <span class="sip-location__cell-label"><?php echo htmlspecialchars($etape['label']); ?></span>
+                    <span class="sip-location__cell-value"><?php echo htmlspecialchars(produit_emplacement_option_label($col, $emplacement_vals[$col])); ?></span>
                 </div>
                 <?php endforeach; ?>
+                <?php if ($cells_shown === 0 && $emplacement_resume !== ''): ?>
+                <div class="sip-location__cell sip-location__cell--highlight">
+                    <span class="sip-location__cell-label">Chemin</span>
+                    <span class="sip-location__cell-value"><?php echo htmlspecialchars($emplacement_resume); ?></span>
+                </div>
+                <?php endif; ?>
             </div>
-            <?php endif; ?>
-        </div>
+        </section>
         <?php endif; ?>
 
-        <p class="brand">FOUTA POIDS LOURDS — Pièces poids lourds</p>
+        <section class="sip-card">
+            <div class="sip-product-head">
+                <img src="/upload/<?php echo htmlspecialchars($produit['image_principale'] ?? ''); ?>" alt=""
+                    class="sip-product-head__img" onerror="this.src='/image/produit1.jpg'">
+                <div class="sip-product-head__body">
+                    <?php if ($ref_fpl !== ''): ?>
+                        <span class="sip-product-head__ref"><?php echo htmlspecialchars($ref_fpl); ?></span>
+                    <?php endif; ?>
+                    <h1 class="sip-product-head__title"><?php echo htmlspecialchars($produit['nom']); ?></h1>
+                    <div class="sip-price-block">
+                        <span class="sip-price-block__label">Prix de vente</span>
+                        <?php if ($en_promotion): ?>
+                            <span class="sip-promo-badge">Promo</span>
+                            <span class="sip-price sip-price--promo"><?php echo number_format($prix_vente, 0, ',', ' '); ?> FCFA</span>
+                            <span class="sip-price-old"><?php echo number_format($prix_catalogue, 0, ',', ' '); ?> FCFA</span>
+                        <?php else: ?>
+                            <span class="sip-price"><?php echo number_format($prix_vente, 0, ',', ' '); ?> FCFA</span>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+
+            <h2 class="sip-section-title"><i class="fas fa-chart-pie" aria-hidden="true"></i> Stock &amp; ventes</h2>
+            <div class="sip-kpi-grid">
+                <div class="sip-kpi sip-kpi--full sip-kpi--total">
+                    <span class="sip-kpi__label">Stock total (initial + entrées)</span>
+                    <span class="sip-kpi__value"><?php echo (int) $nombre_total; ?></span>
+                    <span class="sip-kpi__hint">Quantité enregistrée en base</span>
+                </div>
+                <div class="sip-kpi sip-kpi--vendu">
+                    <span class="sip-kpi__label">Vendu</span>
+                    <span class="sip-kpi__value"><?php echo (int) $quantite_vendue; ?></span>
+                </div>
+                <div class="sip-kpi sip-kpi--restant">
+                    <span class="sip-kpi__label">Restant</span>
+                    <span class="sip-kpi__value"><?php echo (int) $stock_restant; ?></span>
+                </div>
+                <div class="sip-kpi sip-kpi--valeur">
+                    <span class="sip-kpi__label">Valeur stock actuel</span>
+                    <span class="sip-kpi__value"><?php echo number_format($valeur_stock_actuel, 0, ',', ' '); ?> FCFA</span>
+                    <span class="sip-kpi__hint"><?php echo (int) $stock_actuel; ?> × <?php echo number_format($prix_vente, 0, ',', ' '); ?> FCFA</span>
+                </div>
+                <div class="sip-kpi sip-kpi--valeur">
+                    <span class="sip-kpi__label">CA ventes</span>
+                    <span class="sip-kpi__value"><?php echo number_format($valeur_ventes, 0, ',', ' '); ?> FCFA</span>
+                    <span class="sip-kpi__hint"><?php echo (int) $quantite_vendue; ?> vendu(s)</span>
+                </div>
+            </div>
+        </section>
+
+        <footer class="sip-footer">
+            <p><strong><?php echo htmlspecialchars($brand['nom']); ?></strong></p>
+            <p>R.C : <?php echo htmlspecialchars($brand['rc']); ?> · N.I.N.E.A : <?php echo htmlspecialchars($brand['ninea']); ?></p>
+            <p><?php echo htmlspecialchars($brand['adresse']); ?></p>
+            <p>
+                <a href="<?php echo htmlspecialchars($brand['telephone_href']); ?>"><?php echo htmlspecialchars($brand['telephone']); ?></a>
+                · <a href="<?php echo htmlspecialchars($brand['site']); ?>" target="_blank" rel="noopener"><?php echo htmlspecialchars(parse_url($brand['site'], PHP_URL_HOST) ?: $brand['site']); ?></a>
+                · <a href="mailto:<?php echo htmlspecialchars($brand['email']); ?>"><?php echo htmlspecialchars($brand['email']); ?></a>
+            </p>
+        </footer>
     </div>
 </body>
-
 </html>

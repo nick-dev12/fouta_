@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS `entrepot_barre` (
   `chemin_libelle` TEXT NULL,
   `date_modification` DATETIME NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uniq_entrepot_barre_etage_num` (`etage_id`, `numero`),
+  UNIQUE KEY `uniq_entrepot_barre_rayon_num` (`rayon_id`, `numero`),
   UNIQUE KEY `uniq_entrepot_barre_code_scan` (`code_scan`),
   KEY `idx_entrepot_barre_etage` (`etage_id`),
   CONSTRAINT `fk_entrepot_barre_etage` FOREIGN KEY (`etage_id`) REFERENCES `entrepot_etage` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,

@@ -23,7 +23,7 @@ function stock_alertes_notifier_baisse_stock($produit_id, $stock_avant, $stock_a
     if (!stock_alertes_tables_ok()) {
         return;
     }
-    $regles = stock_alertes_get_all_regles();
+    $regles = stock_alertes_get_regles_pour_produit($pid);
     if (empty($regles)) {
         return;
     }
@@ -46,8 +46,13 @@ function stock_alertes_notifier_baisse_stock($produit_id, $stock_avant, $stock_a
 
     $lines = '';
     foreach ($franchies as $r) {
+        $scope = isset($r['scope_libelle']) ? (string) $r['scope_libelle'] : '';
         $lines .= '<li><strong>' . htmlspecialchars(stock_alertes_libelle_niveau($r['niveau']), ENT_QUOTES, 'UTF-8')
-            . '</strong> — seuil ≤ ' . (int) $r['seuil'] . '</li>';
+            . '</strong> — seuil ≤ ' . (int) $r['seuil'];
+        if ($scope !== '') {
+            $lines .= ' <span style="color:#666;">(' . htmlspecialchars($scope, ENT_QUOTES, 'UTF-8') . ')</span>';
+        }
+        $lines .= '</li>';
     }
 
     $body = '<div style="font-family:Segoe UI,Arial,sans-serif;max-width:560px;margin:0 auto;">';

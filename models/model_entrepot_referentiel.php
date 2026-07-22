@@ -113,7 +113,7 @@ function entrepot_sync_referentiel_depuis_config($numero_etage) {
         entrepot_sync_lignes_niveau($db, 'entrepot_rayon', $etage_id, $nb_rayons, 'Rayon', true);
         entrepot_sync_lignes_niveau($db, 'entrepot_allee', $etage_id, $nb_allees, 'Allée', false);
         entrepot_sync_zones($db, $etage_id, $nb_zones, $nb_rayons);
-        entrepot_sync_barres($db, $etage_id, $nb_barres, $nb_rayons, $nb_allees, $nb_zones);
+        entrepot_sync_barres_par_rayon($db, $etage_id, $nb_barres);
         entrepot_sync_positions_etage($db, $etage_id, $nb_positions);
 
         $db->commit();
@@ -208,47 +208,75 @@ function entrepot_sync_zones($db, $etage_id, $nb_zones, $nb_rayons) {
 }
 
 /**
+ * Synchronise les barres : nb_barres = nombre de barres PAR RAYON.
+ *
+ * @param PDO $db
+ * @param int $etage_id
+ * @param int $nb_barres_par_rayon
+ */
+function entrepot_sync_barres_par_rayon($db, $etage_id, $nb_barres_par_rayon) {
+    $nb_barres_par_rayon = max(1, (int) $nb_barres_par_rayon);
+    $etage_id = (int) $etage_id;
+
+    $st = $db->prepare('SELECT id, numero FROM entrepot_rayon WHERE etage_id = :e ORDER BY numero ASC');
+    $st->execute([':e' => $etage_id]);
+    $rayons = $st->fetchAll(PDO::FETCH_ASSOC);
+
+    $rayon_ids = [];
+    foreach ($rayons as $rayon) {
+        $rayon_ids[] = (int) $rayon['id'];
+    }
+
+    foreach ($rayons as $rayon) {
+        $rayon_id = (int) $rayon['id'];
+        $existing = [];
+        $stb = $db->prepare('SELECT id, numero FROM entrepot_barre WHERE rayon_id = :r');
+        $stb->execute([':r' => $rayon_id]);
+        foreach ($stb->fetchAll(PDO::FETCH_ASSOC) as $b) {
+            $existing[(int) $b['numero']] = (int) $b['id'];
+        }
+
+        for ($i = 1; $i <= $nb_barres_par_rayon; $i++) {
+            if (isset($existing[$i])) {
+                continue;
+            }
+            $ins = $db->prepare(
+                'INSERT INTO entrepot_barre (etage_id, rayon_id, allee_id, zone_id, numero, nom, date_modification)
+                 VALUES (:e, :r, NULL, NULL, :n, :nom, NOW())'
+            );
+            $ins->execute([
+                ':e' => $etage_id,
+                ':r' => $rayon_id,
+                ':n' => $i,
+                ':nom' => 'Barre ' . $i,
+            ]);
+            entrepot_barre_generer_code_scan((int) $db->lastInsertId());
+        }
+
+        $st_del = $db->prepare('SELECT id FROM entrepot_barre WHERE rayon_id = :r AND numero > :max');
+        $st_del->execute([':r' => $rayon_id, ':max' => $nb_barres_par_rayon]);
+        foreach ($st_del->fetchAll(PDO::FETCH_COLUMN) as $bid) {
+            $db->prepare('DELETE FROM entrepot_barre WHERE id = :id')->execute([':id' => (int) $bid]);
+        }
+    }
+
+    if ($rayon_ids !== []) {
+        $placeholders = implode(',', array_fill(0, count($rayon_ids), '?'));
+        $params = array_merge([$etage_id], $rayon_ids);
+        $db->prepare(
+            'DELETE FROM entrepot_barre WHERE etage_id = ? AND (rayon_id IS NULL OR rayon_id NOT IN (' . $placeholders . '))'
+        )->execute($params);
+    } else {
+        $db->prepare('DELETE FROM entrepot_barre WHERE etage_id = :e')->execute([':e' => $etage_id]);
+    }
+}
+
+/**
+ * @deprecated Utiliser entrepot_sync_barres_par_rayon
  * @param PDO $db
  */
 function entrepot_sync_barres($db, $etage_id, $nb_barres, $nb_rayons, $nb_allees, $nb_zones) {
-    $rayons = entrepot_fetch_ids_by_numero($db, 'entrepot_rayon', $etage_id);
-    $allees = entrepot_fetch_ids_by_numero($db, 'entrepot_allee', $etage_id);
-    $zones = entrepot_fetch_ids_by_numero($db, 'entrepot_zone', $etage_id);
-
-    $existing = [];
-    $st = $db->prepare('SELECT id, numero FROM entrepot_barre WHERE etage_id = :e');
-    $st->execute([':e' => $etage_id]);
-    foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $b) {
-        $existing[(int) $b['numero']] = (int) $b['id'];
-    }
-
-    for ($i = 1; $i <= $nb_barres; $i++) {
-        if (isset($existing[$i])) {
-            continue;
-        }
-        $rayon_id = entrepot_pick_id_for_numero($rayons, $i, $nb_rayons);
-        $allee_id = entrepot_pick_id_for_numero($allees, $i, $nb_allees);
-        $zone_id = entrepot_pick_id_for_numero($zones, $i, $nb_zones);
-        $ins = $db->prepare(
-            'INSERT INTO entrepot_barre (etage_id, rayon_id, allee_id, zone_id, numero, nom, date_modification)
-             VALUES (:e, :r, :a, :z, :n, :nom, NOW())'
-        );
-        $ins->execute([
-            ':e' => $etage_id,
-            ':r' => $rayon_id,
-            ':a' => $allee_id,
-            ':z' => $zone_id,
-            ':n' => $i,
-            ':nom' => 'Barre ' . $i,
-        ]);
-        entrepot_barre_generer_code_scan((int) $db->lastInsertId());
-    }
-
-    $st_del = $db->prepare('SELECT id FROM entrepot_barre WHERE etage_id = :e AND numero > :max');
-    $st_del->execute([':e' => $etage_id, ':max' => $nb_barres]);
-    foreach ($st_del->fetchAll(PDO::FETCH_COLUMN) as $bid) {
-        $db->prepare('DELETE FROM entrepot_barre WHERE id = :id')->execute([':id' => (int) $bid]);
-    }
+    entrepot_sync_barres_par_rayon($db, $etage_id, $nb_barres);
 }
 
 /**
@@ -318,6 +346,86 @@ function entrepot_pick_id_for_numero(array $map, $numero, $max) {
     $n = (($numero - 1) % $max) + 1;
 
     return $map[$n] ?? null;
+}
+
+/**
+ * Valeur du champ nom barre en formulaire (vide si nom par défaut).
+ */
+function entrepot_barre_nom_valeur_formulaire($nom, $numero) {
+    $nom = trim((string) $nom);
+    $numero = (int) $numero;
+    if ($nom === '' || $nom === 'Barre ' . $numero) {
+        return '';
+    }
+
+    return $nom;
+}
+
+/**
+ * Libellé étiquette barre type maquette « B01-01 » (code étage + n° rayon + n° barre).
+ *
+ * @param array<string,mixed> $barre
+ * @param array<string,mixed>|null $etage
+ * @param array<string,mixed>|null $rayon
+ */
+function entrepot_barre_etiquette_libelle(array $barre, $etage = null, $rayon = null) {
+    $code = '';
+    if (is_array($etage) && !empty($etage['code'])) {
+        $code = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string) $etage['code']));
+    }
+    if ($code === '') {
+        $code = 'B';
+    }
+    if (strlen($code) > 3) {
+        $code = substr($code, 0, 3);
+    }
+
+    $num_rayon = 1;
+    if (is_array($rayon) && isset($rayon['numero'])) {
+        $num_rayon = max(1, (int) $rayon['numero']);
+    } elseif (!empty($barre['rayon_id'])) {
+        global $db;
+        if ($db) {
+            $st = $db->prepare('SELECT numero FROM entrepot_rayon WHERE id = :id LIMIT 1');
+            $st->execute([':id' => (int) $barre['rayon_id']]);
+            $nr = $st->fetchColumn();
+            if ($nr !== false) {
+                $num_rayon = max(1, (int) $nr);
+            }
+        }
+    }
+
+    $num_barre = max(1, (int) ($barre['numero'] ?? 1));
+
+    return sprintf('%s%02d-%02d', $code, $num_rayon, $num_barre);
+}
+
+/**
+ * Regroupe les barres par rayon_id.
+ *
+ * @param array<int, array<string,mixed>> $barres
+ * @return array<int, array<int, array<string,mixed>>>
+ */
+function entrepot_barres_grouper_par_rayon(array $barres) {
+    $out = [];
+    foreach ($barres as $b) {
+        $rid = (int) ($b['rayon_id'] ?? 0);
+        if ($rid <= 0) {
+            continue;
+        }
+        if (!isset($out[$rid])) {
+            $out[$rid] = [];
+        }
+        $out[$rid][] = $b;
+    }
+    foreach ($out as $rid => $list) {
+        usort($list, function ($a, $b) {
+            return (int) ($a['numero'] ?? 0) <=> (int) ($b['numero'] ?? 0);
+        });
+        $out[$rid] = $list;
+    }
+
+    return $out;
 }
 
 /**
@@ -648,7 +756,10 @@ function entrepot_get_referentiel_etage_complet($numero_etage) {
 
     $barres = [];
     $st = $db->prepare(
-        'SELECT b.* FROM entrepot_barre b WHERE b.etage_id = :e ORDER BY b.numero ASC'
+        'SELECT b.* FROM entrepot_barre b
+         INNER JOIN entrepot_rayon r ON r.id = b.rayon_id
+         WHERE b.etage_id = :e
+         ORDER BY r.numero ASC, b.numero ASC'
     );
     $st->execute([':e' => $etage_id]);
     foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $b) {
@@ -659,12 +770,15 @@ function entrepot_get_referentiel_etage_complet($numero_etage) {
         $barres[] = $b;
     }
 
+    $barres_par_rayon = entrepot_barres_grouper_par_rayon($barres);
+
     return [
         'etage' => $etage,
         'rayons' => $fetch('entrepot_rayon'),
         'allees' => $fetch('entrepot_allee'),
         'zones' => $fetch('entrepot_zone'),
         'barres' => $barres,
+        'barres_par_rayon' => $barres_par_rayon,
     ];
 }
 
@@ -725,18 +839,24 @@ function entrepot_enregistrer_referentiel_etage($numero_etage, array $post) {
                 }
                 $bid = (int) $bid;
                 $nom = trim((string) ($bdata['nom'] ?? ''));
-                if ($bid <= 0 || $nom === '') {
+                $existing_barre = entrepot_get_barre_by_id($bid);
+                if ($existing_barre === null) {
                     continue;
                 }
+                if ($nom === '') {
+                    $nom = 'Barre ' . (int) ($existing_barre['numero'] ?? 0);
+                }
                 $rayon_id = isset($bdata['rayon_id']) && $bdata['rayon_id'] !== '' ? (int) $bdata['rayon_id'] : null;
+                if ($rayon_id === null && !empty($existing_barre['rayon_id'])) {
+                    $rayon_id = (int) $existing_barre['rayon_id'];
+                }
                 $allee_id = isset($bdata['allee_id']) && $bdata['allee_id'] !== '' ? (int) $bdata['allee_id'] : null;
                 $zone_id = isset($bdata['zone_id']) && $bdata['zone_id'] !== '' ? (int) $bdata['zone_id'] : null;
                 $db->prepare(
                     'UPDATE entrepot_barre SET nom = :nom, rayon_id = :r, allee_id = :a, zone_id = :z, date_modification = NOW() WHERE id = :id AND etage_id = :e'
                 )->execute([':nom' => $nom, ':r' => $rayon_id, ':a' => $allee_id, ':z' => $zone_id, ':id' => $bid, ':e' => $etage_id]);
                 entrepot_barre_refresh_chemin_libelle($bid, $db);
-                $existing_barre = entrepot_get_barre_by_id($bid);
-                if ($existing_barre !== null && empty($existing_barre['code_scan'])) {
+                if (empty($existing_barre['code_scan'])) {
                     entrepot_barre_generer_code_scan($bid);
                 }
                 if (isset($bdata['positions']) && is_array($bdata['positions'])) {
@@ -848,9 +968,25 @@ function entrepot_resolve_position_id_from_legacy(array $produit) {
         return null;
     }
 
-    $st = $db->prepare('SELECT id FROM entrepot_barre WHERE etage_id = :e AND numero = :n LIMIT 1');
-    $st->execute([':e' => $etage_id, ':n' => $barre_n]);
-    $barre_id = (int) $st->fetchColumn();
+    $rayon_n = isset($produit['numero_rayon']) && $produit['numero_rayon'] !== '' ? (int) $produit['numero_rayon'] : 0;
+    $barre_id = 0;
+
+    if ($rayon_n > 0) {
+        $st = $db->prepare('SELECT id FROM entrepot_rayon WHERE etage_id = :e AND numero = :n LIMIT 1');
+        $st->execute([':e' => $etage_id, ':n' => $rayon_n]);
+        $rayon_id = (int) $st->fetchColumn();
+        if ($rayon_id > 0) {
+            $st = $db->prepare('SELECT id FROM entrepot_barre WHERE rayon_id = :r AND numero = :n LIMIT 1');
+            $st->execute([':r' => $rayon_id, ':n' => $barre_n]);
+            $barre_id = (int) $st->fetchColumn();
+        }
+    }
+
+    if ($barre_id <= 0) {
+        $st = $db->prepare('SELECT id FROM entrepot_barre WHERE etage_id = :e AND numero = :n LIMIT 1');
+        $st->execute([':e' => $etage_id, ':n' => $barre_n]);
+        $barre_id = (int) $st->fetchColumn();
+    }
     if ($barre_id <= 0) {
         return null;
     }

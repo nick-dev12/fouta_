@@ -18,6 +18,7 @@ if (!admin_is_full_admin()) {
 }
 
 require_once __DIR__ . '/../../models/model_entrepot_emplacement.php';
+require_once __DIR__ . '/../../models/model_entrepot_referentiel.php';
 
 if (empty($_SESSION['admin_csrf'])) {
     $_SESSION['admin_csrf'] = bin2hex(random_bytes(32));
@@ -31,12 +32,34 @@ if (isset($_SESSION['success_message_emplacement_entrepot'])) {
     unset($_SESSION['success_message_emplacement_entrepot']);
 }
 
+if (isset($_SESSION['error_message_emplacement_entrepot'])) {
+    $error_message = (string) $_SESSION['error_message_emplacement_entrepot'];
+    unset($_SESSION['error_message_emplacement_entrepot']);
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $token = isset($_POST['csrf_token']) ? (string) $_POST['csrf_token'] : '';
     if ($token === '' || !hash_equals((string) ($_SESSION['admin_csrf'] ?? ''), $token)) {
         $error_message = 'Session expirée ou jeton invalide. Rechargez la page.';
     } elseif (!entrepot_emplacement_tables_ok()) {
         $error_message = 'Tables absentes — exécutez migrations/run_create_entrepot_emplacement_config.php';
+    } elseif (isset($_POST['ajouter_niveau'])) {
+        $res = entrepot_emplacement_ajouter_niveau(
+            isset($_POST['nom_niveau']) ? (string) $_POST['nom_niveau'] : '',
+            [
+                'nb_rayons' => isset($_POST['nb_rayons']) ? (int) $_POST['nb_rayons'] : 0,
+                'nb_allees' => isset($_POST['nb_allees']) ? (int) $_POST['nb_allees'] : 0,
+                'nb_zones' => isset($_POST['nb_zones']) ? (int) $_POST['nb_zones'] : 0,
+                'nb_positions' => isset($_POST['nb_positions']) ? (int) $_POST['nb_positions'] : 0,
+                'nb_barres' => isset($_POST['nb_barres']) ? (int) $_POST['nb_barres'] : 0,
+            ]
+        );
+        if ($res['success']) {
+            $_SESSION['success_message_emplacement_entrepot'] = $res['message'];
+            header('Location: emplacement-entrepot.php');
+            exit;
+        }
+        $error_message = $res['message'];
     } elseif (isset($_POST['enregistrer_structure'])) {
         $nb_etages = isset($_POST['nb_etages']) ? (int) $_POST['nb_etages'] : 0;
         $raw_etages = isset($_POST['etages']) && is_array($_POST['etages']) ? $_POST['etages'] : [];
@@ -77,26 +100,15 @@ $config = $data['config'];
 $etages = $data['etages'];
 $tables_ok = entrepot_emplacement_tables_ok();
 $nb_etages = (int) ($config['nb_etages'] ?? 0);
-
-$initial_etages = [];
+$prochain_numero_niveau = 1;
 foreach ($etages as $row) {
     $n = (int) ($row['numero_etage'] ?? 0);
-    if ($n <= 0) {
-        continue;
+    if ($n >= $prochain_numero_niveau) {
+        $prochain_numero_niveau = $n + 1;
     }
-    $initial_etages[(string) $n] = [
-        'nb_rayons' => (int) ($row['nb_rayons'] ?? 100),
-        'nb_allees' => (int) ($row['nb_allees'] ?? 10),
-        'nb_zones' => (int) ($row['nb_zones'] ?? 10),
-        'nb_positions' => (int) ($row['nb_positions'] ?? 10),
-        'nb_barres' => (int) ($row['nb_barres'] ?? 10),
-    ];
 }
-
-$initial_json = json_encode([
-    'nb_etages' => $nb_etages,
-    'etages' => $initial_etages,
-], JSON_UNESCAPED_UNICODE);
+$niveaux_max_atteint = $prochain_numero_niveau > (int) ENTREPOT_EMPLACEMENT_NB_ETAGES_MAX;
+$defaults_niveau = entrepot_emplacement_defaults_fallback();
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -158,9 +170,9 @@ $initial_json = json_encode([
                     <strong><?php echo count($etages); ?></strong> fiche(s) détaillée(s)
                 <?php endif; ?>
             </p>
-            <button type="button" class="ee-btn-primary" onclick="openModalEntrepotEmplacement()" <?php echo !$tables_ok ? 'disabled' : ''; ?>>
-                <i class="fas fa-sliders" aria-hidden="true"></i>
-                Configurer la structure
+            <button type="button" class="ee-btn-primary" onclick="openModalEntrepotEmplacement()" <?php echo (!$tables_ok || $niveaux_max_atteint) ? 'disabled' : ''; ?>>
+                <i class="fas fa-plus" aria-hidden="true"></i>
+                Ajouter un niveau
             </button>
         </div>
 
@@ -184,15 +196,24 @@ $initial_json = json_encode([
                                 <th scope="col">Allées</th>
                                 <th scope="col">Zones</th>
                                 <th scope="col">Positions</th>
-                                <th scope="col">Barres</th>
+                                <th scope="col">Barres / rayon</th>
                                 <th scope="col">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php foreach ($etages as $row): ?>
-                            <?php $num = (int) ($row['numero_etage'] ?? 0); ?>
+                            <?php
+                            $num = (int) ($row['numero_etage'] ?? 0);
+                            $etage_ref = entrepot_referentiel_tables_ok() ? entrepot_get_etage_ref_by_numero($num) : null;
+                            $etage_libelle = ($etage_ref !== null && trim((string) ($etage_ref['nom'] ?? '')) !== '')
+                                ? (string) $etage_ref['nom']
+                                : ('Étage ' . $num);
+                            ?>
                             <tr>
-                                <td><strong>Étage <?php echo $num; ?></strong></td>
+                                <td>
+                                    <strong><?php echo htmlspecialchars($etage_libelle, ENT_QUOTES, 'UTF-8'); ?></strong>
+                                    <span class="ee-table-etage-num">Étage <?php echo $num; ?></span>
+                                </td>
                                 <td><?php echo (int) ($row['nb_rayons'] ?? 0); ?></td>
                                 <td><?php echo (int) ($row['nb_allees'] ?? 0); ?></td>
                                 <td><?php echo (int) ($row['nb_zones'] ?? 0); ?></td>
@@ -228,10 +249,10 @@ $initial_json = json_encode([
                     <div class="ee-modal__head-top">
                         <div>
                             <h2 id="titreEntrepotEmplacement" class="ee-modal__title">
-                                <i class="fas fa-warehouse" aria-hidden="true"></i>
-                                Configurer la structure
+                                <i class="fas fa-layer-group" aria-hidden="true"></i>
+                                Ajouter un niveau
                             </h2>
-                            <p class="ee-modal__subtitle">Indiquez le nombre d’étages, puis configurez chaque étage (rayons, allées, zones, positions, barres).</p>
+                            <p class="ee-modal__subtitle">Enregistrez un niveau à la fois : nom du niveau puis ses limites (rayons, allées, zones, positions, barres par rayon).</p>
                         </div>
                         <button type="button" class="ee-modal__close" onclick="closeModalEntrepotEmplacement()" aria-label="Fermer">
                             <i class="fas fa-xmark" aria-hidden="true"></i>
@@ -240,41 +261,44 @@ $initial_json = json_encode([
                 </div>
                 <form method="post" id="formEntrepotEmplacement">
                     <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['admin_csrf']); ?>">
-                    <input type="hidden" name="enregistrer_structure" value="1">
-                    <div id="ee-hidden-inputs"></div>
-                    <script type="application/json" id="ee-initial-data"><?php echo htmlspecialchars($initial_json, ENT_QUOTES, 'UTF-8'); ?></script>
+                    <input type="hidden" name="ajouter_niveau" value="1">
                     <div class="ee-modal__body">
+                        <p class="ee-modal__level-kicker">
+                            <i class="fas fa-hashtag" aria-hidden="true"></i>
+                            Sera enregistré comme <strong>Niveau <?php echo (int) $prochain_numero_niveau; ?></strong>
+                        </p>
                         <div class="ee-field">
-                            <label for="ee_nb_etages"><i class="fas fa-building" aria-hidden="true"></i> Nombre d’étages</label>
-                            <input type="number" id="ee_nb_etages" min="1" max="<?php echo (int) ENTREPOT_EMPLACEMENT_NB_ETAGES_MAX; ?>" step="1"
-                                value="<?php echo $nb_etages > 0 ? (int) $nb_etages : 3; ?>" required>
-                            <span class="ee-field__hint">De 1 à <?php echo (int) ENTREPOT_EMPLACEMENT_NB_ETAGES_MAX; ?> étages.</span>
+                            <label for="ee_nom_niveau"><i class="fas fa-tag" aria-hidden="true"></i> Nom du niveau</label>
+                            <input type="text" id="ee_nom_niveau" name="nom_niveau" maxlength="100" required
+                                placeholder="Ex. Rez-de-chaussée, Mezzanine pièces lourdes"
+                                value="<?php echo htmlspecialchars(isset($_POST['nom_niveau']) ? (string) $_POST['nom_niveau'] : '', ENT_QUOTES, 'UTF-8'); ?>">
+                            <span class="ee-field__hint">Ce nom apparaît dans la liste et sur les étiquettes barres.</span>
                         </div>
-                        <div class="ee-field" id="ee-etage-select-wrap" hidden>
-                            <label for="ee_etage_courant"><i class="fas fa-layer-group" aria-hidden="true"></i> Étage à configurer</label>
-                            <select id="ee_etage_courant"></select>
-                            <span class="ee-field__hint">Choisissez un étage pour afficher ses limites.</span>
-                        </div>
-                        <div id="ee-fields-wrap" class="ee-fields-grid" hidden>
+                        <div id="ee-fields-wrap" class="ee-fields-grid">
                             <div class="ee-field">
                                 <label for="ee_nb_rayons"><i class="fas fa-th-large" aria-hidden="true"></i> Nombre de rayons</label>
-                                <input type="number" id="ee_nb_rayons" min="1" max="<?php echo (int) ENTREPOT_EMPLACEMENT_NB_RAYONS_MAX; ?>" step="1" required>
+                                <input type="number" id="ee_nb_rayons" name="nb_rayons" min="1" max="<?php echo (int) ENTREPOT_EMPLACEMENT_NB_RAYONS_MAX; ?>" step="1" required
+                                    value="10">
                             </div>
                             <div class="ee-field">
                                 <label for="ee_nb_allees"><i class="fas fa-road" aria-hidden="true"></i> Nombre d’allées</label>
-                                <input type="number" id="ee_nb_allees" min="1" max="<?php echo (int) ENTREPOT_EMPLACEMENT_NB_PETIT_MAX; ?>" step="1" required>
+                                <input type="number" id="ee_nb_allees" name="nb_allees" min="1" max="<?php echo (int) ENTREPOT_EMPLACEMENT_NB_PETIT_MAX; ?>" step="1" required
+                                    value="<?php echo (int) ($defaults_niveau['nb_allees'] ?? 10); ?>">
                             </div>
                             <div class="ee-field">
                                 <label for="ee_nb_zones"><i class="fas fa-map-marker-alt" aria-hidden="true"></i> Nombre de zones</label>
-                                <input type="number" id="ee_nb_zones" min="1" max="<?php echo (int) ENTREPOT_EMPLACEMENT_NB_PETIT_MAX; ?>" step="1" required>
+                                <input type="number" id="ee_nb_zones" name="nb_zones" min="1" max="<?php echo (int) ENTREPOT_EMPLACEMENT_NB_PETIT_MAX; ?>" step="1" required
+                                    value="<?php echo (int) ($defaults_niveau['nb_zones'] ?? 10); ?>">
                             </div>
                             <div class="ee-field">
-                                <label for="ee_nb_positions"><i class="fas fa-crosshairs" aria-hidden="true"></i> Nombre de positions</label>
-                                <input type="number" id="ee_nb_positions" min="1" max="<?php echo (int) ENTREPOT_EMPLACEMENT_NB_PETIT_MAX; ?>" step="1" required>
+                                <label for="ee_nb_positions"><i class="fas fa-crosshairs" aria-hidden="true"></i> Positions / barre</label>
+                                <input type="number" id="ee_nb_positions" name="nb_positions" min="1" max="<?php echo (int) ENTREPOT_EMPLACEMENT_NB_PETIT_MAX; ?>" step="1" required
+                                    value="<?php echo (int) ($defaults_niveau['nb_positions'] ?? 10); ?>">
                             </div>
                             <div class="ee-field">
-                                <label for="ee_nb_barres"><i class="fas fa-grip-lines" aria-hidden="true"></i> Nombre de barres</label>
-                                <input type="number" id="ee_nb_barres" min="1" max="<?php echo (int) ENTREPOT_EMPLACEMENT_NB_PETIT_MAX; ?>" step="1" required>
+                                <label for="ee_nb_barres"><i class="fas fa-grip-lines" aria-hidden="true"></i> Barres / rayon</label>
+                                <input type="number" id="ee_nb_barres" name="nb_barres" min="1" max="<?php echo (int) ENTREPOT_EMPLACEMENT_NB_PETIT_MAX; ?>" step="1" required
+                                    value="<?php echo (int) ($defaults_niveau['nb_barres'] ?? 10); ?>">
                             </div>
                         </div>
                     </div>
@@ -282,7 +306,7 @@ $initial_json = json_encode([
                         <button type="button" class="ee-modal__cancel" onclick="closeModalEntrepotEmplacement()">Annuler</button>
                         <button type="submit" class="ee-modal__submit">
                             <i class="fas fa-check" aria-hidden="true"></i>
-                            Enregistrer la structure
+                            Enregistrer ce niveau
                         </button>
                     </div>
                 </form>
@@ -292,7 +316,7 @@ $initial_json = json_encode([
 
     <?php include __DIR__ . '/../includes/footer.php'; ?>
     <script src="/js/admin-emplacement-entrepot.js<?php echo asset_version_query(); ?>"></script>
-    <?php if (!empty($error_message) && ($_POST['enregistrer_structure'] ?? '') === '1'): ?>
+    <?php if (!empty($error_message) && isset($_POST['ajouter_niveau'])): ?>
     <script>document.addEventListener('DOMContentLoaded', openModalEntrepotEmplacement);</script>
     <?php endif; ?>
 </body>

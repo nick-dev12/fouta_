@@ -208,15 +208,17 @@ $can_pdf_qrcode = ($stock_info_url !== '');
     <?php include '../includes/nav.php'; ?>
 
     <div class="page-ajuster-stock">
-        <div class="content-header dashboard-hero page-ajuster-stock-hero">
-            <div class="dashboard-hero-text">
+        <div class="content-header dashboard-hero page-ajuster-stock-hero page-ajuster-stock-hero--compact">
+            <div class="dashboard-hero-text page-ajuster-stock-hero__inner">
                 <p class="dashboard-eyebrow">Stock &amp; inventaire</p>
-                <h1 id="page-ajuster-stock-title"><i class="fas fa-boxes-stacked" aria-hidden="true"></i> Ajuster le stock</h1>
-                <p class="dashboard-subtitle page-ajuster-stock-hero__intro">
-                    Produit <strong class="page-ajuster-stock-hero__nom"><?php echo htmlspecialchars($produit['nom']); ?></strong>
-                </p>
-                <div class="page-ajuster-stock-hero__actions">
-                    <a href="index.php" class="btn-back page-ajuster-stock-back">
+                <div class="page-ajuster-stock-hero__row">
+                    <div class="page-ajuster-stock-hero__titles">
+                        <h1 id="page-ajuster-stock-title"><i class="fas fa-boxes-stacked" aria-hidden="true"></i> Ajuster le stock</h1>
+                        <p class="dashboard-subtitle page-ajuster-stock-hero__intro">
+                            Produit <strong class="page-ajuster-stock-hero__nom"><?php echo htmlspecialchars($produit['nom']); ?></strong>
+                        </p>
+                    </div>
+                    <a href="index.php" class="btn-back page-ajuster-stock-back page-ajuster-stock-hero__back">
                         <i class="fas fa-arrow-left" aria-hidden="true"></i> Retour à la liste
                     </a>
                 </div>
@@ -236,134 +238,222 @@ $can_pdf_qrcode = ($stock_info_url !== '');
     <?php endif; ?>
 
     <?php
-    // Récupération des informations enrichies
     $prod_description = trim(strip_tags((string) ($produit['description'] ?? '')));
     $prod_marque = produits_marque_libelle_from_row($produit);
     $prod_fournisseur = produits_fournisseur_nom_affichage($produit);
     $prod_ref_fournisseur = (produits_has_column('reference_fournisseur') ? trim((string) ($produit['reference_fournisseur'] ?? '')) : '');
     $meta_ref = !empty($produit['identifiant_interne']) ? trim((string) $produit['identifiant_interne']) : '';
-    require_once __DIR__ . '/../../includes/produit_emplacement_entrepot.php';
     $emplacement_vals = produit_emplacement_from_produit($produit);
+    if (produit_emplacement_use_referentiel() && !empty($emplacement_vals['entrepot_position_id'])) {
+        $emplacement_vals = produit_emplacement_enrich_referentiel_form_values($emplacement_vals);
+    }
+    $emplacement_resume = produit_emplacement_resume_court($emplacement_vals);
+    $a_emplacement = produit_emplacement_a_des_donnees($emplacement_vals);
+    $prix_catalogue = (float) ($produit['prix'] ?? 0);
+    $prix_promo_val = null;
+    if (!empty($produit['prix_promotion']) && (float) $produit['prix_promotion'] > 0) {
+        $prix_promo_val = (float) $produit['prix_promotion'];
+    }
+    $en_promotion = $prix_promo_val !== null && $prix_promo_val < $prix_catalogue;
+    $galerie_urls = produits_galerie_web_urls($produit);
+    if (empty($galerie_urls)) {
+        $galerie_urls = ['/image/produit1.jpg'];
+    }
     ?>
-    <div class="produit-preview page-ajuster-stock-preview" aria-label="Aperçu produit">
-        <div class="page-ajuster-stock-preview__media">
-            <img src="/upload/<?php echo htmlspecialchars($produit['image_principale'] ?? ''); ?>"
-                alt="<?php echo htmlspecialchars($produit['nom']); ?>"
-                onerror="this.src='/image/produit1.jpg'" width="96" height="96" loading="eager" decoding="async">
+
+    <div class="pas-showcase">
+        <div class="pas-showcase__gallery">
+            <div class="pas-gallery" id="pas-product-gallery">
+                <div class="pas-gallery__main">
+                    <img id="pas-gallery-main"
+                        src="<?php echo htmlspecialchars($galerie_urls[0], ENT_QUOTES, 'UTF-8'); ?>"
+                        alt="<?php echo htmlspecialchars($produit['nom']); ?>"
+                        class="pas-gallery__main-img"
+                        onerror="this.src='/image/produit1.jpg'" loading="eager" decoding="async">
+                </div>
+                <?php if (count($galerie_urls) > 1): ?>
+                <div class="pas-gallery__thumbs-row">
+                    <button type="button" class="pas-gallery__nav pas-gallery__nav--prev" id="pas-gallery-prev" aria-label="Image précédente">
+                        <i class="fas fa-chevron-left" aria-hidden="true"></i>
+                    </button>
+                    <div class="pas-gallery__thumbs-list" id="pas-gallery-thumbs-list">
+                        <?php foreach ($galerie_urls as $idx => $url): ?>
+                        <button type="button"
+                            class="pas-gallery__thumb<?php echo $idx === 0 ? ' is-active' : ''; ?>"
+                            data-index="<?php echo (int) $idx; ?>"
+                            data-src="<?php echo htmlspecialchars($url, ENT_QUOTES, 'UTF-8'); ?>"
+                            aria-label="Afficher l’image <?php echo (int) ($idx + 1); ?>"
+                            aria-pressed="<?php echo $idx === 0 ? 'true' : 'false'; ?>">
+                            <img src="<?php echo htmlspecialchars($url, ENT_QUOTES, 'UTF-8'); ?>"
+                                alt="Vue <?php echo (int) ($idx + 1); ?>"
+                                onerror="this.src='/image/produit1.jpg'" loading="lazy" decoding="async">
+                        </button>
+                        <?php endforeach; ?>
+                    </div>
+                    <button type="button" class="pas-gallery__nav pas-gallery__nav--next" id="pas-gallery-next" aria-label="Image suivante">
+                        <i class="fas fa-chevron-right" aria-hidden="true"></i>
+                    </button>
+                </div>
+                <?php endif; ?>
+            </div>
         </div>
-        <div class="produit-preview-info page-ajuster-stock-preview__info">
-            <!-- Titre avec nom · marque · description -->
-            <h3 class="page-ajuster-stock-preview__title">
-                <span class="pas-preview-nom"><?php echo htmlspecialchars($produit['nom']); ?></span>
-                <?php if ($prod_marque !== ''): ?>
-                <span class="pas-preview-sep">·</span>
-                <span class="pas-preview-marque"><?php echo htmlspecialchars($prod_marque); ?></span>
-                <?php endif; ?>
-            </h3>
-            <?php if ($prod_description !== ''): ?>
-            <p class="pas-preview-desc"><?php echo htmlspecialchars($prod_description); ?></p>
-            <?php endif; ?>
 
-            <!-- Prix -->
-            <span class="prix page-ajuster-stock-preview__prix">
-                <?php echo number_format($prix_produit, 0, ',', ' '); ?> FCFA
-                <span class="page-ajuster-stock-preview__prix-unit">/ unité</span>
-            </span>
-            <p class="page-ajuster-stock-preview__legend">Prix retenu pour la valorisation (promo si applicable).</p>
-
-            <!-- Infos enrichies : Fournisseur + Référence -->
-            <?php if ($prod_fournisseur !== '' || $prod_ref_fournisseur !== ''): ?>
-            <div class="pas-preview-supplier" role="region" aria-label="Fournisseur">
-                <?php if ($prod_fournisseur !== ''): ?>
-                <div class="pas-preview-supplier__item">
-                    <span class="pas-preview-supplier__ic"><i class="fas fa-truck" aria-hidden="true"></i></span>
-                    <div class="pas-preview-supplier__body">
-                        <span class="pas-preview-supplier__label">Fournisseur</span>
-                        <span class="pas-preview-supplier__value"><?php echo htmlspecialchars($prod_fournisseur); ?></span>
-                    </div>
-                </div>
+        <div class="pas-showcase__panel">
+            <div class="pas-showcase__head">
+                <h2 class="pas-showcase__title">
+                    <span class="pas-preview-nom"><?php echo htmlspecialchars($produit['nom']); ?></span>
+                    <?php if ($prod_marque !== ''): ?>
+                    <span class="pas-preview-sep">·</span>
+                    <span class="pas-preview-marque"><?php echo htmlspecialchars($prod_marque); ?></span>
+                    <?php endif; ?>
+                </h2>
+                <?php if ($meta_ref !== ''): ?>
+                <p class="pas-showcase__ref"><i class="fas fa-barcode" aria-hidden="true"></i> <?php echo htmlspecialchars($meta_ref); ?></p>
                 <?php endif; ?>
-                <?php if ($prod_ref_fournisseur !== ''): ?>
-                <div class="pas-preview-supplier__item">
-                    <span class="pas-preview-supplier__ic"><i class="fas fa-hashtag" aria-hidden="true"></i></span>
-                    <div class="pas-preview-supplier__body">
-                        <span class="pas-preview-supplier__label">Réf. fournisseur</span>
-                        <span class="pas-preview-supplier__value"><?php echo htmlspecialchars($prod_ref_fournisseur); ?></span>
-                    </div>
+            </div>
+
+            <div class="pas-price-card">
+                <span class="pas-price-card__label">Prix de vente</span>
+                <div class="pas-price-card__row">
+                    <?php if ($en_promotion): ?>
+                        <span class="pas-price-card__amount pas-price-card__amount--promo"><?php echo number_format($prix_promo_val, 0, ',', ' '); ?> FCFA</span>
+                        <span class="pas-price-card__old"><?php echo number_format($prix_catalogue, 0, ',', ' '); ?> FCFA</span>
+                        <span class="pas-price-card__badge">Promo</span>
+                    <?php else: ?>
+                        <span class="pas-price-card__amount"><?php echo number_format($prix_catalogue, 0, ',', ' '); ?> FCFA</span>
+                    <?php endif; ?>
                 </div>
+            </div>
+
+            <?php if ($prod_description !== '' || $prod_fournisseur !== '' || $prod_ref_fournisseur !== ''): ?>
+            <div class="pas-info-card">
+                <h3 class="pas-info-card__title"><i class="fas fa-circle-info" aria-hidden="true"></i> Informations</h3>
+                <?php if ($prod_description !== ''): ?>
+                <p class="pas-preview-desc"><?php echo htmlspecialchars($prod_description); ?></p>
+                <?php endif; ?>
+                <?php if ($prod_fournisseur !== '' || $prod_ref_fournisseur !== ''): ?>
+                <dl class="pas-info-card__list">
+                    <?php if ($prod_fournisseur !== ''): ?>
+                    <div class="pas-info-card__row">
+                        <dt>Fournisseur</dt>
+                        <dd><?php echo htmlspecialchars($prod_fournisseur); ?></dd>
+                    </div>
+                    <?php endif; ?>
+                    <?php if ($prod_ref_fournisseur !== ''): ?>
+                    <div class="pas-info-card__row">
+                        <dt>Réf. fournisseur</dt>
+                        <dd><?php echo htmlspecialchars($prod_ref_fournisseur); ?></dd>
+                    </div>
+                    <?php endif; ?>
+                </dl>
                 <?php endif; ?>
             </div>
             <?php endif; ?>
 
-            <?php if ($meta_ref !== ''): ?>
-            <div class="page-ajuster-stock-meta-cards" role="list" aria-label="Référence produit">
-                <div class="page-ajuster-stock-meta-card" role="listitem">
-                    <span class="page-ajuster-stock-meta-card__ic" aria-hidden="true"><i class="fas fa-barcode"></i></span>
-                    <div class="page-ajuster-stock-meta-card__body">
-                        <span class="page-ajuster-stock-meta-card__label">Référence FPL</span>
-                        <span class="page-ajuster-stock-meta-card__value"><?php echo htmlspecialchars($meta_ref); ?></span>
-                    </div>
+            <?php if ($a_emplacement): ?>
+            <section class="pas-location-hero" aria-labelledby="pas-location-title">
+                <div class="pas-location-hero__banner">
+                    <i class="fas fa-map-location-dot" aria-hidden="true"></i>
+                    <h3 id="pas-location-title">Position en entrepôt</h3>
                 </div>
+                <?php if (!empty($emplacement_vals['chemin_libelle'])): ?>
+                    <p class="pas-location-hero__chemin"><?php echo htmlspecialchars((string) $emplacement_vals['chemin_libelle']); ?></p>
+                <?php elseif ($emplacement_resume !== ''): ?>
+                    <p class="pas-location-hero__chemin"><?php echo htmlspecialchars($emplacement_resume); ?></p>
+                <?php endif; ?>
+                <div class="pas-location-hero__grid">
+                    <?php
+                    $etapes_loc = [
+                        ['col' => 'etage', 'label' => 'Niveau'],
+                        ['col' => 'numero_rayon', 'label' => 'Rayon'],
+                        ['col' => 'allee', 'label' => 'Allée'],
+                        ['col' => 'zone_emplacement', 'label' => 'Zone'],
+                        ['col' => 'barre_rayon', 'label' => 'Barre'],
+                        ['col' => 'position_emplacement', 'label' => 'Position'],
+                    ];
+                    foreach ($etapes_loc as $etape):
+                        $col = $etape['col'];
+                        if (empty($emplacement_vals[$col])) {
+                            continue;
+                        }
+                        $is_pos = ($col === 'position_emplacement');
+                    ?>
+                    <div class="pas-location-hero__cell<?php echo $is_pos ? ' pas-location-hero__cell--accent' : ''; ?>">
+                        <span class="pas-location-hero__cell-label"><?php echo htmlspecialchars($etape['label']); ?></span>
+                        <span class="pas-location-hero__cell-value"><?php echo htmlspecialchars(produit_emplacement_option_label($col, $emplacement_vals[$col])); ?></span>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+            </section>
+            <?php else: ?>
+            <div class="pas-location-empty">
+                <i class="fas fa-map-pin" aria-hidden="true"></i>
+                <div>
+                    <strong>Aucune position en entrepôt</strong>
+                    <p>Ce produit n’a pas encore d’emplacement assigné.</p>
+                </div>
+                <a href="modifier.php?id=<?php echo $produit_id; ?>" class="pas-location-empty__link">Définir la position</a>
             </div>
             <?php endif; ?>
-
-            <?php produit_emplacement_render_apercu($emplacement_vals); ?>
         </div>
     </div>
 
-    <div class="ajuster-stock-layout page-ajuster-stock-layout">
-        <div class="ajuster-stock-card page-ajuster-stock-card page-ajuster-stock-card--etat">
+    <div class="ajuster-stock-layout page-ajuster-stock-layout pas-dashboard">
+        <div class="ajuster-stock-card page-ajuster-stock-card page-ajuster-stock-card--etat pas-dashboard__stats">
             <h2 class="page-ajuster-stock-card__title"><i class="fas fa-chart-bar" aria-hidden="true"></i> État du stock</h2>
-            <div class="stock-stats-grid page-ajuster-stock-stats" role="list">
-                <div class="stock-stat-card stock-total page-ajuster-stock-stat" role="listitem">
-                    <h4 class="page-ajuster-stock-stat__label">Nombre total</h4>
-                    <div class="value page-ajuster-stock-stat__value" aria-label="Total cumulé"><?php echo (int) $nombre_total; ?></div>
+            <div class="stock-stats-grid page-ajuster-stock-stats pas-kpi-row" role="list">
+                <div class="stock-stat-card stock-total page-ajuster-stock-stat pas-kpi-tile" role="listitem">
+                    <h4 class="page-ajuster-stock-stat__label">Total cumulé</h4>
+                    <div class="value page-ajuster-stock-stat__value"><?php echo (int) $nombre_total; ?></div>
                 </div>
-                <div class="stock-stat-card stock-vendu page-ajuster-stock-stat" role="listitem">
-                    <h4 class="page-ajuster-stock-stat__label">Quantité vendue</h4>
-                    <div class="value page-ajuster-stock-stat__value" aria-label="Unités vendues"><?php echo (int) $quantite_vendue; ?></div>
+                <div class="stock-stat-card stock-vendu page-ajuster-stock-stat pas-kpi-tile" role="listitem">
+                    <h4 class="page-ajuster-stock-stat__label">Vendu</h4>
+                    <div class="value page-ajuster-stock-stat__value"><?php echo (int) $quantite_vendue; ?></div>
                 </div>
-                <div class="stock-stat-card stock-restant page-ajuster-stock-stat" role="listitem">
-                    <h4 class="page-ajuster-stock-stat__label">Stock restant</h4>
-                    <div class="value page-ajuster-stock-stat__value" aria-label="Stock actuel"><?php echo (int) $stock_restant; ?></div>
+                <div class="stock-stat-card stock-restant page-ajuster-stock-stat pas-kpi-tile" role="listitem">
+                    <h4 class="page-ajuster-stock-stat__label">Restant</h4>
+                    <div class="value page-ajuster-stock-stat__value"><?php echo (int) $stock_restant; ?></div>
                 </div>
             </div>
 
-            <h2 class="page-ajuster-stock-card__title page-ajuster-stock-card__title--spaced"><i class="fas fa-calculator" aria-hidden="true"></i> Comptabilité (valorisation)</h2>
-            <div class="comptabilite-grid page-ajuster-stock-compta">
-                <div class="comptabilite-item page-ajuster-stock-compta__item">
-                    <label class="page-ajuster-stock-compta__label">Valeur du stock actuel</label>
+            <h2 class="page-ajuster-stock-card__title page-ajuster-stock-card__title--spaced"><i class="fas fa-calculator" aria-hidden="true"></i> Valorisation</h2>
+            <div class="comptabilite-grid page-ajuster-stock-compta pas-valorisation">
+                <div class="comptabilite-item page-ajuster-stock-compta__item pas-valorisation__item">
+                    <label class="page-ajuster-stock-compta__label">Valeur stock actuel</label>
                     <span class="montant page-ajuster-stock-compta__montant"><?php echo number_format($valeur_stock_actuel, 0, ',', ' '); ?> FCFA</span>
-                    <span class="detail page-ajuster-stock-compta__detail"><?php echo (int) $stock_actuel; ?> ×
-                        <?php echo number_format($prix_produit, 0, ',', ' '); ?> FCFA</span>
+                    <span class="detail page-ajuster-stock-compta__detail"><?php echo (int) $stock_actuel; ?> × <?php echo number_format($prix_produit, 0, ',', ' '); ?> FCFA</span>
                 </div>
-                <div class="comptabilite-item page-ajuster-stock-compta__item">
-                    <label class="page-ajuster-stock-compta__label">Chiffre d'affaires (ventes)</label>
+                <div class="comptabilite-item page-ajuster-stock-compta__item pas-valorisation__item">
+                    <label class="page-ajuster-stock-compta__label">Chiffre d'affaires</label>
                     <span class="montant page-ajuster-stock-compta__montant"><?php echo number_format($valeur_ventes, 0, ',', ' '); ?> FCFA</span>
-                    <span class="detail page-ajuster-stock-compta__detail"><?php echo (int) $quantite_vendue; ?> vendu(s) ×
-                        <?php echo number_format($prix_produit, 0, ',', ' '); ?> FCFA</span>
+                    <span class="detail page-ajuster-stock-compta__detail"><?php echo (int) $quantite_vendue; ?> vendu(s)</span>
                 </div>
             </div>
         </div>
 
-        <div class="page-ajuster-stock-side">
-            <div class="stock-form-block page-ajuster-stock-form">
-                <h3 class="page-ajuster-stock-form__title"><i class="fas fa-edit" aria-hidden="true"></i> Mettre à jour le stock</h3>
-                <form method="POST" action="?id=<?php echo $produit_id; ?>" class="page-ajuster-stock-form__form">
+        <div class="page-ajuster-stock-side pas-dashboard__form-col">
+            <div class="stock-form-block page-ajuster-stock-form pas-stock-form">
+                <h3 class="page-ajuster-stock-form__title"><i class="fas fa-boxes-stacked" aria-hidden="true"></i> Ajouter au stock</h3>
+                <form method="POST" action="?id=<?php echo $produit_id; ?>" class="page-ajuster-stock-form__form" id="pas-stock-form">
                     <input type="hidden" name="ajuster_stock" value="1">
                     <div class="form-group page-ajuster-stock-form__field">
-                        <label for="quantite_ajout">Quantité à ajouter au stock actuel</label>
-                        <input type="number" id="quantite_ajout" name="quantite_ajout" min="1" step="1" required
-                            value="<?php echo htmlspecialchars($quantite_ajout_form_value, ENT_QUOTES, 'UTF-8'); ?>"
-                            placeholder="Nombre d’unités reçues / à ajouter" inputmode="numeric" autocomplete="off"
-                            aria-describedby="quantite_ajout_aide">
+                        <label for="quantite_ajout">Quantité à ajouter</label>
+                        <div class="pas-qty-stepper">
+                            <button type="button" class="pas-qty-stepper__btn" id="pas_qty_minus" aria-label="Diminuer">−</button>
+                            <input type="number" id="quantite_ajout" name="quantite_ajout" min="1" step="1" required
+                                value="<?php echo htmlspecialchars($quantite_ajout_form_value !== '' ? $quantite_ajout_form_value : '1', ENT_QUOTES, 'UTF-8'); ?>"
+                                inputmode="numeric" autocomplete="off" aria-describedby="quantite_ajout_aide">
+                            <button type="button" class="pas-qty-stepper__btn" id="pas_qty_plus" aria-label="Augmenter">+</button>
+                        </div>
                     </div>
                     <p class="page-ajuster-stock-form__field-hint" id="quantite_ajout_aide">
-                        Stock actuel&nbsp;: <strong><?php echo (int) $stock_actuel; ?></strong>.
-                        Ce nombre s’<strong>ajoute</strong> aux unités déjà disponibles (ce n’est pas le stock total cible).
-                        Pour fixer ou diminuer le stock différemment, utilisez <em>Modifier le produit</em>.
+                        Stock actuel&nbsp;: <strong><?php echo (int) $stock_actuel; ?></strong> unité(s). La quantité saisie s’ajoute au stock existant.
                     </p>
-                    <button type="submit" class="btn-primary page-ajuster-stock-form__submit">
+                    <div class="pas-total-card" aria-live="polite">
+                        <span class="pas-total-card__label">Valeur de l’ajout (prix vente)</span>
+                        <span class="pas-total-card__value" id="pas_qty_total_value"><?php echo number_format($prix_produit * max(1, (int) ($quantite_ajout_form_value !== '' ? $quantite_ajout_form_value : 1)), 0, ',', ' '); ?> FCFA</span>
+                    </div>
+                    <button type="submit" class="btn-primary page-ajuster-stock-form__submit pas-stock-form__submit">
                         <i class="fas fa-check" aria-hidden="true"></i> Enregistrer le stock
                     </button>
                 </form>
@@ -729,6 +819,90 @@ $can_pdf_qrcode = ($stock_info_url !== '');
             }
         }, 700);
     };
+
+    (function () {
+        var input = document.getElementById('quantite_ajout');
+        var minus = document.getElementById('pas_qty_minus');
+        var plus = document.getElementById('pas_qty_plus');
+        var totalEl = document.getElementById('pas_qty_total_value');
+        var unitPrice = <?php echo json_encode($prix_produit); ?>;
+        if (!input) {
+            return;
+        }
+        function formatFcfa(n) {
+            return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' FCFA';
+        }
+        function updateTotal() {
+            var q = parseInt(input.value, 10);
+            if (isNaN(q) || q < 1) {
+                q = 1;
+            }
+            if (totalEl) {
+                totalEl.textContent = formatFcfa(q * unitPrice);
+            }
+        }
+        function step(delta) {
+            var q = parseInt(input.value, 10);
+            if (isNaN(q) || q < 1) {
+                q = 1;
+            }
+            q = Math.max(1, q + delta);
+            input.value = String(q);
+            updateTotal();
+        }
+        if (minus) {
+            minus.addEventListener('click', function () { step(-1); });
+        }
+        if (plus) {
+            plus.addEventListener('click', function () { step(1); });
+        }
+        input.addEventListener('input', updateTotal);
+        input.addEventListener('change', updateTotal);
+    })();
+
+    (function () {
+        var mainImg = document.getElementById('pas-gallery-main');
+        var thumbs = document.querySelectorAll('.pas-gallery__thumb');
+        var prevBtn = document.getElementById('pas-gallery-prev');
+        var nextBtn = document.getElementById('pas-gallery-next');
+        var list = document.getElementById('pas-gallery-thumbs-list');
+        if (!mainImg || !thumbs.length) {
+            return;
+        }
+        var currentIdx = 0;
+        function setActive(idx) {
+            currentIdx = idx;
+            thumbs.forEach(function (thumb, i) {
+                var active = i === idx;
+                thumb.classList.toggle('is-active', active);
+                thumb.setAttribute('aria-pressed', active ? 'true' : 'false');
+            });
+            var src = thumbs[idx].getAttribute('data-src');
+            if (src) {
+                mainImg.src = src;
+            }
+            if (list && thumbs[idx]) {
+                var thumbEl = thumbs[idx];
+                var scrollLeft = thumbEl.offsetLeft - (list.clientWidth / 2) + (thumbEl.clientWidth / 2);
+                list.scrollTo({ left: Math.max(0, scrollLeft), behavior: 'smooth' });
+            }
+        }
+        thumbs.forEach(function (thumb, idx) {
+            thumb.addEventListener('click', function () {
+                setActive(idx);
+            });
+        });
+        if (prevBtn) {
+            prevBtn.addEventListener('click', function () {
+                setActive((currentIdx - 1 + thumbs.length) % thumbs.length);
+            });
+        }
+        if (nextBtn) {
+            nextBtn.addEventListener('click', function () {
+                setActive((currentIdx + 1) % thumbs.length);
+            });
+        }
+    })();
     </script>
 </body>
 
