@@ -446,9 +446,10 @@ function entrepot_emplacement_enregistrer_quantites_etage($numero_etage, array $
  *
  * @param string $nom_niveau
  * @param array<string, mixed> $data nb_rayons, nb_allees, nb_zones, nb_positions, nb_barres
+ * @param int|null $numero_demande Numéro souhaité (obligatoire si fourni par le formulaire)
  * @return array{success: bool, message: string, numero_etage?: int}
  */
-function entrepot_emplacement_ajouter_niveau($nom_niveau, array $data) {
+function entrepot_emplacement_ajouter_niveau($nom_niveau, array $data, $numero_demande = null) {
     global $db;
     if (!entrepot_emplacement_tables_ok()) {
         return ['success' => false, 'message' => 'Tables absentes — exécutez migrations/run_create_entrepot_emplacement_config.php'];
@@ -472,7 +473,17 @@ function entrepot_emplacement_ajouter_niveau($nom_niveau, array $data) {
     }
 
     $max_actuel = (int) $db->query('SELECT COALESCE(MAX(numero_etage), 0) FROM entrepot_emplacement_etage')->fetchColumn();
-    $numero = $max_actuel + 1;
+    if ($numero_demande !== null && (int) $numero_demande > 0) {
+        $numero = (int) $numero_demande;
+        if ($numero < 1 || $numero > ENTREPOT_EMPLACEMENT_NB_ETAGES_MAX) {
+            return ['success' => false, 'message' => 'Numéro de niveau invalide (1 à ' . ENTREPOT_EMPLACEMENT_NB_ETAGES_MAX . ').'];
+        }
+        if (entrepot_emplacement_get_etage($numero) !== null) {
+            return ['success' => false, 'message' => 'Le numéro de niveau ' . $numero . ' est déjà utilisé par un autre niveau.'];
+        }
+    } else {
+        $numero = $max_actuel + 1;
+    }
     if ($numero > ENTREPOT_EMPLACEMENT_NB_ETAGES_MAX) {
         return ['success' => false, 'message' => 'Limite atteinte : maximum ' . ENTREPOT_EMPLACEMENT_NB_ETAGES_MAX . ' niveaux.'];
     }
@@ -497,11 +508,12 @@ function entrepot_emplacement_ajouter_niveau($nom_niveau, array $data) {
         }
         $db->prepare($sql)->execute($params);
 
+        $nb_final = (int) $db->query('SELECT COALESCE(MAX(numero_etage), 0) FROM entrepot_emplacement_etage')->fetchColumn();
         $db->prepare(
             'INSERT INTO entrepot_emplacement_config (id, nb_etages, date_modification)
              VALUES (1, :nb, NOW())
              ON DUPLICATE KEY UPDATE nb_etages = VALUES(nb_etages), date_modification = NOW()'
-        )->execute([':nb' => $numero]);
+        )->execute([':nb' => $nb_final]);
 
         $db->commit();
     } catch (PDOException $e) {

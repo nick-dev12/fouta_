@@ -1005,7 +1005,9 @@ function process_update_produit($produit_id)
             if (produit_emplacement_use_referentiel()) {
                 $ancien_pid = isset($old_emplacement['entrepot_position_id']) ? (string) $old_emplacement['entrepot_position_id'] : '';
                 $nouveau_pid = isset($emplacement['entrepot_position_id']) ? (string) $emplacement['entrepot_position_id'] : '';
-                $emplacement_modifie = $ancien_pid !== $nouveau_pid;
+                $ancien_nid = isset($old_emplacement['entrepot_noeud_id']) ? (string) $old_emplacement['entrepot_noeud_id'] : '';
+                $nouveau_nid = isset($emplacement['entrepot_noeud_id']) ? (string) $emplacement['entrepot_noeud_id'] : '';
+                $emplacement_modifie = ($ancien_pid !== $nouveau_pid) || ($ancien_nid !== $nouveau_nid);
             }
             if (!$emplacement_modifie) {
             foreach ($emplacement as $col => $val) {

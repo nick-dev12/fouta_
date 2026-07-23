@@ -6,12 +6,16 @@
 require_once __DIR__ . '/../models/model_entrepot_emplacement.php';
 require_once __DIR__ . '/../models/model_entrepot_referentiel.php';
 require_once __DIR__ . '/../models/model_entrepot_structure_champs.php';
+require_once __DIR__ . '/../models/model_entrepot_hierarchie_libre.php';
 
 /**
  * @return bool
  */
 function produit_emplacement_use_referentiel() {
-    return produits_has_column('entrepot_position_id')
+    $has_link = (function_exists('produits_has_column') && produits_has_column('entrepot_position_id'))
+        || (function_exists('produits_has_column') && produits_has_column('entrepot_noeud_id'));
+
+    return $has_link
         && entrepot_referentiel_tables_ok()
         && entrepot_emplacement_est_configure();
 }
@@ -179,8 +183,13 @@ function produit_emplacement_id_from_source(array $source, $key) {
  */
 function produit_emplacement_from_source_referentiel(array $source) {
     global $db;
+    if (!function_exists('entrepot_hierarchie_libre_schema_ok')) {
+        require_once __DIR__ . '/../models/model_entrepot_hierarchie_libre.php';
+    }
+
     $out = [
         'entrepot_position_id' => null,
+        'entrepot_noeud_id' => null,
         'etage' => null,
         'numero_rayon' => null,
         'allee' => null,
@@ -195,6 +204,70 @@ function produit_emplacement_from_source_referentiel(array $source) {
         'ref_barre_id' => null,
         'chemin_libelle' => '',
     ];
+
+    // Mode hiérarchie libre
+    if (entrepot_hierarchie_libre_schema_ok()) {
+        $numero_etage = produit_emplacement_id_from_source($source, 'ref_etage');
+        if ($numero_etage <= 0 && isset($source['etage']) && ctype_digit((string) $source['etage'])) {
+            $numero_etage = (int) $source['etage'];
+        }
+        $noeud_id = produit_emplacement_id_from_source($source, 'entrepot_noeud_id');
+        if ($noeud_id <= 0) {
+            // Dernier ref_niveau_* sélectionné
+            $defs = entrepot_hierarchie_def_list(true);
+            foreach (array_reverse($defs) as $def) {
+                if (function_exists('entrepot_hierarchie_def_est_etage') && entrepot_hierarchie_def_est_etage($def)) {
+                    continue;
+                }
+                $nid = (int) ($def['id'] ?? 0);
+                $key = 'ref_niveau_' . $nid;
+                $val = produit_emplacement_id_from_source($source, $key);
+                if ($val > 0) {
+                    $noeud_id = $val;
+                    break;
+                }
+            }
+        }
+        if ($noeud_id <= 0 && $numero_etage <= 0) {
+            return $out;
+        }
+        if ($noeud_id > 0) {
+            $noeud = entrepot_noeud_get($noeud_id);
+            if ($noeud === null) {
+                return $out;
+            }
+            $out['entrepot_noeud_id'] = $noeud_id;
+            $out['chemin_libelle'] = entrepot_noeud_chemin_libelle($noeud_id);
+            $path = entrepot_noeud_selection_path($noeud_id);
+            foreach ($path as $niveau_id => $nid) {
+                $out['ref_niveau_' . (int) $niveau_id] = (string) (int) $nid;
+            }
+            if (!empty($noeud['etage_id'])) {
+                try {
+                    $st = $db->prepare('SELECT numero_etage FROM entrepot_etage WHERE id = :id LIMIT 1');
+                    $st->execute([':id' => (int) $noeud['etage_id']]);
+                    $num = (int) $st->fetchColumn();
+                    if ($num > 0) {
+                        $out['etage'] = (string) $num;
+                        $out['ref_numero_etage'] = (string) $num;
+                    }
+                } catch (PDOException $e) {
+                    // ignore
+                }
+            }
+            if (($noeud['legacy_table'] ?? '') === 'entrepot_position' && !empty($noeud['legacy_id'])) {
+                $out['entrepot_position_id'] = (int) $noeud['legacy_id'];
+            }
+
+            return $out;
+        }
+        if ($numero_etage > 0) {
+            $out['etage'] = (string) $numero_etage;
+            $out['ref_numero_etage'] = (string) $numero_etage;
+        }
+
+        return $out;
+    }
 
     $numero_etage = produit_emplacement_id_from_source($source, 'ref_etage');
     if ($numero_etage <= 0 && isset($source['etage']) && ctype_digit((string) $source['etage'])) {
@@ -539,11 +612,66 @@ function produit_emplacement_form_values_for_form(array $post = [], $produit = n
  * @return array<string, string|null|int>
  */
 function produit_emplacement_from_produit(array $produit) {
+    if (!function_exists('entrepot_hierarchie_libre_schema_ok')) {
+        require_once __DIR__ . '/../models/model_entrepot_hierarchie_libre.php';
+    }
+    if (produit_emplacement_use_referentiel() && entrepot_hierarchie_libre_schema_ok() && !empty($produit['entrepot_noeud_id'])) {
+        $noeud_id = (int) $produit['entrepot_noeud_id'];
+        $vals = [
+            'entrepot_noeud_id' => $noeud_id,
+            'chemin_libelle' => entrepot_noeud_chemin_libelle($noeud_id),
+        ];
+        $path = entrepot_noeud_selection_path($noeud_id);
+        foreach ($path as $niveau_id => $nid) {
+            $vals['ref_niveau_' . (int) $niveau_id] = (string) (int) $nid;
+        }
+        $noeud = entrepot_noeud_get($noeud_id);
+        if ($noeud && !empty($noeud['etage_id'])) {
+            global $db;
+            try {
+                $st = $db->prepare('SELECT numero_etage FROM entrepot_etage WHERE id = :id LIMIT 1');
+                $st->execute([':id' => (int) $noeud['etage_id']]);
+                $num = (int) $st->fetchColumn();
+                if ($num > 0) {
+                    $vals['etage'] = (string) $num;
+                    $vals['ref_numero_etage'] = (string) $num;
+                }
+            } catch (PDOException $e) {
+                // ignore
+            }
+        }
+        if (($noeud['legacy_table'] ?? '') === 'entrepot_position' && !empty($noeud['legacy_id'])) {
+            $vals['entrepot_position_id'] = (int) $noeud['legacy_id'];
+        }
+
+        return $vals;
+    }
     if (produit_emplacement_use_referentiel() && !empty($produit['entrepot_position_id'])) {
         $position_id = (int) $produit['entrepot_position_id'];
         $legacy = entrepot_legacy_columns_from_position_id($position_id);
         $vals = $legacy;
         $vals['entrepot_position_id'] = $position_id;
+        // Si nœud legacy existe, lier aussi
+        if (entrepot_hierarchie_libre_schema_ok()) {
+            global $db;
+            try {
+                $st = $db->prepare(
+                    "SELECT id FROM entrepot_hierarchie_noeud
+                     WHERE legacy_table = 'entrepot_position' AND legacy_id = :id LIMIT 1"
+                );
+                $st->execute([':id' => $position_id]);
+                $nid = (int) $st->fetchColumn();
+                if ($nid > 0) {
+                    $vals['entrepot_noeud_id'] = $nid;
+                    $vals['chemin_libelle'] = entrepot_noeud_chemin_libelle($nid);
+                    foreach (entrepot_noeud_selection_path($nid) as $niveau_id => $vid) {
+                        $vals['ref_niveau_' . (int) $niveau_id] = (string) (int) $vid;
+                    }
+                }
+            } catch (PDOException $e) {
+                // ignore
+            }
+        }
 
         return produit_emplacement_enrich_referentiel_form_values($vals);
     }
@@ -569,7 +697,7 @@ function produit_emplacement_from_produit(array $produit) {
  * @return bool
  */
 function produit_emplacement_a_des_donnees(array $vals) {
-    if (!empty($vals['entrepot_position_id'])) {
+    if (!empty($vals['entrepot_noeud_id']) || !empty($vals['entrepot_position_id'])) {
         return true;
     }
     foreach ($vals as $k => $v) {
@@ -778,9 +906,22 @@ function produit_emplacement_render_select($col, array $cfg, $selected, $extra_c
  */
 function produit_emplacement_render_form_fields_referentiel(array $values) {
     $ref_json = entrepot_get_referentiel_json_produit();
-    if ($ref_json === []) {
+    $mode_attr = 'referentiel';
+    if (!function_exists('entrepot_hierarchie_libre_schema_ok')) {
+        require_once __DIR__ . '/../models/model_entrepot_hierarchie_libre.php';
+    }
+    if (entrepot_hierarchie_libre_schema_ok()) {
+        $mode_attr = 'libre';
+    }
+    $ref_empty = $ref_json === []
+        || ($mode_attr === 'libre' && empty($ref_json['etages']) && empty($ref_json['noeuds_par_niveau']));
+    if ($ref_empty) {
         echo '<div class="pm-emplacement-alert"><p class="form-hint form-hint--warning"><i class="fas fa-warehouse" aria-hidden="true"></i> ';
-        echo 'Référentiel entrepôt vide. <a href="/admin/parametres/emplacement-entrepot.php">Configurez et nommez les emplacements</a>.</p></div>';
+        echo 'Référentiel entrepôt vide. <a href="/admin/parametres/emplacement-entrepot.php">Configurez et nommez les emplacements</a>';
+        if (function_exists('entrepot_hierarchie_chemin_libelle')) {
+            echo ' · <a href="/admin/parametres/hierarchie-entrepot.php">Hiérarchie</a>';
+        }
+        echo '.</p></div>';
         return;
     }
 
@@ -793,27 +934,32 @@ function produit_emplacement_render_form_fields_referentiel(array $values) {
         'allee_id' => $values['ref_allee_id'] ?? '',
         'barre_id' => $values['ref_barre_id'] ?? '',
         'position_id' => $values['entrepot_position_id'] ?? '',
+        'entrepot_noeud_id' => $values['entrepot_noeud_id'] ?? '',
+        'ref_etage' => $values['ref_numero_etage'] ?? ($values['etage'] ?? ''),
     ];
     foreach ($cascade_fields as $field) {
-        if (($field['type'] ?? '') !== 'custom') {
-            continue;
-        }
+        $type = (string) ($field['type'] ?? '');
         $key = (string) ($field['key'] ?? '');
-        if ($key === '') {
+        if ($key === '' || $type === 'etage') {
             continue;
         }
-        $sel[$key] = $values[$key] ?? '';
+        if ($type === 'custom' || $type === 'noeud') {
+            $sel[$key] = $values[$key] ?? ($type === 'noeud' && !empty($field['niveau_id'])
+                ? ($values['ref_niveau_' . (int) $field['niveau_id']] ?? '')
+                : '');
+        }
     }
-    $has_etage = !empty($sel['numero_etage']);
     $chemin = trim((string) ($values['chemin_libelle'] ?? ''));
+    $chemin_hint = function_exists('entrepot_hierarchie_chemin_libelle')
+        ? entrepot_hierarchie_chemin_libelle()
+        : 'Niveau → …';
 
-    echo '<div id="pm-emplacement-form" class="pm-emplacement-form pm-emplacement-form--referentiel" data-mode="referentiel">';
+    echo '<div id="pm-emplacement-form" class="pm-emplacement-form pm-emplacement-form--referentiel" data-mode="' . htmlspecialchars($mode_attr, ENT_QUOTES, 'UTF-8') . '">';
     echo '<script type="application/json" id="pm-emplacement-referentiel">' . produit_emplacement_json_script($ref_json) . '</script>';
     echo '<script type="application/json" id="pm-emplacement-selection">' . produit_emplacement_json_script($sel) . '</script>';
     echo '<script type="application/json" id="pm-emplacement-structure">' . produit_emplacement_json_script($cascade_fields) . '</script>';
 
     echo '<div class="pm-emplacement-steps" aria-hidden="true">';
-    echo '<span class="pm-emplacement-step"><i class="fas fa-building"></i> Étage</span>';
     foreach ($cascade_fields as $field) {
         $icon = htmlspecialchars((string) ($field['icon'] ?? 'fa-cube'), ENT_QUOTES, 'UTF-8');
         $label = htmlspecialchars((string) ($field['label'] ?? ''), ENT_QUOTES, 'UTF-8');
@@ -821,19 +967,11 @@ function produit_emplacement_render_form_fields_referentiel(array $values) {
     }
     echo '</div>';
 
-    echo '<p class="form-hint pm-hint pm-emplacement-intro">Choisissez librement chaque niveau avec son <strong>nom enregistré</strong> selon la structure configurée de l’entrepôt.</p>';
+    echo '<p class="form-hint pm-hint pm-emplacement-intro">Choisissez chaque niveau selon la hiérarchie configurée : <strong>'
+        . htmlspecialchars($chemin_hint, ENT_QUOTES, 'UTF-8')
+        . '</strong>.</p>';
 
-    echo '<div class="form-row pm-emplacement-row pm-emplacement-row--etage">';
-    echo '<div class="form-group pm-emplacement-field pm-emplacement-field--ref pm-emplacement-field--etage" data-emplacement-ref="ref_etage">';
-    echo '<label for="ref_etage"><i class="fas fa-building" aria-hidden="true"></i> Étage</label>';
-    echo '<select id="ref_etage" name="ref_etage" data-emplacement-ref-select="ref_etage" data-field-type="etage">';
-    echo '<option value="">— Choisir un étage —</option>';
-    echo '</select>';
-    echo '<small class="form-hint">Charge les listes nommées de cet étage.</small>';
-    echo '</div>';
-    echo '</div>';
-
-    echo '<div id="pm-emplacement-cascade" class="pm-emplacement-cascade"' . ($has_etage ? '' : ' hidden') . '>';
+    echo '<div id="pm-emplacement-cascade" class="pm-emplacement-cascade">';
 
     $pairs = array_chunk($cascade_fields, 2);
     foreach ($pairs as $pair) {
@@ -848,11 +986,21 @@ function produit_emplacement_render_form_fields_referentiel(array $values) {
             $hint = (string) ($f['hint'] ?? '');
             $ftype = (string) ($f['type'] ?? '');
             $champ_id = (int) ($f['champ_id'] ?? 0);
-            $empty = $ftype === 'positions' ? '— Choisissez d’abord une barre —' : '— Choisir —';
-            if ($ftype === 'barres') {
+            $empty = '— Choisir ' . ($label !== '' ? $label : '') . ' —';
+            if ($ftype === 'positions') {
+                $empty = '— Choisissez d’abord une barre —';
+            } elseif ($ftype === 'barres') {
                 $empty = '— Choisir un rayon ou une barre —';
+            } elseif ($ftype === 'etage') {
+                $empty = '— Choisir ' . ($label !== '' ? $label : 'Niveau') . ' —';
+            } elseif ($ftype === 'noeud') {
+                $empty = '— Choisir ' . ($label !== '' ? $label : '') . ' —';
             }
-            echo '<div class="form-group pm-emplacement-field pm-emplacement-field--ref" data-emplacement-ref="' . htmlspecialchars($fid, ENT_QUOTES, 'UTF-8') . '" data-field-type="' . htmlspecialchars($ftype, ENT_QUOTES, 'UTF-8') . '"';
+            $field_class = 'form-group pm-emplacement-field pm-emplacement-field--ref';
+            if ($ftype === 'etage') {
+                $field_class .= ' pm-emplacement-field--etage';
+            }
+            echo '<div class="' . $field_class . '" data-emplacement-ref="' . htmlspecialchars($fid, ENT_QUOTES, 'UTF-8') . '" data-field-type="' . htmlspecialchars($ftype, ENT_QUOTES, 'UTF-8') . '"';
             if ($champ_id > 0) {
                 echo ' data-champ-id="' . $champ_id . '"';
             }

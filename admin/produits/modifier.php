@@ -393,7 +393,7 @@ $emplacement_form_vals = produit_emplacement_form_values_for_form(
                     <span class="pm-card__icon" aria-hidden="true"><i class="fas fa-warehouse"></i></span>
                     <div>
                         <h2 id="pm-sec-ref" class="pm-card__title">Référence &amp; emplacement entrepôt</h2>
-                        <p class="pm-card__hint">Code FPL et position nommée (étage → barre → emplacement)</p>
+                        <p class="pm-card__hint">Code FPL et position selon la hiérarchie : <?php echo htmlspecialchars(function_exists('entrepot_hierarchie_chemin_libelle') ? entrepot_hierarchie_chemin_libelle() : 'Niveau → …', ENT_QUOTES, 'UTF-8'); ?></p>
                     </div>
                 </div>
                 <div class="pm-card__body">

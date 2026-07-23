@@ -449,7 +449,7 @@ function produit_formulaire_champ_colonnes_donnees($champ) {
         return [$col];
     }
     if ($slug === 'emplacement') {
-        $cols = ['entrepot_position_id', 'etage', 'numero_rayon', 'allee', 'zone_emplacement', 'position_emplacement', 'barre_rayon'];
+        $cols = ['entrepot_noeud_id', 'entrepot_position_id', 'etage', 'numero_rayon', 'allee', 'zone_emplacement', 'position_emplacement', 'barre_rayon'];
         $out = [];
         foreach ($cols as $c) {
             if (function_exists('produits_has_column') && produits_has_column($c)) {

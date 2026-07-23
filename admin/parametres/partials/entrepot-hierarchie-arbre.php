@@ -87,7 +87,7 @@ if ($hierarchie_actifs === []) {
 }
 ?>
 
-<div class="ee-hierarchie" id="ee-hierarchie-<?php echo $uid; ?>" data-ee-hierarchie-root data-ee-niveaux-actifs="<?php echo $ee_niveaux_actifs_json; ?>">
+<div class="ee-hierarchie<?php echo $ee_show_zone ? ' ee-hierarchie--drill-modal' : ''; ?>" id="ee-hierarchie-<?php echo $uid; ?>" data-ee-hierarchie-root data-ee-niveaux-actifs="<?php echo $ee_niveaux_actifs_json; ?>">
     <?php if ($hierarchie_actifs === []): ?>
     <div class="ee-h-empty-block">
         <p class="ee-h-empty">Aucun niveau hiérarchique actif.</p>

@@ -76,7 +76,7 @@ if (!function_exists('admin_route_relative_path')) {
         if (strpos($p, 'categories/') === 0) {
             return true;
         }
-        if ($p === 'parametres/alertes-stock.php') {
+        if ($p === 'parametres/alertes-stock.php' || $p === 'parametres/hierarchie-entrepot.php' || $p === 'parametres/champs-produit.php') {
             return true;
         }
         if (strpos($p, 'parametres/emplacement-') === 0) {

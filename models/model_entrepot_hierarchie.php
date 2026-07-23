@@ -6,6 +6,7 @@ require_once __DIR__ . '/../conn/conn.php';
 require_once __DIR__ . '/model_entrepot_referentiel.php';
 require_once __DIR__ . '/model_entrepot_emplacement.php';
 require_once __DIR__ . '/model_entrepot_structure_champs.php';
+require_once __DIR__ . '/model_entrepot_hierarchie_libre.php';
 
 /**
  * @param array<int, int> $position_ids
@@ -609,11 +610,56 @@ function entrepot_hierarchie_ensure_schema() {
 }
 
 /**
+ * Un numéro de niveau (étage) est-il libre ?
+ * Doublon uniquement parmi les niveaux — pas avec zones/rayons/nœuds.
+ *
+ * @param int $numero_etage
+ * @return bool
+ */
+function entrepot_niveau_numero_est_disponible($numero_etage) {
+    $numero_etage = (int) $numero_etage;
+    if ($numero_etage < 1 || $numero_etage > (int) ENTREPOT_EMPLACEMENT_NB_ETAGES_MAX) {
+        return false;
+    }
+    // Source de vérité des onglets « niveaux » : entrepot_emplacement_etage
+    if (entrepot_emplacement_get_etage($numero_etage) !== null) {
+        return false;
+    }
+    // Alignement référentiel (même entité niveau, pas le reste de la hiérarchie)
+    require_once __DIR__ . '/model_entrepot_referentiel.php';
+    if (entrepot_referentiel_tables_ok() && entrepot_get_etage_ref_by_numero($numero_etage) !== null) {
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * Numéros déjà pris par des niveaux (étages) uniquement.
+ *
+ * @return array<int, int>
+ */
+function entrepot_niveau_numeros_occupes() {
+    $out = [];
+    foreach (entrepot_hierarchie_liste_niveaux() as $nv) {
+        $n = (int) ($nv['numero_etage'] ?? 0);
+        if ($n > 0) {
+            $out[] = $n;
+        }
+    }
+    $out = array_values(array_unique($out));
+    sort($out, SORT_NUMERIC);
+
+    return $out;
+}
+
+/**
  * @param string $nom
  * @param string $code_abrege
+ * @param int $numero_etage
  * @return array{success: bool, message: string, etage_id?: int, numero_etage?: int}
  */
-function entrepot_niveau_ajouter($nom, $code_abrege) {
+function entrepot_niveau_ajouter($nom, $code_abrege, $numero_etage) {
     global $db;
     if (!entrepot_referentiel_tables_ok() || !entrepot_emplacement_tables_ok()) {
         return ['success' => false, 'message' => 'Tables entrepôt absentes.'];
@@ -630,7 +676,24 @@ function entrepot_niveau_ajouter($nom, $code_abrege) {
         $code_abrege = substr($code_abrege, 0, 10);
     }
 
-    $res_cfg = entrepot_emplacement_ajouter_niveau($nom, entrepot_structure_champs_valeurs_defaut());
+    $numero = (int) $numero_etage;
+    if ($numero < 1) {
+        return ['success' => false, 'message' => 'Le numéro du niveau est obligatoire (minimum 1).'];
+    }
+    if ($numero > (int) ENTREPOT_EMPLACEMENT_NB_ETAGES_MAX) {
+        return [
+            'success' => false,
+            'message' => 'Numéro de niveau invalide (1 à ' . (int) ENTREPOT_EMPLACEMENT_NB_ETAGES_MAX . ').',
+        ];
+    }
+    if (!entrepot_niveau_numero_est_disponible($numero)) {
+        return [
+            'success' => false,
+            'message' => 'Le numéro de niveau ' . $numero . ' est déjà utilisé par un autre niveau. Choisissez un autre numéro (les zones, rayons, etc. peuvent réutiliser ce numéro).',
+        ];
+    }
+
+    $res_cfg = entrepot_emplacement_ajouter_niveau($nom, entrepot_structure_champs_valeurs_defaut(), $numero);
     if (!$res_cfg['success']) {
         return $res_cfg;
     }
@@ -693,7 +756,7 @@ function entrepot_zone_ajouter($etage_id, $nom, $numero) {
         return ['success' => true, 'message' => 'Zone ajoutée.', 'id' => (int) $db->lastInsertId()];
     } catch (PDOException $e) {
         if (strpos($e->getMessage(), '1062') !== false) {
-            return ['success' => false, 'message' => 'Ce numéro de zone existe déjà sur ce niveau.'];
+            return ['success' => false, 'message' => 'Ce numéro de zone existe déjà sur ce niveau (parmi les zones uniquement).'];
         }
 
         return ['success' => false, 'message' => 'Erreur : ' . $e->getMessage()];
@@ -725,6 +788,12 @@ function entrepot_rayon_ajouter($etage_id, $zone_id, $nom, $numero) {
         if (!$chk->fetchColumn()) {
             return ['success' => false, 'message' => 'Zone introuvable sur ce niveau.'];
         }
+        // Doublon numéro uniquement parmi les rayons de cette zone (pas tout l’étage / système)
+        $dup = $db->prepare('SELECT id FROM entrepot_rayon WHERE zone_id = :z AND numero = :n LIMIT 1');
+        $dup->execute([':z' => $zone_id, ':n' => $numero]);
+        if ($dup->fetchColumn()) {
+            return ['success' => false, 'message' => 'Ce numéro de rayon existe déjà dans cette zone.'];
+        }
         $db->prepare(
             'INSERT INTO entrepot_rayon (etage_id, zone_id, numero, nom, date_modification)
              VALUES (:e, :z, :n, :nom, NOW())'
@@ -736,7 +805,7 @@ function entrepot_rayon_ajouter($etage_id, $zone_id, $nom, $numero) {
         return ['success' => true, 'message' => 'Rayon ajouté.', 'id' => $rid];
     } catch (PDOException $e) {
         if (strpos($e->getMessage(), '1062') !== false) {
-            return ['success' => false, 'message' => 'Ce numéro de rayon existe déjà sur ce niveau.'];
+            return ['success' => false, 'message' => 'Ce numéro de rayon existe déjà dans cette zone (les autres zones peuvent réutiliser ce numéro).'];
         }
 
         return ['success' => false, 'message' => 'Erreur : ' . $e->getMessage()];
@@ -1211,7 +1280,7 @@ function entrepot_zone_modifier($id, $etage_id, $nom, $numero) {
         return ['success' => true, 'message' => 'Zone modifiée.'];
     } catch (PDOException $e) {
         if (strpos($e->getMessage(), '1062') !== false) {
-            return ['success' => false, 'message' => 'Ce numéro de zone existe déjà sur ce niveau.'];
+            return ['success' => false, 'message' => 'Ce numéro de zone existe déjà sur ce niveau (parmi les zones uniquement).'];
         }
 
         return ['success' => false, 'message' => 'Erreur : ' . $e->getMessage()];
@@ -1238,19 +1307,24 @@ function entrepot_rayon_modifier($id, $etage_id, $nom, $numero) {
         $nom = 'Rayon ' . $numero;
     }
     try {
-        $st = $db->prepare('SELECT id FROM entrepot_rayon WHERE id = :id AND etage_id = :e LIMIT 1');
+        $st = $db->prepare('SELECT id, zone_id FROM entrepot_rayon WHERE id = :id AND etage_id = :e LIMIT 1');
         $st->execute([':id' => $id, ':e' => $etage_id]);
-        if (!$st->fetchColumn()) {
+        $row = $st->fetch(PDO::FETCH_ASSOC);
+        if (!$row) {
             return ['success' => false, 'message' => 'Rayon introuvable sur ce niveau.'];
+        }
+        $zone_id = (int) ($row['zone_id'] ?? 0);
+        if ($zone_id <= 0) {
+            return ['success' => false, 'message' => 'Zone parente introuvable pour ce rayon.'];
         }
         $chk = entrepot_hierarchie_verifier_uniques(
             'entrepot_rayon',
-            'etage_id = :e',
-            [':e' => $etage_id],
+            'zone_id = :z',
+            [':z' => $zone_id],
             $numero,
             $nom,
             $id,
-            'niveau',
+            'zone',
             'rayon'
         );
         if (!$chk['ok']) {
@@ -1263,7 +1337,7 @@ function entrepot_rayon_modifier($id, $etage_id, $nom, $numero) {
         return ['success' => true, 'message' => 'Rayon modifié.'];
     } catch (PDOException $e) {
         if (strpos($e->getMessage(), '1062') !== false) {
-            return ['success' => false, 'message' => 'Ce numéro de rayon existe déjà sur ce niveau.'];
+            return ['success' => false, 'message' => 'Ce numéro de rayon existe déjà dans cette zone.'];
         }
 
         return ['success' => false, 'message' => 'Erreur : ' . $e->getMessage()];
@@ -1548,6 +1622,13 @@ function entrepot_hierarchie_supprimer_niveau($numero_etage) {
  * @return array<int, array<string, mixed>>
  */
 function entrepot_hierarchie_json_produit() {
+    require_once __DIR__ . '/model_entrepot_structure_champs.php';
+
+    $actifs = entrepot_hierarchie_niveaux_actifs();
+    $has = function ($niveau) use ($actifs) {
+        return isset($actifs[(string) $niveau]);
+    };
+
     $out = [];
     foreach (entrepot_hierarchie_liste_niveaux() as $et) {
         $n = (int) ($et['numero_etage'] ?? 0);
@@ -1558,57 +1639,162 @@ function entrepot_hierarchie_json_produit() {
         if ($tree === null) {
             continue;
         }
-        $out[$n] = [
+        $etage_id = (int) ($tree['etage']['id'] ?? 0);
+        $node = [
             'etage' => $tree['etage'],
             'zones' => [],
         ];
-        foreach ($tree['zones'] as $z) {
-            $znode = [
-                'id' => (int) ($z['id'] ?? 0),
-                'numero' => (int) ($z['numero'] ?? 0),
-                'nom' => (string) ($z['nom'] ?? ''),
-                'rayons' => [],
-            ];
-            foreach ($z['rayons'] ?? [] as $r) {
-                $rnode = [
+
+        $rayons_plats = [];
+        $etageres_plats = [];
+        $barres_plats = [];
+
+        if ($has('zone')) {
+            foreach ($tree['zones'] as $z) {
+                $znode = [
+                    'id' => (int) ($z['id'] ?? 0),
+                    'numero' => (int) ($z['numero'] ?? 0),
+                    'nom' => (string) ($z['nom'] ?? ''),
+                    'rayons' => [],
+                ];
+                foreach ($z['rayons'] ?? [] as $r) {
+                    if (!$has('rayon')) {
+                        continue;
+                    }
+                    $rayons_plats[] = $r;
+                    $rnode = [
+                        'id' => (int) ($r['id'] ?? 0),
+                        'numero' => (int) ($r['numero'] ?? 0),
+                        'nom' => (string) ($r['nom'] ?? ''),
+                        'zone_id' => (int) ($r['zone_id'] ?? 0),
+                        'etageres' => [],
+                    ];
+                    foreach ($r['etageres'] ?? [] as $etg) {
+                        if (!$has('etagere')) {
+                            continue;
+                        }
+                        $etageres_plats[] = $etg;
+                        $enode = [
+                            'id' => (int) ($etg['id'] ?? 0),
+                            'numero' => (int) ($etg['numero'] ?? 0),
+                            'nom' => (string) ($etg['nom'] ?? ''),
+                            'rayon_id' => (int) ($etg['rayon_id'] ?? 0),
+                            'barres' => [],
+                        ];
+                        foreach ($etg['barres'] ?? [] as $b) {
+                            if (!$has('barre')) {
+                                continue;
+                            }
+                            $barres_plats[] = $b;
+                            $bnode = [
+                                'id' => (int) ($b['id'] ?? 0),
+                                'numero' => (int) ($b['numero'] ?? 0),
+                                'nom' => (string) ($b['nom'] ?? ''),
+                                'etagere_id' => (int) ($b['etagere_id'] ?? 0),
+                                'rayon_id' => (int) ($b['rayon_id'] ?? 0),
+                                'positions' => [],
+                            ];
+                            if ($has('position')) {
+                                foreach ($b['positions'] ?? [] as $p) {
+                                    $bnode['positions'][] = [
+                                        'id' => (int) ($p['id'] ?? 0),
+                                        'numero' => (int) ($p['numero'] ?? 0),
+                                        'nom' => (string) ($p['nom'] ?? ''),
+                                    ];
+                                }
+                            }
+                            $enode['barres'][] = $bnode;
+                        }
+                        if ($enode['barres'] !== [] || $has('etagere')) {
+                            $rnode['etageres'][] = $enode;
+                        }
+                    }
+                    if ($rnode['etageres'] !== [] || $has('rayon')) {
+                        $znode['rayons'][] = $rnode;
+                    }
+                }
+                $node['zones'][] = $znode;
+            }
+        } else {
+            foreach ($tree['zones'] as $z) {
+                foreach ($z['rayons'] ?? [] as $r) {
+                    if ($has('rayon')) {
+                        $rayons_plats[] = $r;
+                    }
+                    foreach ($r['etageres'] ?? [] as $etg) {
+                        if ($has('etagere')) {
+                            $etageres_plats[] = $etg;
+                        }
+                        foreach ($etg['barres'] ?? [] as $b) {
+                            if ($has('barre')) {
+                                $barres_plats[] = $b;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (!$has('zone') && $has('rayon') && $rayons_plats !== []) {
+            $node['rayons'] = array_values(array_map(function ($r) {
+                return [
                     'id' => (int) ($r['id'] ?? 0),
                     'numero' => (int) ($r['numero'] ?? 0),
                     'nom' => (string) ($r['nom'] ?? ''),
                     'zone_id' => (int) ($r['zone_id'] ?? 0),
-                    'etageres' => [],
                 ];
-                foreach ($r['etageres'] ?? [] as $etg) {
-                    $enode = [
-                        'id' => (int) ($etg['id'] ?? 0),
-                        'numero' => (int) ($etg['numero'] ?? 0),
-                        'nom' => (string) ($etg['nom'] ?? ''),
-                        'rayon_id' => (int) ($etg['rayon_id'] ?? 0),
-                        'barres' => [],
-                    ];
-                    foreach ($etg['barres'] ?? [] as $b) {
-                        $bnode = [
-                            'id' => (int) ($b['id'] ?? 0),
-                            'numero' => (int) ($b['numero'] ?? 0),
-                            'nom' => (string) ($b['nom'] ?? ''),
-                            'etagere_id' => (int) ($b['etagere_id'] ?? 0),
-                            'rayon_id' => (int) ($b['rayon_id'] ?? 0),
-                            'positions' => [],
-                        ];
-                        foreach ($b['positions'] ?? [] as $p) {
-                            $bnode['positions'][] = [
-                                'id' => (int) ($p['id'] ?? 0),
-                                'numero' => (int) ($p['numero'] ?? 0),
-                                'nom' => (string) ($p['nom'] ?? ''),
-                            ];
-                        }
-                        $enode['barres'][] = $bnode;
-                    }
-                    $rnode['etageres'][] = $enode;
-                }
-                $znode['rayons'][] = $rnode;
-            }
-            $out[$n]['zones'][] = $znode;
+            }, $rayons_plats));
         }
+        if (!$has('rayon') && $has('etagere') && $etageres_plats !== []) {
+            $node['etageres'] = array_values(array_map(function ($e) {
+                return [
+                    'id' => (int) ($e['id'] ?? 0),
+                    'numero' => (int) ($e['numero'] ?? 0),
+                    'nom' => (string) ($e['nom'] ?? ''),
+                    'rayon_id' => (int) ($e['rayon_id'] ?? 0),
+                ];
+            }, $etageres_plats));
+        }
+        if (!$has('etagere') && $has('barre') && $barres_plats !== []) {
+            $node['barres'] = array_values(array_map(function ($b) use ($has) {
+                $bnode = [
+                    'id' => (int) ($b['id'] ?? 0),
+                    'numero' => (int) ($b['numero'] ?? 0),
+                    'nom' => (string) ($b['nom'] ?? ''),
+                    'etagere_id' => (int) ($b['etagere_id'] ?? 0),
+                    'rayon_id' => (int) ($b['rayon_id'] ?? 0),
+                    'positions' => [],
+                ];
+                if ($has('position')) {
+                    foreach ($b['positions'] ?? [] as $p) {
+                        $bnode['positions'][] = [
+                            'id' => (int) ($p['id'] ?? 0),
+                            'numero' => (int) ($p['numero'] ?? 0),
+                            'nom' => (string) ($p['nom'] ?? ''),
+                        ];
+                    }
+                }
+
+                return $bnode;
+            }, $barres_plats));
+        }
+
+        $champs_custom = produit_emplacement_champs_custom_json_etage($etage_id);
+        if ($champs_custom !== []) {
+            $node['champs_custom'] = $champs_custom;
+        }
+
+        $lie_barre = entrepot_structure_champ_get_lie_barre();
+        if ($lie_barre !== null && $etage_id > 0) {
+            $node['lie_barre'] = [
+                'champ_id' => (int) $lie_barre['id'],
+                'label' => (string) ($lie_barre['label'] ?? ''),
+                'icon' => (string) ($lie_barre['icon'] ?? 'fa-cube'),
+                'elements' => entrepot_get_champ_elements_etage($etage_id, (int) $lie_barre['id']),
+            ];
+        }
+
+        $out[$n] = $node;
     }
 
     return $out;

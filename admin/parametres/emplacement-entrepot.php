@@ -21,6 +21,7 @@ require_once __DIR__ . '/../../models/model_entrepot_emplacement.php';
 require_once __DIR__ . '/../../models/model_entrepot_referentiel.php';
 require_once __DIR__ . '/../../models/model_entrepot_structure_champs.php';
 require_once __DIR__ . '/../../models/model_entrepot_hierarchie.php';
+require_once __DIR__ . '/../../models/model_entrepot_hierarchie_libre.php';
 require_once __DIR__ . '/../../models/model_produits.php';
 require_once __DIR__ . '/../../includes/entrepot_barcode_service.php';
 
@@ -28,6 +29,9 @@ entrepot_structure_champs_ensure_table();
 entrepot_structure_champ_ensure_hierarchie_schema();
 entrepot_champ_element_ensure_table();
 entrepot_barre_ensure_champ_element_schema();
+entrepot_hierarchie_libre_ensure_schema();
+
+$mode_hierarchie_libre = entrepot_hierarchie_libre_schema_ok();
 
 if (empty($_SESSION['admin_csrf'])) {
     $_SESSION['admin_csrf'] = bin2hex(random_bytes(32));
@@ -78,7 +82,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif (isset($_POST['ajouter_niveau'])) {
         $res = entrepot_niveau_ajouter(
             isset($_POST['nom_niveau']) ? (string) $_POST['nom_niveau'] : '',
-            isset($_POST['code_abrege']) ? (string) $_POST['code_abrege'] : ''
+            isset($_POST['code_abrege']) ? (string) $_POST['code_abrege'] : '',
+            (int) ($_POST['numero_etage'] ?? 0)
         );
         if ($res['success']) {
             $_SESSION['success_message_emplacement_entrepot'] = $res['message'];
@@ -185,15 +190,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     } elseif (isset($_POST['ajouter_champ_structure'])) {
         $niv = isset($_POST['niveau_hierarchie']) ? (string) $_POST['niveau_hierarchie'] : '';
+        // max / lie_barre : plus saisis dans l’UI — éléments ajoutés manuellement via la barre d’outils.
         $res = entrepot_structure_champ_ajouter(
             isset($_POST['label_champ']) ? (string) $_POST['label_champ'] : '',
             'fa-cube',
-            (int) ($_POST['max_champ'] ?? 50),
-            (int) ($_POST['max_champ'] ?? 50),
-            !empty($_POST['lie_barre']),
+            500,
+            10,
+            false,
             $niv !== '' ? $niv : null
         );
         if ($res['success']) {
+            produit_emplacement_sync_apres_structure_champ();
             $_SESSION['success_message_emplacement_entrepot'] = $res['message'];
             ee_redirect_niveau($redirect_n);
         }
@@ -203,6 +210,80 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error_message = 'Veuillez lire l’impact et cocher la case de confirmation avant de supprimer.';
         } else {
             $res = entrepot_structure_champ_supprimer((int) ($_POST['champ_id'] ?? 0));
+            if ($res['success']) {
+                produit_emplacement_sync_apres_structure_champ();
+                $_SESSION['success_message_emplacement_entrepot'] = $res['message'];
+                ee_redirect_niveau($redirect_n);
+            }
+            $error_message = $res['message'];
+        }
+    } elseif ($mode_hierarchie_libre && isset($_POST['hierarchie_def_ajouter'])) {
+        $lie_raw = isset($_POST['etiquette_lie_cible']) ? (string) $_POST['etiquette_lie_cible'] : 'etage';
+        $lie_type = 'etage';
+        $lie_id = null;
+        if (strpos($lie_raw, 'niveau:') === 0) {
+            $lie_type = 'niveau';
+            $lie_id = (int) substr($lie_raw, 7);
+        }
+        $res = entrepot_hierarchie_def_ajouter(
+            isset($_POST['def_label']) ? (string) $_POST['def_label'] : '',
+            isset($_POST['def_icon']) ? (string) $_POST['def_icon'] : 'fa-cube',
+            isset($_POST['est_etiquette_qr']) && (string) $_POST['est_etiquette_qr'] === '1',
+            $lie_type,
+            $lie_id
+        );
+        if ($res['success']) {
+            $_SESSION['success_message_emplacement_entrepot'] = $res['message'];
+            ee_redirect_niveau($redirect_n);
+        }
+        $error_message = $res['message'];
+    } elseif ($mode_hierarchie_libre && isset($_POST['hierarchie_def_supprimer'])) {
+        if (empty($_POST['confirm_suppression_champ'])) {
+            $error_message = 'Veuillez lire l’impact et cocher la case de confirmation avant de supprimer.';
+        } else {
+            $res = entrepot_hierarchie_def_supprimer((int) ($_POST['def_id'] ?? $_POST['champ_id'] ?? 0));
+            if ($res['success']) {
+                $_SESSION['success_message_emplacement_entrepot'] = $res['message'];
+                ee_redirect_niveau($redirect_n);
+            }
+            $error_message = $res['message'];
+        }
+    } elseif ($mode_hierarchie_libre && (
+        isset($_POST['hierarchie_def_renommer'])
+        || isset($_POST['hierarchie_def_actif'])
+        || isset($_POST['hierarchie_def_reordonner'])
+    )) {
+        header('Location: hierarchie-entrepot.php');
+        exit;
+    } elseif ($mode_hierarchie_libre && isset($_POST['ajouter_noeud'])) {
+        $res = entrepot_noeud_ajouter(
+            (int) ($_POST['etage_id'] ?? 0),
+            (int) ($_POST['niveau_id'] ?? 0),
+            (int) ($_POST['parent_id'] ?? 0),
+            isset($_POST['nom']) ? (string) $_POST['nom'] : '',
+            (int) ($_POST['numero'] ?? 0)
+        );
+        if ($res['success']) {
+            $_SESSION['success_message_emplacement_entrepot'] = $res['message'];
+            ee_redirect_niveau($redirect_n);
+        }
+        $error_message = $res['message'];
+    } elseif ($mode_hierarchie_libre && isset($_POST['modifier_noeud'])) {
+        $res = entrepot_noeud_modifier(
+            (int) ($_POST['noeud_id'] ?? 0),
+            isset($_POST['nom']) ? (string) $_POST['nom'] : '',
+            (int) ($_POST['numero'] ?? 1)
+        );
+        if ($res['success']) {
+            $_SESSION['success_message_emplacement_entrepot'] = $res['message'];
+            ee_redirect_niveau($redirect_n);
+        }
+        $error_message = $res['message'];
+    } elseif ($mode_hierarchie_libre && !empty($_POST['supprimer_noeud'])) {
+        if (empty($_POST['confirm_suppression_hierarchie'])) {
+            $error_message = 'Confirmez la suppression de l’élément.';
+        } else {
+            $res = entrepot_noeud_supprimer((int) ($_POST['noeud_id'] ?? 0));
             if ($res['success']) {
                 $_SESSION['success_message_emplacement_entrepot'] = $res['message'];
                 ee_redirect_niveau($redirect_n);
@@ -219,9 +300,20 @@ if ($numero_niveau_actif <= 0 && $niveaux !== []) {
 
 $arbre_actif = null;
 $etage_actif = null;
+$hierarchie_defs = [];
+$hierarchie_defs_all = [];
+if ($mode_hierarchie_libre) {
+    $hierarchie_defs = entrepot_hierarchie_def_list(true);
+    $hierarchie_defs_all = entrepot_hierarchie_def_list(false);
+}
 if ($numero_niveau_actif > 0) {
-    $arbre_actif = entrepot_hierarchie_liste_pour_niveau($numero_niveau_actif);
-    $etage_actif = $arbre_actif['etage'] ?? entrepot_get_etage_ref_by_numero($numero_niveau_actif);
+    if ($mode_hierarchie_libre) {
+        $arbre_actif = entrepot_hierarchie_arbre_etage($numero_niveau_actif);
+        $etage_actif = is_array($arbre_actif) ? ($arbre_actif['etage'] ?? entrepot_get_etage_ref_by_numero($numero_niveau_actif)) : entrepot_get_etage_ref_by_numero($numero_niveau_actif);
+    } else {
+        $arbre_actif = entrepot_hierarchie_liste_pour_niveau($numero_niveau_actif);
+        $etage_actif = $arbre_actif['etage'] ?? entrepot_get_etage_ref_by_numero($numero_niveau_actif);
+    }
 }
 
 $etage_id_actif = is_array($etage_actif) ? (int) ($etage_actif['id'] ?? 0) : 0;
@@ -231,17 +323,51 @@ $all_niveaux_select = entrepot_hierarchie_liste_pour_cascade(0)['niveaux'];
 
 $structure_champs = entrepot_structure_champs_pour_formulaire();
 $structure_champs_tous = entrepot_structure_champs_list();
-$peut_supprimer_champ = count($structure_champs) > 1;
 $hierarchie_actifs = entrepot_hierarchie_niveaux_actifs();
 $champs_impact_suppression = [];
-foreach ($structure_champs_tous as $sc) {
-    $cid = (int) ($sc['id'] ?? 0);
-    if ($cid <= 0) {
-        continue;
+$defs_impact_suppression = [];
+if ($mode_hierarchie_libre) {
+    $peut_supprimer_champ = count(array_filter($hierarchie_defs_all, function ($d) {
+        return !entrepot_hierarchie_def_est_etage($d);
+    })) > 0;
+    foreach ($hierarchie_defs_all as $def) {
+        $did = (int) ($def['id'] ?? 0);
+        if ($did <= 0) {
+            continue;
+        }
+        $imp = entrepot_hierarchie_def_impact_suppression($did);
+        $defs_impact_suppression[$did] = $imp;
+        $avertissements = [
+            'Ce niveau disparaîtra de la barre d’outils et de la cascade produit.',
+            'Ses éléments et leurs enfants seront supprimés définitivement.',
+        ];
+        if ((int) ($imp['produits'] ?? 0) > 0) {
+            $avertissements[] = (int) $imp['produits'] . ' produit(s) seront détachés de leur emplacement.';
+        }
+        $champs_impact_suppression[$did] = [
+            'label' => (string) ($def['label'] ?? ''),
+            'niveau_label' => (string) ($def['label'] ?? ''),
+            'entites' => [
+                ['label' => 'Éléments de ce niveau', 'count' => (int) ($imp['noeuds'] ?? 0)],
+                ['label' => 'Descendants', 'count' => (int) ($imp['descendants'] ?? 0)],
+            ],
+            'elements_champ' => 0,
+            'barres_liees' => 0,
+            'produits_lies' => (int) ($imp['produits'] ?? 0),
+            'avertissements' => $avertissements,
+        ];
     }
-    $imp = entrepot_structure_champ_impact_suppression($cid);
-    if ($imp !== null) {
-        $champs_impact_suppression[$cid] = $imp;
+} else {
+    $peut_supprimer_champ = count($structure_champs) > 1;
+    foreach ($structure_champs_tous as $sc) {
+        $cid = (int) ($sc['id'] ?? 0);
+        if ($cid <= 0) {
+            continue;
+        }
+        $imp = entrepot_structure_champ_impact_suppression($cid);
+        if ($imp !== null) {
+            $champs_impact_suppression[$cid] = $imp;
+        }
     }
 }
 $hierarchie_toolbar_modals = [
@@ -251,12 +377,79 @@ $hierarchie_toolbar_modals = [
     'barre' => 'modalBarre',
     'position' => 'modalPosition',
 ];
+$hierarchie_chemin = $mode_hierarchie_libre
+    ? entrepot_hierarchie_chemin_libelle()
+    : 'Niveau → Zone → Rayon → Étagère → Barre → Position';
+// Cascade d’ajout : tous les étages + nœuds (filtrés côté JS)
+$noeuds_par_niveau = [];
+$ee_etages_cascade = [];
+if ($mode_hierarchie_libre) {
+    foreach ($niveaux as $nv) {
+        $ee_etages_cascade[] = [
+            'id' => (int) ($nv['id'] ?? 0),
+            'numero_etage' => (int) ($nv['numero_etage'] ?? 0),
+            'nom' => (string) ($nv['nom'] ?? ''),
+            'code_abrege' => (string) ($nv['code_abrege'] ?? $nv['code'] ?? ''),
+        ];
+    }
+    foreach ($hierarchie_defs as $def) {
+        if (entrepot_hierarchie_def_est_etage($def)) {
+            continue;
+        }
+        $nid = (int) ($def['id'] ?? 0);
+        if ($nid <= 0) {
+            continue;
+        }
+        // Tous les nœuds de ce type (tous étages) pour la cascade multi-niveaux
+        $liste = [];
+        foreach ($ee_etages_cascade as $et) {
+            $eid = (int) ($et['id'] ?? 0);
+            if ($eid <= 0) {
+                continue;
+            }
+            foreach (entrepot_noeud_liste($eid, $nid, -1) as $n) {
+                $liste[] = [
+                    'id' => (int) ($n['id'] ?? 0),
+                    'etage_id' => (int) ($n['etage_id'] ?? 0),
+                    'niveau_id' => (int) ($n['niveau_id'] ?? 0),
+                    'parent_id' => (int) ($n['parent_id'] ?? 0),
+                    'numero' => (int) ($n['numero'] ?? 0),
+                    'nom' => (string) ($n['nom'] ?? ''),
+                ];
+            }
+        }
+        $noeuds_par_niveau[$nid] = $liste;
+    }
+}
+$label_hierarchie_etage = 'Niveau';
+foreach ($hierarchie_defs as $def) {
+    if (entrepot_hierarchie_def_est_etage($def)) {
+        $label_hierarchie_etage = (string) ($def['label'] ?? 'Niveau');
+        break;
+    }
+}
 $niveaux_max_atteint = count($niveaux) >= (int) ENTREPOT_EMPLACEMENT_NB_ETAGES_MAX;
 $prochain_numero_niveau = 1;
-foreach ($niveaux as $nv) {
-    $n = (int) ($nv['numero_etage'] ?? 0);
+$numeros_niveaux_occupes = function_exists('entrepot_niveau_numeros_occupes')
+    ? entrepot_niveau_numeros_occupes()
+    : [];
+foreach ($numeros_niveaux_occupes as $n) {
     if ($n >= $prochain_numero_niveau) {
         $prochain_numero_niveau = $n + 1;
+    }
+}
+
+$ee_form_niveau_numero = '';
+$ee_form_nom_niveau = '';
+$ee_form_code_abrege = '';
+$ee_reopen_modal_niveau = false;
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajouter_niveau'])) {
+    $posted_num = trim((string) ($_POST['numero_etage'] ?? ''));
+    $ee_form_niveau_numero = $posted_num !== '' ? max(1, (int) $posted_num) : '';
+    $ee_form_nom_niveau = trim((string) ($_POST['nom_niveau'] ?? ''));
+    $ee_form_code_abrege = trim((string) ($_POST['code_abrege'] ?? ''));
+    if (!empty($error_message)) {
+        $ee_reopen_modal_niveau = true;
     }
 }
 
@@ -267,6 +460,13 @@ $niveaux_hierarchie_options = [
     'barre' => 'Barre',
     'position' => 'Position',
 ];
+$niveaux_hierarchie_disponibles = [];
+foreach ($niveaux_hierarchie_options as $niv_key => $niv_lab) {
+    if (!isset($hierarchie_actifs[$niv_key])) {
+        $niveaux_hierarchie_disponibles[$niv_key] = $niv_lab;
+    }
+}
+$peut_ajouter_champ = $mode_hierarchie_libre ? true : ($niveaux_hierarchie_disponibles !== []);
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -293,7 +493,7 @@ $niveaux_hierarchie_options = [
                 <div class="ee-hero__text">
                     <h1 class="ee-hero__title">Emplacement entrepôt</h1>
                     <p class="ee-hero__lead">
-                        Hiérarchie <strong>Niveau → Zone → Rayon → Étagère → Barre → Position</strong>.
+                        Hiérarchie <strong><?php echo htmlspecialchars($hierarchie_chemin, ENT_QUOTES, 'UTF-8'); ?></strong>.
                         Gérez la structure par onglets et assignez les emplacements aux produits.
                     </p>
                 </div>
@@ -312,27 +512,48 @@ $niveaux_hierarchie_options = [
                 <i class="fas fa-database"></i>
                 Exécutez&nbsp;: <code>php migrations/run_migrate_entrepot_hierarchie_crud.php</code>
             </div>
+        <?php elseif (!$mode_hierarchie_libre): ?>
+            <div class="message error ee-flash">
+                <i class="fas fa-database"></i>
+                Exécutez&nbsp;: <code>php migrations/run_migrate_entrepot_hierarchie_libre.php</code>
+            </div>
         <?php endif; ?>
 
         <div class="ee-toolbar ee-toolbar--hierarchie">
             <p class="ee-toolbar__meta">
-                <strong><?php echo count($niveaux); ?></strong> niveau(x) ·
-                <strong><?php echo count($structure_champs); ?></strong> champ(s) structurel(s)
+                <strong><?php echo count($niveaux); ?></strong> étage(s) ·
+                <strong><?php echo $mode_hierarchie_libre ? count($hierarchie_defs) : count($structure_champs); ?></strong> niveau(x) hiérarchique(s)
             </p>
             <div class="ee-toolbar__actions ee-toolbar__actions--wrap">
-                <button type="button" class="ee-btn-secondary" onclick="openModal('modalAjouterChamp')"><i class="fas fa-plus-circle"></i> Ajouter un champ</button>
-                <button type="button" class="ee-btn-secondary ee-btn-secondary--danger" onclick="openModal('modalSupprimerChamp')" <?php echo !$peut_supprimer_champ ? 'disabled' : ''; ?>><i class="fas fa-minus-circle"></i> Supprimer un champ</button>
+                <?php if ($mode_hierarchie_libre): ?>
+                <a href="hierarchie-entrepot.php" class="ee-btn-secondary"><i class="fas fa-sliders" aria-hidden="true"></i> Configurer la hiérarchie</a>
+                <?php endif; ?>
+                <button type="button" class="ee-btn-secondary" onclick="openModal('modalAjouterChamp')" <?php echo empty($peut_ajouter_champ) ? 'disabled title="Tous les niveaux hiérarchiques sont déjà configurés"' : ''; ?>><i class="fas fa-plus" aria-hidden="true"></i> Ajouter un champ</button>
+                <button type="button" class="ee-btn-secondary ee-btn-secondary--danger" onclick="openModal('modalSupprimerChamp')" <?php echo !$peut_supprimer_champ ? 'disabled' : ''; ?>><i class="fas fa-minus" aria-hidden="true"></i> Supprimer un champ</button>
+                <?php if ($mode_hierarchie_libre): ?>
+                <?php foreach ($hierarchie_defs as $def):
+                    $def_id = (int) ($def['id'] ?? 0);
+                    $btn_label = htmlspecialchars((string) ($def['label'] ?? ''), ENT_QUOTES, 'UTF-8');
+                    $is_etage_btn = entrepot_hierarchie_def_est_etage($def);
+                ?>
+                <?php if ($is_etage_btn): ?>
+                <button type="button" class="ee-btn-primary" onclick="openModal('modalNiveau')" <?php echo $niveaux_max_atteint ? 'disabled' : ''; ?>><i class="fas fa-plus" aria-hidden="true"></i> <?php echo $btn_label; ?></button>
+                <?php else: ?>
+                <button type="button" class="ee-btn-secondary" onclick="eeOpenAjouterNoeud(<?php echo $def_id; ?>)"><i class="fas fa-plus" aria-hidden="true"></i> <?php echo $btn_label; ?></button>
+                <?php endif; ?>
+                <?php endforeach; ?>
+                <?php else: ?>
                 <?php foreach ($hierarchie_actifs as $niv_key => $niv_meta):
                     $modal_id = $hierarchie_toolbar_modals[$niv_key] ?? '';
                     if ($modal_id === '') {
                         continue;
                     }
-                    $btn_icon = htmlspecialchars((string) ($niv_meta['icon'] ?? 'fa-cube'), ENT_QUOTES, 'UTF-8');
                     $btn_label = htmlspecialchars((string) ($niv_meta['label'] ?? ucfirst($niv_key)), ENT_QUOTES, 'UTF-8');
                 ?>
-                <button type="button" class="ee-btn-secondary" onclick="openModal('<?php echo htmlspecialchars($modal_id, ENT_QUOTES, 'UTF-8'); ?>')"><i class="fas <?php echo $btn_icon; ?>"></i> <?php echo $btn_label; ?></button>
+                <button type="button" class="ee-btn-secondary" onclick="openModal('<?php echo htmlspecialchars($modal_id, ENT_QUOTES, 'UTF-8'); ?>')"><i class="fas fa-plus" aria-hidden="true"></i> <?php echo $btn_label; ?></button>
                 <?php endforeach; ?>
-                <button type="button" class="ee-btn-primary" onclick="openModal('modalNiveau')" <?php echo $niveaux_max_atteint ? 'disabled' : ''; ?>><i class="fas fa-plus"></i> Ajouter un niveau</button>
+                <button type="button" class="ee-btn-primary" onclick="openModal('modalNiveau')" <?php echo $niveaux_max_atteint ? 'disabled' : ''; ?>><i class="fas fa-plus" aria-hidden="true"></i> Ajouter un niveau</button>
+                <?php endif; ?>
             </div>
         </div>
 
@@ -389,7 +610,11 @@ $niveaux_hierarchie_options = [
                     $arbre = $arbre_actif;
                     $numero_niveau = $numero_niveau_actif;
                     $etage_id = $etage_id_actif;
-                    include __DIR__ . '/partials/entrepot-hierarchie-arbre.php';
+                    if ($mode_hierarchie_libre) {
+                        include __DIR__ . '/partials/entrepot-hierarchie-arbre-libre.php';
+                    } else {
+                        include __DIR__ . '/partials/entrepot-hierarchie-arbre.php';
+                    }
                     ?>
                 </div>
             </div>
@@ -408,6 +633,8 @@ $niveaux_hierarchie_options = [
     <script>window.EE_CHAMPS_IMPACT = <?php echo json_encode($champs_impact_suppression, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;</script>
     <?php if ($cascade_modal !== ''): ?>
     <script>document.addEventListener('DOMContentLoaded', function () { openModal('<?php echo htmlspecialchars($cascade_modal, ENT_QUOTES, 'UTF-8'); ?>'); });</script>
+    <?php elseif (!empty($ee_reopen_modal_niveau)): ?>
+    <script>document.addEventListener('DOMContentLoaded', function () { openModal('modalNiveau'); });</script>
     <?php endif; ?>
 </body>
 </html>

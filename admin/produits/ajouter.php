@@ -294,7 +294,7 @@ $pf_custom_vals = [];
                             <span class="pm-card__icon" aria-hidden="true"><i class="fas fa-warehouse"></i></span>
                             <div>
                                 <h2 id="pm-sec-ref-add" class="pm-card__title">Référence &amp; emplacement entrepôt</h2>
-                                <p class="pm-card__hint">Référence FPL automatique et position nommée en entrepôt</p>
+                                <p class="pm-card__hint">Référence FPL automatique · position : <?php echo htmlspecialchars(function_exists('entrepot_hierarchie_chemin_libelle') ? entrepot_hierarchie_chemin_libelle() : 'Niveau → …', ENT_QUOTES, 'UTF-8'); ?></p>
                             </div>
                         </div>
                         <div class="pm-card__body">

@@ -35,25 +35,61 @@
         });
     }
 
+    function clonePickTable(sourceTable, filterFn, onRowClone) {
+        if (!sourceTable) {
+            return null;
+        }
+        var wrap = document.createElement('div');
+        wrap.className = 'ee-table-scroll';
+        var table = sourceTable.cloneNode(true);
+        var tbody = table.querySelector('tbody');
+        if (!tbody) {
+            return null;
+        }
+        var sourceRows = sourceTable.querySelectorAll('tbody tr[data-ee-item]');
+        tbody.innerHTML = '';
+        var visible = 0;
+        sourceRows.forEach(function (srcRow) {
+            if (!filterFn(srcRow)) {
+                return;
+            }
+            var clone = srcRow.cloneNode(true);
+            clone.removeAttribute('hidden');
+            clone.classList.remove('is-selected');
+            clone.setAttribute('aria-selected', 'false');
+            tbody.appendChild(clone);
+            if (typeof onRowClone === 'function') {
+                onRowClone(clone, srcRow);
+            }
+            visible++;
+        });
+        if (visible === 0) {
+            return null;
+        }
+        wrap.appendChild(table);
+        return wrap;
+    }
+
     document.querySelectorAll('[data-ee-hierarchie-root]').forEach(function (root) {
         var zoneRows = root.querySelectorAll('[data-ee-item="zone"]');
         var rayonRows = root.querySelectorAll('[data-ee-item="rayon"]');
         var rayonsSection = root.querySelector('[data-ee-rayons-section]');
-        var rayonsEmpty = root.querySelector('[data-ee-rayons-empty]');
+        var rayonsTable = rayonsSection ? rayonsSection.querySelector('table') : null;
         var drillRoot = root.querySelector('[data-ee-drill]');
-        var drillHint = root.querySelector('[data-ee-drill-hint]');
         var panels = {
             etageres: root.querySelector('[data-ee-level="etageres"]'),
             barres: root.querySelector('[data-ee-level="barres"]'),
             positions: root.querySelector('[data-ee-level="positions"]')
         };
-        var crumbBack = root.querySelector('[data-ee-crumb-back]');
-        var crumbTrail = root.querySelector('[data-ee-crumb-trail]');
         var etagereRows = root.querySelectorAll('[data-ee-item="etagere"]');
         var barreRows = root.querySelectorAll('[data-ee-item="barre"]');
         var barreDetails = root.querySelectorAll('[data-ee-barre-detail]');
-        var etageresEmpty = root.querySelector('[data-ee-etageres-empty]');
-        var barresEmpty = root.querySelector('[data-ee-barres-empty]');
+
+        var modalTitle = document.querySelector('[data-ee-drill-modal-title-text]');
+        var modalSubtitle = document.querySelector('[data-ee-drill-modal-subtitle]');
+        var modalIcon = document.querySelector('[data-ee-drill-modal-icon]');
+        var modalBody = document.querySelector('[data-ee-drill-modal-body]');
+        var modalBack = document.querySelector('[data-ee-drill-modal-back]');
 
         if (!zoneRows.length && !rayonRows.length) {
             return;
@@ -71,7 +107,30 @@
         var hasBarre = niveauxActifs.indexOf('barre') !== -1;
         var hasPosition = niveauxActifs.indexOf('position') !== -1;
 
-        function firstDrillPanelAfterRayon() {
+        var drillHistory = [];
+
+        var state = {
+            zoneId: null,
+            rayonId: null,
+            etagereId: null,
+            barreId: null
+        };
+
+        function matchesZoneRow(row) {
+            return row.getAttribute('data-ee-zone') === String(state.zoneId)
+                || row.getAttribute('data-ee-id') === String(state.zoneId);
+        }
+
+        function matchesRayonRow(row) {
+            return row.getAttribute('data-ee-zone') === String(state.zoneId)
+                && row.getAttribute('data-ee-rayon') === String(state.rayonId);
+        }
+
+        function matchesEtagereRow(row) {
+            return matchesRayonRow(row) && row.getAttribute('data-ee-etagere') === String(state.etagereId);
+        }
+
+        function firstPanelAfterRayon() {
             if (hasEtagere) {
                 return 'etageres';
             }
@@ -85,258 +144,217 @@
             return null;
         }
 
-        var state = {
-            zoneId: null,
-            rayonId: null,
-            etagereId: null,
-            barreId: null,
-            level: null
-        };
-
-        function matchesZone(row) {
-            return row.getAttribute('data-ee-zone') === String(state.zoneId)
-                || row.getAttribute('data-ee-id') === String(state.zoneId);
-        }
-
-        function matchesRayon(row) {
-            return row.getAttribute('data-ee-zone') === String(state.zoneId)
-                && row.getAttribute('data-ee-rayon') === String(state.rayonId);
-        }
-
-        function matchesEtagere(row) {
-            return matchesRayon(row) && row.getAttribute('data-ee-etagere') === String(state.etagereId);
-        }
-
-        function hideAllDrillRows() {
-            etagereRows.forEach(function (row) {
-                row.setAttribute('hidden', '');
-            });
-            barreRows.forEach(function (row) {
-                row.setAttribute('hidden', '');
-            });
-            barreDetails.forEach(function (block) {
-                block.setAttribute('hidden', '');
-            });
-            if (etageresEmpty) {
-                etageresEmpty.hidden = true;
-            }
-            if (barresEmpty) {
-                barresEmpty.hidden = true;
+        function openDrillModal() {
+            if (typeof window.openModal === 'function') {
+                window.openModal('modalEeDrillNav');
             }
         }
 
-        function clearRayonSelection() {
-            setSelectedRow(rayonRows, null);
-            state.rayonId = null;
-        }
-
-        function hideDrillPanels() {
-            state.level = null;
-            state.etagereId = null;
-            state.barreId = null;
-            hideAllDrillRows();
-            Object.keys(panels).forEach(function (key) {
-                var panel = panels[key];
-                if (!panel) {
-                    return;
-                }
-                panel.classList.remove('is-active');
-                panel.setAttribute('hidden', '');
-            });
-            if (drillHint) {
-                drillHint.hidden = false;
+        function setModalHeader(view) {
+            if (modalTitle) {
+                modalTitle.textContent = view.title || '';
             }
-            if (crumbBack) {
-                crumbBack.hidden = true;
-            }
-            if (crumbTrail) {
-                crumbTrail.textContent = '';
-            }
-        }
-
-        function showDrill() {
-            if (drillRoot) {
-                drillRoot.removeAttribute('hidden');
-            }
-        }
-
-        function showPanel(level) {
-            state.level = level;
-            if (drillHint) {
-                drillHint.hidden = true;
-            }
-            Object.keys(panels).forEach(function (key) {
-                var panel = panels[key];
-                if (!panel) {
-                    return;
-                }
-                var show = key === level;
-                panel.classList.toggle('is-active', show);
-                if (show) {
-                    panel.removeAttribute('hidden');
+            if (modalSubtitle) {
+                if (view.subtitle) {
+                    modalSubtitle.textContent = view.subtitle;
+                    modalSubtitle.hidden = false;
                 } else {
-                    panel.setAttribute('hidden', '');
+                    modalSubtitle.textContent = '';
+                    modalSubtitle.hidden = true;
                 }
-            });
-            if (crumbBack) {
-                crumbBack.hidden = level === 'etageres';
             }
-            updateCrumb();
+            if (modalIcon) {
+                modalIcon.className = 'fas ' + (view.icon || 'fa-sitemap');
+            }
+            if (modalBack) {
+                modalBack.hidden = drillHistory.length <= 1;
+            }
         }
 
-        function updateCrumb() {
-            if (!crumbTrail) {
+        function renderCurrentView() {
+            var view = drillHistory[drillHistory.length - 1];
+            if (!view || !modalBody) {
                 return;
             }
-            var parts = [];
-            var zoneRow = root.querySelector('[data-ee-item="zone"].is-selected');
-            var rayonRow = root.querySelector('[data-ee-item="rayon"].is-selected');
-            if (zoneRow) {
-                parts.push(rowLabel(zoneRow));
-            }
-            if (rayonRow) {
-                parts.push(rowLabel(rayonRow));
-            }
-            if (state.etagereId) {
-                var etRow = root.querySelector('[data-ee-item="etagere"][data-ee-id="' + state.etagereId + '"]');
-                if (etRow) {
-                    parts.push(rowLabel(etRow));
-                }
-            }
-            if (state.barreId) {
-                var bRow = root.querySelector('[data-ee-item="barre"][data-ee-id="' + state.barreId + '"]');
-                if (bRow) {
-                    parts.push(rowLabel(bRow));
-                }
-            }
-            crumbTrail.textContent = parts.join(' › ');
-        }
-
-        function filterRayons() {
-            var visible = 0;
-            rayonRows.forEach(function (row) {
-                var show = !hasZone || row.getAttribute('data-ee-zone') === String(state.zoneId);
-                if (show) {
-                    row.removeAttribute('hidden');
-                    visible++;
-                } else {
-                    row.setAttribute('hidden', '');
-                    row.classList.remove('is-selected');
-                    row.setAttribute('aria-selected', 'false');
-                }
-            });
-            if (rayonsSection) {
-                rayonsSection.removeAttribute('hidden');
-            }
-            if (rayonsEmpty) {
-                rayonsEmpty.hidden = visible > 0;
+            setModalHeader(view);
+            modalBody.innerHTML = '';
+            var node = view.build();
+            if (node) {
+                modalBody.appendChild(node);
+            } else {
+                var empty = document.createElement('p');
+                empty.className = 'ee-h-empty ee-h-empty--sm';
+                empty.textContent = view.emptyText || 'Aucun élément.';
+                modalBody.appendChild(empty);
             }
         }
 
-        function filterEtageres() {
-            var visible = 0;
-            etagereRows.forEach(function (row) {
-                var show = matchesRayon(row);
-                if (show) {
-                    row.removeAttribute('hidden');
-                    visible++;
-                } else {
-                    row.setAttribute('hidden', '');
+        function pushView(view) {
+            drillHistory.push(view);
+            renderCurrentView();
+        }
+
+        function popView() {
+            if (drillHistory.length <= 1) {
+                return;
+            }
+            drillHistory.pop();
+            renderCurrentView();
+        }
+
+        function buildRayonsView(zoneLabel) {
+            return {
+                title: 'Rayons',
+                subtitle: zoneLabel ? 'Zone : ' + zoneLabel : '',
+                icon: 'fa-th-large',
+                emptyText: 'Aucun rayon dans cette zone.',
+                build: function () {
+                    return clonePickTable(rayonsTable, function (row) {
+                        return row.getAttribute('data-ee-zone') === String(state.zoneId);
+                    }, function (clone) {
+                        bindPickRow(clone, onRayonSelectInModal);
+                    });
                 }
-            });
-            if (etageresEmpty) {
-                etageresEmpty.hidden = visible > 0;
+            };
+        }
+
+        function buildEtageresView(rayonLabel) {
+            var etagereTable = panels.etageres ? panels.etageres.querySelector('table') : null;
+            return {
+                title: 'Étagères',
+                subtitle: rayonLabel || '',
+                icon: 'fa-bars-staggered',
+                emptyText: 'Aucune étagère pour ce rayon.',
+                build: function () {
+                    return clonePickTable(etagereTable, function (row) {
+                        return matchesRayonRow(row);
+                    }, function (clone) {
+                        if (hasBarre || hasPosition) {
+                            bindPickRow(clone, onEtagereSelectInModal);
+                        }
+                    });
+                }
+            };
+        }
+
+        function buildBarresView(contextLabel, forRayon) {
+            var barreTable = panels.barres ? panels.barres.querySelector('table') : null;
+            return {
+                title: 'Barres',
+                subtitle: contextLabel || '',
+                icon: 'fa-grip-lines',
+                emptyText: forRayon ? 'Aucune barre pour ce rayon.' : 'Aucune barre pour cette étagère.',
+                build: function () {
+                    return clonePickTable(barreTable, function (row) {
+                        if (forRayon) {
+                            return row.getAttribute('data-ee-zone') === String(state.zoneId)
+                                && row.getAttribute('data-ee-rayon') === String(state.rayonId);
+                        }
+                        return matchesEtagereRow(row);
+                    }, function (clone) {
+                        if (hasPosition) {
+                            bindPickRow(clone, onBarreSelectInModal);
+                        }
+                    });
+                }
+            };
+        }
+
+        function buildPositionsView(barreLabel) {
+            return {
+                title: 'Positions',
+                subtitle: barreLabel || '',
+                icon: 'fa-crosshairs',
+                emptyText: 'Aucune position pour cette barre.',
+                build: function () {
+                    var match = null;
+                    barreDetails.forEach(function (block) {
+                        if (block.getAttribute('data-ee-barre-detail') === String(state.barreId)
+                            && block.getAttribute('data-ee-zone') === String(state.zoneId)
+                            && block.getAttribute('data-ee-rayon') === String(state.rayonId)
+                            && block.getAttribute('data-ee-etagere') === String(state.etagereId)) {
+                            match = block;
+                        }
+                    });
+                    if (!match) {
+                        return null;
+                    }
+                    var wrap = document.createElement('div');
+                    wrap.appendChild(match.cloneNode(true));
+                    return wrap;
+                }
+            };
+        }
+
+        function onRayonSelectInModal(row) {
+            state.rayonId = row.getAttribute('data-ee-id');
+            if (!hasZone) {
+                state.zoneId = row.getAttribute('data-ee-zone');
+            }
+            state.etagereId = null;
+            state.barreId = null;
+            var panel = firstPanelAfterRayon();
+            if (!panel) {
+                return;
+            }
+            if (panel === 'etageres') {
+                pushView(buildEtageresView(rowLabel(row)));
+            } else if (panel === 'barres') {
+                pushView(buildBarresView(rowLabel(row), true));
+            } else if (panel === 'positions') {
+                state.barreId = row.getAttribute('data-ee-id');
+                pushView(buildPositionsView(rowLabel(row)));
             }
         }
 
-        function filterBarres() {
-            var visible = 0;
-            barreRows.forEach(function (row) {
-                var show = matchesEtagere(row);
-                if (show) {
-                    row.removeAttribute('hidden');
-                    visible++;
-                } else {
-                    row.setAttribute('hidden', '');
-                }
-            });
-            if (barresEmpty) {
-                barresEmpty.hidden = visible > 0;
+        function onEtagereSelectInModal(row) {
+            state.etagereId = row.getAttribute('data-ee-id');
+            state.barreId = null;
+            if (hasBarre) {
+                pushView(buildBarresView(rowLabel(row), false));
+            } else if (hasPosition) {
+                pushView(buildPositionsView(rowLabel(row)));
             }
         }
 
-        function showBarreDetail() {
-            barreDetails.forEach(function (block) {
-                var show = block.getAttribute('data-ee-barre-detail') === String(state.barreId)
-                    && block.getAttribute('data-ee-zone') === String(state.zoneId)
-                    && block.getAttribute('data-ee-rayon') === String(state.rayonId)
-                    && block.getAttribute('data-ee-etagere') === String(state.etagereId);
-                if (show) {
-                    block.removeAttribute('hidden');
-                } else {
-                    block.setAttribute('hidden', '');
-                }
-            });
+        function onBarreSelectInModal(row) {
+            state.barreId = row.getAttribute('data-ee-id');
+            pushView(buildPositionsView(rowLabel(row)));
         }
 
         function onZoneSelect(row) {
             state.zoneId = row.getAttribute('data-ee-id');
-            setSelectedRow(zoneRows, row);
-            clearRayonSelection();
-            filterRayons();
-            hideDrillPanels();
-            showDrill();
-        }
-
-        function onRayonSelect(row) {
-            if (hasZone && row.getAttribute('data-ee-zone') !== String(state.zoneId)) {
-                return;
-            }
-            if (!hasZone) {
-                state.zoneId = row.getAttribute('data-ee-zone');
-            }
-            state.rayonId = row.getAttribute('data-ee-id');
-            setSelectedRow(rayonRows, row);
+            state.rayonId = null;
             state.etagereId = null;
             state.barreId = null;
-            hideAllDrillRows();
-            showDrill();
-            var panel = firstDrillPanelAfterRayon();
-            if (panel) {
-                showPanel(panel);
-                if (panel === 'etageres') {
-                    filterEtageres();
-                } else if (panel === 'barres') {
-                    filterBarres();
-                } else if (panel === 'positions') {
-                    showBarreDetail();
-                }
+            setSelectedRow(zoneRows, row);
+            drillHistory = [];
+            if (hasRayon) {
+                pushView(buildRayonsView(rowLabel(row)));
+                openDrillModal();
             }
         }
 
-        function onEtagereSelect(row) {
-            if (!matchesRayon(row)) {
-                return;
-            }
-            state.etagereId = row.getAttribute('data-ee-id');
+        function onRayonSelectTop(row) {
+            state.rayonId = row.getAttribute('data-ee-id');
+            state.zoneId = row.getAttribute('data-ee-zone');
+            state.etagereId = null;
             state.barreId = null;
-            barreRows.forEach(function (r) {
-                r.setAttribute('hidden', '');
-            });
-            barreDetails.forEach(function (block) {
-                block.setAttribute('hidden', '');
-            });
-            showPanel('barres');
-            filterBarres();
-        }
-
-        function onBarreSelect(row) {
-            if (!matchesEtagere(row)) {
+            setSelectedRow(rayonRows, row);
+            drillHistory = [];
+            var panel = firstPanelAfterRayon();
+            if (!panel) {
                 return;
             }
-            state.barreId = row.getAttribute('data-ee-id');
-            showPanel('positions');
-            showBarreDetail();
+            if (panel === 'etageres') {
+                pushView(buildEtageresView(rowLabel(row)));
+            } else if (panel === 'barres') {
+                pushView(buildBarresView(rowLabel(row), true));
+            } else if (panel === 'positions') {
+                state.barreId = row.getAttribute('data-ee-id');
+                pushView(buildPositionsView(rowLabel(row)));
+            }
+            openDrillModal();
         }
 
         zoneRows.forEach(function (row) {
@@ -345,34 +363,19 @@
             }
         });
 
-        rayonRows.forEach(function (row) {
-            bindPickRow(row, onRayonSelect);
-        });
-
         if (!hasZone && hasRayon) {
-            filterRayons();
+            rayonRows.forEach(function (row) {
+                row.removeAttribute('hidden');
+                bindPickRow(row, onRayonSelectTop);
+            });
         }
 
-        etagereRows.forEach(function (row) {
-            bindPickRow(row, onEtagereSelect);
-        });
+        if (modalBack) {
+            modalBack.addEventListener('click', popView);
+        }
 
-        barreRows.forEach(function (row) {
-            bindPickRow(row, onBarreSelect);
-        });
-
-        if (crumbBack) {
-            crumbBack.addEventListener('click', function () {
-                if (state.level === 'positions') {
-                    state.barreId = null;
-                    showPanel('barres');
-                    filterBarres();
-                } else if (state.level === 'barres') {
-                    state.etagereId = null;
-                    showPanel('etageres');
-                    filterEtageres();
-                }
-            });
+        if (drillRoot) {
+            drillRoot.setAttribute('hidden', '');
         }
     });
 
@@ -380,27 +383,27 @@
         zone: {
             title: 'Modifier la zone',
             icon: 'fa-map-marker-alt',
-            hint: 'Le numéro et le nom doivent être uniques sur ce niveau.'
+            hint: 'Doublon du numéro uniquement parmi les zones de ce niveau (pas avec rayons, barres, etc.).'
         },
         rayon: {
             title: 'Modifier le rayon',
             icon: 'fa-th-large',
-            hint: 'Le numéro et le nom doivent être uniques sur ce niveau (toutes zones confondues).'
+            hint: 'Doublon du numéro uniquement parmi les rayons de la même zone (les autres zones peuvent réutiliser ce numéro).'
         },
         etagere: {
             title: 'Modifier l’étagère',
             icon: 'fa-bars-staggered',
-            hint: 'Le numéro et le nom doivent être uniques sur le même rayon.'
+            hint: 'Doublon du numéro uniquement parmi les étagères du même rayon.'
         },
         barre: {
             title: 'Modifier la barre',
             icon: 'fa-grip-lines',
-            hint: 'Le numéro et le nom doivent être uniques sur le même rayon.'
+            hint: 'Doublon du numéro uniquement parmi les barres du même rayon.'
         },
         position: {
             title: 'Modifier la position',
             icon: 'fa-crosshairs',
-            hint: 'Le numéro et le nom doivent être uniques sur la même barre.'
+            hint: 'Doublon du numéro uniquement parmi les positions de la même barre.'
         }
     };
 

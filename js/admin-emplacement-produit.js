@@ -10,7 +10,7 @@
         return;
     }
 
-    if (form.getAttribute('data-mode') === 'referentiel') {
+    if (form.getAttribute('data-mode') === 'referentiel' || form.getAttribute('data-mode') === 'libre') {
         initReferentiel();
         return;
     }
@@ -106,6 +106,242 @@
         }
     }
 
+    function initLibreCascade(referentiel, selection, structure, etageSel, cascadeWrap, apercuWrap, apercuText) {
+        function asArray(list) {
+            if (!list) {
+                return [];
+            }
+            if (Array.isArray(list)) {
+                return list;
+            }
+            return Object.keys(list).map(function (k) { return list[k]; });
+        }
+
+        function fieldSelect(key) {
+            return document.querySelector('[data-emplacement-ref-select="' + key + '"]');
+        }
+
+        function fillSelect(sel, items, selectedVal, emptyLabel, valueKey, labelFn) {
+            if (!sel) {
+                return;
+            }
+            var vKey = valueKey || 'id';
+            var current = selectedVal != null && selectedVal !== '' ? String(selectedVal) : '';
+            var found = false;
+            sel.innerHTML = '';
+            var empty = document.createElement('option');
+            empty.value = '';
+            empty.textContent = emptyLabel || '— Choisir —';
+            sel.appendChild(empty);
+            asArray(items).forEach(function (item) {
+                if (!item || item[vKey] == null) {
+                    return;
+                }
+                var opt = document.createElement('option');
+                opt.value = String(item[vKey]);
+                opt.textContent = labelFn
+                    ? labelFn(item)
+                    : (item.nom || ('#' + (item.numero != null ? item.numero : item[vKey])));
+                if (current && String(item[vKey]) === current) {
+                    opt.selected = true;
+                    found = true;
+                }
+                sel.appendChild(opt);
+            });
+            if (current && !found) {
+                sel.value = '';
+            }
+        }
+
+        function selectedText(sel) {
+            if (!sel || !sel.value) {
+                return '';
+            }
+            var opt = sel.options[sel.selectedIndex];
+            return opt ? String(opt.textContent || '').trim() : '';
+        }
+
+        var etages = asArray(referentiel.etages);
+        var byNiveau = referentiel.noeuds_par_niveau || {};
+        // Compat ancien format { numero_etage: { etage, racines } }
+        if (etages.length === 0 && referentiel && typeof referentiel === 'object') {
+            Object.keys(referentiel).forEach(function (key) {
+                var block = referentiel[key];
+                if (block && block.etage) {
+                    etages.push({
+                        id: block.etage.id,
+                        numero_etage: block.etage.numero_etage,
+                        nom: block.etage.nom || ('Niveau ' + block.etage.numero_etage),
+                        code_abrege: block.etage.code_abrege || ''
+                    });
+                }
+            });
+        }
+
+        var state = {};
+        structure.forEach(function (field) {
+            var key = field.key;
+            if (field.type === 'etage') {
+                state[key] = selection.ref_etage || selection.numero_etage || '';
+            } else if (key === 'entrepot_noeud_id') {
+                state[key] = selection.entrepot_noeud_id || '';
+            } else {
+                state[key] = selection[key] || selection['ref_niveau_' + (field.niveau_id || '')] || '';
+            }
+        });
+
+        function etageIdFromNumero(num) {
+            var n = parseInt(num, 10) || 0;
+            if (!n) {
+                return 0;
+            }
+            var found = 0;
+            etages.forEach(function (et) {
+                if (parseInt(et.numero_etage, 10) === n) {
+                    found = parseInt(et.id, 10) || 0;
+                }
+            });
+            return found;
+        }
+
+        function currentEtageId() {
+            var etageField = null;
+            structure.forEach(function (f) {
+                if (f.type === 'etage') {
+                    etageField = f;
+                }
+            });
+            if (!etageField) {
+                return 0;
+            }
+            return etageIdFromNumero(state[etageField.key]);
+        }
+
+        function updateApercu() {
+            if (!apercuWrap || !apercuText) {
+                return;
+            }
+            var parts = [];
+            structure.forEach(function (field) {
+                var sel = fieldSelect(field.key);
+                var txt = selectedText(sel);
+                if (txt && sel && sel.value) {
+                    parts.push(txt);
+                }
+            });
+            if (parts.length === 0) {
+                apercuWrap.hidden = true;
+                apercuText.textContent = '';
+                return;
+            }
+            apercuText.textContent = parts.join(' · ');
+            apercuWrap.hidden = false;
+        }
+
+        function parentContextForIndex(index) {
+            var parentVal = 0;
+            var etageFilter = currentEtageId();
+            var cascadeOk = true;
+            for (var j = 0; j < index; j++) {
+                var prev = structure[j];
+                var val = parseInt(state[prev.key], 10) || 0;
+                if (!val) {
+                    cascadeOk = false;
+                    break;
+                }
+                if (prev.type === 'etage') {
+                    etageFilter = etageIdFromNumero(val);
+                    parentVal = 0;
+                } else {
+                    parentVal = val;
+                }
+            }
+            return { parentVal: cascadeOk ? parentVal : -1, etageFilter: etageFilter, cascadeOk: cascadeOk };
+        }
+
+        function rebuildFrom(fromIndex, keep) {
+            if (cascadeWrap) {
+                cascadeWrap.hidden = false;
+            }
+            for (var i = fromIndex; i < structure.length; i++) {
+                var field = structure[i];
+                var sel = fieldSelect(field.key);
+                if (!sel) {
+                    continue;
+                }
+                var label = field.label || 'élément';
+                var selected = keep ? (state[field.key] || '') : '';
+                if (field.type === 'etage') {
+                    fillSelect(
+                        sel,
+                        etages,
+                        selected,
+                        '— Choisir ' + label + ' —',
+                        'numero_etage',
+                        function (et) {
+                            var code = et.code_abrege ? (' (' + et.code_abrege + ')') : '';
+                            return (et.nom || ('#' + et.numero_etage)) + code;
+                        }
+                    );
+                    state[field.key] = sel.value || '';
+                    continue;
+                }
+
+                var ctx = parentContextForIndex(i);
+                var niveauId = parseInt(field.niveau_id || field.champ_id, 10);
+                var list = byNiveau[niveauId] || byNiveau[String(niveauId)] || [];
+                var filtered = [];
+                if (ctx.cascadeOk || i === 0) {
+                    filtered = asArray(list).filter(function (n) {
+                        if (ctx.parentVal < 0 && i > 0) {
+                            return false;
+                        }
+                        if (ctx.etageFilter > 0 && parseInt(n.etage_id, 10) !== ctx.etageFilter) {
+                            return false;
+                        }
+                        return (parseInt(n.parent_id, 10) || 0) === (ctx.parentVal < 0 ? 0 : ctx.parentVal);
+                    });
+                }
+                var emptyLabel = (!ctx.cascadeOk && i > 0)
+                    ? '— Choisissez d’abord le niveau précédent —'
+                    : ('— Choisir ' + label + ' —');
+                fillSelect(sel, filtered, selected, emptyLabel, 'id');
+                state[field.key] = sel.value || '';
+            }
+            updateApercu();
+        }
+
+        function clearDownstream(fromIndex) {
+            for (var i = fromIndex; i < structure.length; i++) {
+                state[structure[i].key] = '';
+                selection[structure[i].key] = '';
+            }
+        }
+
+        rebuildFrom(0, true);
+
+        structure.forEach(function (field, index) {
+            var sel = fieldSelect(field.key);
+            if (!sel) {
+                return;
+            }
+            sel.addEventListener('change', function () {
+                state[field.key] = sel.value;
+                selection[field.key] = sel.value;
+                if (field.type === 'etage') {
+                    selection.numero_etage = sel.value;
+                    selection.ref_etage = sel.value;
+                }
+                if (field.key === 'entrepot_noeud_id') {
+                    selection.entrepot_noeud_id = sel.value;
+                }
+                clearDownstream(index + 1);
+                rebuildFrom(index + 1, false);
+                updateApercu();
+            });
+        });
+    }
+
     function initReferentiel() {
         var refEl = document.getElementById('pm-emplacement-referentiel');
         var selEl = document.getElementById('pm-emplacement-selection');
@@ -140,6 +376,16 @@
         var cascadeWrap = document.getElementById('pm-emplacement-cascade');
         var apercuWrap = document.getElementById('pm-emplacement-apercu');
         var apercuText = document.getElementById('pm-emplacement-apercu-text');
+        var isLibreMode = form.getAttribute('data-mode') === 'libre'
+            || !!(referentiel && referentiel.mode === 'libre')
+            || (Object.keys(referentiel).some(function (k) {
+                return referentiel[k] && referentiel[k].mode === 'libre';
+            }));
+
+        if (isLibreMode) {
+            initLibreCascade(referentiel, selection, structure, etageSel, cascadeWrap, apercuWrap, apercuText);
+            return;
+        }
 
         var selKeyMap = {
             ref_zone: 'zone_id',

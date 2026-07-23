@@ -1825,6 +1825,12 @@ function create_produit($data)
             $epid = $data['entrepot_position_id'] ?? null;
             $params['entrepot_position_id'] = ($epid !== null && (int) $epid > 0) ? (int) $epid : null;
         }
+        if (produits_has_column('entrepot_noeud_id')) {
+            $cols .= ", entrepot_noeud_id";
+            $vals .= ", :entrepot_noeud_id";
+            $enid = $data['entrepot_noeud_id'] ?? null;
+            $params['entrepot_noeud_id'] = ($enid !== null && (int) $enid > 0) ? (int) $enid : null;
+        }
         if (produits_has_column('fournisseur_id')) {
             $cols .= ", fournisseur_id";
             $vals .= ", :fournisseur_id";
@@ -1961,6 +1967,11 @@ function update_produit($id, $data)
             $sets .= ", entrepot_position_id = :entrepot_position_id";
             $epid = $data['entrepot_position_id'] ?? null;
             $params['entrepot_position_id'] = ($epid !== null && (int) $epid > 0) ? (int) $epid : null;
+        }
+        if (produits_has_column('entrepot_noeud_id')) {
+            $sets .= ", entrepot_noeud_id = :entrepot_noeud_id";
+            $enid = $data['entrepot_noeud_id'] ?? null;
+            $params['entrepot_noeud_id'] = ($enid !== null && (int) $enid > 0) ? (int) $enid : null;
         }
         if (produits_has_column('fournisseur_id')) {
             $sets .= ", fournisseur_id = :fournisseur_id";

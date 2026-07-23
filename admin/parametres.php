@@ -123,7 +123,11 @@ if (isset($_SESSION['success_message'])) {
                         <h3 class="parametre-title">Emplacement entrepôt</h3>
                     </div>
                     <a href="parametres/emplacement-entrepot.php" class="parametre-link">
-                        <span class="parametre-link__txt"><i class="fas fa-map-pin" aria-hidden="true"></i> Structure par étage (rayons, allées…)</span>
+                        <span class="parametre-link__txt"><i class="fas fa-map-pin" aria-hidden="true"></i> Structure par étage (éléments nommés)</span>
+                        <i class="fas fa-chevron-right parametre-link__chev" aria-hidden="true"></i>
+                    </a>
+                    <a href="parametres/hierarchie-entrepot.php" class="parametre-link">
+                        <span class="parametre-link__txt"><i class="fas fa-sitemap" aria-hidden="true"></i> Configurer la hiérarchie (niveaux)</span>
                         <i class="fas fa-chevron-right parametre-link__chev" aria-hidden="true"></i>
                     </a>
                 </div>

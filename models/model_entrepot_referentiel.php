@@ -1116,6 +1116,10 @@ function entrepot_update_noms_table($db, $table, $etage_id, array $rows, $code_f
  */
 function entrepot_get_referentiel_json_produit() {
     require_once __DIR__ . '/model_entrepot_hierarchie.php';
+    require_once __DIR__ . '/model_entrepot_hierarchie_libre.php';
+    if (entrepot_hierarchie_libre_schema_ok()) {
+        return entrepot_hierarchie_libre_json_produit();
+    }
     if (entrepot_hierarchie_schema_ok()) {
         return entrepot_hierarchie_json_produit();
     }

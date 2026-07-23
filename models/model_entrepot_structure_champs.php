@@ -424,11 +424,13 @@ function entrepot_structure_champ_supprimer_colonne_etage($colonne) {
 /**
  * @param string $label
  * @param string $icon
- * @param int $max_valeur
+ * @param int $max_valeur Plafond technique colonne nb_* (non saisi en UI hiérarchique)
  * @param int $default_valeur
+ * @param bool $lie_barre Legacy — désactivé en mode hiérarchie CRUD (toujours false recommandé)
+ * @param string|null $niveau_hierarchie Niveau obligatoire : zone|rayon|etagere|barre|position
  * @return array{success: bool, message: string, champ?: array<string, mixed>}
  */
-function entrepot_structure_champ_ajouter($label, $icon = 'fa-cube', $max_valeur = 50, $default_valeur = 10, $lie_barre = false, $niveau_hierarchie = null) {
+function entrepot_structure_champ_ajouter($label, $icon = 'fa-cube', $max_valeur = 500, $default_valeur = 10, $lie_barre = false, $niveau_hierarchie = null) {
     global $db;
     if (!$db) {
         return ['success' => false, 'message' => 'Connexion BDD indisponible.'];
@@ -449,6 +451,27 @@ function entrepot_structure_champ_ajouter($label, $icon = 'fa-cube', $max_valeur
         return ['success' => false, 'message' => 'Libellé trop long (max ' . ENTREPOT_STRUCTURE_CHAMP_LABEL_MAX . ' caractères).'];
     }
 
+    $niveaux_valides = ['zone', 'rayon', 'etagere', 'barre', 'position'];
+    $niv = $niveau_hierarchie !== null ? trim((string) $niveau_hierarchie) : '';
+    if ($niv === '' || !in_array($niv, $niveaux_valides, true)) {
+        return ['success' => false, 'message' => 'Choisissez un niveau hiérarchique (Zone, Rayon, Étagère, Barre ou Position).'];
+    }
+    if (entrepot_hierarchie_niveau_est_actif($niv)) {
+        $labels = [
+            'zone' => 'Zone',
+            'rayon' => 'Rayon',
+            'etagere' => 'Étagère',
+            'barre' => 'Barre',
+            'position' => 'Position',
+        ];
+        $lab = $labels[$niv] ?? $niv;
+
+        return [
+            'success' => false,
+            'message' => 'Le niveau « ' . $lab . ' » est déjà configuré. Supprimez-le d’abord, ou ajoutez des éléments via le bouton correspondant dans la barre d’outils.',
+        ];
+    }
+
     $count = (int) $db->query('SELECT COUNT(*) FROM entrepot_structure_champ')->fetchColumn();
     if ($count >= ENTREPOT_STRUCTURE_CHAMPS_MAX) {
         return ['success' => false, 'message' => 'Limite de ' . ENTREPOT_STRUCTURE_CHAMPS_MAX . ' champs structurels atteinte.'];
@@ -467,7 +490,11 @@ function entrepot_structure_champ_ajouter($label, $icon = 'fa-cube', $max_valeur
         return ['success' => false, 'message' => 'Impossible de générer un identifiant de colonne valide.'];
     }
 
+    // Plafond technique uniquement (éléments ajoutés manuellement via la barre d’outils).
     $max_valeur = max(1, min(500, (int) $max_valeur));
+    if ($max_valeur < 50) {
+        $max_valeur = 500;
+    }
     $default_valeur = max(1, min($max_valeur, (int) $default_valeur));
 
     $icon = trim((string) $icon);
@@ -478,17 +505,10 @@ function entrepot_structure_champ_ajouter($label, $icon = 'fa-cube', $max_valeur
     $ordre = (int) $db->query('SELECT COALESCE(MAX(ordre), 0) FROM entrepot_structure_champ')->fetchColumn();
     $ordre += 10;
 
+    // Mode hiérarchie : pas de lien « lie_barre » (remplacé par niveau étagère / barre).
     entrepot_structure_champ_ensure_lie_barre_schema();
-    $lie_barre = $lie_barre ? 1 : 0;
+    $lie_barre = 0;
     $slug_canonique = entrepot_structure_champ_slug_canonique($label);
-    $niveaux_valides = ['zone', 'rayon', 'etagere', 'barre', 'position'];
-    $niv = $niveau_hierarchie !== null ? trim((string) $niveau_hierarchie) : '';
-    if ($niv !== '' && !in_array($niv, $niveaux_valides, true)) {
-        $niv = 'rayon';
-    }
-    if ($niv === '' && $lie_barre === 1) {
-        $niv = 'etagere';
-    }
 
     $archive = entrepot_structure_champ_reconnecter($slug_canonique, $label, $icon, $colonne, $ordre, $lie_barre, $max_valeur, $niv);
     if ($archive !== null) {
@@ -508,16 +528,12 @@ function entrepot_structure_champ_ajouter($label, $icon = 'fa-cube', $max_valeur
             ':colonne' => $colonne,
             ':ordre' => $ordre,
             ':lie_barre' => $lie_barre,
-            ':niv' => $niv !== '' ? $niv : null,
+            ':niv' => $niv,
             ':max_v' => $max_valeur,
         ]);
         $id = (int) $db->lastInsertId();
     } catch (PDOException $e) {
         return ['success' => false, 'message' => 'Erreur : ' . $e->getMessage()];
-    }
-
-    if ($lie_barre === 1) {
-        entrepot_structure_champ_definir_lie_barre($id);
     }
 
     // ALTER TABLE provoque un commit implicite MySQL — ne pas utiliser de transaction ici.
@@ -536,7 +552,7 @@ function entrepot_structure_champ_ajouter($label, $icon = 'fa-cube', $max_valeur
 
     return [
         'success' => true,
-        'message' => 'Champ « ' . $label . ' » ajouté (colonne ' . $colonne . ').',
+        'message' => 'Champ « ' . $label . ' » ajouté. Utilisez le bouton correspondant dans la barre d’outils pour ajouter ses éléments.',
         'champ' => $champ,
     ];
 }
@@ -1588,65 +1604,248 @@ function entrepot_get_elements_champ_lie_barre_etage($etage_id) {
 }
 
 /**
- * Configuration cascade formulaire produit (champs actifs, ordre).
+ * Ordre d’affichage cascade produit pour un niveau hiérarchique.
  *
- * @return array<int, array<string, mixed>>
+ * @param string $niveau
+ * @return int
  */
-function produit_emplacement_cascade_fields_config() {
-    entrepot_structure_champ_ensure_lie_barre_schema();
-    entrepot_structure_champ_ensure_hierarchie_schema();
-    $hierarchie = function_exists('entrepot_hierarchie_schema_ok') && entrepot_hierarchie_schema_ok();
+function produit_emplacement_cascade_ordre_pour_niveau($niveau) {
+    $map = [
+        'zone' => 10,
+        'allee' => 15,
+        'rayon' => 20,
+        'etagere' => 30,
+        'barre' => 40,
+        'position' => 50,
+    ];
 
-    $system_map = [
+    return (int) ($map[(string) $niveau] ?? 25);
+}
+
+/**
+ * Définitions des champs système pour la cascade produit.
+ *
+ * @param bool $hierarchie
+ * @return array<string, array<string, mixed>>
+ */
+function produit_emplacement_cascade_system_map($hierarchie = true) {
+    $map = [
         'zones' => [
             'key' => 'ref_zone',
             'type' => 'zones',
             'niveau' => 'zone',
-            'ordre' => 10,
             'hint' => 'Zone du niveau choisi.',
         ],
         'rayons' => [
             'key' => 'ref_rayon',
             'type' => 'rayons',
             'niveau' => 'rayon',
-            'ordre' => 20,
             'hint' => 'Rayon de la zone choisie.',
         ],
         'etageres' => [
             'key' => 'ref_etagere',
             'type' => 'etageres',
             'niveau' => 'etagere',
-            'ordre' => 30,
             'hint' => 'Étagère du rayon choisi.',
         ],
         'barres' => [
             'key' => 'ref_barre',
             'type' => 'barres',
             'niveau' => 'barre',
-            'ordre' => 40,
             'hint' => 'Barre de l’étagère choisie.',
         ],
         'positions' => [
             'key' => 'entrepot_position_id',
             'type' => 'positions',
             'niveau' => 'position',
-            'ordre' => 50,
             'hint' => 'Position sur la barre choisie.',
         ],
     ];
-
     if (!$hierarchie) {
-        $system_map['allees'] = [
+        $map['allees'] = [
             'key' => 'ref_allee',
             'type' => 'allees',
             'niveau' => 'allee',
-            'ordre' => 15,
             'hint' => 'Choisissez l’allée voulue (nom en base).',
         ];
     }
 
+    return $map;
+}
+
+/**
+ * Construit une entrée cascade pour un niveau actif (système ou custom).
+ *
+ * @param array<string, mixed> $meta
+ * @param array<string, array<string, mixed>> $system_map
+ * @return array<string, mixed>|null
+ */
+function produit_emplacement_cascade_entry_depuis_niveau_actif(array $meta, array $system_map) {
+    $niv = (string) ($meta['niveau'] ?? '');
+    $slug = (string) ($meta['slug'] ?? '');
+    $champ_id = (int) ($meta['champ_id'] ?? 0);
+    $label = (string) ($meta['label'] ?? '');
+    $icon = (string) ($meta['icon'] ?? 'fa-cube');
+    $ordre = produit_emplacement_cascade_ordre_pour_niveau($niv);
+
+    if ($slug !== '' && isset($system_map[$slug])) {
+        $def = $system_map[$slug];
+
+        return [
+            'key' => (string) $def['key'],
+            'type' => (string) $def['type'],
+            'niveau' => (string) $def['niveau'],
+            'ordre' => $ordre,
+            'label' => $label,
+            'icon' => $icon,
+            'hint' => (string) $def['hint'],
+            'champ_id' => $champ_id,
+        ];
+    }
+    if ($champ_id <= 0) {
+        return null;
+    }
+
+    return [
+        'key' => 'ref_champ_' . $champ_id,
+        'type' => 'custom',
+        'niveau' => $niv,
+        'ordre' => $ordre,
+        'label' => $label,
+        'icon' => $icon,
+        'hint' => 'Choisissez un élément « ' . $label . ' » (nom en base).',
+        'champ_id' => $champ_id,
+    ];
+}
+
+/**
+ * Champs custom JSON pour le référentiel produit (hiérarchie).
+ *
+ * @param int $etage_id
+ * @return array<int, array<string, mixed>>
+ */
+function produit_emplacement_champs_custom_json_etage($etage_id) {
+    $etage_id = (int) $etage_id;
+    if ($etage_id <= 0) {
+        return [];
+    }
+    $out = [];
+    foreach (produit_emplacement_cascade_fields_config() as $field) {
+        if (($field['type'] ?? '') !== 'custom') {
+            continue;
+        }
+        $cid = (int) ($field['champ_id'] ?? 0);
+        if ($cid <= 0) {
+            continue;
+        }
+        $out[$cid] = [
+            'label' => (string) ($field['label'] ?? ''),
+            'icon' => (string) ($field['icon'] ?? 'fa-cube'),
+            'elements' => entrepot_get_champ_elements_etage($etage_id, $cid),
+        ];
+    }
+
+    return $out;
+}
+
+/**
+ * Synchronisation légère après ajout / suppression d’un champ structurel.
+ */
+function produit_emplacement_sync_apres_structure_champ() {
+    entrepot_structure_champs_sync_colonnes_etage();
+}
+
+/**
+ * Configuration cascade formulaire produit (champs actifs, ordre).
+ * Alignée sur entrepot_hierarchie_niveaux_actifs() : un seul champ par niveau.
+ *
+ * @return array<int, array<string, mixed>>
+ */
+function produit_emplacement_cascade_fields_config() {
+    entrepot_structure_champ_ensure_lie_barre_schema();
+    entrepot_structure_champ_ensure_hierarchie_schema();
+    if (!function_exists('entrepot_hierarchie_libre_schema_ok')) {
+        require_once __DIR__ . '/model_entrepot_hierarchie_libre.php';
+    }
+
+    // Mode hiérarchie libre : un select par définition active, dans l’ordre configuré
+    // (Niveau/étage inclus — même cascade que la cartographie entrepôt).
+    if (entrepot_hierarchie_libre_schema_ok()) {
+        $fields = [];
+        $ordre = 10;
+        $defs = entrepot_hierarchie_def_list(true);
+        $feuille_id = 0;
+        foreach (array_reverse($defs) as $def) {
+            if (entrepot_hierarchie_def_est_etage($def)) {
+                continue;
+            }
+            $feuille_id = (int) ($def['id'] ?? 0);
+            break;
+        }
+        foreach ($defs as $def) {
+            $id = (int) ($def['id'] ?? 0);
+            if ($id <= 0) {
+                continue;
+            }
+            $label = (string) ($def['label'] ?? '');
+            $icon = (string) ($def['icon'] ?? 'fa-cube');
+            if (entrepot_hierarchie_def_est_etage($def)) {
+                $fields[] = [
+                    'key' => 'ref_etage',
+                    'type' => 'etage',
+                    'niveau_id' => $id,
+                    'niveau' => (string) ($def['slug'] ?? 'etage'),
+                    'ordre' => $ordre,
+                    'label' => $label !== '' ? $label : 'Niveau',
+                    'icon' => $icon !== '' ? $icon : 'fa-building',
+                    'hint' => 'Choisissez le « ' . ($label !== '' ? $label : 'Niveau') . ' » de l’entrepôt.',
+                    'champ_id' => $id,
+                    'is_leaf' => 0,
+                    'is_etage' => 1,
+                ];
+                $ordre += 10;
+                continue;
+            }
+            $is_leaf = ($feuille_id > 0 && $id === $feuille_id);
+            $fields[] = [
+                'key' => $is_leaf ? 'entrepot_noeud_id' : ('ref_niveau_' . $id),
+                'type' => 'noeud',
+                'niveau_id' => $id,
+                'niveau' => (string) ($def['slug'] ?? ''),
+                'ordre' => $ordre,
+                'label' => $label,
+                'icon' => $icon,
+                'hint' => $is_leaf
+                    ? 'Emplacement final (feuille de la hiérarchie).'
+                    : 'Choisissez « ' . $label . ' ».',
+                'champ_id' => $id,
+                'is_leaf' => $is_leaf ? 1 : 0,
+                'is_etage' => 0,
+            ];
+            $ordre += 10;
+        }
+
+        return $fields;
+    }
+
+    $hierarchie = function_exists('entrepot_hierarchie_schema_ok') && entrepot_hierarchie_schema_ok();
+    $system_map = produit_emplacement_cascade_system_map($hierarchie);
     $fields = [];
-    $custom_by_niveau = [];
+
+    if ($hierarchie) {
+        foreach (entrepot_hierarchie_niveaux_actifs() as $meta) {
+            $entry = produit_emplacement_cascade_entry_depuis_niveau_actif($meta, $system_map);
+            if ($entry !== null) {
+                $fields[] = $entry;
+            }
+        }
+        usort($fields, function ($a, $b) {
+            return ((int) ($a['ordre'] ?? 0)) <=> ((int) ($b['ordre'] ?? 0));
+        });
+
+        return $fields;
+    }
+
     foreach (entrepot_structure_champs_list() as $champ) {
         if ((int) ($champ['lie_barre'] ?? 0) === 1) {
             continue;
@@ -1667,7 +1866,7 @@ function produit_emplacement_cascade_fields_config() {
                 'key' => $def['key'],
                 'type' => $def['type'],
                 'niveau' => $def['niveau'],
-                'ordre' => $def['ordre'],
+                'ordre' => produit_emplacement_cascade_ordre_pour_niveau((string) $def['niveau']),
                 'label' => $label,
                 'icon' => $icon,
                 'hint' => $def['hint'],
@@ -1680,22 +1879,15 @@ function produit_emplacement_cascade_fields_config() {
         if ($cid <= 0) {
             continue;
         }
-        $niv = (string) ($champ['niveau_hierarchie'] ?? 'rayon');
-        $ordre_custom = 25;
-        if ($niv === 'zone') {
-            $ordre_custom = 12;
-        } elseif ($niv === 'etagere') {
-            $ordre_custom = 32;
-        } elseif ($niv === 'barre') {
-            $ordre_custom = 42;
-        } elseif ($niv === 'position') {
-            $ordre_custom = 52;
+        $niv = trim((string) ($champ['niveau_hierarchie'] ?? ''));
+        if ($niv !== '' && entrepot_hierarchie_niveau_est_actif($niv)) {
+            continue;
         }
-        $custom_by_niveau[] = [
+        $fields[] = [
             'key' => 'ref_champ_' . $cid,
             'type' => 'custom',
-            'niveau' => $niv,
-            'ordre' => $ordre_custom,
+            'niveau' => $niv !== '' ? $niv : 'rayon',
+            'ordre' => produit_emplacement_cascade_ordre_pour_niveau($niv !== '' ? $niv : 'rayon'),
             'label' => $label,
             'icon' => $icon,
             'hint' => 'Choisissez un élément « ' . $label . ' » (nom en base).',
@@ -1703,7 +1895,6 @@ function produit_emplacement_cascade_fields_config() {
         ];
     }
 
-    $fields = array_merge($fields, $custom_by_niveau);
     usort($fields, function ($a, $b) {
         return ((int) ($a['ordre'] ?? 0)) <=> ((int) ($b['ordre'] ?? 0));
     });
