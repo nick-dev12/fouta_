@@ -8,6 +8,36 @@
 require_once __DIR__ . '/../conn/conn.php';
 
 /**
+ * Applique le masquage des champs produit selon le rôle admin (espace admin uniquement).
+ *
+ * @param array<string, mixed>|false $produit
+ * @return array<string, mixed>|false
+ */
+function produits_appliquer_filtre_acces_champs($produit)
+{
+    if (!is_array($produit)) {
+        return $produit;
+    }
+    require_once __DIR__ . '/model_produit_formulaire_champs.php';
+
+    return produit_formulaire_filtrer_produit_acces($produit);
+}
+
+/**
+ * @param array<int, array<string, mixed>>|false $produits
+ * @return array<int, array<string, mixed>>|false
+ */
+function produits_appliquer_filtre_acces_liste($produits)
+{
+    if (!is_array($produits)) {
+        return $produits;
+    }
+    require_once __DIR__ . '/model_produit_formulaire_champs.php';
+
+    return produit_formulaire_filtrer_produits_liste_acces($produits);
+}
+
+/**
  * Indique si une colonne existe sur la table produits (cache SHOW COLUMNS)
  */
 function produits_has_column($name)
@@ -508,7 +538,7 @@ function get_admin_produits_liste_paginated($categorie_id = 0, $marque_id = 0, $
         $stmt->execute();
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        return $rows ? $rows : [];
+        return produits_appliquer_filtre_acces_liste($rows ? $rows : []);
     } catch (PDOException $e) {
         return [];
     }
@@ -566,6 +596,7 @@ function search_admin_produits_liste_live($recherche = '', $categorie_id = 0, $m
         $stmt->bindValue(':adm_live_limit', $limit, PDO::PARAM_INT);
         $stmt->execute();
         $items = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        $items = produits_appliquer_filtre_acces_liste($items);
 
         return [
             'items' => $items,
@@ -883,7 +914,7 @@ function get_all_produits($statut = null)
 
         $produits = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        return $produits ? $produits : [];
+        return produits_appliquer_filtre_acces_liste($produits ? $produits : []);
     } catch (PDOException $e) {
         return false;
     }
@@ -921,7 +952,9 @@ function get_derniers_produits_ajoutes($limit = 8)
                 LIMIT " . (int) $limit;
         }
         $stmt = $db->query($sql);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        return produits_appliquer_filtre_acces_liste($rows);
     } catch (PDOException $e) {
         return [];
     }
@@ -1033,7 +1066,9 @@ function get_produit_by_id($id)
             WHERE p.id = :id
         ");
         $stmt->execute(['id' => $id]);
-        return $stmt->fetch(PDO::FETCH_ASSOC) ?: false;
+        $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: false;
+
+        return produits_appliquer_filtre_acces_champs($row);
     } catch (PDOException $e) {
         return false;
     }
@@ -1069,7 +1104,9 @@ function get_produit_by_identifiant_interne($code, $only_actif = false)
         }
         $stmt = $db->prepare($sql);
         $stmt->execute(['code' => $code]);
-        return $stmt->fetch(PDO::FETCH_ASSOC) ?: false;
+        $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: false;
+
+        return produits_appliquer_filtre_acces_champs($row);
     } catch (PDOException $e) {
         return false;
     }
@@ -1441,7 +1478,10 @@ function search_produits_with_filters($recherche = '', $prix_min = null, $prix_m
         $stmt->execute();
         $produits = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        return $produits ?: [];
+        $rows = produits_appliquer_filtre_acces_liste($produits ? $produits : []);
+        require_once __DIR__ . '/model_produit_formulaire_champs.php';
+
+        return produit_formulaire_attacher_valeurs_custom_liste($rows);
     } catch (PDOException $e) {
         return [];
     }
@@ -2008,6 +2048,77 @@ function delete_produit($id)
 }
 
 /**
+ * Mise à jour rapide des prix depuis le suivi catalogue (page courante).
+ *
+ * @param array<int, array<string, mixed>> $rows clé produit_id => ['prix' => ?, 'prix_achat' => ?]
+ * @param int|null $admin_id
+ * @return array{success: bool, message: string, updated: int}
+ */
+function export_catalogue_maj_prix_produits(array $rows, $admin_id = null)
+{
+    global $db;
+    $updated = 0;
+    if (!$db || $rows === []) {
+        return ['success' => false, 'message' => 'Aucune modification à enregistrer.', 'updated' => 0];
+    }
+    $has_prix_achat = produits_has_column('prix_achat');
+    $has_admin_mod = produits_has_column('admin_dernier_modificateur_id');
+    try {
+        foreach ($rows as $pid => $data) {
+            $pid = (int) $pid;
+            if ($pid <= 0 || !is_array($data)) {
+                continue;
+            }
+            $sets = [];
+            $params = [':id' => $pid];
+            if (array_key_exists('prix', $data)) {
+                $prix_raw = trim((string) $data['prix']);
+                if ($prix_raw === '') {
+                    continue;
+                }
+                if (!is_numeric($prix_raw) || (float) $prix_raw < 0) {
+                    return ['success' => false, 'message' => 'Prix vente invalide pour le produit #' . $pid . '.', 'updated' => $updated];
+                }
+                $sets[] = 'prix = :prix';
+                $params[':prix'] = round((float) $prix_raw, 2);
+            }
+            if ($has_prix_achat && array_key_exists('prix_achat', $data)) {
+                $pa_raw = trim((string) $data['prix_achat']);
+                if ($pa_raw === '') {
+                    $sets[] = 'prix_achat = NULL';
+                } elseif (!is_numeric($pa_raw) || (float) $pa_raw < 0) {
+                    return ['success' => false, 'message' => 'Prix achat invalide pour le produit #' . $pid . '.', 'updated' => $updated];
+                } else {
+                    $sets[] = 'prix_achat = :prix_achat';
+                    $params[':prix_achat'] = round((float) $pa_raw, 2);
+                }
+            }
+            if ($sets === []) {
+                continue;
+            }
+            $sets[] = 'date_modification = NOW()';
+            if ($has_admin_mod && $admin_id !== null && (int) $admin_id > 0) {
+                $sets[] = 'admin_dernier_modificateur_id = :admin_mod';
+                $params[':admin_mod'] = (int) $admin_id;
+            }
+            $sql = 'UPDATE produits SET ' . implode(', ', $sets) . ' WHERE id = :id';
+            $st = $db->prepare($sql);
+            $st->execute($params);
+            if ($st->rowCount() > 0) {
+                $updated++;
+            }
+        }
+    } catch (PDOException $e) {
+        return ['success' => false, 'message' => 'Erreur : ' . $e->getMessage(), 'updated' => $updated];
+    }
+    if ($updated === 0) {
+        return ['success' => false, 'message' => 'Aucune ligne modifiée.', 'updated' => 0];
+    }
+
+    return ['success' => true, 'message' => $updated . ' produit(s) mis à jour.', 'updated' => $updated];
+}
+
+/**
  * Met à jour le statut d'un produit
  * @param int $id L'ID du produit
  * @param string $statut Le nouveau statut
@@ -2252,7 +2363,9 @@ function search_produits_en_stock_commande_manuelle($recherche = '', $limit = 30
             $out[] = $item;
         }
 
-        return $out;
+        require_once __DIR__ . '/model_produit_formulaire_champs.php';
+
+        return produit_formulaire_filtrer_produits_api_liste($out);
     } catch (PDOException $e) {
         return [];
     }
@@ -2364,8 +2477,10 @@ function get_admin_produits_export_catalogue($date_debut, $date_fin, $mode = 'to
         $stmt->bindValue(':exp_limit', $limit, PDO::PARAM_INT);
         $stmt->execute();
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $rows = produits_appliquer_filtre_acces_liste($rows ? $rows : []);
+        require_once __DIR__ . '/model_produit_formulaire_champs.php';
 
-        return $rows ? $rows : [];
+        return produit_formulaire_attacher_valeurs_custom_liste($rows);
     } catch (PDOException $e) {
         return [];
     }

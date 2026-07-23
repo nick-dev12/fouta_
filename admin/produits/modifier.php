@@ -94,18 +94,9 @@ if ($has_prix_achat_col) {
     }
 }
 
-$ref6_form_val = '';
-if ($has_ident_col) {
-    if (isset($_POST['reference_suffix6'])) {
-        $ref6_form_val = preg_replace('/\D/', '', (string) $_POST['reference_suffix6']);
-    } else {
-        $cur = strtoupper(trim((string) ($produit['identifiant_interne'] ?? '')));
-        if (preg_match('/^FPL(\d{3})(\d{6})$/', $cur, $m)) {
-            $ref6_form_val = $m[2];
-        } elseif (preg_match('/^FPL(\d{6})$/', $cur, $m)) {
-            $ref6_form_val = $m[1];
-        }
-    }
+$stock_form_val = (int) ($produit['stock'] ?? 0);
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && array_key_exists('stock', $_POST)) {
+    $stock_form_val = (int) $_POST['stock'];
 }
 
 $fournisseur_id_form_val = '';
@@ -139,6 +130,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
     && in_array((string) $_POST['statut'], ['actif', 'inactif', 'rupture_stock'], true)) {
     $statut_form_val = (string) $_POST['statut'];
 }
+
+require_once __DIR__ . '/../../includes/produit_formulaire_champs.php';
+require_once __DIR__ . '/../../includes/produit_emplacement_entrepot.php';
+$pf_custom_vals = produit_formulaire_valeurs_custom($produit_id);
+$pf_post_source = $_SERVER['REQUEST_METHOD'] === 'POST' ? $_POST : null;
+$emplacement_form_vals = produit_emplacement_form_values_for_form(
+    $_SERVER['REQUEST_METHOD'] === 'POST' ? $_POST : [],
+    $produit
+);
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -191,6 +191,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
         <form method="POST" action="" enctype="multipart/form-data" class="pm-form" id="form-produit-modifier">
         <input type="hidden" name="MAX_FILE_SIZE" value="<?php echo (int) FOUTA_UPLOAD_IMAGE_MAX_BYTES; ?>">
         <div class="pm-sections">
+            <?php if (pf_section_visible('info')): ?>
             <section class="pm-card" aria-labelledby="pm-sec-info">
                 <div class="pm-card__head">
                     <span class="pm-card__icon" aria-hidden="true"><i class="fas fa-align-left"></i></span>
@@ -200,19 +201,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
                     </div>
                 </div>
                 <div class="pm-card__body">
+            <?php if (pf_champ_visible('nom')): ?>
             <div class="form-group">
-                <label for="nom">Nom du produit *</label>
-                <input type="text" id="nom" name="nom" required
+                <label for="nom">Nom du produit<?php echo pf_champ_obligatoire('nom') ? ' *' : ''; ?></label>
+                <input type="text" id="nom" name="nom"<?php echo pf_champ_obligatoire('nom') ? ' required' : ''; ?>
                     value="<?php echo htmlspecialchars($produit['nom']); ?>">
             </div>
+            <?php endif; ?>
 
+            <?php if (pf_champ_visible('description')): ?>
             <div class="form-group">
                 <label for="description">Description</label>
                 <textarea id="description" name="description"
                     placeholder="Facultatif"><?php echo htmlspecialchars((string) ($produit['description'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
                 <small class="form-hint">Facultatif.</small>
             </div>
+            <?php endif; ?>
 
+            <?php if (pf_champ_visible('fournisseur_id')): ?>
             <div class="form-group">
                 <label for="fournisseur_id">Fournisseur</label>
                 <?php if ($has_ff_col): ?>
@@ -231,9 +237,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
                 </p>
                 <?php endif; ?>
             </div>
-            <?php if ($has_marque_col || $has_ref_fourn_col): ?>
+            <?php endif; ?>
+            <?php if (pf_champ_visible('marque_id') || pf_champ_visible('reference_fournisseur')): ?>
             <div class="form-row">
-                <?php if ($has_marque_col): ?>
+                <?php if (pf_champ_visible('marque_id') && $has_marque_col): ?>
                 <div class="form-group">
                     <label for="marque_id">Marque</label>
                     <select id="marque_id" name="marque_id">
@@ -247,7 +254,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
                     <small class="form-hint"><a href="../parametres/logos.php?tab=marques">Paramètres → Marques</a><?php echo empty($marques_catalogue) ? ' (liste vide).' : ''; ?></small>
                 </div>
                 <?php endif; ?>
-                <?php if ($has_ref_fourn_col): ?>
+                <?php if (pf_champ_visible('reference_fournisseur') && $has_ref_fourn_col): ?>
                 <div class="form-group">
                     <label for="reference_fournisseur">Référence fournisseur</label>
                     <input type="text" id="reference_fournisseur" name="reference_fournisseur" maxlength="120"
@@ -257,9 +264,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
                 <?php endif; ?>
             </div>
             <?php endif; ?>
+            <?php produit_formulaire_render_champs_custom('info', $pf_custom_vals, $pf_post_source); ?>
                 </div>
             </section>
+            <?php endif; ?>
 
+            <?php if (pf_section_visible('prix')): ?>
             <section class="pm-card" aria-labelledby="pm-sec-prix">
                 <div class="pm-card__head">
                     <span class="pm-card__icon" aria-hidden="true"><i class="fas fa-coins"></i></span>
@@ -269,21 +279,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
                     </div>
                 </div>
                 <div class="pm-card__body">
+            <?php if (pf_champ_visible('prix') || pf_champ_visible('prix_promotion')): ?>
             <div class="form-row">
+                <?php if (pf_champ_visible('prix')): ?>
                 <div class="form-group">
                     <label for="prix">Prix de vente (FCFA)</label>
                     <input type="number" id="prix" name="prix" step="0.01" min="0"
                         value="<?php echo htmlspecialchars((string) $produit['prix'], ENT_QUOTES, 'UTF-8'); ?>">
                     <small class="form-hint">Facultatif — vide = 0&nbsp;FCFA.</small>
                 </div>
+                <?php endif; ?>
 
+                <?php if (pf_champ_visible('prix_promotion')): ?>
                 <div class="form-group">
                     <label for="prix_promotion">Prix promotionnel (FCFA)</label>
                     <input type="number" id="prix_promotion" name="prix_promotion" step="0.01" min="0"
                         value="<?php echo $produit['prix_promotion'] ?? ''; ?>">
                 </div>
+                <?php endif; ?>
             </div>
-            <?php if ($has_prix_achat_col): ?>
+            <?php endif; ?>
+            <?php if (pf_champ_visible('prix_achat') && $has_prix_achat_col): ?>
             <div class="form-row">
                 <div class="form-group">
                     <label for="prix_achat">Prix d'achat (FCFA)</label>
@@ -294,16 +310,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
             </div>
             <?php endif; ?>
 
+            <?php if (pf_champ_visible('stock') || pf_champ_visible('categorie_id')): ?>
             <div class="form-row">
+                <?php if (pf_champ_visible('stock')): ?>
                 <div class="form-group">
-                    <label for="stock">Stock *</label>
-                    <input type="number" id="stock" name="stock" min="0" required
-                        value="<?php echo $produit['stock']; ?>">
+                    <label for="stock">Stock<?php echo pf_champ_obligatoire('stock') ? ' *' : ''; ?></label>
+                    <input type="number" id="stock" name="stock" min="0"<?php echo pf_champ_obligatoire('stock') ? ' required' : ''; ?>
+                        value="<?php echo (int) $stock_form_val; ?>">
                 </div>
+                <?php endif; ?>
 
+                <?php if (pf_champ_visible('categorie_id')): ?>
                 <div class="form-group">
-                    <label for="categorie_id">Catégorie *</label>
-                    <select id="categorie_id" name="categorie_id" required>
+                    <label for="categorie_id">Catégorie<?php echo pf_champ_obligatoire('categorie_id') ? ' *' : ''; ?></label>
+                    <select id="categorie_id" name="categorie_id"<?php echo pf_champ_obligatoire('categorie_id') ? ' required' : ''; ?>>
                         <option value="">Sélectionner une catégorie</option>
                         <?php if ($categories && count($categories) > 0): ?>
                         <?php
@@ -329,8 +349,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
                     </small>
                     <?php endif; ?>
                 </div>
+                <?php endif; ?>
             </div>
-            <?php if ($has_sous_cat_col): ?>
+            <?php endif; ?>
+            <?php if (pf_champ_visible('sous_categorie_id') && $has_sous_cat_col): ?>
             <div class="form-row" id="sous-categorie-field-row">
                 <div class="form-group">
                     <label for="sous_categorie_id">Sous-catégorie</label>
@@ -348,9 +370,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
                 </div>
             </div>
             <?php endif; ?>
+            <?php if (pf_champ_visible('statut')): ?>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="statut">Statut</label>
+                    <select id="statut" name="statut">
+                        <option value="actif" <?php echo $statut_form_val === 'actif' ? 'selected' : ''; ?>>Actif</option>
+                        <option value="inactif" <?php echo $statut_form_val === 'inactif' ? 'selected' : ''; ?>>Inactif</option>
+                        <option value="rupture_stock" <?php echo $statut_form_val === 'rupture_stock' ? 'selected' : ''; ?>>Rupture de stock</option>
+                    </select>
+                </div>
+            </div>
+            <?php endif; ?>
+            <?php produit_formulaire_render_champs_custom('prix', $pf_custom_vals, $pf_post_source); ?>
                 </div>
             </section>
+            <?php endif; ?>
 
+            <?php if (pf_section_visible('ref')): ?>
             <section class="pm-card" aria-labelledby="pm-sec-ref">
                 <div class="pm-card__head">
                     <span class="pm-card__icon" aria-hidden="true"><i class="fas fa-warehouse"></i></span>
@@ -360,33 +397,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
                     </div>
                 </div>
                 <div class="pm-card__body">
-            <?php
-            require_once __DIR__ . '/../../includes/produit_emplacement_entrepot.php';
-            $emplacement_form_vals = produit_emplacement_form_values_for_form(
-                $_SERVER['REQUEST_METHOD'] === 'POST' ? $_POST : [],
-                $produit
-            );
-            ?>
-            <?php if ($has_ident_col): ?>
-            <div class="form-group">
-                <label for="reference_suffix6">6 derniers chiffres de la référence *</label>
-                <?php if (!empty($produit['identifiant_interne'])): ?>
-                <p class="form-hint" style="margin-bottom:8px;">Code actuel : <strong><?php echo htmlspecialchars((string) $produit['identifiant_interne'], ENT_QUOTES, 'UTF-8'); ?></strong></p>
-                <?php endif; ?>
-                <input type="text" id="reference_suffix6" name="reference_suffix6" maxlength="6"
-                    inputmode="numeric" pattern="[0-9]{6}" autocomplete="off" placeholder="Ex. 123456"
-                    value="<?php echo htmlspecialchars($ref6_form_val, ENT_QUOTES, 'UTF-8'); ?>">
-                <small class="form-hint">Format attendu : <strong>FPL</strong> + 3 chiffres (préfixe) + ces 6 chiffres. Anciens codes FPL à 6 chiffres sont pris en charge : le préfixe sera réattribué si besoin.</small>
-            </div>
-            <?php else: ?>
+            <?php if (!$has_ident_col && pf_champ_visible('identifiant_interne')): ?>
             <p class="pm-hint">
                 <i class="fas fa-info-circle"></i> Référence FPL : activez la colonne <code>identifiant_interne</code> (migrations).
             </p>
             <?php endif; ?>
+            <?php if (pf_champ_visible('emplacement')): ?>
             <?php produit_emplacement_render_form_fields($emplacement_form_vals); ?>
+            <?php endif; ?>
+            <?php produit_formulaire_render_champs_custom('ref', $pf_custom_vals, $pf_post_source); ?>
                 </div>
             </section>
+            <?php endif; ?>
 
+            <?php if (pf_champ_visible('variantes')): ?>
             <section class="pm-card admin-ajouter-produit-masquer" aria-labelledby="pm-sec-var" aria-hidden="true">
                 <div class="pm-card__head">
                     <span class="pm-card__icon" aria-hidden="true"><i class="fas fa-layer-group"></i></span>
@@ -457,7 +481,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
             </div>
                 </div>
             </section>
+            <?php endif; ?>
 
+            <?php if (pf_section_visible('options')): ?>
             <section class="pm-card admin-ajouter-produit-masquer" aria-labelledby="pm-sec-opts" aria-hidden="true">
                 <div class="pm-card__head">
                     <span class="pm-card__icon" aria-hidden="true"><i class="fas fa-sliders"></i></span>
@@ -467,6 +493,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
                     </div>
                 </div>
                 <div class="pm-card__body">
+            <?php if (pf_champ_visible('poids')): ?>
             <div class="form-row">
                 <div class="form-group">
                     <label>Poids disponibles</label>
@@ -512,7 +539,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
                     </select>
                 </div> -->
             </div>
+            <?php endif; ?>
 
+            <?php if (pf_champ_visible('couleurs')): ?>
             <?php
             $couleurs_init = [];
             $couleurs_raw = trim($produit['couleurs'] ?? '');
@@ -586,9 +615,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
                         optionnel (ex: L + 200). Laissez vide pour 0.</small>
                 </div> -->
             </div>
+            <?php endif; ?>
+            <?php produit_formulaire_render_champs_custom('options', $pf_custom_vals, $pf_post_source); ?>
                 </div>
             </section>
+            <?php endif; ?>
 
+            <?php if (pf_section_visible('media')): ?>
             <section class="pm-card" aria-labelledby="pm-sec-media">
                 <div class="pm-card__head">
                     <span class="pm-card__icon" aria-hidden="true"><i class="fas fa-images"></i></span>
@@ -598,6 +631,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
                     </div>
                 </div>
                 <div class="pm-card__body">
+            <?php if (pf_champ_visible('images_produit')): ?>
             <div class="form-group">
                 <label><i class="fas fa-image"></i> Images du produit</label>
                 <p class="form-hint" style="margin-bottom: 10px;">Images actuelles — cliquez sur &times;
@@ -631,7 +665,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
                 <div id="preview-supplementaires" class="image-preview-grid"></div>
                 <small class="form-hint">Formats : JPG, PNG, GIF, WEBP · max <?php echo (int) fouta_upload_image_max_mo_int(); ?> Mo par fichier. Vous pouvez retirer toutes les images si besoin.</small>
             </div>
-            <?php if ($has_img_etiq_col):
+            <?php endif; ?>
+            <?php if (pf_champ_visible('image_etiquette_fpl') && $has_img_etiq_col):
                 $etiq_cur = trim((string) ($produit['image_etiquette_fpl'] ?? ''));
                 ?>
             <div class="form-group" style="margin-top: 1.25rem;">
@@ -651,10 +686,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
                 <small class="form-hint"><?php echo $etiq_cur !== '' ? 'Sans nouveau fichier, l’image actuelle est conservée.' : 'Sans image, les pictogrammes s’affichent sur l’étiquette.'; ?> JPG, PNG, GIF, WEBP · max <?php echo (int) fouta_upload_image_max_mo_int(); ?> Mo.</small>
             </div>
             <?php endif; ?>
+            <?php produit_formulaire_render_champs_custom('media', $pf_custom_vals, $pf_post_source); ?>
                 </div>
             </section>
+            <?php endif; ?>
 
+            <?php if (!pf_champ_visible('statut')): ?>
             <input type="hidden" name="statut" value="<?php echo htmlspecialchars($statut_form_val, ENT_QUOTES, 'UTF-8'); ?>">
+            <?php endif; ?>
 
         </div><!-- .pm-sections -->
 

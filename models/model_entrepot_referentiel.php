@@ -4,6 +4,7 @@
  */
 require_once __DIR__ . '/../conn/conn.php';
 require_once __DIR__ . '/model_entrepot_emplacement.php';
+require_once __DIR__ . '/model_entrepot_structure_champs.php';
 require_once __DIR__ . '/model_produits.php';
 
 /**
@@ -76,6 +77,16 @@ function entrepot_get_etage_ref_by_id($id) {
  * @return array{success: bool, message: string, etage_id?: int}
  */
 function entrepot_sync_referentiel_depuis_config($numero_etage) {
+    require_once __DIR__ . '/model_entrepot_hierarchie.php';
+    if (entrepot_hierarchie_schema_ok()) {
+        $etage = entrepot_get_etage_ref_by_numero((int) $numero_etage);
+        if ($etage === null) {
+            return ['success' => false, 'message' => 'Niveau introuvable dans le référentiel.'];
+        }
+
+        return ['success' => true, 'message' => 'Référentiel CRUD actif (sync bulk désactivée).', 'etage_id' => (int) $etage['id']];
+    }
+
     global $db;
     $numero_etage = (int) $numero_etage;
     if ($numero_etage <= 0 || !entrepot_referentiel_tables_ok() || !entrepot_emplacement_tables_ok()) {
@@ -110,11 +121,24 @@ function entrepot_sync_referentiel_depuis_config($numero_etage) {
             $etage_id = (int) $etage['id'];
         }
 
-        entrepot_sync_lignes_niveau($db, 'entrepot_rayon', $etage_id, $nb_rayons, 'Rayon', true);
-        entrepot_sync_lignes_niveau($db, 'entrepot_allee', $etage_id, $nb_allees, 'Allée', false);
-        entrepot_sync_zones($db, $etage_id, $nb_zones, $nb_rayons);
-        entrepot_sync_barres_par_rayon($db, $etage_id, $nb_barres);
-        entrepot_sync_positions_etage($db, $etage_id, $nb_positions);
+        if (entrepot_structure_champ_slug_actif('rayons')) {
+            entrepot_sync_lignes_niveau($db, 'entrepot_rayon', $etage_id, $nb_rayons, 'Rayon', true);
+        }
+        if (entrepot_structure_champ_slug_actif('allees')) {
+            entrepot_sync_lignes_niveau($db, 'entrepot_allee', $etage_id, $nb_allees, 'Allée', false);
+        }
+        if (entrepot_structure_champ_slug_actif('zones')) {
+            entrepot_sync_zones($db, $etage_id, $nb_zones, $nb_rayons);
+        }
+        if (entrepot_structure_champ_slug_actif('barres')) {
+            entrepot_sync_barres_par_rayon($db, $etage_id, $nb_barres);
+        }
+        if (entrepot_structure_champ_slug_actif('positions')) {
+            entrepot_sync_positions_etage($db, $etage_id, $nb_positions);
+        }
+
+        entrepot_sync_champs_custom_etage($db, $etage_id, $numero_etage);
+        entrepot_sync_lie_barre_barres($db, $etage_id);
 
         $db->commit();
 
@@ -370,14 +394,18 @@ function entrepot_barre_nom_valeur_formulaire($nom, $numero) {
  */
 function entrepot_barre_etiquette_libelle(array $barre, $etage = null, $rayon = null) {
     $code = '';
-    if (is_array($etage) && !empty($etage['code'])) {
-        $code = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string) $etage['code']));
+    if (is_array($etage)) {
+        if (!empty($etage['code_abrege'])) {
+            $code = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string) $etage['code_abrege']));
+        } elseif (!empty($etage['code'])) {
+            $code = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string) $etage['code']));
+        }
     }
     if ($code === '') {
         $code = 'B';
     }
-    if (strlen($code) > 3) {
-        $code = substr($code, 0, 3);
+    if (strlen($code) > 10) {
+        $code = substr($code, 0, 10);
     }
 
     $num_rayon = 1;
@@ -426,6 +454,134 @@ function entrepot_barres_grouper_par_rayon(array $barres) {
     }
 
     return $out;
+}
+
+/**
+ * Regroupe les barres par élément de champ lié (champ_element_id).
+ *
+ * @param array<int, array<string,mixed>> $barres
+ * @return array{by_element: array<int, array<int, array<string,mixed>>>, unassigned: array<int, array<string,mixed>>}
+ */
+function entrepot_barres_grouper_par_champ_element(array $barres) {
+    $by_element = [];
+    $unassigned = [];
+    foreach ($barres as $b) {
+        $eid = (int) ($b['champ_element_id'] ?? 0);
+        if ($eid > 0) {
+            if (!isset($by_element[$eid])) {
+                $by_element[$eid] = [];
+            }
+            $by_element[$eid][] = $b;
+        } else {
+            $unassigned[] = $b;
+        }
+    }
+    $sort_fn = function ($a, $b) {
+        return (int) ($a['numero'] ?? 0) <=> (int) ($b['numero'] ?? 0);
+    };
+    foreach ($by_element as $eid => $list) {
+        usort($list, $sort_fn);
+        $by_element[$eid] = $list;
+    }
+    usort($unassigned, $sort_fn);
+
+    return ['by_element' => $by_element, 'unassigned' => $unassigned];
+}
+
+/**
+ * Lie automatiquement les barres aux éléments du champ lie_barre (même principe que rayons).
+ * Élément #N reçoit toutes les barres du rayon #N.
+ *
+ * @param PDO $db
+ * @param int $etage_id
+ */
+function entrepot_sync_lie_barre_barres($db, $etage_id) {
+    entrepot_barre_ensure_champ_element_schema();
+    $lie = entrepot_structure_champ_get_lie_barre();
+    if ($lie === null || !entrepot_structure_champ_slug_actif('barres')) {
+        return;
+    }
+
+    $etage_id = (int) $etage_id;
+    $champ_id = (int) ($lie['id'] ?? 0);
+    if ($etage_id <= 0 || $champ_id <= 0) {
+        return;
+    }
+
+    $st_el = $db->prepare(
+        'SELECT id, numero FROM entrepot_champ_element WHERE etage_id = :e AND champ_id = :c ORDER BY numero ASC'
+    );
+    $st_el->execute([':e' => $etage_id, ':c' => $champ_id]);
+    $elements = $st_el->fetchAll(PDO::FETCH_ASSOC);
+    if ($elements === []) {
+        return;
+    }
+
+    $rayons = [];
+    $st_r = $db->prepare('SELECT id, numero FROM entrepot_rayon WHERE etage_id = :e ORDER BY numero ASC');
+    $st_r->execute([':e' => $etage_id]);
+    foreach ($st_r->fetchAll(PDO::FETCH_ASSOC) as $r) {
+        $rayons[(int) $r['numero']] = (int) $r['id'];
+    }
+    if ($rayons === []) {
+        return;
+    }
+
+    $rayon_numeros = array_keys($rayons);
+    sort($rayon_numeros, SORT_NUMERIC);
+    $nb_rayons = count($rayon_numeros);
+
+    $upd = $db->prepare(
+        'UPDATE entrepot_barre SET champ_element_id = :ce, date_modification = NOW()
+         WHERE etage_id = :e AND rayon_id = :r'
+    );
+
+    foreach ($elements as $el) {
+        $el_id = (int) ($el['id'] ?? 0);
+        $el_num = (int) ($el['numero'] ?? 0);
+        if ($el_id <= 0 || $el_num <= 0) {
+            continue;
+        }
+        $rayon_id = $rayons[$el_num] ?? null;
+        if ($rayon_id === null && $nb_rayons > 0) {
+            $idx = ($el_num - 1) % $nb_rayons;
+            $rayon_num = $rayon_numeros[$idx];
+            $rayon_id = $rayons[$rayon_num];
+        }
+        if ($rayon_id === null || $rayon_id <= 0) {
+            continue;
+        }
+        $upd->execute([':ce' => $el_id, ':e' => $etage_id, ':r' => $rayon_id]);
+    }
+}
+
+/**
+ * Réassigne les barres lie_barre si aucune n’est encore liée (migration douce).
+ *
+ * @param int $etage_id
+ */
+function entrepot_maybe_sync_lie_barre_barres($etage_id) {
+    global $db;
+    entrepot_barre_ensure_champ_element_schema();
+    if (!entrepot_structure_champ_get_lie_barre() || !entrepot_referentiel_tables_ok()) {
+        return;
+    }
+    $etage_id = (int) $etage_id;
+    if ($etage_id <= 0) {
+        return;
+    }
+    try {
+        $st = $db->prepare(
+            'SELECT COUNT(*) FROM entrepot_barre WHERE etage_id = :e AND champ_element_id IS NOT NULL AND champ_element_id > 0'
+        );
+        $st->execute([':e' => $etage_id]);
+        if ((int) $st->fetchColumn() > 0) {
+            return;
+        }
+        entrepot_sync_lie_barre_barres($db, $etage_id);
+    } catch (PDOException $e) {
+        return;
+    }
 }
 
 /**
@@ -745,6 +901,7 @@ function entrepot_get_referentiel_etage_complet($numero_etage) {
         return null;
     }
     $etage_id = (int) $etage['id'];
+    entrepot_maybe_sync_lie_barre_barres($etage_id);
 
     $fetch = function ($table, $extra = '') use ($db, $etage_id) {
         $sql = "SELECT * FROM `$table` WHERE etage_id = :e ORDER BY numero ASC";
@@ -772,13 +929,42 @@ function entrepot_get_referentiel_etage_complet($numero_etage) {
 
     $barres_par_rayon = entrepot_barres_grouper_par_rayon($barres);
 
+    $champs_custom = [];
+    foreach (entrepot_structure_champs_custom_list() as $ch) {
+        if ((int) ($ch['lie_barre'] ?? 0) === 1) {
+            continue;
+        }
+        $cid = (int) ($ch['id'] ?? 0);
+        if ($cid <= 0) {
+            continue;
+        }
+        $champs_custom[$cid] = [
+            'label' => (string) ($ch['label'] ?? ''),
+            'icon' => (string) ($ch['icon'] ?? 'fa-cube'),
+            'elements' => entrepot_get_champ_elements_etage($etage_id, $cid),
+        ];
+    }
+
+    $lie_barre = entrepot_structure_champ_get_lie_barre();
+    $lie_barre_block = null;
+    if ($lie_barre !== null) {
+        $lie_barre_block = [
+            'champ_id' => (int) $lie_barre['id'],
+            'label' => (string) ($lie_barre['label'] ?? ''),
+            'icon' => (string) ($lie_barre['icon'] ?? 'fa-cube'),
+            'elements' => entrepot_get_champ_elements_etage($etage_id, (int) $lie_barre['id']),
+        ];
+    }
+
     return [
         'etage' => $etage,
-        'rayons' => $fetch('entrepot_rayon'),
-        'allees' => $fetch('entrepot_allee'),
-        'zones' => $fetch('entrepot_zone'),
+        'rayons' => entrepot_structure_champ_slug_actif('rayons') ? $fetch('entrepot_rayon') : [],
+        'allees' => entrepot_structure_champ_slug_actif('allees') ? $fetch('entrepot_allee') : [],
+        'zones' => entrepot_structure_champ_slug_actif('zones') ? $fetch('entrepot_zone') : [],
         'barres' => $barres,
         'barres_par_rayon' => $barres_par_rayon,
+        'champs_custom' => $champs_custom,
+        'lie_barre' => $lie_barre_block,
     ];
 }
 
@@ -791,14 +977,8 @@ function entrepot_enregistrer_referentiel_etage($numero_etage, array $post) {
     global $db;
     $numero_etage = (int) $numero_etage;
 
-    if (isset($post['nb_rayons'], $post['nb_allees'], $post['nb_zones'], $post['nb_positions'], $post['nb_barres'])) {
-        $qres = entrepot_emplacement_enregistrer_quantites_etage($numero_etage, [
-            'nb_rayons' => $post['nb_rayons'],
-            'nb_allees' => $post['nb_allees'],
-            'nb_zones' => $post['nb_zones'],
-            'nb_positions' => $post['nb_positions'],
-            'nb_barres' => $post['nb_barres'],
-        ]);
+    if (isset($post['nom_etage']) || entrepot_structure_champs_valeurs_depuis_post($post) !== []) {
+        $qres = entrepot_emplacement_enregistrer_quantites_etage($numero_etage, $post);
         if (!$qres['success']) {
             return $qres;
         }
@@ -831,6 +1011,7 @@ function entrepot_enregistrer_referentiel_etage($numero_etage, array $post) {
         entrepot_update_noms_table($db, 'entrepot_rayon', $etage_id, $post['rayons'] ?? [], 'code');
         entrepot_update_noms_table($db, 'entrepot_allee', $etage_id, $post['allees'] ?? [], null);
         entrepot_update_noms_table($db, 'entrepot_zone', $etage_id, $post['zones'] ?? [], null);
+        entrepot_update_noms_champs_custom($db, $etage_id, isset($post['champs_custom']) && is_array($post['champs_custom']) ? $post['champs_custom'] : []);
 
         if (isset($post['barres']) && is_array($post['barres'])) {
             foreach ($post['barres'] as $bid => $bdata) {
@@ -852,9 +1033,21 @@ function entrepot_enregistrer_referentiel_etage($numero_etage, array $post) {
                 }
                 $allee_id = isset($bdata['allee_id']) && $bdata['allee_id'] !== '' ? (int) $bdata['allee_id'] : null;
                 $zone_id = isset($bdata['zone_id']) && $bdata['zone_id'] !== '' ? (int) $bdata['zone_id'] : null;
+                $champ_element_id = isset($bdata['champ_element_id']) && $bdata['champ_element_id'] !== ''
+                    ? (int) $bdata['champ_element_id']
+                    : null;
                 $db->prepare(
-                    'UPDATE entrepot_barre SET nom = :nom, rayon_id = :r, allee_id = :a, zone_id = :z, date_modification = NOW() WHERE id = :id AND etage_id = :e'
-                )->execute([':nom' => $nom, ':r' => $rayon_id, ':a' => $allee_id, ':z' => $zone_id, ':id' => $bid, ':e' => $etage_id]);
+                    'UPDATE entrepot_barre SET nom = :nom, rayon_id = :r, allee_id = :a, zone_id = :z,
+                     champ_element_id = :ce, date_modification = NOW() WHERE id = :id AND etage_id = :e'
+                )->execute([
+                    ':nom' => $nom,
+                    ':r' => $rayon_id,
+                    ':a' => $allee_id,
+                    ':z' => $zone_id,
+                    ':ce' => ($champ_element_id !== null && $champ_element_id > 0) ? $champ_element_id : null,
+                    ':id' => $bid,
+                    ':e' => $etage_id,
+                ]);
                 entrepot_barre_refresh_chemin_libelle($bid, $db);
                 if (empty($existing_barre['code_scan'])) {
                     entrepot_barre_generer_code_scan($bid);
@@ -922,6 +1115,11 @@ function entrepot_update_noms_table($db, $table, $etage_id, array $rows, $code_f
  * @return array<int, array<string, mixed>>
  */
 function entrepot_get_referentiel_json_produit() {
+    require_once __DIR__ . '/model_entrepot_hierarchie.php';
+    if (entrepot_hierarchie_schema_ok()) {
+        return entrepot_hierarchie_json_produit();
+    }
+
     $out = [];
     if (!entrepot_emplacement_est_configure() || !entrepot_referentiel_tables_ok()) {
         return $out;

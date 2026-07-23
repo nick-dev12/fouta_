@@ -101,8 +101,16 @@
   align-items: center;
 }
 
-.btn-export-pdf-inline {
+.page-produits-export-options-btn {
   margin-left: auto;
+}
+
+.page-produits-export-toast {
+  margin: 10px 0 0;
+}
+
+.btn-export-pdf-inline {
+  margin-left: 0;
 }
 
 .page-produits-export-truncated {
@@ -138,20 +146,32 @@
 
 .page-produits-export-table {
   width: 100%;
-  min-width: 980px;
+  min-width: 760px;
   border-collapse: collapse;
   table-layout: fixed;
 }
 
 .page-produits-export-table col.page-produits-export-table__col-img { width: 56px; }
-.page-produits-export-table col.page-produits-export-table__col-nom { width: 22%; }
-.page-produits-export-table col.page-produits-export-table__col-cat { width: 12%; }
+.page-produits-export-table col.page-produits-export-table__col-nom { width: 28%; }
+.page-produits-export-table col.page-produits-export-table__col-cat { width: 14%; }
+.page-produits-export-table col.page-produits-export-table__col-prix-achat { width: 11%; }
+.page-produits-export-table col.page-produits-export-table__col-prix { width: 11%; }
+.page-produits-export-table col.page-produits-export-table__col-marque { width: 11%; }
+.page-produits-export-table col.page-produits-export-table__col-ident { width: 10%; }
 .page-produits-export-table col.page-produits-export-table__col-four { width: 12%; }
-.page-produits-export-table col.page-produits-export-table__col-prix-achat { width: 10%; }
-.page-produits-export-table col.page-produits-export-table__col-prix { width: 10%; }
 .page-produits-export-table col.page-produits-export-table__col-promo { width: 9%; }
-.page-produits-export-table col.page-produits-export-table__col-stock { width: 8%; }
-.page-produits-export-table col.page-produits-export-table__col-date { width: 10%; }
+.page-produits-export-table col.page-produits-export-table__col-stock { width: 9%; }
+.page-produits-export-table col.page-produits-export-table__col-statut { width: 10%; }
+.page-produits-export-table col.page-produits-export-table__col-sous-cat { width: 12%; }
+
+.page-produits-export-table [data-suivi-col].is-suivi-col-hidden,
+.page-produits-export-table col.is-suivi-col-hidden {
+  display: none;
+}
+
+.is-suivi-nom-meta-hidden {
+  display: none !important;
+}
 
 .page-produits-export-table thead th {
   position: sticky;
@@ -232,9 +252,229 @@
 }
 
 .page-produits-export-table__date {
-  white-space: nowrap;
   font-size: 0.8rem;
   color: var(--gris-fonce, #4a4a4a);
+  line-height: 1.45;
+}
+
+.page-produits-export-table__date-line {
+  display: block;
+}
+
+.page-produits-export-table__date-line .muted {
+  color: var(--gris-moyen, #737373);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.page-produits-export-table__price-input {
+  width: 100%;
+  max-width: 110px;
+  padding: 7px 8px;
+  border: 1px solid var(--border-input, rgba(53, 100, 166, 0.2));
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  background: #fff;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.page-produits-export-table__price-input:focus {
+  outline: none;
+  border-color: var(--border-input-focus, #3564a6);
+  box-shadow: 0 0 0 3px var(--focus-ring, rgba(53, 100, 166, 0.15));
+}
+
+.page-produits-export-save-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 12px 0 10px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(53, 100, 166, 0.06);
+  border: 1px solid rgba(53, 100, 166, 0.12);
+}
+
+.page-produits-export-save-bar--bottom {
+  margin-top: 16px;
+  justify-content: flex-end;
+}
+
+.page-produits-export-save-bar__hint {
+  margin: 0;
+  flex: 1;
+  min-width: 200px;
+  font-size: 0.875rem;
+  color: var(--gris-fonce, #4a4a4a);
+}
+
+.page-produits-export-save-bar__hint i {
+  color: var(--couleur-dominante, #3564a6);
+  margin-right: 6px;
+}
+
+.page-produits-export-save-bar__btn {
+  flex-shrink: 0;
+}
+
+.page-produits-export-date {
+  font-variant-numeric: tabular-nums;
+}
+
+.page-produits-export [data-export-pdf-trigger].is-export-disabled {
+  pointer-events: none;
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Modals suivi / PDF */
+body.export-catalogue-modal-open,
+body.export-catalogue-pdf-modal-open {
+  overflow: hidden;
+}
+
+.export-catalogue-pdf-modal-overlay,
+.export-catalogue-table-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  background: rgba(13, 13, 13, 0.45);
+  backdrop-filter: blur(2px);
+}
+
+.export-catalogue-pdf-modal,
+.export-catalogue-table-modal {
+  position: fixed;
+  z-index: 1201;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(520px, calc(100vw - 24px));
+  max-height: calc(100vh - 40px);
+  overflow: auto;
+  padding: 22px 22px 18px;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 20px 50px rgba(53, 100, 166, 0.22);
+  border: 1px solid rgba(53, 100, 166, 0.14);
+}
+
+.export-catalogue-pdf-modal__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.export-catalogue-pdf-modal__title {
+  margin: 0;
+  font-size: 1.15rem;
+  color: var(--texte-fonce, #0d0d0d);
+}
+
+.export-catalogue-pdf-modal__title i {
+  color: var(--couleur-dominante, #3564a6);
+  margin-right: 8px;
+}
+
+.export-catalogue-pdf-modal__close {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 10px;
+  background: rgba(53, 100, 166, 0.08);
+  color: var(--gris-fonce, #4a4a4a);
+  cursor: pointer;
+}
+
+.export-catalogue-pdf-modal__close:hover {
+  background: rgba(53, 100, 166, 0.14);
+}
+
+.export-catalogue-pdf-modal__intro {
+  margin: 0 0 14px;
+  font-size: 0.9rem;
+  color: var(--gris-fonce, #4a4a4a);
+  line-height: 1.45;
+}
+
+.export-catalogue-pdf-modal__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.export-catalogue-pdf-modal__toolbar .btn-secondary {
+  font-size: 0.82rem;
+  padding: 6px 12px;
+}
+
+.export-catalogue-pdf-modal__columns {
+  border: 1px solid rgba(53, 100, 166, 0.14);
+  border-radius: 12px;
+  padding: 12px;
+  margin: 0 0 12px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 12px;
+}
+
+.export-catalogue-pdf-modal__column {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 8px;
+  transition: background 0.15s ease;
+}
+
+.export-catalogue-pdf-modal__column:hover {
+  background: rgba(53, 100, 166, 0.06);
+}
+
+.export-catalogue-pdf-modal__column input {
+  accent-color: var(--couleur-dominante, #3564a6);
+}
+
+.export-catalogue-pdf-modal__error {
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--orange-fonce, #e85a2a);
+  background: rgba(255, 107, 53, 0.1);
+  border: 1px solid rgba(255, 107, 53, 0.25);
+}
+
+.export-catalogue-pdf-modal__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 @media (min-width: 640px) {
@@ -301,7 +541,9 @@
 
   .page-produits-export-filters__actions .btn-primary,
   .page-produits-export-filters__actions .btn-filter-reset,
-  .btn-export-pdf-inline {
+  .page-produits-export-filters__actions .btn-secondary,
+  .btn-export-pdf-inline,
+  .page-produits-export-options-btn {
     margin-left: 0;
     width: 100%;
     justify-content: center;

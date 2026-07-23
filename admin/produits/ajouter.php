@@ -56,7 +56,9 @@ $has_ref_fourn_col = produits_has_column('reference_fournisseur');
 require_once __DIR__ . '/../../models/model_marques.php';
 $marques_catalogue = ($has_marque_col && marques_table_ok()) ? get_all_marques_ordered_by_nom() : [];
 require_once __DIR__ . '/../../includes/produit_emplacement_entrepot.php';
+require_once __DIR__ . '/../../includes/produit_formulaire_champs.php';
 $emplacement_form_vals = produit_emplacement_form_values_for_form($_POST);
+$pf_custom_vals = [];
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -113,6 +115,7 @@ $emplacement_form_vals = produit_emplacement_form_values_for_form($_POST);
             <form method="POST" action="" enctype="multipart/form-data" class="pm-form" id="form-produit-ajouter">
                 <input type="hidden" name="MAX_FILE_SIZE" value="<?php echo (int) FOUTA_UPLOAD_IMAGE_MAX_BYTES; ?>">
                 <div class="pm-sections">
+                    <?php if (pf_section_visible('info')): ?>
                     <section class="pm-card" aria-labelledby="pm-sec-info-add">
                         <div class="pm-card__head">
                             <span class="pm-card__icon" aria-hidden="true"><i class="fas fa-align-left"></i></span>
@@ -122,16 +125,21 @@ $emplacement_form_vals = produit_emplacement_form_values_for_form($_POST);
                             </div>
                         </div>
                         <div class="pm-card__body">
+                            <?php if (pf_champ_visible('nom')): ?>
                             <div class="form-group">
-                                <label for="nom">Nom du produit *</label>
-                                <input type="text" id="nom" name="nom" required placeholder="Ex : Filtre à air compatible…"
+                                <label for="nom">Nom du produit<?php echo pf_champ_obligatoire('nom') ? ' *' : ''; ?></label>
+                                <input type="text" id="nom" name="nom"<?php echo pf_champ_obligatoire('nom') ? ' required' : ''; ?> placeholder="Ex : Filtre à air compatible…"
                                     value="<?php echo isset($_POST['nom']) ? htmlspecialchars($_POST['nom']) : ''; ?>">
                             </div>
+                            <?php endif; ?>
+                            <?php if (pf_champ_visible('description')): ?>
                             <div class="form-group">
                                 <label for="description">Description</label>
                                 <textarea id="description" name="description" placeholder="Décrivez le produit… (facultatif)"><?php echo isset($_POST['description']) ? htmlspecialchars($_POST['description']) : ''; ?></textarea>
                                 <small class="form-hint">Facultatif.</small>
                             </div>
+                            <?php endif; ?>
+                            <?php if (pf_champ_visible('fournisseur_id')): ?>
                             <div class="form-group">
                                 <label for="fournisseur_id">Fournisseur</label>
                                 <?php if ($has_ff_col): ?>
@@ -150,9 +158,10 @@ $emplacement_form_vals = produit_emplacement_form_values_for_form($_POST);
                                 </p>
                                 <?php endif; ?>
                             </div>
-                            <?php if ($has_marque_col || $has_ref_fourn_col): ?>
+                            <?php endif; ?>
+                            <?php if (pf_champ_visible('marque_id') || pf_champ_visible('reference_fournisseur')): ?>
                             <div class="form-row">
-                                <?php if ($has_marque_col): ?>
+                                <?php if (pf_champ_visible('marque_id') && $has_marque_col): ?>
                                 <div class="form-group">
                                     <label for="marque_id">Marque</label>
                                     <select id="marque_id" name="marque_id">
@@ -163,23 +172,24 @@ $emplacement_form_vals = produit_emplacement_form_values_for_form($_POST);
                                         </option>
                                         <?php endforeach; ?>
                                     </select>
-                                    <small class="form-hint">Référentiel <a href="../parametres/logos.php?tab=marques">Paramètres → Marques</a><?php echo empty($marques_catalogue) ? ' (aucune marque pour l’instant).' : '.'; ?></small>
                                 </div>
                                 <?php endif; ?>
-                                <?php if ($has_ref_fourn_col): ?>
+                                <?php if (pf_champ_visible('reference_fournisseur') && $has_ref_fourn_col): ?>
                                 <div class="form-group">
                                     <label for="reference_fournisseur">Référence fournisseur</label>
                                     <input type="text" id="reference_fournisseur" name="reference_fournisseur" maxlength="120"
                                         placeholder="Code ou réf. chez le fournisseur"
                                         value="<?php echo isset($_POST['reference_fournisseur']) ? htmlspecialchars((string) $_POST['reference_fournisseur'], ENT_QUOTES, 'UTF-8') : ''; ?>">
-                                    <small class="form-hint">Optionnel — identifiant article côté fournisseur.</small>
                                 </div>
                                 <?php endif; ?>
                             </div>
                             <?php endif; ?>
+                            <?php produit_formulaire_render_champs_custom('info', $pf_custom_vals, $_POST); ?>
                         </div>
                     </section>
+                    <?php endif; ?>
 
+                    <?php if (pf_section_visible('prix')): ?>
                     <section class="pm-card" aria-labelledby="pm-sec-prix-add">
                         <div class="pm-card__head">
                             <span class="pm-card__icon" aria-hidden="true"><i class="fas fa-coins"></i></span>
@@ -189,20 +199,26 @@ $emplacement_form_vals = produit_emplacement_form_values_for_form($_POST);
                             </div>
                         </div>
                         <div class="pm-card__body">
+                            <?php if (pf_champ_visible('prix') || pf_champ_visible('prix_promotion')): ?>
                             <div class="form-row">
+                                <?php if (pf_champ_visible('prix')): ?>
                                 <div class="form-group">
                                     <label for="prix">Prix de vente (FCFA)</label>
                                     <input type="number" id="prix" name="prix" step="0.01" min="0"
                                         value="<?php echo isset($_POST['prix']) ? htmlspecialchars($_POST['prix']) : ''; ?>">
                                     <small class="form-hint">Facultatif — vide = 0&nbsp;FCFA en base.</small>
                                 </div>
+                                <?php endif; ?>
+                                <?php if (pf_champ_visible('prix_promotion')): ?>
                                 <div class="form-group">
                                     <label for="prix_promotion">Prix promotionnel (FCFA)</label>
                                     <input type="number" id="prix_promotion" name="prix_promotion" step="0.01" min="0"
                                         value="<?php echo isset($_POST['prix_promotion']) ? htmlspecialchars($_POST['prix_promotion']) : ''; ?>">
                                 </div>
+                                <?php endif; ?>
                             </div>
-                            <?php if ($has_prix_achat_col): ?>
+                            <?php endif; ?>
+                            <?php if (pf_champ_visible('prix_achat') && $has_prix_achat_col): ?>
                             <div class="form-row">
                                 <div class="form-group">
                                     <label for="prix_achat">Prix d'achat (FCFA)</label>
@@ -212,15 +228,19 @@ $emplacement_form_vals = produit_emplacement_form_values_for_form($_POST);
                                 </div>
                             </div>
                             <?php endif; ?>
+                            <?php if (pf_champ_visible('stock') || pf_champ_visible('categorie_id')): ?>
                             <div class="form-row">
+                                <?php if (pf_champ_visible('stock')): ?>
                                 <div class="form-group">
-                                    <label for="stock">Stock *</label>
-                                    <input type="number" id="stock" name="stock" min="0" required
+                                    <label for="stock">Stock<?php echo pf_champ_obligatoire('stock') ? ' *' : ''; ?></label>
+                                    <input type="number" id="stock" name="stock" min="0"<?php echo pf_champ_obligatoire('stock') ? ' required' : ''; ?>
                                         value="<?php echo isset($_POST['stock']) ? htmlspecialchars($_POST['stock']) : '0'; ?>">
                                 </div>
+                                <?php endif; ?>
+                                <?php if (pf_champ_visible('categorie_id')): ?>
                                 <div class="form-group">
-                                    <label for="categorie_id">Catégorie *</label>
-                                    <select id="categorie_id" name="categorie_id" required>
+                                    <label for="categorie_id">Catégorie<?php echo pf_champ_obligatoire('categorie_id') ? ' *' : ''; ?></label>
+                                    <select id="categorie_id" name="categorie_id"<?php echo pf_champ_obligatoire('categorie_id') ? ' required' : ''; ?>>
                                         <option value="">Sélectionner une catégorie</option>
                                         <?php if ($categories && count($categories) > 0): ?>
                                             <?php foreach ($categories as $c): ?>
@@ -239,8 +259,10 @@ $emplacement_form_vals = produit_emplacement_form_values_for_form($_POST);
                                     </small>
                                     <?php endif; ?>
                                 </div>
+                                <?php endif; ?>
                             </div>
-                            <?php if ($has_sous_cat_col): ?>
+                            <?php endif; ?>
+                            <?php if (pf_champ_visible('sous_categorie_id') && $has_sous_cat_col): ?>
                             <div class="form-row" id="sous-categorie-field-row">
                                 <div class="form-group">
                                     <label for="sous_categorie_id">Sous-catégorie</label>
@@ -261,9 +283,12 @@ $emplacement_form_vals = produit_emplacement_form_values_for_form($_POST);
                                 </div>
                             </div>
                             <?php endif; ?>
+                            <?php produit_formulaire_render_champs_custom('prix', $pf_custom_vals, $_POST); ?>
                         </div>
                     </section>
+                    <?php endif; ?>
 
+                    <?php if (pf_section_visible('ref')): ?>
                     <section class="pm-card" aria-labelledby="pm-sec-ref-add">
                         <div class="pm-card__head">
                             <span class="pm-card__icon" aria-hidden="true"><i class="fas fa-warehouse"></i></span>
@@ -273,21 +298,20 @@ $emplacement_form_vals = produit_emplacement_form_values_for_form($_POST);
                             </div>
                         </div>
                         <div class="pm-card__body">
-                            <?php if ($has_ident_col): ?>
-                            <p class="form-hint pm-hint" style="margin:0 0 1rem;">
-                                À l’enregistrement, la référence <strong>FPL</strong> est créée automatiquement :
-                                <strong>3 chiffres</strong> (préfixe) + <strong>6 chiffres</strong> dont les deux premiers sont <strong>00</strong>
-                                et les quatre derniers <strong>aléatoires</strong>. L’unicité est vérifiée (réessai automatique en cas de collision).
-                            </p>
-                            <?php else: ?>
+                            <?php if (!$has_ident_col && pf_champ_visible('identifiant_interne')): ?>
                             <p class="pm-hint">
                                 <i class="fas fa-info-circle" aria-hidden="true"></i> Activez la colonne <code>identifiant_interne</code> (migrations) pour activer la référence FPL automatique sur ce formulaire.
                             </p>
                             <?php endif; ?>
+                            <?php if (pf_champ_visible('emplacement')): ?>
                             <?php produit_emplacement_render_form_fields($emplacement_form_vals); ?>
+                            <?php endif; ?>
+                            <?php produit_formulaire_render_champs_custom('ref', $pf_custom_vals, $_POST); ?>
                         </div>
                     </section>
+                    <?php endif; ?>
 
+                    <?php if (pf_champ_visible('variantes')): ?>
                     <section class="pm-card admin-ajouter-produit-masquer" aria-labelledby="pm-sec-var-add" aria-hidden="true">
                         <div class="pm-card__head">
                             <span class="pm-card__icon" aria-hidden="true"><i class="fas fa-layer-group"></i></span>
@@ -320,7 +344,9 @@ $emplacement_form_vals = produit_emplacement_form_values_for_form($_POST);
                             </div>
                         </div>
                     </section>
+                    <?php endif; ?>
 
+                    <?php if (pf_section_visible('options')): ?>
                     <section class="pm-card admin-ajouter-produit-masquer" aria-labelledby="pm-sec-opts-add" aria-hidden="true">
                         <div class="pm-card__head">
                             <span class="pm-card__icon" aria-hidden="true"><i class="fas fa-sliders"></i></span>
@@ -330,6 +356,7 @@ $emplacement_form_vals = produit_emplacement_form_values_for_form($_POST);
                             </div>
                         </div>
                         <div class="pm-card__body">
+                            <?php if (pf_champ_visible('poids')): ?>
                             <div class="form-row">
                                 <div class="form-group">
                                     <label>Poids disponibles</label>
@@ -347,6 +374,8 @@ $emplacement_form_vals = produit_emplacement_form_values_for_form($_POST);
                                     <small class="form-hint">Poids + surcoût optionnel (+ FCFA).</small>
                                 </div>
                             </div>
+                            <?php endif; ?>
+                            <?php if (pf_champ_visible('couleurs')): ?>
                             <div class="form-row">
                                 <div class="form-group">
                                     <label>Couleurs disponibles (optionnel)</label>
@@ -362,9 +391,13 @@ $emplacement_form_vals = produit_emplacement_form_values_for_form($_POST);
                                     <small class="form-hint">Une ou plusieurs pastilles hexadécimales.</small>
                                 </div>
                             </div>
+                            <?php endif; ?>
+                            <?php produit_formulaire_render_champs_custom('options', $pf_custom_vals, $_POST); ?>
                         </div>
                     </section>
+                    <?php endif; ?>
 
+                    <?php if (pf_section_visible('media')): ?>
                     <section class="pm-card" aria-labelledby="pm-sec-media-add">
                         <div class="pm-card__head">
                             <span class="pm-card__icon" aria-hidden="true"><i class="fas fa-images"></i></span>
@@ -374,6 +407,7 @@ $emplacement_form_vals = produit_emplacement_form_values_for_form($_POST);
                             </div>
                         </div>
                         <div class="pm-card__body">
+                            <?php if (pf_champ_visible('images_produit')): ?>
                             <div class="form-group">
                                 <label><i class="fas fa-image"></i> Images du produit</label>
                                 <p class="form-hint" style="margin-bottom: 10px;">Ajoutez une ou plusieurs images (cumul possible). Cliquez sur × sur un aperçu pour le retirer avant envoi.</p>
@@ -384,12 +418,11 @@ $emplacement_form_vals = produit_emplacement_form_values_for_form($_POST);
                                 <input type="file" id="images_produit" name="images_produit[]" accept="image/*" multiple
                                     class="pm-file-hidden">
                                 <div id="preview-images" class="image-preview-accumulator"></div>
-                                <small class="form-hint">Formats : JPG, PNG, GIF, WEBP · max <?php echo (int) fouta_upload_image_max_mo_int(); ?> Mo par fichier. Facultatif — vous pouvez ajouter des photos plus tard.</small>
                             </div>
-                            <?php if ($has_img_etiq_col): ?>
+                            <?php endif; ?>
+                            <?php if (pf_champ_visible('image_etiquette_fpl') && $has_img_etiq_col): ?>
                             <div class="form-group" style="margin-top: 1.25rem;">
                                 <label for="image_etiquette_fpl"><i class="fas fa-tag" aria-hidden="true"></i> Photo pour l’étiquette FPL (optionnel)</label>
-                                <p class="form-hint" style="margin-bottom: 10px;">Affichée sur l’étiquette imprimable depuis <strong>Ajuster le stock</strong> à la place des pictogrammes, si une image est fournie.</p>
                                 <label for="image_etiquette_fpl" class="pm-upload-label">
                                     <i class="fas fa-image" aria-hidden="true"></i> Choisir une image
                                 </label>
@@ -399,10 +432,14 @@ $emplacement_form_vals = produit_emplacement_form_values_for_form($_POST);
                                 <small class="form-hint">JPG, PNG, GIF, WEBP · max <?php echo (int) fouta_upload_image_max_mo_int(); ?> Mo.</small>
                             </div>
                             <?php endif; ?>
+                            <?php produit_formulaire_render_champs_custom('media', $pf_custom_vals, $_POST); ?>
                         </div>
                     </section>
+                    <?php endif; ?>
 
+                    <?php if (pf_champ_visible('statut')): ?>
                     <input type="hidden" name="statut" value="actif">
+                    <?php endif; ?>
                 </div><!-- .pm-sections -->
 
                 <div class="pm-form-spacer" aria-hidden="true"></div>

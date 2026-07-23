@@ -11,7 +11,7 @@ require_once __DIR__ . '/../conn/conn.php';
  * Rôles autorisés pour les comptes admin (alignés sur ENUM MySQL après migration B2B)
  */
 function admin_roles_valides() {
-    return ['admin', 'gestion_stock', 'commercial', 'commercial_general', 'informaticien', 'developpeur', 'comptabilite', 'rh', 'caissier'];
+    return ['admin', 'gestion_stock', 'gestion_stock_general', 'commercial', 'commercial_general', 'informaticien', 'developpeur', 'comptabilite', 'rh', 'caissier'];
 }
 
 /**
@@ -21,6 +21,7 @@ function admin_role_label($role) {
     $labels = [
         'admin' => 'Administrateur',
         'gestion_stock' => 'Gestion des stocks',
+        'gestion_stock_general' => 'Gestion des stocks générale',
         'utilisateur' => 'Gestion des stocks',
         'commercial' => 'Commercial',
         'commercial_general' => 'Commercial général',
@@ -329,7 +330,7 @@ function get_admin_emails_alerte_stock()
     try {
         $stmt = $db->prepare(
             "SELECT DISTINCT email FROM admin WHERE statut = 'actif' AND email IS NOT NULL
-             AND TRIM(email) != '' AND COALESCE(role, 'admin') IN ('admin','gestion_stock','commercial','commercial_general','informaticien','developpeur')"
+             AND TRIM(email) != '' AND COALESCE(role, 'admin') IN ('admin','gestion_stock','gestion_stock_general','commercial','commercial_general','informaticien','developpeur')"
         );
         $stmt->execute();
         $cols = $stmt->fetchAll(PDO::FETCH_COLUMN);

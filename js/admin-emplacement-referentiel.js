@@ -43,9 +43,7 @@
         input.addEventListener('input', function () {
             var target = input.getAttribute('data-filter-target');
             var q = input.value.trim().toLowerCase();
-            var scope = target === 'rayons'
-                ? document.querySelector('.ee-rayons-stack')
-                : document.querySelector('[data-naming-list="' + target + '"]');
+            var scope = document.querySelector('[data-naming-list="' + target + '"]');
             if (!scope) {
                 return;
             }
@@ -81,6 +79,45 @@
                     collapsible.classList.add('is-open');
                 }
             }
+        });
+    });
+
+    document.querySelectorAll('.ee-barre-in-rayon__goto').forEach(function (link) {
+        link.addEventListener('click', function (e) {
+            var href = link.getAttribute('href');
+            if (!href || href.charAt(0) !== '#') {
+                return;
+            }
+            var target = document.querySelector(href);
+            if (!target) {
+                return;
+            }
+            e.preventDefault();
+            var liePanel = target.closest('.ee-panel--lie-barre');
+            if (liePanel) {
+                var panelToggle = liePanel.querySelector('.ee-panel__toggle');
+                var panelBody = liePanel.querySelector('.ee-panel__body');
+                if (panelToggle && panelBody) {
+                    panelToggle.setAttribute('aria-expanded', 'true');
+                    panelBody.hidden = false;
+                    liePanel.classList.add('is-open');
+                }
+            }
+            var block = target.closest('.ee-rayon-block');
+            if (block) {
+                var btn = block.querySelector('.ee-rayon-block__toggle');
+                var body = block.querySelector('.ee-rayon-block__barres');
+                if (btn && body) {
+                    btn.setAttribute('aria-expanded', 'true');
+                    body.hidden = false;
+                    block.classList.add('is-open');
+                }
+            }
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            target.classList.add('is-highlight');
+            setTimeout(function () {
+                target.classList.remove('is-highlight');
+            }, 1800);
         });
     });
 

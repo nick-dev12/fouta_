@@ -31,6 +31,8 @@ require_once __DIR__ . '/../../includes/barcode_caisse_ticket.php';
 require_once __DIR__ . '/../../models/model_produits.php';
 require_once __DIR__ . '/../../models/model_categories.php';
 require_once __DIR__ . '/../../models/model_marques.php';
+require_once __DIR__ . '/../../includes/produit_formulaire_champs.php';
+produit_formulaire_champs_ensure_schema();
 
 // Panier géré côté client (AJAX) — suppression de l’ancien panier session
 caisse_cart_clear();
@@ -61,11 +63,11 @@ $cat = isset($_GET['cat']) ? (int) $_GET['cat'] : 0;
 $cat = $cat > 0 ? $cat : null;
 $marque_sel = isset($_GET['marque']) ? (int) $_GET['marque'] : 0;
 $marque_sel = $marque_sel > 0 ? $marque_sel : null;
-$marque_has_col = function_exists('produits_has_column') && produits_has_column('marque_id');
+$marque_has_col = function_exists('produits_has_column') && produits_has_column('marque_id') && pf_champ_visible('marque_id');
 $marque_arg = ($marque_has_col && $marque_sel !== null) ? $marque_sel : null;
 $fournisseur_sel = isset($_GET['fournisseur']) ? (int) $_GET['fournisseur'] : 0;
 $fournisseur_sel = $fournisseur_sel > 0 ? $fournisseur_sel : null;
-$fournisseur_has_col = function_exists('produits_has_column') && produits_has_column('fournisseur_id');
+$fournisseur_has_col = function_exists('produits_has_column') && produits_has_column('fournisseur_id') && pf_champ_visible('fournisseur_id');
 
 $marques_liste = [];
 if (function_exists('marques_table_ok') && marques_table_ok()) {

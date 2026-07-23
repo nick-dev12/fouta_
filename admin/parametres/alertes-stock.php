@@ -14,7 +14,7 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
 require_once __DIR__ . '/../includes/require_access.php';
 require_once __DIR__ . '/../../includes/admin_permissions.php';
 
-if (!admin_is_full_admin()) {
+if (!admin_can_gestion_stock_etendue()) {
     header('Location: ../dashboard.php');
     exit;
 }

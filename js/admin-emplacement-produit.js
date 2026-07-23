@@ -109,8 +109,10 @@
     function initReferentiel() {
         var refEl = document.getElementById('pm-emplacement-referentiel');
         var selEl = document.getElementById('pm-emplacement-selection');
+        var structEl = document.getElementById('pm-emplacement-structure');
         var referentiel = {};
         var selection = {};
+        var structure = [];
 
         if (refEl && refEl.textContent) {
             try {
@@ -126,16 +128,110 @@
                 selection = {};
             }
         }
+        if (structEl && structEl.textContent) {
+            try {
+                structure = JSON.parse(structEl.textContent);
+            } catch (e) {
+                structure = [];
+            }
+        }
 
         var etageSel = document.getElementById('ref_etage');
-        var rayonSel = document.getElementById('ref_rayon');
-        var alleeSel = document.getElementById('ref_allee');
-        var zoneSel = document.getElementById('ref_zone');
-        var barreSel = document.getElementById('ref_barre');
-        var positionSel = document.getElementById('entrepot_position_id');
         var cascadeWrap = document.getElementById('pm-emplacement-cascade');
         var apercuWrap = document.getElementById('pm-emplacement-apercu');
         var apercuText = document.getElementById('pm-emplacement-apercu-text');
+
+        var selKeyMap = {
+            ref_zone: 'zone_id',
+            ref_rayon: 'rayon_id',
+            ref_etagere: 'etagere_id',
+            ref_allee: 'allee_id',
+            ref_barre: 'barre_id',
+            entrepot_position_id: 'position_id'
+        };
+
+        function isHierarchieData(data) {
+            return !!(data && Array.isArray(data.zones));
+        }
+
+        function findZone(data, zoneId) {
+            var zid = parseInt(zoneId, 10);
+            if (!data || zid <= 0) {
+                return null;
+            }
+            var found = null;
+            asArray(data.zones).forEach(function (z) {
+                if (parseInt(z.id, 10) === zid) {
+                    found = z;
+                }
+            });
+            return found;
+        }
+
+        function findRayonInData(data, rayonId) {
+            var rid = parseInt(rayonId, 10);
+            if (!data || rid <= 0) {
+                return null;
+            }
+            var found = null;
+            asArray(data.zones).forEach(function (z) {
+                asArray(z.rayons).forEach(function (r) {
+                    if (parseInt(r.id, 10) === rid) {
+                        found = r;
+                    }
+                });
+            });
+            return found;
+        }
+
+        function findEtagereInData(data, etagereId) {
+            var eid = parseInt(etagereId, 10);
+            if (!data || eid <= 0) {
+                return null;
+            }
+            var found = null;
+            asArray(data.zones).forEach(function (z) {
+                asArray(z.rayons).forEach(function (r) {
+                    asArray(r.etageres).forEach(function (e) {
+                        if (parseInt(e.id, 10) === eid) {
+                            found = e;
+                        }
+                    });
+                });
+            });
+            return found;
+        }
+
+        function findBarreInData(data, barreId) {
+            var bid = parseInt(barreId, 10);
+            if (!data || bid <= 0) {
+                return null;
+            }
+            var found = null;
+            asArray(data.zones).forEach(function (z) {
+                asArray(z.rayons).forEach(function (r) {
+                    asArray(r.etageres).forEach(function (e) {
+                        asArray(e.barres).forEach(function (b) {
+                            if (parseInt(b.id, 10) === bid) {
+                                found = b;
+                            }
+                        });
+                    });
+                });
+            });
+            return found;
+        }
+
+        function fieldSelect(key) {
+            return document.querySelector('[data-emplacement-ref-select="' + key + '"]');
+        }
+
+        function selectionKeyForField(field) {
+            if (field.type === 'custom') {
+                return field.key;
+            }
+            return selKeyMap[field.key] || field.key;
+        }
 
         function asArray(list) {
             if (!list) {
@@ -192,34 +288,68 @@
             return referentiel[n] || referentiel[String(n)] || null;
         }
 
+        function elementNomById(data, elementId) {
+            var eid = parseInt(elementId, 10);
+            if (!data || eid <= 0) {
+                return '';
+            }
+            if (data.lie_barre && data.lie_barre.elements) {
+                var foundLie = '';
+                asArray(data.lie_barre.elements).forEach(function (el) {
+                    if (parseInt(el.id, 10) === eid) {
+                        foundLie = el.nom || ('#' + el.numero);
+                    }
+                });
+                if (foundLie) {
+                    return foundLie;
+                }
+            }
+            if (data.champs_custom) {
+                var keys = Object.keys(data.champs_custom);
+                for (var i = 0; i < keys.length; i++) {
+                    var block = data.champs_custom[keys[i]];
+                    var found = '';
+                    asArray(block.elements).forEach(function (el) {
+                        if (parseInt(el.id, 10) === eid) {
+                            found = el.nom || ('#' + el.numero);
+                        }
+                    });
+                    if (found) {
+                        return found;
+                    }
+                }
+            }
+            return '';
+        }
+
         function updateApercu() {
             if (!apercuWrap || !apercuText) {
                 return;
             }
             var parts = [];
             var etageTxt = selectedText(etageSel);
-            if (etageTxt && etageSel.value) {
+            if (etageTxt && etageSel && etageSel.value) {
                 parts.push(etageTxt);
             }
-            var rayonTxt = selectedText(rayonSel);
-            if (rayonTxt && rayonSel.value) {
-                parts.push(rayonTxt);
-            }
-            var alleeTxt = selectedText(alleeSel);
-            if (alleeTxt && alleeSel.value) {
-                parts.push(alleeTxt);
-            }
-            var zoneTxt = selectedText(zoneSel);
-            if (zoneTxt && zoneSel.value) {
-                parts.push(zoneTxt);
-            }
-            var barreTxt = selectedText(barreSel);
-            if (barreTxt && barreSel.value) {
-                parts.push(barreTxt);
-            }
-            var posTxt = selectedText(positionSel);
-            if (posTxt && positionSel.value) {
-                parts.push(posTxt);
+            structure.forEach(function (field) {
+                var sel = fieldSelect(field.key);
+                var txt = selectedText(sel);
+                if (txt && sel && sel.value) {
+                    parts.push(txt);
+                }
+            });
+            var data = getEtageData();
+            var barreSel = fieldSelect('ref_barre');
+            if (data && barreSel && barreSel.value) {
+                var barreId = parseInt(barreSel.value, 10);
+                asArray(data.barres).forEach(function (b) {
+                    if (parseInt(b.id, 10) === barreId && b.champ_element_id) {
+                        var elNom = elementNomById(data, b.champ_element_id);
+                        if (elNom) {
+                            parts.push(elNom);
+                        }
+                    }
+                });
             }
             if (parts.length === 0) {
                 apercuWrap.hidden = true;
@@ -246,6 +376,7 @@
 
         function barresPourSelect(data) {
             var barres = asArray(data ? data.barres : []);
+            var rayonSel = fieldSelect('ref_rayon');
             var rayonId = rayonSel ? parseInt(rayonSel.value, 10) : 0;
             if (rayonId > 0) {
                 barres = barres.filter(function (b) {
@@ -264,20 +395,96 @@
             return nom;
         }
 
-        function rebuildBarres(keep) {
+        function rebuildField(field, keep) {
             var data = getEtageData();
-            if (!data) {
-                fillSelect(barreSel, [], 'id', function () { return ''; }, '', '— Choisir —');
+            var sel = fieldSelect(field.key);
+            if (!sel) {
                 return;
             }
-            fillSelect(
-                barreSel,
-                barresPourSelect(data),
-                'id',
-                function (b) { return barreLabel(data, b); },
-                keep ? selection.barre_id : '',
-                rayonSel && rayonSel.value ? '— Choisir une barre —' : '— Choisir un rayon ou une barre —'
-            );
+            var selKey = selectionKeyForField(field);
+            var selected = keep ? (selection[selKey] || '') : '';
+            var hier = isHierarchieData(data);
+
+            if (field.type === 'zones') {
+                if (hier) {
+                    fillSelect(sel, data.zones, 'id', function (z) {
+                        return z.nom || ('Zone ' + z.numero);
+                    }, selected, '— Choisir une zone —');
+                } else {
+                    fillSelect(sel, data ? data.zones : [], 'id', function (z) {
+                        return z.nom || ('Zone ' + z.numero);
+                    }, selected, '— Choisir une zone —');
+                }
+            } else if (field.type === 'rayons') {
+                var zoneSel = fieldSelect('ref_zone');
+                var zoneId = zoneSel ? parseInt(zoneSel.value, 10) : 0;
+                var rayons = [];
+                if (hier && zoneId > 0) {
+                    var z = findZone(data, zoneId);
+                    rayons = z ? asArray(z.rayons) : [];
+                } else if (data) {
+                    rayons = asArray(data.rayons);
+                }
+                fillSelect(sel, rayons, 'id', function (r) {
+                    return r.nom || ('Rayon ' + r.numero);
+                }, selected, zoneId > 0 || !hier ? '— Choisir un rayon —' : '— Choisissez d’abord une zone —');
+            } else if (field.type === 'etageres') {
+                var rayonSel = fieldSelect('ref_rayon');
+                var rayonId = rayonSel ? parseInt(rayonSel.value, 10) : 0;
+                var etageres = [];
+                if (hier && rayonId > 0) {
+                    var r = findRayonInData(data, rayonId);
+                    etageres = r ? asArray(r.etageres) : [];
+                }
+                fillSelect(sel, etageres, 'id', function (e) {
+                    return e.nom || ('Étagère ' + e.numero);
+                }, selected, rayonId > 0 ? '— Choisir une étagère —' : '— Choisissez d’abord un rayon —');
+            } else if (field.type === 'allees') {
+                fillSelect(sel, data ? data.allees : [], 'id', function (a) {
+                    return a.nom || ('Allée ' + a.numero);
+                }, selected, '— Choisir une allée —');
+            } else if (field.type === 'barres') {
+                var etagereSel = fieldSelect('ref_etagere');
+                var etagereId = etagereSel ? parseInt(etagereSel.value, 10) : 0;
+                var barres = [];
+                if (hier && etagereId > 0) {
+                    var et = findEtagereInData(data, etagereId);
+                    barres = et ? asArray(et.barres) : [];
+                } else if (!hier) {
+                    barres = barresPourSelect(data);
+                }
+                fillSelect(sel, barres, 'id', function (b) {
+                    return b.nom || ('Barre ' + b.numero);
+                }, selected, (hier && etagereId > 0) || (!hier) ? '— Choisir une barre —' : '— Choisissez d’abord une étagère —');
+            } else if (field.type === 'positions') {
+                var barreSel = fieldSelect('ref_barre');
+                var barreId = barreSel ? parseInt(barreSel.value, 10) : 0;
+                var positions = [];
+                if (hier && barreId > 0) {
+                    var b = findBarreInData(data, barreId);
+                    positions = b ? asArray(b.positions) : [];
+                } else if (data && barreId > 0) {
+                    asArray(data.barres).forEach(function (bb) {
+                        if (parseInt(bb.id, 10) === barreId) {
+                            positions = asArray(bb.positions);
+                        }
+                    });
+                }
+                fillSelect(sel, positions, 'id', function (p) {
+                    return p.nom || ('Position ' + p.numero);
+                }, selected, barreId > 0 ? '— Choisir une position —' : '— Choisissez d’abord une barre —');
+            } else if (field.type === 'custom') {
+                var elements = [];
+                var cid = String(field.champ_id || '');
+                if (data && data.champs_custom && data.champs_custom[cid]) {
+                    elements = asArray(data.champs_custom[cid].elements);
+                } else if (data && data.champs_custom && data.champs_custom[parseInt(cid, 10)]) {
+                    elements = asArray(data.champs_custom[parseInt(cid, 10)].elements);
+                }
+                fillSelect(sel, elements, 'id', function (el) {
+                    return el.nom || ('#' + el.numero);
+                }, selected, '— Choisir —');
+            }
         }
 
         function rebuildLists(keep) {
@@ -287,63 +494,15 @@
                 cascadeWrap.hidden = !hasEtage;
             }
             if (!hasEtage) {
-                fillSelect(rayonSel, [], 'id', function () { return ''; }, '', '— Choisir —');
-                fillSelect(alleeSel, [], 'id', function () { return ''; }, '', '— Choisir —');
-                fillSelect(zoneSel, [], 'id', function () { return ''; }, '', '— Choisir —');
-                fillSelect(barreSel, [], 'id', function () { return ''; }, '', '— Choisir —');
-                fillSelect(positionSel, [], 'id', function () { return ''; }, '', '— Choisissez d’abord une barre —');
+                structure.forEach(function (field) {
+                    rebuildField(field, false);
+                });
                 updateApercu();
                 return;
             }
-
-            fillSelect(
-                rayonSel,
-                data.rayons,
-                'id',
-                function (r) { return r.nom || ('Rayon ' + r.numero); },
-                keep ? selection.rayon_id : '',
-                '— Choisir un rayon —'
-            );
-            fillSelect(
-                alleeSel,
-                data.allees,
-                'id',
-                function (a) { return a.nom || ('Allée ' + a.numero); },
-                keep ? selection.allee_id : '',
-                '— Choisir une allée —'
-            );
-            fillSelect(
-                zoneSel,
-                data.zones,
-                'id',
-                function (z) { return z.nom || ('Zone ' + z.numero); },
-                keep ? selection.zone_id : '',
-                '— Choisir une zone —'
-            );
-            rebuildBarres(keep);
-            rebuildPositions(keep);
-            updateApercu();
-        }
-
-        function rebuildPositions(keep) {
-            var data = getEtageData();
-            var barreId = barreSel ? parseInt(barreSel.value, 10) : 0;
-            var positions = [];
-            if (data && barreId > 0) {
-                asArray(data.barres).forEach(function (b) {
-                    if (parseInt(b.id, 10) === barreId) {
-                        positions = asArray(b.positions);
-                    }
-                });
-            }
-            fillSelect(
-                positionSel,
-                positions,
-                'id',
-                function (p) { return p.nom || ('Position ' + p.numero); },
-                keep ? selection.position_id : '',
-                barreId > 0 ? '— Choisir une position —' : '— Choisissez d’abord une barre —'
-            );
+            structure.forEach(function (field) {
+                rebuildField(field, keep);
+            });
             updateApercu();
         }
 
@@ -371,15 +530,18 @@
             );
         }
 
-        function onEtageChange(clearDownstream) {
-            if (clearDownstream) {
-                selection.rayon_id = '';
-                selection.allee_id = '';
-                selection.zone_id = '';
-                selection.barre_id = '';
-                selection.position_id = '';
+        function clearDownstream(fromIndex) {
+            for (var i = fromIndex; i < structure.length; i++) {
+                var sk = selectionKeyForField(structure[i]);
+                selection[sk] = '';
             }
-            rebuildLists(!clearDownstream);
+        }
+
+        function onEtageChange(clearDownstreamFlag) {
+            if (clearDownstreamFlag) {
+                clearDownstream(0);
+            }
+            rebuildLists(!clearDownstreamFlag);
         }
 
         rebuildEtages();
@@ -394,29 +556,21 @@
                 onEtageChange(true);
             });
         }
-        // Allée / zone : choix libre, met à jour l’aperçu
-        [alleeSel, zoneSel].forEach(function (sel) {
-            if (sel) {
-                sel.addEventListener('change', updateApercu);
+
+        structure.forEach(function (field, index) {
+            var sel = fieldSelect(field.key);
+            if (!sel) {
+                return;
             }
-        });
-        if (rayonSel) {
-            rayonSel.addEventListener('change', function () {
-                selection.barre_id = '';
-                selection.position_id = '';
-                rebuildBarres(false);
-                rebuildPositions(false);
+            sel.addEventListener('change', function () {
+                var sk = selectionKeyForField(field);
+                selection[sk] = sel.value;
+                clearDownstream(index + 1);
+                for (var j = index + 1; j < structure.length; j++) {
+                    rebuildField(structure[j], false);
+                }
                 updateApercu();
             });
-        }
-        if (barreSel) {
-            barreSel.addEventListener('change', function () {
-                selection.position_id = '';
-                rebuildPositions(false);
-            });
-        }
-        if (positionSel) {
-            positionSel.addEventListener('change', updateApercu);
-        }
+        });
     }
 })();

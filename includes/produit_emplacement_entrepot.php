@@ -5,6 +5,7 @@
 
 require_once __DIR__ . '/../models/model_entrepot_emplacement.php';
 require_once __DIR__ . '/../models/model_entrepot_referentiel.php';
+require_once __DIR__ . '/../models/model_entrepot_structure_champs.php';
 
 /**
  * @return bool
@@ -187,9 +188,10 @@ function produit_emplacement_from_source_referentiel(array $source) {
         'position_emplacement' => null,
         'barre_rayon' => null,
         'ref_numero_etage' => null,
-        'ref_rayon_id' => null,
-        'ref_allee_id' => null,
         'ref_zone_id' => null,
+        'ref_rayon_id' => null,
+        'ref_etagere_id' => null,
+        'ref_allee_id' => null,
         'ref_barre_id' => null,
         'chemin_libelle' => '',
     ];
@@ -199,10 +201,22 @@ function produit_emplacement_from_source_referentiel(array $source) {
         $numero_etage = (int) $source['etage'];
     }
     $rayon_id = produit_emplacement_id_from_source($source, 'ref_rayon');
+    $etagere_id = produit_emplacement_id_from_source($source, 'ref_etagere');
     $allee_id = produit_emplacement_id_from_source($source, 'ref_allee');
     $zone_id = produit_emplacement_id_from_source($source, 'ref_zone');
     $barre_id = produit_emplacement_id_from_source($source, 'ref_barre');
     $position_id = produit_emplacement_id_from_source($source, 'entrepot_position_id');
+    $ref_champs_custom = [];
+    foreach ($source as $k => $v) {
+        if (strpos((string) $k, 'ref_champ_') !== 0) {
+            continue;
+        }
+        $cid = (int) substr((string) $k, strlen('ref_champ_'));
+        $eid = produit_emplacement_id_from_source($source, (string) $k);
+        if ($cid > 0 && $eid > 0) {
+            $ref_champs_custom[$cid] = $eid;
+        }
+    }
 
     // Aucune sélection
     if ($numero_etage <= 0 && $barre_id <= 0 && $position_id <= 0) {
@@ -231,7 +245,7 @@ function produit_emplacement_from_source_referentiel(array $source) {
         $out['barre_rayon'] = (string) (int) $pos['barre_num'];
     } elseif ($barre_id > 0) {
         $st = $db->prepare(
-            'SELECT b.id, b.numero, b.nom, e.numero_etage, e.nom AS etage_nom
+            'SELECT b.id, b.numero, b.nom, b.champ_element_id, e.numero_etage, e.nom AS etage_nom
              FROM entrepot_barre b
              INNER JOIN entrepot_etage e ON e.id = b.etage_id
              WHERE b.id = :id LIMIT 1'
@@ -243,6 +257,9 @@ function produit_emplacement_from_source_referentiel(array $source) {
         }
         $numero_etage = (int) $barre['numero_etage'];
         $out['barre_rayon'] = (string) (int) $barre['numero'];
+        if (!empty($barre['champ_element_id'])) {
+            $out['ref_champ_lie_barre'] = (string) (int) $barre['champ_element_id'];
+        }
     }
 
     if ($numero_etage > 0) {
@@ -250,8 +267,69 @@ function produit_emplacement_from_source_referentiel(array $source) {
         $out['ref_numero_etage'] = (string) $numero_etage;
     }
 
-    // Appliquer uniquement les liens manuels explicitement choisis
-    if ($barre_id > 0 && ($rayon_id > 0 || $allee_id > 0 || $zone_id > 0)) {
+    require_once __DIR__ . '/../models/model_entrepot_hierarchie.php';
+    $hierarchie_strict = entrepot_hierarchie_schema_ok();
+
+    if ($hierarchie_strict && $position_id > 0) {
+        $st = $db->prepare(
+            'SELECT p.id AS position_id, p.numero AS position_num, p.barre_id,
+                    b.numero AS barre_num, b.etagere_id, b.rayon_id,
+                    r.zone_id, r.etage_id, e.numero_etage
+             FROM entrepot_position p
+             INNER JOIN entrepot_barre b ON b.id = p.barre_id
+             INNER JOIN entrepot_rayon r ON r.id = b.rayon_id
+             INNER JOIN entrepot_etage e ON e.id = r.etage_id
+             WHERE p.id = :id LIMIT 1'
+        );
+        $st->execute([':id' => $position_id]);
+        $chain = $st->fetch(PDO::FETCH_ASSOC);
+        if (!$chain) {
+            return $out;
+        }
+        if ($barre_id > 0 && (int) $chain['barre_id'] !== $barre_id) {
+            return $out;
+        }
+        if ($etagere_id > 0 && (int) ($chain['etagere_id'] ?? 0) !== $etagere_id) {
+            return $out;
+        }
+        if ($rayon_id > 0 && (int) $chain['rayon_id'] !== $rayon_id) {
+            return $out;
+        }
+        if ($zone_id > 0 && (int) ($chain['zone_id'] ?? 0) !== $zone_id) {
+            return $out;
+        }
+        if ($numero_etage > 0 && (int) $chain['numero_etage'] !== $numero_etage) {
+            return $out;
+        }
+    } elseif ($hierarchie_strict && $barre_id > 0) {
+        $st = $db->prepare(
+            'SELECT b.id, b.etagere_id, b.rayon_id, r.zone_id, e.numero_etage
+             FROM entrepot_barre b
+             INNER JOIN entrepot_rayon r ON r.id = b.rayon_id
+             INNER JOIN entrepot_etage e ON e.id = r.etage_id
+             WHERE b.id = :id LIMIT 1'
+        );
+        $st->execute([':id' => $barre_id]);
+        $chain = $st->fetch(PDO::FETCH_ASSOC);
+        if (!$chain) {
+            return $out;
+        }
+        if ($etagere_id > 0 && (int) ($chain['etagere_id'] ?? 0) !== $etagere_id) {
+            return $out;
+        }
+        if ($rayon_id > 0 && (int) $chain['rayon_id'] !== $rayon_id) {
+            return $out;
+        }
+        if ($zone_id > 0 && (int) ($chain['zone_id'] ?? 0) !== $zone_id) {
+            return $out;
+        }
+        if ($numero_etage > 0 && (int) $chain['numero_etage'] !== $numero_etage) {
+            return $out;
+        }
+    }
+
+    // Appliquer uniquement les liens manuels explicitement choisis (legacy)
+    if (!$hierarchie_strict && $barre_id > 0 && ($rayon_id > 0 || $allee_id > 0 || $zone_id > 0)) {
         entrepot_barre_definir_liens(
             $barre_id,
             $rayon_id > 0 ? $rayon_id : null,
@@ -266,26 +344,6 @@ function produit_emplacement_from_source_referentiel(array $source) {
         $parts[] = (string) $etage_ref['nom'];
     }
 
-    if ($rayon_id > 0) {
-        $st = $db->prepare('SELECT numero, nom FROM entrepot_rayon WHERE id = :id LIMIT 1');
-        $st->execute([':id' => $rayon_id]);
-        $row = $st->fetch(PDO::FETCH_ASSOC);
-        if ($row) {
-            $out['numero_rayon'] = (string) (int) $row['numero'];
-            $out['ref_rayon_id'] = (string) $rayon_id;
-            $parts[] = (string) $row['nom'];
-        }
-    }
-    if ($allee_id > 0) {
-        $st = $db->prepare('SELECT numero, nom FROM entrepot_allee WHERE id = :id LIMIT 1');
-        $st->execute([':id' => $allee_id]);
-        $row = $st->fetch(PDO::FETCH_ASSOC);
-        if ($row) {
-            $out['allee'] = (string) (int) $row['numero'];
-            $out['ref_allee_id'] = (string) $allee_id;
-            $parts[] = (string) $row['nom'];
-        }
-    }
     if ($zone_id > 0) {
         $st = $db->prepare('SELECT numero, nom FROM entrepot_zone WHERE id = :id LIMIT 1');
         $st->execute([':id' => $zone_id]);
@@ -296,14 +354,61 @@ function produit_emplacement_from_source_referentiel(array $source) {
             $parts[] = (string) $row['nom'];
         }
     }
+    if ($etagere_id > 0) {
+        $st = $db->prepare('SELECT numero, nom FROM entrepot_etagere WHERE id = :id LIMIT 1');
+        $st->execute([':id' => $etagere_id]);
+        $row = $st->fetch(PDO::FETCH_ASSOC);
+        if ($row) {
+            $out['ref_etagere_id'] = (string) $etagere_id;
+            $parts[] = (string) $row['nom'];
+        }
+    }
+    if ($rayon_id > 0) {
+        $st = $db->prepare('SELECT numero, nom FROM entrepot_rayon WHERE id = :id LIMIT 1');
+        $st->execute([':id' => $rayon_id]);
+        $row = $st->fetch(PDO::FETCH_ASSOC);
+        if ($row) {
+            $out['numero_rayon'] = (string) (int) $row['numero'];
+            $out['ref_rayon_id'] = (string) $rayon_id;
+            $parts[] = (string) $row['nom'];
+        }
+    }
+    if (!$hierarchie_strict && $allee_id > 0) {
+        $st = $db->prepare('SELECT numero, nom FROM entrepot_allee WHERE id = :id LIMIT 1');
+        $st->execute([':id' => $allee_id]);
+        $row = $st->fetch(PDO::FETCH_ASSOC);
+        if ($row) {
+            $out['allee'] = (string) (int) $row['numero'];
+            $out['ref_allee_id'] = (string) $allee_id;
+            $parts[] = (string) $row['nom'];
+        }
+    }
     if ($barre_id > 0) {
-        $st = $db->prepare('SELECT numero, nom FROM entrepot_barre WHERE id = :id LIMIT 1');
+        $st = $db->prepare('SELECT numero, nom, champ_element_id FROM entrepot_barre WHERE id = :id LIMIT 1');
         $st->execute([':id' => $barre_id]);
         $row = $st->fetch(PDO::FETCH_ASSOC);
         if ($row) {
             $out['barre_rayon'] = (string) (int) $row['numero'];
             $out['ref_barre_id'] = (string) $barre_id;
             $parts[] = (string) $row['nom'];
+            if (!empty($row['champ_element_id'])) {
+                $st_el = $db->prepare('SELECT nom FROM entrepot_champ_element WHERE id = :id LIMIT 1');
+                $st_el->execute([':id' => (int) $row['champ_element_id']]);
+                $el_nom = $st_el->fetchColumn();
+                if ($el_nom !== false && $el_nom !== '') {
+                    $parts[] = (string) $el_nom;
+                    $out['ref_champ_lie_barre'] = (string) (int) $row['champ_element_id'];
+                }
+            }
+        }
+    }
+    foreach ($ref_champs_custom as $cid => $eid) {
+        $st = $db->prepare('SELECT nom FROM entrepot_champ_element WHERE id = :id AND champ_id = :c LIMIT 1');
+        $st->execute([':id' => (int) $eid, ':c' => (int) $cid]);
+        $nom_el = $st->fetchColumn();
+        if ($nom_el !== false && $nom_el !== '') {
+            $parts[] = (string) $nom_el;
+            $out['ref_champ_' . (int) $cid] = (string) (int) $eid;
         }
     }
     if ($position_id > 0) {
@@ -371,8 +476,29 @@ function produit_emplacement_enrich_referentiel_form_values(array $vals) {
     if (empty($vals['ref_zone_id']) && $meta['zone_id'] > 0) {
         $vals['ref_zone_id'] = (string) $meta['zone_id'];
     }
+    if (empty($vals['ref_etagere_id']) && !empty($meta['barre_id'])) {
+        global $db;
+        $st_et = $db->prepare('SELECT etagere_id FROM entrepot_barre WHERE id = :id LIMIT 1');
+        $st_et->execute([':id' => (int) $meta['barre_id']]);
+        $eid = (int) $st_et->fetchColumn();
+        if ($eid > 0) {
+            $vals['ref_etagere_id'] = (string) $eid;
+        }
+    }
     if (empty($vals['ref_barre_id']) && $meta['barre_id'] > 0) {
         $vals['ref_barre_id'] = (string) $meta['barre_id'];
+    }
+    if ($meta['barre_id'] > 0) {
+        global $db;
+        $st = $db->prepare('SELECT champ_element_id FROM entrepot_barre WHERE id = :id LIMIT 1');
+        $st->execute([':id' => (int) $meta['barre_id']]);
+        $el_id = (int) $st->fetchColumn();
+        if ($el_id > 0) {
+            $lie = entrepot_structure_champ_get_lie_barre();
+            if ($lie !== null) {
+                $vals['ref_champ_lie_barre'] = (string) $el_id;
+            }
+        }
     }
 
     return $vals;
@@ -658,36 +784,49 @@ function produit_emplacement_render_form_fields_referentiel(array $values) {
         return;
     }
 
+    $cascade_fields = produit_emplacement_cascade_fields_config();
     $sel = [
         'numero_etage' => $values['ref_numero_etage'] ?? ($values['etage'] ?? ''),
-        'rayon_id' => $values['ref_rayon_id'] ?? '',
-        'allee_id' => $values['ref_allee_id'] ?? '',
         'zone_id' => $values['ref_zone_id'] ?? '',
+        'rayon_id' => $values['ref_rayon_id'] ?? '',
+        'etagere_id' => $values['ref_etagere_id'] ?? '',
+        'allee_id' => $values['ref_allee_id'] ?? '',
         'barre_id' => $values['ref_barre_id'] ?? '',
         'position_id' => $values['entrepot_position_id'] ?? '',
     ];
+    foreach ($cascade_fields as $field) {
+        if (($field['type'] ?? '') !== 'custom') {
+            continue;
+        }
+        $key = (string) ($field['key'] ?? '');
+        if ($key === '') {
+            continue;
+        }
+        $sel[$key] = $values[$key] ?? '';
+    }
     $has_etage = !empty($sel['numero_etage']);
     $chemin = trim((string) ($values['chemin_libelle'] ?? ''));
 
     echo '<div id="pm-emplacement-form" class="pm-emplacement-form pm-emplacement-form--referentiel" data-mode="referentiel">';
     echo '<script type="application/json" id="pm-emplacement-referentiel">' . produit_emplacement_json_script($ref_json) . '</script>';
     echo '<script type="application/json" id="pm-emplacement-selection">' . produit_emplacement_json_script($sel) . '</script>';
+    echo '<script type="application/json" id="pm-emplacement-structure">' . produit_emplacement_json_script($cascade_fields) . '</script>';
 
     echo '<div class="pm-emplacement-steps" aria-hidden="true">';
     echo '<span class="pm-emplacement-step"><i class="fas fa-building"></i> Étage</span>';
-    echo '<span class="pm-emplacement-step"><i class="fas fa-th-large"></i> Rayon</span>';
-    echo '<span class="pm-emplacement-step"><i class="fas fa-road"></i> Allée</span>';
-    echo '<span class="pm-emplacement-step"><i class="fas fa-map-marker-alt"></i> Zone</span>';
-    echo '<span class="pm-emplacement-step"><i class="fas fa-grip-lines"></i> Barre</span>';
-    echo '<span class="pm-emplacement-step"><i class="fas fa-crosshairs"></i> Position</span>';
+    foreach ($cascade_fields as $field) {
+        $icon = htmlspecialchars((string) ($field['icon'] ?? 'fa-cube'), ENT_QUOTES, 'UTF-8');
+        $label = htmlspecialchars((string) ($field['label'] ?? ''), ENT_QUOTES, 'UTF-8');
+        echo '<span class="pm-emplacement-step"><i class="fas ' . $icon . '"></i> ' . $label . '</span>';
+    }
     echo '</div>';
 
-    echo '<p class="form-hint pm-hint pm-emplacement-intro">Choisissez librement chaque niveau avec son <strong>nom enregistré</strong> : étage, rayon, allée, zone, barre, puis position. Aucune liaison automatique entre les listes.</p>';
+    echo '<p class="form-hint pm-hint pm-emplacement-intro">Choisissez librement chaque niveau avec son <strong>nom enregistré</strong> selon la structure configurée de l’entrepôt.</p>';
 
     echo '<div class="form-row pm-emplacement-row pm-emplacement-row--etage">';
     echo '<div class="form-group pm-emplacement-field pm-emplacement-field--ref pm-emplacement-field--etage" data-emplacement-ref="ref_etage">';
     echo '<label for="ref_etage"><i class="fas fa-building" aria-hidden="true"></i> Étage</label>';
-    echo '<select id="ref_etage" name="ref_etage" data-emplacement-ref-select="ref_etage">';
+    echo '<select id="ref_etage" name="ref_etage" data-emplacement-ref-select="ref_etage" data-field-type="etage">';
     echo '<option value="">— Choisir un étage —</option>';
     echo '</select>';
     echo '<small class="form-hint">Charge les listes nommées de cet étage.</small>';
@@ -696,25 +835,33 @@ function produit_emplacement_render_form_fields_referentiel(array $values) {
 
     echo '<div id="pm-emplacement-cascade" class="pm-emplacement-cascade"' . ($has_etage ? '' : ' hidden') . '>';
 
-    $fields = [
-        ['id' => 'ref_rayon', 'label' => 'Rayon', 'icon' => 'fa-th-large', 'hint' => 'Choisissez le rayon voulu (nom en base).'],
-        ['id' => 'ref_allee', 'label' => 'Allée', 'icon' => 'fa-road', 'hint' => 'Choisissez l’allée voulue (nom en base).'],
-        ['id' => 'ref_zone', 'label' => 'Zone', 'icon' => 'fa-map-marker-alt', 'hint' => 'Choisissez la zone voulue (nom en base).'],
-        ['id' => 'ref_barre', 'label' => 'Barre', 'icon' => 'fa-grip-lines', 'hint' => 'Barres du rayon sélectionné (ou toutes si aucun rayon). Libellé : Rayon · Barre.'],
-        ['id' => 'entrepot_position_id', 'label' => 'Position produit', 'icon' => 'fa-crosshairs', 'hint' => 'Emplacement exact sur la barre choisie.'],
-    ];
-    $pairs = array_chunk($fields, 2);
+    $pairs = array_chunk($cascade_fields, 2);
     foreach ($pairs as $pair) {
         echo '<div class="form-row pm-emplacement-row">';
         foreach ($pair as $f) {
-            $fid = $f['id'];
-            $empty = $fid === 'entrepot_position_id' ? '— Choisissez d’abord une barre —' : '— Choisir —';
-            echo '<div class="form-group pm-emplacement-field pm-emplacement-field--ref" data-emplacement-ref="' . htmlspecialchars($fid, ENT_QUOTES, 'UTF-8') . '">';
-            echo '<label for="' . htmlspecialchars($fid, ENT_QUOTES, 'UTF-8') . '"><i class="fas ' . htmlspecialchars($f['icon'], ENT_QUOTES, 'UTF-8') . '" aria-hidden="true"></i> ' . htmlspecialchars($f['label'], ENT_QUOTES, 'UTF-8') . '</label>';
-            echo '<select id="' . htmlspecialchars($fid, ENT_QUOTES, 'UTF-8') . '" name="' . htmlspecialchars($fid, ENT_QUOTES, 'UTF-8') . '" data-emplacement-ref-select="' . htmlspecialchars($fid, ENT_QUOTES, 'UTF-8') . '">';
+            $fid = (string) ($f['key'] ?? '');
+            if ($fid === '') {
+                continue;
+            }
+            $label = (string) ($f['label'] ?? '');
+            $icon = (string) ($f['icon'] ?? 'fa-cube');
+            $hint = (string) ($f['hint'] ?? '');
+            $ftype = (string) ($f['type'] ?? '');
+            $champ_id = (int) ($f['champ_id'] ?? 0);
+            $empty = $ftype === 'positions' ? '— Choisissez d’abord une barre —' : '— Choisir —';
+            if ($ftype === 'barres') {
+                $empty = '— Choisir un rayon ou une barre —';
+            }
+            echo '<div class="form-group pm-emplacement-field pm-emplacement-field--ref" data-emplacement-ref="' . htmlspecialchars($fid, ENT_QUOTES, 'UTF-8') . '" data-field-type="' . htmlspecialchars($ftype, ENT_QUOTES, 'UTF-8') . '"';
+            if ($champ_id > 0) {
+                echo ' data-champ-id="' . $champ_id . '"';
+            }
+            echo '>';
+            echo '<label for="' . htmlspecialchars($fid, ENT_QUOTES, 'UTF-8') . '"><i class="fas ' . htmlspecialchars($icon, ENT_QUOTES, 'UTF-8') . '" aria-hidden="true"></i> ' . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '</label>';
+            echo '<select id="' . htmlspecialchars($fid, ENT_QUOTES, 'UTF-8') . '" name="' . htmlspecialchars($fid, ENT_QUOTES, 'UTF-8') . '" data-emplacement-ref-select="' . htmlspecialchars($fid, ENT_QUOTES, 'UTF-8') . '" data-field-type="' . htmlspecialchars($ftype, ENT_QUOTES, 'UTF-8') . '">';
             echo '<option value="">' . htmlspecialchars($empty, ENT_QUOTES, 'UTF-8') . '</option>';
             echo '</select>';
-            echo '<small class="form-hint">' . htmlspecialchars($f['hint'], ENT_QUOTES, 'UTF-8') . '</small>';
+            echo '<small class="form-hint">' . htmlspecialchars($hint, ENT_QUOTES, 'UTF-8') . '</small>';
             echo '</div>';
         }
         echo '</div>';
@@ -747,16 +894,6 @@ function produit_emplacement_render_form_fields(array $values) {
     }
     if ($actifs === []) {
         echo '<p class="form-hint form-hint--warning"><i class="fas fa-info-circle" aria-hidden="true"></i> Emplacement entrepôt : exécutez les migrations <code>migration_admin_b2b_structure</code> et <code>run_add_produits_emplacement_entrepot.php</code>.</p>';
-        return;
-    }
-
-    if (!entrepot_emplacement_est_configure()) {
-        echo '<div class="pm-emplacement-alert">';
-        echo '<p class="form-hint form-hint--warning"><i class="fas fa-warehouse" aria-hidden="true"></i> ';
-        echo 'La structure de l’entrepôt n’est pas encore configurée. ';
-        echo '<a href="/admin/parametres/emplacement-entrepot.php">Configurer l’emplacement entrepôt</a> ';
-        echo 'dans les paramètres avant d’assigner une position à un produit.</p>';
-        echo '</div>';
         return;
     }
 

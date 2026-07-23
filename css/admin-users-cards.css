@@ -180,6 +180,12 @@
   color: var(--texte-clair);
 }
 
+.page-comptes .user-card .card-badges .role-badge.role-gestion_stock_general,
+.page-users .user-card .card-badges .role-badge.role-gestion_stock_general {
+  background: rgba(53, 100, 166, 0.45);
+  color: var(--texte-clair);
+}
+
 /* Users - badge statut dans le header (en haut à droite) */
 .page-users .user-card .card-header-wrap {
   position: relative;

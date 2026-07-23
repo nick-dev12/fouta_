@@ -111,7 +111,19 @@ if (!function_exists('admin_current_role')) {
      */
     function admin_can_gestion_boutique() {
         $r = admin_current_role();
-        return $r === 'gestion_stock' || $r === 'admin' || $r === 'informaticien' || $r === 'developpeur';
+        return in_array($r, ['gestion_stock', 'gestion_stock_general', 'admin', 'informaticien', 'developpeur'], true);
+    }
+
+    /** Périmètre étendu stocks : catégories complètes, paramètres stock, entrepôt, alertes. */
+    function admin_can_gestion_stock_etendue() {
+        $r = admin_current_role();
+        return in_array($r, ['gestion_stock_general', 'admin', 'informaticien', 'developpeur'], true);
+    }
+
+    /** Accès de base gestion stock (produits, stock, catégories limitées). */
+    function admin_can_gestion_stock() {
+        $r = admin_current_role();
+        return in_array($r, ['gestion_stock', 'gestion_stock_general', 'admin', 'informaticien', 'developpeur'], true);
     }
 
     /**
@@ -119,7 +131,7 @@ if (!function_exists('admin_current_role')) {
      */
     function admin_can_receive_stock_alerte_popup() {
         $r = admin_current_role();
-        return in_array($r, ['admin', 'gestion_stock', 'commercial', 'commercial_general', 'informaticien', 'developpeur'], true);
+        return in_array($r, ['admin', 'gestion_stock', 'gestion_stock_general', 'commercial', 'commercial_general', 'informaticien', 'developpeur'], true);
     }
 
     /**

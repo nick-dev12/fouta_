@@ -225,6 +225,13 @@
   transition: transform 0.2s ease, opacity 0.2s ease;
 }
 
+.page-parametres-admin .parametre-card__hint {
+  margin: 0.75rem 0 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--gris-fonce, #4a4a4a);
+}
+
 .page-parametres-admin .parametre-link:hover {
   background: var(--param-btn-hover);
   color: var(--param-btn-text);

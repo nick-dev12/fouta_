@@ -705,6 +705,11 @@
   color: #fff;
 }
 
+.comptes-acces-card__head .role-badge.role-gestion_stock_general {
+  background: rgba(53, 100, 166, 0.55);
+  color: #fff;
+}
+
 .comptes-acces-card__head .role-badge.role-commercial,
 .comptes-acces-card__head .role-badge.role-commercial_general {
   background: rgba(255, 220, 150, 0.5);

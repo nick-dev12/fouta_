@@ -268,6 +268,32 @@ include __DIR__ . '/../../includes/pwa_admin_boot.php';
                 <span class="menu-item-icon" aria-hidden="true"><i class="fas fa-user-shield"></i></span>
                 <span class="menu-item-text">Employés</span>
             </a>
+            <?php elseif ($admin_role === 'gestion_stock_general'): ?>
+            <a href="<?php echo $admin_nav_base; ?>dashboard.php"
+                class="menu-item mi-dashboard<?php echo $current_page == 'dashboard.php' ? ' active' : ''; ?>">
+                <span class="menu-item-icon" aria-hidden="true"><i class="fas fa-home"></i></span>
+                <span class="menu-item-text">Tableau de bord</span>
+            </a>
+            <a href="<?php echo $admin_nav_base; ?>stock/index.php"
+                class="menu-item mi-stock<?php echo ($is_stock) ? ' active' : ''; ?>">
+                <span class="menu-item-icon" aria-hidden="true"><i class="fas fa-boxes-stacked"></i></span>
+                <span class="menu-item-text">Stock</span>
+            </a>
+            <a href="<?php echo $admin_nav_base; ?>produits/index.php"
+                class="menu-item mi-produits<?php echo ($is_produits && $current_page == 'index.php') ? ' active' : ''; ?>">
+                <span class="menu-item-icon" aria-hidden="true"><i class="fas fa-box"></i></span>
+                <span class="menu-item-text">Produits</span>
+            </a>
+            <a href="<?php echo $admin_nav_base; ?>categories/index.php"
+                class="menu-item mi-categories<?php echo ($is_categories) ? ' active' : ''; ?>">
+                <span class="menu-item-icon" aria-hidden="true"><i class="fas fa-folder"></i></span>
+                <span class="menu-item-text">Catégories</span>
+            </a>
+            <a href="<?php echo $admin_nav_base; ?>parametres.php"
+                class="menu-item mi-params<?php echo ($current_page == 'parametres.php' || $is_parametres) ? ' active' : ''; ?>">
+                <span class="menu-item-icon" aria-hidden="true"><i class="fas fa-cog"></i></span>
+                <span class="menu-item-text">Paramètres stock</span>
+            </a>
             <?php elseif ($admin_role === 'gestion_stock'): ?>
             <a href="<?php echo $admin_nav_base; ?>stock/index.php"
                 class="menu-item mi-stock<?php echo ($is_stock) ? ' active' : ''; ?>">

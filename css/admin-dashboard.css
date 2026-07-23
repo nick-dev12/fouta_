@@ -7095,6 +7095,11 @@ body {
   color: var(--titres);
 }
 
+.role-badge.role-gestion_stock_general {
+  background: rgba(53, 100, 166, 0.35);
+  color: var(--titres);
+}
+
 .user-details {
   display: flex;
   flex-direction: column;

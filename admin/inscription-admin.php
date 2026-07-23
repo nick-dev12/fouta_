@@ -438,6 +438,7 @@ $is_ajout_par_admin = admin_exists() && isset($_SESSION['admin_id']);
                         <p class="role-help">
                             <strong>Administrateur :</strong> tout l’espace admin.<br>
                             <strong>Gestion des stocks :</strong> produits, catégories et stock uniquement.<br>
+                            <strong>Gestion des stocks générale :</strong> périmètre stocks étendu (tableau de bord, catégories complètes, entrepôt, alertes).<br>
                             <strong>Commercial :</strong> devis, commandes et caisse.<br>
                             <strong>Comptabilité :</strong> comptabilité et historique des ventes.<br>
                             <strong>RH :</strong> contacts, clients (comptes site), comptes d’accès internes.

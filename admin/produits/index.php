@@ -104,10 +104,10 @@ if (!empty($fournisseurs_filtre)) {
                 <div class="page-produits-hero__actions">
                     <?php if (!admin_is_restricted_admin_account()): ?>
                         <a href="ajouter.php" class="btn-primary page-produits-hero__btn">
-                            <i class="fas fa-upload" aria-hidden="true"></i> Publier un produit
+                            <i class="fas fa-plus" aria-hidden="true"></i> Nouveau produits
                         </a>
                         <a href="export-catalogue.php" class="btn-secondary page-produits-hero__btn">
-                            <i class="fas fa-file-pdf" aria-hidden="true"></i> Export catalogue PDF
+                            <i class="fas fa-clipboard-list" aria-hidden="true"></i> Suivi du catalogue
                         </a>
                     <?php endif; ?>
                 </div>
@@ -205,7 +205,7 @@ if (!empty($fournisseurs_filtre)) {
                     </p>
                     <?php if (!admin_is_restricted_admin_account()): ?>
                         <a href="ajouter.php" class="btn-primary page-produits-empty__cta">
-                            <i class="fas fa-upload" aria-hidden="true"></i> Publier un produit
+                            <i class="fas fa-plus" aria-hidden="true"></i> Nouveau produits
                         </a>
                     <?php endif; ?>
                 </div>

@@ -273,15 +273,17 @@
   color: var(--couleur-dominante);
 }
 
-.page-commandes-toolbar__link--danger {
-  color: var(--orange-fonce);
-  border-color: rgba(255, 107, 53, 0.35);
+.page-commandes-toolbar__link.page-commandes-toolbar__link--danger {
+  color: #ffffff;
+  background: #dc2626;
+  border-color: #b91c1c;
 }
 
-.page-commandes-toolbar__link--danger:hover {
-  background: var(--error-bg);
-  color: var(--orange-fonce);
-  border-color: var(--orange);
+.page-commandes-toolbar__link.page-commandes-toolbar__link--danger:hover {
+  background: #b91c1c;
+  border-color: #991b1b;
+  color: #ffffff;
+  text-decoration: none;
 }
 
 /* Grille cartes */

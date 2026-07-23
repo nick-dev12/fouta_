@@ -76,14 +76,19 @@ $date_facture_aff = date('j', $d_bl) . ' ' . $mois[(int) date('n', $d_bl) - 1] .
 $produits = [];
 foreach ($lignes as $l) {
     $ref_fpl = '';
+    $image_principale = '';
     $pid = (int) ($l['produit_id'] ?? 0);
-    if ($pid > 0 && function_exists('produits_has_column') && produits_has_column('identifiant_interne')) {
+    if ($pid > 0) {
         $pr = get_produit_by_id($pid);
-        if ($pr && !empty($pr['identifiant_interne'])) {
-            $ref_fpl = strtoupper(trim((string) $pr['identifiant_interne']));
+        if ($pr) {
+            if (!empty($pr['identifiant_interne'])) {
+                $ref_fpl = strtoupper(trim((string) $pr['identifiant_interne']));
+            }
+            $image_principale = trim((string) ($pr['image_principale'] ?? ''));
         }
     }
     $produits[] = [
+        'produit_id' => $pid,
         'produit_nom' => $l['designation'] ?? '',
         'nom' => $l['designation'] ?? '',
         'prix_unitaire' => (float) ($l['prix_unitaire_ht'] ?? 0),
@@ -91,6 +96,7 @@ foreach ($lignes as $l) {
         'prix_total' => (float) ($l['total_ligne_ht'] ?? 0),
         'ref_fpl' => $ref_fpl,
         'identifiant_interne' => $ref_fpl,
+        'image_principale' => $image_principale,
     ];
 }
 

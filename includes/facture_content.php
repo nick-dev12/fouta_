@@ -57,6 +57,7 @@ $facture_recap_label_total = isset($facture_recap_label_total) && (string) $fact
     : 'TOTAL TTC';
 require_once __DIR__ . '/site_url.php';
 require_once __DIR__ . '/fiscal_tva.php';
+require_once __DIR__ . '/facture_ligne_helpers.php';
 $facture_tva_incluse = isset($facture_tva_incluse) ? (bool) $facture_tva_incluse : (!empty($facture['tva_incluse']));
 $facture_fiscal_taux = isset($facture_fiscal_taux) && (float) $facture_fiscal_taux > 0
     ? (float) $facture_fiscal_taux
@@ -386,6 +387,36 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
             text-align: right;
         }
 
+        .facture-table th:nth-child(1),
+        .facture-table td:nth-child(1) {
+            width: 56px;
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        .facture-ligne-img {
+            display: block;
+            width: 44px;
+            height: 44px;
+            object-fit: cover;
+            border-radius: 4px;
+            border: 1px solid rgba(53, 100, 166, 0.15);
+            margin: 0 auto;
+        }
+
+        .facture-ligne-img--empty {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            font-size: 12px;
+            color: #a3a3a3;
+            background: #fafafa;
+            border-radius: 4px;
+            border: 1px dashed rgba(53, 100, 166, 0.2);
+        }
+
         .facture-table th:nth-child(3),
         .facture-table td:nth-child(3) {
             text-align: center;
@@ -644,22 +675,27 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
 
             .facture-table th:nth-child(1),
             .facture-table td:nth-child(1) {
-                width: 36% !important;
+                width: 10% !important;
             }
 
             .facture-table th:nth-child(2),
             .facture-table td:nth-child(2) {
-                width: 22% !important;
+                width: 32% !important;
             }
 
             .facture-table th:nth-child(3),
             .facture-table td:nth-child(3) {
-                width: 12% !important;
+                width: 10% !important;
             }
 
             .facture-table th:nth-child(4),
             .facture-table td:nth-child(4) {
-                width: 30% !important;
+                width: 20% !important;
+            }
+
+            .facture-table th:nth-child(5),
+            .facture-table td:nth-child(5) {
+                width: 28% !important;
             }
 
             .facture-banner-top,
@@ -1021,6 +1057,7 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
             <table class="facture-table">
                 <thead>
                     <tr>
+                        <th>IMAGE</th>
                         <th>ARTICLE</th>
                         <th>QTÉ</th>
                         <th>PRIX<?php echo $facture_afficher_detail_tva ? ' (HT)' : ''; ?></th>
@@ -1032,6 +1069,7 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
                         $ref_ligne = trim((string) ($p['ref_fpl'] ?? $p['identifiant_interne'] ?? ''));
                     ?>
                         <tr>
+                            <td><?php echo facture_ligne_image_cell_html($p); ?></td>
                             <td>
                                 <?php echo htmlspecialchars($p['produit_nom'] ?? $p['nom'] ?? ''); ?>
                                 <?php if ($ref_ligne !== ''): ?>

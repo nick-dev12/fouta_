@@ -17,11 +17,26 @@ require_once __DIR__ . '/../../models/model_produits.php';
 require_once __DIR__ . '/../../models/model_categories.php';
 require_once __DIR__ . '/../../includes/export_produits_catalogue_pdf.php';
 require_once __DIR__ . '/../../includes/export_catalogue_job.php';
+require_once __DIR__ . '/../../includes/export_catalogue_suivi.php';
+
+if (empty($_SESSION['admin_csrf'])) {
+    $_SESSION['admin_csrf'] = bin2hex(random_bytes(32));
+}
+$csrf = (string) $_SESSION['admin_csrf'];
+
+$flash_message = '';
+$flash_type = '';
+if (isset($_SESSION['export_catalogue_flash'])) {
+    $flash = $_SESSION['export_catalogue_flash'];
+    unset($_SESSION['export_catalogue_flash']);
+    if (is_array($flash)) {
+        $flash_type = (string) ($flash['type'] ?? '');
+        $flash_message = (string) ($flash['message'] ?? '');
+    }
+}
 
 $has_marque_filtre = produits_has_column('marque_id');
-$has_fournisseur_filtre = produits_has_column('fournisseur_id');
 $marques_filtre = [];
-$fournisseurs_filtre = [];
 $categories = get_all_categories();
 
 if ($has_marque_filtre) {
@@ -30,33 +45,20 @@ if ($has_marque_filtre) {
         $marques_filtre = get_all_marques_ordered_by_nom();
     }
 }
-if ($has_fournisseur_filtre) {
-    require_once __DIR__ . '/../../models/model_fournisseurs.php';
-    $fournisseurs_filtre = get_all_fournisseurs_ordered_by_nom();
-}
 
-$today = date('Y-m-d');
-$date_debut = trim($_GET['date_debut'] ?? $today);
-$date_fin = trim($_GET['date_fin'] ?? $today);
-if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date_debut)) {
-    $date_debut = $today;
-}
-if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date_fin)) {
-    $date_fin = $today;
-}
-
-$mode = isset($_GET['mode']) ? strtolower(trim((string) $_GET['mode'])) : 'tous';
-if (!in_array($mode, ['complet', 'ajout', 'modification', 'tous'], true)) {
-    $mode = 'tous';
-}
-
-$recherche = trim($_GET['recherche'] ?? '');
-$categorie_id = isset($_GET['categorie_id']) ? (int) $_GET['categorie_id'] : 0;
-$marque_id = isset($_GET['marque_id']) ? (int) $_GET['marque_id'] : 0;
-$fournisseur_id = isset($_GET['fournisseur_id']) ? (int) $_GET['fournisseur_id'] : 0;
+$filters = export_catalogue_filters_from_request($_GET);
+$date_debut = $filters['date_debut'];
+$date_fin = $filters['date_fin'];
+$mode = $filters['mode'];
+$recherche = $filters['recherche'];
+$categorie_id = $filters['categorie_id'];
+$marque_id = $filters['marque_id'];
+$fournisseur_id = 0;
+$date_debut_fr = export_catalogue_format_date_input_fr($date_debut);
+$date_fin_fr = export_catalogue_format_date_input_fr($date_fin);
 
 $export_preview_per_page = 30;
-$page = isset($_GET['page']) ? max(1, (int) $_GET['page']) : 1;
+$page = $filters['page'];
 
 $total_export = count_admin_produits_export_catalogue($date_debut, $date_fin, $mode, $recherche, $categorie_id, $marque_id, $fournisseur_id);
 $total_pages = max(1, (int) ceil($total_export / $export_preview_per_page));
@@ -77,39 +79,37 @@ $produits_export = get_admin_produits_export_catalogue(
 );
 
 $pagination_query_base = [
-    'date_debut' => $date_debut,
-    'date_fin' => $date_fin,
+    'date_debut' => $date_debut_fr,
+    'date_fin' => $date_fin_fr,
     'mode' => $mode,
     'recherche' => $recherche,
     'categorie_id' => $categorie_id,
     'marque_id' => $marque_id,
-    'fournisseur_id' => $fournisseur_id,
 ];
 
-$pdf_query = http_build_query([
-    'date_debut' => $date_debut,
-    'date_fin' => $date_fin,
+$pdf_query_base = http_build_query([
+    'date_debut' => $date_debut_fr,
+    'date_fin' => $date_fin_fr,
     'mode' => $mode,
     'recherche' => $recherche,
     'categorie_id' => $categorie_id,
     'marque_id' => $marque_id,
-    'fournisseur_id' => $fournisseur_id,
 ]);
 
 $filtres_form_classes = 'admin-filters-bar page-produits-export-filters';
 if (!empty($marques_filtre)) {
     $filtres_form_classes .= ' page-produits-export-filters--has-marque';
 }
-if (!empty($fournisseurs_filtre)) {
-    $filtres_form_classes .= ' page-produits-export-filters--has-fournisseur';
-}
 
 $mode_labels = export_catalogue_pdf_mode_labels();
 $export_use_async_pdf = $total_export >= EXPORT_CATALOGUE_ASYNC_MIN;
 $export_has_prix_achat = export_catalogue_has_prix_achat_column();
-$pdf_link_attrs = $export_use_async_pdf
-    ? ' data-export-catalogue-async data-export-query="' . htmlspecialchars($pdf_query, ENT_QUOTES, 'UTF-8') . '"'
-    : ' data-admin-pdf-download';
+$pdf_columns_catalog = export_catalogue_pdf_columns_catalog($export_has_prix_achat);
+$suivi_columns_catalog = export_catalogue_suivi_columns_catalog();
+$suivi_columns_defs = export_catalogue_suivi_columns_definitions();
+$suivi_visible_cols = export_catalogue_suivi_colonnes_resolved((int) $_SESSION['admin_id']);
+$suivi_visible_lookup = array_fill_keys($suivi_visible_cols, true);
+$save_redirect_query = http_build_query(array_merge($pagination_query_base, ['page' => $page]));
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -118,7 +118,7 @@ $pdf_link_attrs = $export_use_async_pdf
     <?php include __DIR__ . '/../../includes/favicon.php'; ?>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Export catalogue produits - Administration</title>
+    <title>Suivi du catalogue — Administration</title>
     <?php require_once __DIR__ . '/../../includes/asset_version.php'; ?>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/css/admin-dashboard.css<?php echo asset_version_query(); ?>">
@@ -130,11 +130,22 @@ $pdf_link_attrs = $export_use_async_pdf
     <?php include '../includes/nav.php'; ?>
 
     <div class="page-produits-admin page-produits-export" data-export-total="<?php echo (int) $total_export; ?>"
-        data-export-async-min="<?php echo (int) EXPORT_CATALOGUE_ASYNC_MIN; ?>">
+        data-export-async-min="<?php echo (int) EXPORT_CATALOGUE_ASYNC_MIN; ?>"
+        data-export-use-async="<?php echo $export_use_async_pdf ? '1' : '0'; ?>"
+        data-suivi-visible-cols="<?php echo htmlspecialchars(json_encode($suivi_visible_cols, JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8'); ?>"
+        data-suivi-catalog-cols="<?php echo htmlspecialchars(json_encode($suivi_columns_catalog, JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8'); ?>"
+        data-suivi-csrf="<?php echo htmlspecialchars($csrf, ENT_QUOTES, 'UTF-8'); ?>">
         <div class="content-header dashboard-hero page-produits-hero">
             <div class="dashboard-hero-text">
                 <p class="dashboard-eyebrow">Catalogue boutique</p>
-                <h1><i class="fas fa-file-pdf" aria-hidden="true"></i> Export catalogue PDF</h1>
+                <h1><i class="fas fa-clipboard-list" aria-hidden="true"></i> Suivi du catalogue</h1>
+
+                <?php if ($flash_message !== ''): ?>
+                <div class="message <?php echo $flash_type === 'ok' ? 'success' : 'error'; ?> page-produits-flash" role="status">
+                    <i class="fas fa-<?php echo $flash_type === 'ok' ? 'check-circle' : 'exclamation-circle'; ?>" aria-hidden="true"></i>
+                    <?php echo htmlspecialchars($flash_message, ENT_QUOTES, 'UTF-8'); ?>
+                </div>
+                <?php endif; ?>
 
                 <div class="page-produits-export-progress" id="exportCataloguePdfProgress" hidden
                     role="status" aria-live="polite" aria-busy="false">
@@ -161,12 +172,13 @@ $pdf_link_attrs = $export_use_async_pdf
                         <i class="fas fa-arrow-left" aria-hidden="true"></i> Retour à la liste
                     </a>
                     <?php if ($total_export > 0): ?>
-                    <a href="export-catalogue-pdf.php?<?php echo htmlspecialchars($pdf_query, ENT_QUOTES, 'UTF-8'); ?>"
+                    <button type="button"
                         class="btn-primary page-produits-hero__btn page-produits-export-pdf-btn"
-                        <?php echo $pdf_link_attrs; ?>>
+                        data-export-pdf-trigger="1"
+                        data-export-query="<?php echo htmlspecialchars($pdf_query_base, ENT_QUOTES, 'UTF-8'); ?>">
                         <i class="fas fa-download" aria-hidden="true"></i> Télécharger le PDF
                         (<?php echo (int) $total_export; ?>)
-                    </a>
+                    </button>
                     <?php endif; ?>
                 </div>
             </div>
@@ -175,7 +187,7 @@ $pdf_link_attrs = $export_use_async_pdf
         <section class="produits-section page-produits-section page-produits-export-section"
             aria-labelledby="export-section-heading">
             <div class="section-title page-produits-section__head">
-                <h2 id="export-section-heading"><i class="fas fa-filter" aria-hidden="true"></i> Filtres d’export
+                <h2 id="export-section-heading"><i class="fas fa-filter" aria-hidden="true"></i> Filtres du suivi
                     <span class="page-produits-count" aria-live="polite">(<?php echo (int) $total_export; ?>)</span>
                 </h2>
             </div>
@@ -183,14 +195,18 @@ $pdf_link_attrs = $export_use_async_pdf
             <form method="GET" action=""
                 class="<?php echo htmlspecialchars($filtres_form_classes, ENT_QUOTES, 'UTF-8'); ?>">
                 <div class="admin-filter-field page-produits-export-filters__period">
-                    <label for="date_debut">Du</label>
-                    <input type="date" id="date_debut" name="date_debut"
-                        value="<?php echo htmlspecialchars($date_debut, ENT_QUOTES, 'UTF-8'); ?>" required>
+                    <label for="date_debut">Du (jj/mm/aaaa)</label>
+                    <input type="text" id="date_debut" name="date_debut" class="page-produits-export-date"
+                        value="<?php echo htmlspecialchars($date_debut_fr, ENT_QUOTES, 'UTF-8'); ?>"
+                        placeholder="jj/mm/aaaa" inputmode="numeric" maxlength="10" required
+                        pattern="(0[1-9]|[12][0-9]|3[01])/(0[1-9]|1[0-2])/[0-9]{4}">
                 </div>
                 <div class="admin-filter-field page-produits-export-filters__period">
-                    <label for="date_fin">Au</label>
-                    <input type="date" id="date_fin" name="date_fin"
-                        value="<?php echo htmlspecialchars($date_fin, ENT_QUOTES, 'UTF-8'); ?>" required>
+                    <label for="date_fin">Au (jj/mm/aaaa)</label>
+                    <input type="text" id="date_fin" name="date_fin" class="page-produits-export-date"
+                        value="<?php echo htmlspecialchars($date_fin_fr, ENT_QUOTES, 'UTF-8'); ?>"
+                        placeholder="jj/mm/aaaa" inputmode="numeric" maxlength="10" required
+                        pattern="(0[1-9]|[12][0-9]|3[01])/(0[1-9]|1[0-2])/[0-9]{4}">
                 </div>
                 <div class="admin-filter-field page-produits-export-filters__mode">
                     <label for="mode">Type</label>
@@ -205,7 +221,7 @@ $pdf_link_attrs = $export_use_async_pdf
                 </div>
                 <div class="admin-filter-field page-produits-export-filters__search">
                     <label for="recherche">Recherche</label>
-                    <input type="text" id="recherche" name="recherche" placeholder="Nom, description, FPL, fournisseur…"
+                    <input type="text" id="recherche" name="recherche" placeholder="Nom, description, FPL, marque…"
                         value="<?php echo htmlspecialchars($recherche, ENT_QUOTES, 'UTF-8'); ?>" autocomplete="off"
                         inputmode="search">
                 </div>
@@ -235,20 +251,6 @@ $pdf_link_attrs = $export_use_async_pdf
                     </select>
                 </div>
                 <?php endif; ?>
-                <?php if (!empty($fournisseurs_filtre)): ?>
-                <div class="admin-filter-field page-produits-export-filters__fournisseur">
-                    <label for="fournisseur_id">Fournisseur</label>
-                    <select id="fournisseur_id" name="fournisseur_id">
-                        <option value="0">Tous les fournisseurs</option>
-                        <?php foreach ($fournisseurs_filtre as $fournisseur): ?>
-                        <option value="<?php echo (int) $fournisseur['id']; ?>"
-                            <?php echo $fournisseur_id === (int) $fournisseur['id'] ? 'selected' : ''; ?>>
-                            <?php echo htmlspecialchars($fournisseur['nom']); ?>
-                        </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <?php endif; ?>
                 <div class="admin-filter-actions page-produits-export-filters__actions">
                     <button type="submit" class="btn-primary">
                         <i class="fas fa-search"></i> Afficher
@@ -256,12 +258,17 @@ $pdf_link_attrs = $export_use_async_pdf
                     <a href="export-catalogue.php" class="btn-filter-reset">
                         <i class="fas fa-rotate-left"></i>&nbsp;Aujourd’hui
                     </a>
+                    <button type="button" class="btn-secondary page-produits-export-options-btn"
+                        id="exportCatalogueTableOptionsBtn" data-suivi-table-options-trigger="1">
+                        <i class="fas fa-sliders" aria-hidden="true"></i> Options
+                    </button>
                     <?php if ($total_export > 0): ?>
-                    <a href="export-catalogue-pdf.php?<?php echo htmlspecialchars($pdf_query, ENT_QUOTES, 'UTF-8'); ?>"
+                    <button type="button"
                         class="btn-primary btn-export-pdf-inline page-produits-export-pdf-btn"
-                        <?php echo $pdf_link_attrs; ?>>
+                        data-export-pdf-trigger="1"
+                        data-export-query="<?php echo htmlspecialchars($pdf_query_base, ENT_QUOTES, 'UTF-8'); ?>">
                         <i class="fas fa-file-pdf"></i> PDF
-                    </a>
+                    </button>
                     <?php endif; ?>
                 </div>
             </form>
@@ -270,90 +277,87 @@ $pdf_link_attrs = $export_use_async_pdf
             <div class="empty-state page-produits-empty">
                 <div class="page-produits-empty__icon" aria-hidden="true"><i class="fas fa-inbox"></i></div>
                 <p class="page-produits-empty__title">Aucun produit pour cette période</p>
-                <p class="page-produits-empty__hint">Modifiez les dates, le type, la recherche ou les filtres catégorie
-                    / marque / fournisseur.</p>
+                <p class="page-produits-empty__hint">Modifiez les dates, le type, la recherche ou les filtres catégorie / marque.</p>
             </div>
             <?php else: ?>
             <div id="page-produits-export-wrap">
+                <form method="post" action="export-catalogue-save-prix.php" class="page-produits-export-save-form">
+                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf, ENT_QUOTES, 'UTF-8'); ?>">
+                    <input type="hidden" name="redirect_query" value="<?php echo htmlspecialchars($save_redirect_query, ENT_QUOTES, 'UTF-8'); ?>">
+                    <div class="page-produits-export-save-bar">
+                        <p class="page-produits-export-save-bar__hint">
+                            <i class="fas fa-pen-to-square" aria-hidden="true"></i>
+                            Modifiez les prix achat / vente directement dans le tableau puis enregistrez.
+                        </p>
+                        <button type="submit" class="btn-primary page-produits-export-save-bar__btn">
+                            <i class="fas fa-save" aria-hidden="true"></i> Enregistrer les prix
+                        </button>
+                    </div>
                 <div class="page-produits-export-table-wrap">
-                    <table class="page-produits-export-table" aria-label="Aperçu export catalogue">
+                    <table class="page-produits-export-table" id="exportCatalogueSuiviTable" aria-label="Aperçu suivi catalogue">
                         <colgroup>
-                            <col class="page-produits-export-table__col-img">
-                            <col class="page-produits-export-table__col-nom">
-                            <col class="page-produits-export-table__col-cat">
-                            <col class="page-produits-export-table__col-four">
-                            <?php if ($export_has_prix_achat): ?>
-                            <col class="page-produits-export-table__col-prix-achat">
-                            <?php endif; ?>
-                            <col class="page-produits-export-table__col-prix">
-                            <col class="page-produits-export-table__col-promo">
-                            <col class="page-produits-export-table__col-stock">
-                            <col class="page-produits-export-table__col-date">
-                            <col class="page-produits-export-table__col-date">
+                            <?php foreach ($suivi_columns_catalog as $col_key => $col_label): ?>
+                            <?php
+                            $def = $suivi_columns_defs[$col_key] ?? [];
+                            $hidden = !isset($suivi_visible_lookup[$col_key]);
+                            ?>
+                            <col class="<?php echo htmlspecialchars((string) ($def['css_col'] ?? ''), ENT_QUOTES, 'UTF-8'); ?><?php echo $hidden ? ' is-suivi-col-hidden' : ''; ?>"
+                                data-suivi-col="<?php echo htmlspecialchars($col_key, ENT_QUOTES, 'UTF-8'); ?>">
+                            <?php endforeach; ?>
                         </colgroup>
                         <thead>
                             <tr>
-                                <th scope="col">Image</th>
-                                <th scope="col">Produit</th>
-                                <th scope="col">Catégorie</th>
-                                <th scope="col">Fournisseur</th>
-                                <?php if ($export_has_prix_achat): ?>
-                                <th scope="col" class="page-produits-export-table__num">Prix achat</th>
-                                <?php endif; ?>
-                                <th scope="col" class="page-produits-export-table__num">Prix vente</th>
-                                <th scope="col" class="page-produits-export-table__num">Promo</th>
-                                <th scope="col" class="page-produits-export-table__num">Stock</th>
-                                <th scope="col">Création</th>
-                                <th scope="col">Modification</th>
+                                <?php foreach ($suivi_columns_catalog as $col_key => $col_label): ?>
+                                <?php
+                                $def = $suivi_columns_defs[$col_key] ?? [];
+                                $hidden = !isset($suivi_visible_lookup[$col_key]);
+                                $th_class = !empty($def['num']) ? 'page-produits-export-table__num' : '';
+                                if ($hidden) {
+                                    $th_class .= ($th_class !== '' ? ' ' : '') . 'is-suivi-col-hidden';
+                                }
+                                ?>
+                                <th scope="col"<?php echo $th_class !== '' ? ' class="' . htmlspecialchars(trim($th_class), ENT_QUOTES, 'UTF-8') . '"' : ''; ?>
+                                    data-suivi-col="<?php echo htmlspecialchars($col_key, ENT_QUOTES, 'UTF-8'); ?>">
+                                    <?php echo htmlspecialchars($col_label, ENT_QUOTES, 'UTF-8'); ?>
+                                </th>
+                                <?php endforeach; ?>
                             </tr>
                         </thead>
                         <tbody>
                             <?php foreach ($produits_export as $produit): ?>
                             <?php
-                            $img = trim((string) ($produit['image_principale'] ?? ''));
-                            $img_url = $img !== '' ? '/upload/' . ltrim(str_replace('\\', '/', $img), '/') : '';
-                            $ident = trim((string) ($produit['identifiant_interne'] ?? ''));
-                            $marque = function_exists('produits_marque_libelle_from_row') ? produits_marque_libelle_from_row($produit) : '';
-                            $fourn = function_exists('produits_fournisseur_nom_affichage') ? produits_fournisseur_nom_affichage($produit) : '';
-                            $prix_achat_aff = $export_has_prix_achat ? export_catalogue_produit_prix_achat_affichage($produit) : null;
-                            $prix_vente_aff = export_catalogue_format_prix_fcfa_export($produit['prix'] ?? null, true);
-                            $promo_aff = export_catalogue_format_prix_fcfa_export($produit['prix_promotion'] ?? null, true);
-                            $stock_aff = export_catalogue_format_stock_export($produit['stock'] ?? null);
-                            $dc_aff = !empty($produit['date_creation']) ? date('d/m/Y H:i', strtotime((string) $produit['date_creation'])) : '—';
-                            $dm_aff = !empty($produit['date_modification']) ? date('d/m/Y H:i', strtotime((string) $produit['date_modification'])) : '—';
+                            $pid = (int) ($produit['id'] ?? 0);
+                            $cell_ctx = [
+                                'pid' => $pid,
+                                'visible_cols' => $suivi_visible_cols,
+                            ];
                             ?>
                             <tr>
-                                <td class="page-produits-export-table__img">
-                                    <?php if ($img_url !== ''): ?>
-                                    <img src="<?php echo htmlspecialchars($img_url, ENT_QUOTES, 'UTF-8'); ?>" alt="" width="44" height="44" loading="lazy">
-                                    <?php else: ?>
-                                    <span class="page-produits-export-table__no-img">—</span>
-                                    <?php endif; ?>
+                                <?php foreach ($suivi_columns_catalog as $col_key => $col_label): ?>
+                                <?php
+                                $def = $suivi_columns_defs[$col_key] ?? [];
+                                $hidden = !isset($suivi_visible_lookup[$col_key]);
+                                $td_classes = trim((string) ($def['css_cell'] ?? ''));
+                                if ($hidden) {
+                                    $td_classes .= ($td_classes !== '' ? ' ' : '') . 'is-suivi-col-hidden';
+                                }
+                                ?>
+                                <td<?php echo $td_classes !== '' ? ' class="' . htmlspecialchars($td_classes, ENT_QUOTES, 'UTF-8') . '"' : ''; ?>
+                                    data-suivi-col="<?php echo htmlspecialchars($col_key, ENT_QUOTES, 'UTF-8'); ?>">
+                                    <?php echo export_catalogue_suivi_render_cell_html($col_key, $produit, $cell_ctx); ?>
                                 </td>
-                                <td class="page-produits-export-table__nom">
-                                    <strong><?php echo htmlspecialchars($produit['nom'] ?? ''); ?></strong>
-                                    <?php if ($ident !== ''): ?>
-                                    <span class="page-produits-export-table__meta">Réf. <?php echo htmlspecialchars($ident); ?></span>
-                                    <?php endif; ?>
-                                    <?php if ($marque !== ''): ?>
-                                    <span class="page-produits-export-table__meta"><?php echo htmlspecialchars($marque); ?></span>
-                                    <?php endif; ?>
-                                </td>
-                                <td><?php echo htmlspecialchars($produit['categorie_nom'] ?? '—'); ?></td>
-                                <td><?php echo htmlspecialchars($fourn !== '' ? $fourn : '—'); ?></td>
-                                <?php if ($export_has_prix_achat): ?>
-                                <td class="page-produits-export-table__num"><?php echo htmlspecialchars($prix_achat_aff ?? '—'); ?></td>
-                                <?php endif; ?>
-                                <td class="page-produits-export-table__num"><?php echo htmlspecialchars($prix_vente_aff); ?></td>
-                                <td class="page-produits-export-table__num"><?php echo htmlspecialchars($promo_aff); ?></td>
-                                <td class="page-produits-export-table__num"><?php echo htmlspecialchars($stock_aff); ?></td>
-                                <td class="page-produits-export-table__date"><?php echo htmlspecialchars($dc_aff); ?></td>
-                                <td class="page-produits-export-table__date"><?php echo htmlspecialchars($dm_aff); ?></td>
+                                <?php endforeach; ?>
                             </tr>
                             <?php endforeach; ?>
                         </tbody>
                     </table>
                 </div>
+                <div class="page-produits-export-save-bar page-produits-export-save-bar--bottom">
+                    <button type="submit" class="btn-primary page-produits-export-save-bar__btn">
+                        <i class="fas fa-save" aria-hidden="true"></i> Enregistrer les prix
+                    </button>
+                </div>
+                </form>
 
                 <?php if ($total_pages > 1): ?>
                 <nav class="page-produits-pagination page-produits-export-pagination" id="page-produits-export-pagination"
@@ -387,8 +391,6 @@ $pdf_link_attrs = $export_use_async_pdf
         </section>
     </div>
 
-    <?php include '../includes/footer.php'; ?>
-
     <div class="delete-confirm-overlay" id="deleteConfirmOverlay"></div>
     <div class="delete-confirm-modal" id="deleteConfirmModal" role="dialog" aria-modal="true"
         aria-labelledby="deleteConfirmTitle">
@@ -413,6 +415,97 @@ $pdf_link_attrs = $export_use_async_pdf
         </div>
     </div>
 
+    <div class="export-catalogue-table-modal-overlay" id="exportCatalogueTableModalOverlay" hidden></div>
+    <div class="export-catalogue-table-modal" id="exportCatalogueTableModal" role="dialog" aria-modal="true"
+        aria-labelledby="exportCatalogueTableModalTitle" hidden>
+        <div class="export-catalogue-pdf-modal__header">
+            <h2 class="export-catalogue-pdf-modal__title" id="exportCatalogueTableModalTitle">
+                <i class="fas fa-table-columns" aria-hidden="true"></i> Colonnes du tableau
+            </h2>
+            <button type="button" class="export-catalogue-pdf-modal__close" id="exportCatalogueTableModalClose"
+                aria-label="Fermer">
+                <i class="fas fa-times" aria-hidden="true"></i>
+            </button>
+        </div>
+        <p class="export-catalogue-pdf-modal__intro">
+            Choisissez les données affichées dans le suivi catalogue. La liste disponible est synchronisée avec les
+            <strong>champs formulaire produit</strong> actifs et autorisés pour votre profil.
+        </p>
+        <div class="export-catalogue-pdf-modal__toolbar">
+            <button type="button" class="btn-secondary" id="exportCatalogueTableSelectAll">Tout cocher</button>
+            <button type="button" class="btn-secondary" id="exportCatalogueTableSelectNone">Tout décocher</button>
+        </div>
+        <fieldset class="export-catalogue-pdf-modal__columns" id="exportCatalogueTableColumnsFieldset">
+            <legend class="visually-hidden">Colonnes du tableau suivi</legend>
+            <?php foreach ($suivi_columns_catalog as $col_key => $col_label): ?>
+            <?php $locked = !empty($suivi_columns_defs[$col_key]['locked']); ?>
+            <label class="export-catalogue-pdf-modal__column">
+                <input type="checkbox" name="suivi_cols[]" value="<?php echo htmlspecialchars($col_key, ENT_QUOTES, 'UTF-8'); ?>"
+                    data-suivi-table-col="<?php echo htmlspecialchars($col_key, ENT_QUOTES, 'UTF-8'); ?>"
+                    <?php echo isset($suivi_visible_lookup[$col_key]) ? 'checked' : ''; ?>
+                    <?php echo $locked ? 'disabled checked data-suivi-col-locked="1"' : ''; ?>>
+                <span><?php echo htmlspecialchars($col_label, ENT_QUOTES, 'UTF-8'); ?><?php echo $locked ? ' (obligatoire)' : ''; ?></span>
+            </label>
+            <?php endforeach; ?>
+        </fieldset>
+        <p class="export-catalogue-pdf-modal__error" id="exportCatalogueTableModalError" hidden role="alert">
+            Sélectionnez au moins une colonne.
+        </p>
+        <div class="export-catalogue-pdf-modal__actions">
+            <button type="button" class="btn-secondary" id="exportCatalogueTableModalCancel">Annuler</button>
+            <button type="button" class="btn-primary" id="exportCatalogueTableModalConfirm">
+                <i class="fas fa-save" aria-hidden="true"></i> Enregistrer
+            </button>
+        </div>
+    </div>
+
+    <div class="export-catalogue-pdf-modal-overlay" id="exportCataloguePdfModalOverlay" hidden></div>
+    <div class="export-catalogue-pdf-modal" id="exportCataloguePdfModal" role="dialog" aria-modal="true"
+        aria-labelledby="exportCataloguePdfModalTitle" hidden>
+        <div class="export-catalogue-pdf-modal__header">
+            <h2 class="export-catalogue-pdf-modal__title" id="exportCataloguePdfModalTitle">
+                <i class="fas fa-file-pdf" aria-hidden="true"></i> Contenu du PDF
+            </h2>
+            <button type="button" class="export-catalogue-pdf-modal__close" id="exportCataloguePdfModalClose"
+                aria-label="Fermer">
+                <i class="fas fa-times" aria-hidden="true"></i>
+            </button>
+        </div>
+        <p class="export-catalogue-pdf-modal__intro">
+            Choisissez les colonnes à inclure dans le catalogue PDF. Les filtres actuels seront conservés.
+            La liste est synchronisée avec les <strong>champs formulaire produit</strong> actifs et autorisés pour votre profil.
+        </p>
+        <div class="export-catalogue-pdf-modal__toolbar">
+            <button type="button" class="btn-secondary export-catalogue-pdf-modal__select-all" id="exportCataloguePdfSelectAll">
+                Tout cocher
+            </button>
+            <button type="button" class="btn-secondary export-catalogue-pdf-modal__select-none" id="exportCataloguePdfSelectNone">
+                Tout décocher
+            </button>
+        </div>
+        <fieldset class="export-catalogue-pdf-modal__columns">
+            <legend class="visually-hidden">Colonnes du PDF</legend>
+            <?php foreach ($pdf_columns_catalog as $col_key => $col_label): ?>
+            <label class="export-catalogue-pdf-modal__column">
+                <input type="checkbox" name="pdf_cols[]" value="<?php echo htmlspecialchars($col_key, ENT_QUOTES, 'UTF-8'); ?>"
+                    checked data-export-pdf-col="<?php echo htmlspecialchars($col_key, ENT_QUOTES, 'UTF-8'); ?>">
+                <span><?php echo htmlspecialchars($col_label, ENT_QUOTES, 'UTF-8'); ?></span>
+            </label>
+            <?php endforeach; ?>
+        </fieldset>
+        <p class="export-catalogue-pdf-modal__error" id="exportCataloguePdfModalError" hidden role="alert">
+            Sélectionnez au moins une colonne.
+        </p>
+        <div class="export-catalogue-pdf-modal__actions">
+            <button type="button" class="btn-secondary" id="exportCataloguePdfModalCancel">Annuler</button>
+            <button type="button" class="btn-primary" id="exportCataloguePdfModalConfirm">
+                <i class="fas fa-download" aria-hidden="true"></i> Générer le PDF
+            </button>
+        </div>
+    </div>
+
+    <?php require_once __DIR__ . '/../../includes/asset_version.php'; ?>
+    <script src="/js/admin-export-catalogue-suivi.js<?php echo asset_version_query(); ?>"></script>
     <script>
     document.addEventListener('DOMContentLoaded', function() {
         var deleteOverlay = document.getElementById('deleteConfirmOverlay');
@@ -473,6 +566,5 @@ $pdf_link_attrs = $export_use_async_pdf
         });
     });
     </script>
-</body>
 
-</html>
+    <?php include '../includes/footer.php'; ?>

@@ -68,6 +68,7 @@ function admin_activite_types_pour_role($role) {
             ];
             return ['caisse_encaissements'];
         case 'gestion_stock':
+        case 'gestion_stock_general':
             return [
                 'produits_crees',
                 'produits_modifies',

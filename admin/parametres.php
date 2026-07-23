@@ -12,6 +12,11 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
     exit;
 }
 
+require_once __DIR__ . '/includes/require_access.php';
+require_once __DIR__ . '/../includes/admin_permissions.php';
+$parametres_role = admin_current_role();
+$parametres_stock_etendu = admin_can_gestion_stock_etendue() && $parametres_role === 'gestion_stock_general';
+
 // Afficher le message de succès s'il existe
 $success_message = '';
 if (isset($_SESSION['success_message'])) {
@@ -40,8 +45,9 @@ if (isset($_SESSION['success_message'])) {
         <header class="parametres-hero">
             <p class="parametres-hero__eyebrow">Configuration du site</p>
             <h1 class="parametres-hero__title"><i class="fas fa-sliders" aria-hidden="true"></i> Paramètres</h1>
-            <p class="parametres-hero__lead">Personnalisez l’apparence et les contenus affichés sur la boutique
-                (bannière, médias, logos).</p>
+            <p class="parametres-hero__lead"><?php echo $parametres_stock_etendu
+                ? 'Configuration entrepôt, alertes de stock et champs produit.'
+                : 'Personnalisez l’apparence et les contenus affichés sur la boutique (bannière, médias, logos).'; ?></p>
         </header>
 
         <?php if (!empty($success_message)): ?>
@@ -51,6 +57,7 @@ if (isset($_SESSION['success_message'])) {
         <?php endif; ?>
 
         <div class="parametres-grid" role="list">
+            <?php if (!$parametres_stock_etendu): ?>
             <article class="parametre-card parametre-card--banner" role="listitem">
                 <div class="parametre-card__body">
                     <div class="parametre-card__head">
@@ -107,6 +114,8 @@ if (isset($_SESSION['success_message'])) {
                 </div>
             </article>
 
+            <?php endif; ?>
+
             <article class="parametre-card parametre-card--emplacement-entrepot" role="listitem">
                 <div class="parametre-card__body">
                     <div class="parametre-card__head">
@@ -119,6 +128,26 @@ if (isset($_SESSION['success_message'])) {
                     </a>
                 </div>
             </article>
+
+            <?php
+            require_once __DIR__ . '/../includes/admin_permissions.php';
+            require_once __DIR__ . '/../models/model_produit_formulaire_champs.php';
+            if (admin_is_full_admin() || produit_formulaire_peut_gerer_champs()):
+            ?>
+            <article class="parametre-card parametre-card--champs-produit" role="listitem">
+                <div class="parametre-card__body">
+                    <div class="parametre-card__head">
+                        <div class="parametre-icon" aria-hidden="true"><i class="fas fa-list-check"></i></div>
+                        <h3 class="parametre-title">Champs formulaire produit</h3>
+                    </div>
+                    <a href="parametres/champs-produit.php" class="parametre-link">
+                        <span class="parametre-link__txt"><i class="fas fa-sliders-h" aria-hidden="true"></i> Ajout / modification — champs dynamiques &amp; droits</span>
+                        <i class="fas fa-chevron-right parametre-link__chev" aria-hidden="true"></i>
+                    </a>
+                    <p class="parametre-card__hint">Les champs actifs et autorisés pour chaque profil déterminent aussi les colonnes disponibles dans le <strong>suivi catalogue</strong>.</p>
+                </div>
+            </article>
+            <?php endif; ?>
 
             <article class="parametre-card parametre-card--alertes-stock" role="listitem">
                 <div class="parametre-card__body">
@@ -134,6 +163,7 @@ if (isset($_SESSION['success_message'])) {
                 </div>
             </article>
 
+            <?php if (!$parametres_stock_etendu): ?>
             <article class="parametre-card parametre-card--bulletin-paie" role="listitem">
                 <div class="parametre-card__body">
                     <div class="parametre-card__head">
@@ -147,6 +177,7 @@ if (isset($_SESSION['success_message'])) {
                     </a>
                 </div>
             </article>
+            <?php endif; ?>
         </div>
     </section>
 

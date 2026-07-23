@@ -536,13 +536,16 @@ function export_catalogue_build_meta_from_filters(array $filters) {
     export_catalogue_require_db();
     require_once __DIR__ . '/export_produits_catalogue_pdf.php';
 
-    $date_debut = (string) ($filters['date_debut'] ?? date('Y-m-d'));
-    $date_fin = (string) ($filters['date_fin'] ?? date('Y-m-d'));
-    $mode = (string) ($filters['mode'] ?? 'tous');
-    $recherche = (string) ($filters['recherche'] ?? '');
-    $categorie_id = (int) ($filters['categorie_id'] ?? 0);
-    $marque_id = (int) ($filters['marque_id'] ?? 0);
-    $fournisseur_id = (int) ($filters['fournisseur_id'] ?? 0);
+    $parsed = export_catalogue_filters_from_request($filters);
+    $date_debut = $parsed['date_debut'];
+    $date_fin = $parsed['date_fin'];
+    $mode = $parsed['mode'];
+    $recherche = $parsed['recherche'];
+    $categorie_id = $parsed['categorie_id'];
+    $marque_id = $parsed['marque_id'];
+    $fournisseur_id = 0;
+    $has_prix_achat = export_catalogue_has_prix_achat_column();
+    $pdf_cols = export_catalogue_pdf_parse_selected_columns($filters, $has_prix_achat);
 
     require_once __DIR__ . '/../models/model_categories.php';
 
@@ -567,15 +570,8 @@ function export_catalogue_build_meta_from_filters(array $filters) {
         }
     }
 
-    $has_fournisseur_filtre = produits_has_column('fournisseur_id');
+    $has_fournisseur_filtre = false;
     $fournisseur_nom = 'Tous les fournisseurs';
-    if ($has_fournisseur_filtre && $fournisseur_id > 0) {
-        require_once __DIR__ . '/../models/model_fournisseurs.php';
-        $four = get_fournisseur_by_id($fournisseur_id);
-        if ($four && !empty($four['nom'])) {
-            $fournisseur_nom = (string) $four['nom'];
-        }
-    }
 
     $total = count_admin_produits_export_catalogue(
         $date_debut,
@@ -599,7 +595,8 @@ function export_catalogue_build_meta_from_filters(array $filters) {
         'fournisseur_nom' => $fournisseur_nom,
         'show_categorie_filtre' => true,
         'show_marque_filtre' => $has_marque_filtre,
-        'show_fournisseur_filtre' => $has_fournisseur_filtre,
+        'show_fournisseur_filtre' => false,
+        'pdf_cols' => $pdf_cols,
     ];
 }
 

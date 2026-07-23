@@ -48,6 +48,45 @@ if (!function_exists('admin_route_relative_path')) {
     }
 
     /**
+     * Routes autorisées pour le rôle « gestion_stock » (périmètre de base).
+     */
+    function admin_route_gestion_stock_base_allowed($p) {
+        if ($p === '') {
+            return false;
+        }
+        if (strpos($p, 'stock/') === 0 || strpos($p, 'produits/') === 0) {
+            return true;
+        }
+
+        return in_array($p, [
+            'categories/produits.php',
+            'categories/modifier.php',
+            'categories/ajouter.php',
+            'categories/supprimer.php',
+        ], true);
+    }
+
+    /**
+     * Routes supplémentaires pour « gestion_stock_general » (périmètre étendu).
+     */
+    function admin_route_gestion_stock_general_extra_allowed($p) {
+        if ($p === 'dashboard.php' || $p === 'parametres.php') {
+            return true;
+        }
+        if (strpos($p, 'categories/') === 0) {
+            return true;
+        }
+        if ($p === 'parametres/alertes-stock.php') {
+            return true;
+        }
+        if (strpos($p, 'parametres/emplacement-') === 0) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
      * URL de secours (relative à admin/) si la route est interdite
      */
     function admin_role_default_redirect_path($role) {
@@ -70,6 +109,8 @@ if (!function_exists('admin_route_relative_path')) {
                 return 'contacts/index.php';
             case 'gestion_stock':
                 return 'stock/index.php';
+            case 'gestion_stock_general':
+                return 'dashboard.php';
             default:
                 return 'dashboard.php';
         }
@@ -177,12 +218,11 @@ if (!function_exists('admin_route_relative_path')) {
                     || $p === 'caisse/post.php';
 
             case 'gestion_stock':
-                return $starts('stock/')
-                    || $starts('produits/')
-                    || $p === 'categories/produits.php'
-                    || $p === 'categories/modifier.php'
-                    || $p === 'categories/ajouter.php'
-                    || $p === 'categories/supprimer.php';
+                return admin_route_gestion_stock_base_allowed($p);
+
+            case 'gestion_stock_general':
+                return admin_route_gestion_stock_base_allowed($p)
+                    || admin_route_gestion_stock_general_extra_allowed($p);
 
             default:
                 return false;

@@ -31,6 +31,8 @@ if (isset($result['success']) && $result['success']) {
 require_once __DIR__ . '/../../models/model_produits.php';
 require_once __DIR__ . '/../../models/model_commandes.php';
 require_once __DIR__ . '/../../models/model_mouvements_stock.php';
+require_once __DIR__ . '/../../includes/produit_formulaire_champs.php';
+produit_formulaire_champs_ensure_schema();
 
 $produit = get_produit_by_id($produit_id);
 if (!$produit) {
@@ -243,6 +245,21 @@ $can_pdf_qrcode = ($stock_info_url !== '');
     $prod_fournisseur = produits_fournisseur_nom_affichage($produit);
     $prod_ref_fournisseur = (produits_has_column('reference_fournisseur') ? trim((string) ($produit['reference_fournisseur'] ?? '')) : '');
     $meta_ref = !empty($produit['identifiant_interne']) ? trim((string) $produit['identifiant_interne']) : '';
+    if (!pf_champ_visible('description')) {
+        $prod_description = '';
+    }
+    if (!pf_champ_visible('marque_id')) {
+        $prod_marque = '';
+    }
+    if (!pf_champ_visible('fournisseur_id')) {
+        $prod_fournisseur = '';
+    }
+    if (!pf_champ_visible('reference_fournisseur')) {
+        $prod_ref_fournisseur = '';
+    }
+    if (!pf_champ_visible('identifiant_interne')) {
+        $meta_ref = '';
+    }
     $emplacement_vals = produit_emplacement_from_produit($produit);
     if (produit_emplacement_use_referentiel() && !empty($emplacement_vals['entrepot_position_id'])) {
         $emplacement_vals = produit_emplacement_enrich_referentiel_form_values($emplacement_vals);
@@ -255,6 +272,15 @@ $can_pdf_qrcode = ($stock_info_url !== '');
         $prix_promo_val = (float) $produit['prix_promotion'];
     }
     $en_promotion = $prix_promo_val !== null && $prix_promo_val < $prix_catalogue;
+    if (!pf_champ_visible('prix_promotion')) {
+        $en_promotion = false;
+        $prix_promo_val = null;
+    }
+    $show_prix_vente = pf_champ_visible('prix');
+    $show_emplacement = pf_champ_visible('emplacement');
+    if (!$show_emplacement) {
+        $a_emplacement = false;
+    }
     $galerie_urls = produits_galerie_web_urls($produit);
     if (empty($galerie_urls)) {
         $galerie_urls = ['/image/produit1.jpg'];
@@ -312,6 +338,7 @@ $can_pdf_qrcode = ($stock_info_url !== '');
                 <?php endif; ?>
             </div>
 
+            <?php if ($show_prix_vente): ?>
             <div class="pas-price-card">
                 <span class="pas-price-card__label">Prix de vente</span>
                 <div class="pas-price-card__row">
@@ -324,6 +351,7 @@ $can_pdf_qrcode = ($stock_info_url !== '');
                     <?php endif; ?>
                 </div>
             </div>
+            <?php endif; ?>
 
             <?php if ($prod_description !== '' || $prod_fournisseur !== '' || $prod_ref_fournisseur !== ''): ?>
             <div class="pas-info-card">
@@ -350,7 +378,7 @@ $can_pdf_qrcode = ($stock_info_url !== '');
             </div>
             <?php endif; ?>
 
-            <?php if ($a_emplacement): ?>
+            <?php if ($show_emplacement && $a_emplacement): ?>
             <section class="pas-location-hero" aria-labelledby="pas-location-title">
                 <div class="pas-location-hero__banner">
                     <i class="fas fa-map-location-dot" aria-hidden="true"></i>

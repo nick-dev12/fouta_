@@ -84,17 +84,25 @@
         container.addEventListener('change', onLineFieldChange);
     }
 
+    function slugVisible(slug) {
+        var m = global.adminProduitChampsManifest;
+        if (!m || !Array.isArray(m.slugs)) {
+            return true;
+        }
+        return m.slugs.indexOf(slug) !== -1;
+    }
+
     /** HTML suggestion recherche : nom · marque · description + fournisseur + catégorie. */
     function buildSearchResultHtml(p) {
         var nom = esc(p.nom);
-        var marque = esc(p.marque_nom || '');
-        var desc = esc(p.desc_excerpt || '');
-        var fourn = esc(p.fournisseur_nom || '');
-        var rff = esc(p.ref_fournisseur || '');
-        var rfp = esc(p.ref_produit || '');
-        var cat = esc(p.categorie_nom || 'Sans catégorie');
-        var stock = p.stock_dispo || p.stock || 0;
-        var prix = parseFloat(p.prix) || 0;
+        var marque = slugVisible('marque_id') ? esc(p.marque_nom || '') : '';
+        var desc = slugVisible('description') ? esc(p.desc_excerpt || '') : '';
+        var fourn = slugVisible('fournisseur_id') ? esc(p.fournisseur_nom || '') : '';
+        var rff = slugVisible('reference_fournisseur') ? esc(p.ref_fournisseur || '') : '';
+        var rfp = slugVisible('identifiant_interne') ? esc(p.ref_produit || '') : '';
+        var cat = slugVisible('categorie_id') ? esc(p.categorie_nom || 'Sans catégorie') : '';
+        var stock = slugVisible('stock') ? (p.stock_dispo || p.stock || 0) : null;
+        var prix = slugVisible('prix') ? (parseFloat(p.prix) || 0) : null;
         var parts = ['<span class="sr-nom">' + nom + '</span>'];
         if (marque) {
             parts.push('<span class="sr-marque">' + marque + '</span>');
@@ -106,8 +114,9 @@
         var fournLine = fourn
             ? '<p class="sr-fournisseur"><i class="fas fa-truck-field" aria-hidden="true"></i> ' + fourn + '</p>'
             : '';
-        var catLine =
-            '<p class="sr-categorie"><i class="fas fa-tag" aria-hidden="true"></i> ' + cat + '</p>';
+        var catLine = cat
+            ? '<p class="sr-categorie"><i class="fas fa-tag" aria-hidden="true"></i> ' + cat + '</p>'
+            : '';
         var refParts = [];
         if (rff) {
             refParts.push('<span class="sr-ref">Réf. fourn. <strong>' + rff + '</strong></span>');
@@ -119,12 +128,18 @@
             ? '<div class="sr-refs">' + refParts.join(' <span class="sr-ref-sep">·</span> ') + '</div>'
             : '';
         var meta =
-            '<span class="sr-meta">Stock ' +
-            stock +
-            ' · <strong class="sr-prix">' +
-            formatFcfa(prix) +
-            ' FCFA</strong> HT</span>';
-        return line1 + fournLine + catLine + refsBlock + meta;
+            (stock !== null && prix !== null)
+                ? '<span class="sr-meta">Stock ' +
+                  stock +
+                  ' · <strong class="sr-prix">' +
+                  formatFcfa(prix) +
+                  ' FCFA</strong> HT</span>'
+                : (stock !== null
+                    ? '<span class="sr-meta">Stock ' + stock + '</span>'
+                    : (prix !== null
+                        ? '<span class="sr-meta"><strong class="sr-prix">' + formatFcfa(prix) + ' FCFA</strong> HT</span>'
+                        : ''));
+        return line1 + fournLine + (cat ? catLine : '') + refsBlock + meta;
     }
 
     function buildLigneBlDesignationCellHtml(produit, idx, lignesKey) {

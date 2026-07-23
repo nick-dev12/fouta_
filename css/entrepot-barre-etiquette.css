@@ -126,6 +126,26 @@
   background: rgba(53, 100, 166, 0.08);
 }
 
+.ee-barre-etiq-pdf-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--couleur-dominante, #3564a6);
+  background: #f0f0f0;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 6px;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.ee-barre-etiq-pdf-btn:hover {
+  background: #e8e8e8;
+  color: #2d5690;
+}
+
 @media print {
   @page {
     size: 90mm 30mm;

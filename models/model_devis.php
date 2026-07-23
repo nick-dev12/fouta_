@@ -424,7 +424,7 @@ function get_produits_by_devis($devis_id) {
     global $db;
     try {
         $stmt = $db->prepare("
-            SELECT dp.*, p.nom as produit_nom_defaut,
+            SELECT dp.*, p.nom as produit_nom_defaut, p.image_principale,
                    COALESCE(NULLIF(TRIM(dp.nom_produit), ''), p.nom) as produit_nom
             FROM devis_produits dp
             INNER JOIN produits p ON dp.produit_id = p.id

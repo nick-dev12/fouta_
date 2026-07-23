@@ -205,6 +205,11 @@
   color: var(--bleu-fonce);
 }
 
+.page-employe-activite .ea-identity-card .role-badge.role-gestion_stock_general {
+  background: rgba(53, 100, 166, 0.18);
+  color: var(--couleur-dominante);
+}
+
 .page-employe-activite .ea-identity-card .role-badge.role-commercial,
 .page-employe-activite .ea-identity-card .role-badge.role-commercial_general {
   background: rgba(255, 193, 7, 0.18);

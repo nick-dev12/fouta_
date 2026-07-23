@@ -109,7 +109,7 @@
     }
 
     function setPdfButtonsDisabled(disabled) {
-        document.querySelectorAll('[data-export-catalogue-async]').forEach(function (el) {
+        document.querySelectorAll('[data-export-catalogue-async], [data-export-pdf-trigger]').forEach(function (el) {
             if (disabled) {
                 el.setAttribute('aria-disabled', 'true');
                 el.classList.add('is-export-disabled');
@@ -461,6 +461,15 @@
         }
     }
 
+    window.exportCatalogueStartPdf = startAsyncExport;
+
+    window.exportCatalogueDownloadSync = function (query) {
+        if (!query) {
+            return;
+        }
+        ensureFrame().src = getAdminBase() + 'produits/export-catalogue-pdf.php?' + query;
+    };
+
     document.addEventListener('click', function (event) {
         var link = event.target.closest('[data-export-catalogue-async]');
         if (!link || link.classList.contains('is-export-disabled')) {
@@ -487,12 +496,11 @@
         resumeIfNeeded();
 
         if (isExportPage() && window.location.search.indexOf('async_pdf=1') !== -1) {
-            var firstBtn = document.querySelector('[data-export-catalogue-async]');
-            if (firstBtn) {
-                var q = firstBtn.getAttribute('data-export-query') || '';
-                if (q !== '') {
-                    startAsyncExport(q);
-                }
+            var params = new URLSearchParams(window.location.search);
+            params.delete('async_pdf');
+            var q = params.toString();
+            if (q !== '') {
+                startAsyncExport(q);
             }
         }
     });

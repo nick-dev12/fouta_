@@ -76,38 +76,84 @@ function create_stock_mouvement($data)
  * @param int $limit Nombre max
  * @return array
  */
-function get_stock_mouvements($stock_article_id = null, $produit_id = null, $categorie_id = null, $type = null, $limit = 100)
+function stock_mouvements_build_where($categorie_id = null, $type = null, $search = null, &$params = [])
+{
+    $sql = '';
+    if ($categorie_id !== null && (int) $categorie_id > 0) {
+        $sql .= ' AND m.produit_id IS NOT NULL AND p.categorie_id = :categorie_id';
+        $params['categorie_id'] = (int) $categorie_id;
+    }
+    if ($type !== null && in_array($type, ['entree', 'sortie', 'inventaire'], true)) {
+        $sql .= ' AND m.type = :type';
+        $params['type'] = $type;
+    }
+    if ($search !== null && trim((string) $search) !== '') {
+        $sql .= ' AND (
+            p.nom LIKE :search OR
+            COALESCE(m.reference_numero, \'\') LIKE :search OR
+            COALESCE(m.notes, \'\') LIKE :search OR
+            COALESCE(m.reference_type, \'\') LIKE :search OR
+            CAST(COALESCE(m.reference_id, \'\') AS CHAR) LIKE :search
+        )';
+        $params['search'] = '%' . trim((string) $search) . '%';
+    }
+
+    return $sql;
+}
+
+function count_stock_mouvements($categorie_id = null, $type = null, $search = null, $produit_id = null)
 {
     global $db;
 
     try {
-        $sql = "SELECT m.*, p.nom as produit_nom, p.categorie_id as produit_categorie_id
-                FROM stock_mouvements m
-                LEFT JOIN produits p ON m.produit_id = p.id
-                WHERE 1=1";
-        $params = ['limit' => (int) $limit];
-
-        if ($produit_id !== null && $produit_id > 0) {
-            $sql .= " AND m.produit_id = :produit_id";
+        $params = [];
+        $sql = 'SELECT COUNT(*) FROM stock_mouvements m LEFT JOIN produits p ON m.produit_id = p.id WHERE 1=1';
+        if ($produit_id !== null && (int) $produit_id > 0) {
+            $sql .= ' AND m.produit_id = :produit_id';
             $params['produit_id'] = (int) $produit_id;
         }
-        if ($categorie_id !== null && $categorie_id > 0) {
-            $sql .= " AND m.produit_id IS NOT NULL AND p.categorie_id = :categorie_id";
-            $params['categorie_id'] = (int) $categorie_id;
-        }
-        if ($type !== null && in_array($type, ['entree', 'sortie', 'inventaire'])) {
-            $sql .= " AND m.type = :type";
-            $params['type'] = $type;
-        }
-
-        $sql .= " ORDER BY m.date_mouvement DESC LIMIT :limit";
+        $sql .= stock_mouvements_build_where($categorie_id, $type, $search, $params);
         $stmt = $db->prepare($sql);
         foreach ($params as $k => $v) {
             $stmt->bindValue(':' . $k, $v, is_int($v) ? PDO::PARAM_INT : PDO::PARAM_STR);
         }
         $stmt->execute();
+
+        return (int) $stmt->fetchColumn();
+    } catch (PDOException $e) {
+        return 0;
+    }
+}
+
+function get_stock_mouvements_paginated($categorie_id = null, $type = null, $search = null, $offset = 0, $limit = 25, $produit_id = null)
+{
+    global $db;
+
+    try {
+        $params = ['limit' => (int) $limit, 'offset' => (int) $offset];
+        $sql = 'SELECT m.*, p.nom as produit_nom, p.categorie_id as produit_categorie_id
+                FROM stock_mouvements m
+                LEFT JOIN produits p ON m.produit_id = p.id
+                WHERE 1=1';
+        if ($produit_id !== null && (int) $produit_id > 0) {
+            $sql .= ' AND m.produit_id = :produit_id';
+            $params['produit_id'] = (int) $produit_id;
+        }
+        $sql .= stock_mouvements_build_where($categorie_id, $type, $search, $params);
+        $sql .= ' ORDER BY m.date_mouvement DESC LIMIT :limit OFFSET :offset';
+        $stmt = $db->prepare($sql);
+        foreach ($params as $k => $v) {
+            $stmt->bindValue(':' . $k, $v, is_int($v) ? PDO::PARAM_INT : PDO::PARAM_STR);
+        }
+        $stmt->execute();
+
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     } catch (PDOException $e) {
         return [];
     }
+}
+
+function get_stock_mouvements($stock_article_id = null, $produit_id = null, $categorie_id = null, $type = null, $limit = 100)
+{
+    return get_stock_mouvements_paginated($categorie_id, $type, null, 0, (int) $limit, $produit_id);
 }

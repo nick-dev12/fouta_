@@ -22,6 +22,7 @@ $detail_bls = isset($detail_bls) && is_array($detail_bls) ? $detail_bls : [];
 $fm_flash_success = $fm_flash_success ?? null;
 require_once __DIR__ . '/site_url.php';
 require_once __DIR__ . '/fiscal_tva.php';
+require_once __DIR__ . '/facture_ligne_helpers.php';
 $fm_tva_incl = !empty($facture['tva_incluse']);
 $fm_taux = isset($facture['taux_tva_pourcent']) && (float) $facture['taux_tva_pourcent'] > 0
     ? (float) $facture['taux_tva_pourcent'] : fiscal_taux_tva_pourcent();
@@ -265,6 +266,36 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
         .facture-table th:last-child,
         .facture-table td:last-child {
             text-align: right;
+        }
+
+        .facture-table th:nth-child(1),
+        .facture-table td:nth-child(1) {
+            width: 56px;
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        .facture-ligne-img {
+            display: block;
+            width: 44px;
+            height: 44px;
+            object-fit: cover;
+            border-radius: 4px;
+            border: 1px solid rgba(53, 100, 166, 0.15);
+            margin: 0 auto;
+        }
+
+        .facture-ligne-img--empty {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            font-size: 12px;
+            color: #a3a3a3;
+            background: #fafafa;
+            border-radius: 4px;
+            border: 1px dashed rgba(53, 100, 166, 0.2);
         }
 
         .facture-table th:nth-child(3),
@@ -648,22 +679,27 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
 
             .facture-table th:nth-child(1),
             .facture-table td:nth-child(1) {
-                width: 36% !important;
+                width: 10% !important;
             }
 
             .facture-table th:nth-child(2),
             .facture-table td:nth-child(2) {
-                width: 22% !important;
+                width: 32% !important;
             }
 
             .facture-table th:nth-child(3),
             .facture-table td:nth-child(3) {
-                width: 12% !important;
+                width: 10% !important;
             }
 
             .facture-table th:nth-child(4),
             .facture-table td:nth-child(4) {
-                width: 30% !important;
+                width: 20% !important;
+            }
+
+            .facture-table th:nth-child(5),
+            .facture-table td:nth-child(5) {
+                width: 28% !important;
             }
 
             .facture-banner-top,
@@ -1014,6 +1050,7 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
             <table class="facture-table">
                 <thead>
                     <tr>
+                        <th>IMAGE</th>
                         <th>ARTICLE</th>
                         <th>QTÉ</th>
                         <th>PRIX</th>
@@ -1023,13 +1060,13 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
                 <tbody>
                     <?php if (empty($detail_bls)): ?>
                         <tr>
-                            <td colspan="4" style="text-align:center;color:#666;padding:14px;">Aucune ligne sur cette facture.</td>
+                            <td colspan="5" style="text-align:center;color:#666;padding:14px;">Aucune ligne sur cette facture.</td>
                         </tr>
                     <?php endif; ?>
                     <?php foreach ($detail_bls as $block): ?>
                         <?php $blrow = $block['bl'] ?? []; ?>
                         <tr class="facture-bl-sep">
-                            <td colspan="4">Bon de livraison <?php echo htmlspecialchars($blrow['numero_bl'] ?? ''); ?>
+                            <td colspan="5">Bon de livraison <?php echo htmlspecialchars($blrow['numero_bl'] ?? ''); ?>
                                 <?php if (!empty($blrow['date_bl'])): ?> · <?php echo htmlspecialchars($blrow['date_bl']); ?><?php endif; ?>
                             </td>
                         </tr>
@@ -1039,6 +1076,7 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
                         $qte_ent = (int) round($qte_raw);
                         ?>
                         <tr>
+                            <td><?php echo facture_ligne_image_cell_html($ligne); ?></td>
                             <td><?php echo htmlspecialchars($ligne['designation'] ?? ''); ?><?php
                                 $pid_fm = (int) ($ligne['produit_id'] ?? 0);
                                 if ($pid_fm > 0) {

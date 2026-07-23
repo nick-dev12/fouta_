@@ -3,6 +3,7 @@
  * Configuration structure entrepôt (par étage).
  */
 require_once __DIR__ . '/../conn/conn.php';
+require_once __DIR__ . '/model_entrepot_structure_champs.php';
 
 /** Limites globales de saisie admin */
 define('ENTREPOT_EMPLACEMENT_NB_ETAGES_MAX', 20);
@@ -20,6 +21,7 @@ function entrepot_emplacement_defaults_fallback() {
         'nb_rayons' => 100,
         'nb_allees' => 10,
         'nb_zones' => 10,
+        'nb_etageres' => 10,
         'nb_positions' => 10,
         'nb_barres' => 10,
     ];
@@ -80,11 +82,19 @@ function entrepot_emplacement_get_all_etages() {
     if (!entrepot_emplacement_tables_ok()) {
         return [];
     }
+    entrepot_structure_champs_ensure_table();
+    $cols = entrepot_structure_champs_colonnes_db();
+    $select_cols = 'id, numero_etage, date_modification';
+    if ($cols !== []) {
+        $select_cols .= ', ' . implode(', ', array_map(function ($c) {
+            return '`' . str_replace('`', '', $c) . '`';
+        }, $cols));
+    } else {
+        $select_cols .= ', nb_rayons, nb_allees, nb_zones, nb_positions, nb_barres';
+    }
     try {
         $stmt = $db->query(
-            'SELECT id, numero_etage, nb_rayons, nb_allees, nb_zones, nb_positions, nb_barres, date_modification
-             FROM entrepot_emplacement_etage
-             ORDER BY numero_etage ASC'
+            'SELECT ' . $select_cols . ' FROM entrepot_emplacement_etage ORDER BY numero_etage ASC'
         );
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
@@ -113,10 +123,19 @@ function entrepot_emplacement_get_etage($numero) {
     if ($numero <= 0 || !entrepot_emplacement_tables_ok()) {
         return null;
     }
+    entrepot_structure_champs_ensure_table();
+    $cols = entrepot_structure_champs_colonnes_db();
+    $select_cols = 'id, numero_etage, date_modification';
+    if ($cols !== []) {
+        $select_cols .= ', ' . implode(', ', array_map(function ($c) {
+            return '`' . str_replace('`', '', $c) . '`';
+        }, $cols));
+    } else {
+        $select_cols .= ', nb_rayons, nb_allees, nb_zones, nb_positions, nb_barres';
+    }
     try {
         $stmt = $db->prepare(
-            'SELECT id, numero_etage, nb_rayons, nb_allees, nb_zones, nb_positions, nb_barres, date_modification
-             FROM entrepot_emplacement_etage WHERE numero_etage = :n LIMIT 1'
+            'SELECT ' . $select_cols . ' FROM entrepot_emplacement_etage WHERE numero_etage = :n LIMIT 1'
         );
         $stmt->execute([':n' => $numero]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -149,7 +168,7 @@ function entrepot_emplacement_est_configure() {
  * @return array<string, string>
  */
 function entrepot_emplacement_col_to_config_key() {
-    return [
+    $map = [
         'etage' => 'numero_etage',
         'numero_rayon' => 'nb_rayons',
         'allee' => 'nb_allees',
@@ -157,6 +176,15 @@ function entrepot_emplacement_col_to_config_key() {
         'position_emplacement' => 'nb_positions',
         'barre_rayon' => 'nb_barres',
     ];
+    foreach (entrepot_structure_champs_pour_formulaire() as $champ) {
+        $slug = (string) ($champ['slug'] ?? '');
+        $col = (string) ($champ['name'] ?? '');
+        if ($slug !== '' && $col !== '' && !isset($map[$slug])) {
+            $map[$slug] = $col;
+        }
+    }
+
+    return $map;
 }
 
 /**
@@ -226,34 +254,21 @@ function entrepot_emplacement_enregistrer_config($nb_etages, array $etages_data)
             return ['success' => false, 'message' => 'Configuration manquante pour l’étage ' . $i . '.'];
         }
         $row = $etages_data[$i];
-        $nb_rayons = isset($row['nb_rayons']) ? (int) $row['nb_rayons'] : 0;
-        $nb_allees = isset($row['nb_allees']) ? (int) $row['nb_allees'] : 0;
-        $nb_zones = isset($row['nb_zones']) ? (int) $row['nb_zones'] : 0;
-        $nb_positions = isset($row['nb_positions']) ? (int) $row['nb_positions'] : 0;
-        $nb_barres = isset($row['nb_barres']) ? (int) $row['nb_barres'] : 0;
-
-        if ($nb_rayons < 1 || $nb_rayons > ENTREPOT_EMPLACEMENT_NB_RAYONS_MAX) {
-            return ['success' => false, 'message' => 'Nombre de rayons invalide pour l’étage ' . $i . '.'];
-        }
-        foreach ([
-            'allées' => $nb_allees,
-            'zones' => $nb_zones,
-            'positions' => $nb_positions,
-            'barres' => $nb_barres,
-        ] as $label => $val) {
-            if ($val < 1 || $val > ENTREPOT_EMPLACEMENT_NB_PETIT_MAX) {
-                return ['success' => false, 'message' => 'Nombre de ' . $label . ' invalide pour l’étage ' . $i . ' (1 à ' . ENTREPOT_EMPLACEMENT_NB_PETIT_MAX . ').'];
+        $valeurs = [];
+        foreach (entrepot_structure_champs_pour_formulaire() as $champ) {
+            $name = (string) $champ['name'];
+            $val = isset($row[$name]) ? (int) $row[$name] : (isset($row[str_replace('nb_', '', $name)]) ? (int) $row[str_replace('nb_', '', $name)] : 0);
+            $check = entrepot_structure_champs_valider_valeurs([$name => $val]);
+            if (!$check['success']) {
+                return ['success' => false, 'message' => $check['message'] . ' (étage ' . $i . ')'];
             }
+            $valeurs[$name] = $val;
+        }
+        if ($valeurs === []) {
+            return ['success' => false, 'message' => 'Aucun champ structurel configuré pour l’étage ' . $i . '.'];
         }
 
-        $prepared[$i] = [
-            'numero_etage' => $i,
-            'nb_rayons' => $nb_rayons,
-            'nb_allees' => $nb_allees,
-            'nb_zones' => $nb_zones,
-            'nb_positions' => $nb_positions,
-            'nb_barres' => $nb_barres,
-        ];
+        $prepared[$i] = array_merge(['numero_etage' => $i], $valeurs);
     }
 
     try {
@@ -266,28 +281,30 @@ function entrepot_emplacement_enregistrer_config($nb_etages, array $etages_data)
         );
         $stmt_cfg->execute([':nb' => $nb_etages]);
 
-        $stmt_upsert = $db->prepare(
-            'INSERT INTO entrepot_emplacement_etage
-                (numero_etage, nb_rayons, nb_allees, nb_zones, nb_positions, nb_barres, date_modification)
-             VALUES (:numero_etage, :nb_rayons, :nb_allees, :nb_zones, :nb_positions, :nb_barres, NOW())
-             ON DUPLICATE KEY UPDATE
-                nb_rayons = VALUES(nb_rayons),
-                nb_allees = VALUES(nb_allees),
-                nb_zones = VALUES(nb_zones),
-                nb_positions = VALUES(nb_positions),
-                nb_barres = VALUES(nb_barres),
-                date_modification = NOW()'
-        );
+        $champs = entrepot_structure_champs_pour_formulaire();
+        $col_names = array_map(function ($c) {
+            return (string) $c['name'];
+        }, $champs);
+        $placeholders = implode(', ', array_map(function ($c) {
+            return ':' . $c;
+        }, $col_names));
+        $updates = implode(', ', array_map(function ($c) {
+            return '`' . str_replace('`', '', $c) . '` = VALUES(`' . str_replace('`', '', $c) . '`)';
+        }, $col_names));
+
+        $sql = 'INSERT INTO entrepot_emplacement_etage (numero_etage, ' . implode(', ', array_map(function ($c) {
+            return '`' . str_replace('`', '', $c) . '`';
+        }, $col_names)) . ', date_modification)
+             VALUES (:numero_etage, ' . $placeholders . ', NOW())
+             ON DUPLICATE KEY UPDATE ' . $updates . ', date_modification = NOW()';
+        $stmt_upsert = $db->prepare($sql);
 
         foreach ($prepared as $row) {
-            $stmt_upsert->execute([
-                ':numero_etage' => $row['numero_etage'],
-                ':nb_rayons' => $row['nb_rayons'],
-                ':nb_allees' => $row['nb_allees'],
-                ':nb_zones' => $row['nb_zones'],
-                ':nb_positions' => $row['nb_positions'],
-                ':nb_barres' => $row['nb_barres'],
-            ]);
+            $params = [':numero_etage' => $row['numero_etage']];
+            foreach ($col_names as $col) {
+                $params[':' . $col] = (int) ($row[$col] ?? 10);
+            }
+            $stmt_upsert->execute($params);
         }
 
         $stmt_del = $db->prepare('DELETE FROM entrepot_emplacement_etage WHERE numero_etage > :max');
@@ -398,41 +415,25 @@ function entrepot_emplacement_enregistrer_quantites_etage($numero_etage, array $
         return ['success' => false, 'message' => 'Étage non configuré.'];
     }
 
-    $nb_rayons = isset($data['nb_rayons']) ? (int) $data['nb_rayons'] : 0;
-    $nb_allees = isset($data['nb_allees']) ? (int) $data['nb_allees'] : 0;
-    $nb_zones = isset($data['nb_zones']) ? (int) $data['nb_zones'] : 0;
-    $nb_positions = isset($data['nb_positions']) ? (int) $data['nb_positions'] : 0;
-    $nb_barres = isset($data['nb_barres']) ? (int) $data['nb_barres'] : 0;
-
-    if ($nb_rayons < 1 || $nb_rayons > ENTREPOT_EMPLACEMENT_NB_RAYONS_MAX) {
-        return ['success' => false, 'message' => 'Nombre de rayons invalide (1 à ' . ENTREPOT_EMPLACEMENT_NB_RAYONS_MAX . ').'];
-    }
-    foreach ([
-        'allées' => $nb_allees,
-        'zones' => $nb_zones,
-        'positions par barre' => $nb_positions,
-        'barres' => $nb_barres,
-    ] as $label => $val) {
-        if ($val < 1 || $val > ENTREPOT_EMPLACEMENT_NB_PETIT_MAX) {
-            return ['success' => false, 'message' => 'Nombre de ' . $label . ' invalide (1 à ' . ENTREPOT_EMPLACEMENT_NB_PETIT_MAX . ').'];
-        }
+    $valeurs = entrepot_structure_champs_valeurs_depuis_post($data);
+    $check = entrepot_structure_champs_valider_valeurs($valeurs);
+    if (!$check['success']) {
+        return $check;
     }
 
     try {
-        $stmt = $db->prepare(
-            'UPDATE entrepot_emplacement_etage
-             SET nb_rayons = :nb_rayons, nb_allees = :nb_allees, nb_zones = :nb_zones,
-                 nb_positions = :nb_positions, nb_barres = :nb_barres, date_modification = NOW()
-             WHERE numero_etage = :numero_etage'
-        );
-        $stmt->execute([
-            ':nb_rayons' => $nb_rayons,
-            ':nb_allees' => $nb_allees,
-            ':nb_zones' => $nb_zones,
-            ':nb_positions' => $nb_positions,
-            ':nb_barres' => $nb_barres,
-            ':numero_etage' => $numero_etage,
-        ]);
+        $sets = [];
+        $params = [':numero_etage' => $numero_etage];
+        foreach ($valeurs as $col => $val) {
+            $sets[] = '`' . str_replace('`', '', $col) . '` = :' . $col;
+            $params[':' . $col] = $val;
+        }
+        if ($sets === []) {
+            return ['success' => false, 'message' => 'Aucun champ structurel actif.'];
+        }
+        $sql = 'UPDATE entrepot_emplacement_etage SET ' . implode(', ', $sets) . ', date_modification = NOW() WHERE numero_etage = :numero_etage';
+        $stmt = $db->prepare($sql);
+        $stmt->execute($params);
 
         return ['success' => true, 'message' => 'Quantités de l’étage ' . $numero_etage . ' mises à jour.'];
     } catch (PDOException $e) {
@@ -464,24 +465,10 @@ function entrepot_emplacement_ajouter_niveau($nom_niveau, array $data) {
         return ['success' => false, 'message' => 'Le nom du niveau ne doit pas dépasser 100 caractères.'];
     }
 
-    $nb_rayons = isset($data['nb_rayons']) ? (int) $data['nb_rayons'] : 0;
-    $nb_allees = isset($data['nb_allees']) ? (int) $data['nb_allees'] : 0;
-    $nb_zones = isset($data['nb_zones']) ? (int) $data['nb_zones'] : 0;
-    $nb_positions = isset($data['nb_positions']) ? (int) $data['nb_positions'] : 0;
-    $nb_barres = isset($data['nb_barres']) ? (int) $data['nb_barres'] : 0;
-
-    if ($nb_rayons < 1 || $nb_rayons > ENTREPOT_EMPLACEMENT_NB_RAYONS_MAX) {
-        return ['success' => false, 'message' => 'Nombre de rayons invalide (1 à ' . ENTREPOT_EMPLACEMENT_NB_RAYONS_MAX . ').'];
-    }
-    foreach ([
-        'allées' => $nb_allees,
-        'zones' => $nb_zones,
-        'positions par barre' => $nb_positions,
-        'barres par rayon' => $nb_barres,
-    ] as $label => $val) {
-        if ($val < 1 || $val > ENTREPOT_EMPLACEMENT_NB_PETIT_MAX) {
-            return ['success' => false, 'message' => 'Nombre de ' . $label . ' invalide (1 à ' . ENTREPOT_EMPLACEMENT_NB_PETIT_MAX . ').'];
-        }
+    $valeurs = entrepot_structure_champs_valeurs_depuis_post($data);
+    $check = entrepot_structure_champs_valider_valeurs($valeurs);
+    if (!$check['success']) {
+        return $check;
     }
 
     $max_actuel = (int) $db->query('SELECT COALESCE(MAX(numero_etage), 0) FROM entrepot_emplacement_etage')->fetchColumn();
@@ -492,21 +479,23 @@ function entrepot_emplacement_ajouter_niveau($nom_niveau, array $data) {
 
     $code = entrepot_emplacement_code_court_depuis_nom($nom_niveau, $numero);
 
+    $col_names = array_keys($valeurs);
+    $placeholders = implode(', ', array_map(function ($c) {
+        return ':' . $c;
+    }, $col_names));
+
     try {
         $db->beginTransaction();
 
-        $db->prepare(
-            'INSERT INTO entrepot_emplacement_etage
-                (numero_etage, nb_rayons, nb_allees, nb_zones, nb_positions, nb_barres, date_modification)
-             VALUES (:numero_etage, :nb_rayons, :nb_allees, :nb_zones, :nb_positions, :nb_barres, NOW())'
-        )->execute([
-            ':numero_etage' => $numero,
-            ':nb_rayons' => $nb_rayons,
-            ':nb_allees' => $nb_allees,
-            ':nb_zones' => $nb_zones,
-            ':nb_positions' => $nb_positions,
-            ':nb_barres' => $nb_barres,
-        ]);
+        $sql = 'INSERT INTO entrepot_emplacement_etage (numero_etage, ' . implode(', ', array_map(function ($c) {
+            return '`' . str_replace('`', '', $c) . '`';
+        }, $col_names)) . ', date_modification)
+             VALUES (:numero_etage, ' . $placeholders . ', NOW())';
+        $params = [':numero_etage' => $numero];
+        foreach ($valeurs as $col => $val) {
+            $params[':' . $col] = $val;
+        }
+        $db->prepare($sql)->execute($params);
 
         $db->prepare(
             'INSERT INTO entrepot_emplacement_config (id, nb_etages, date_modification)
@@ -577,13 +566,7 @@ function entrepot_emplacement_json_limites_par_etage() {
         if ($n <= 0) {
             continue;
         }
-        $out[$n] = [
-            'nb_rayons' => (int) ($row['nb_rayons'] ?? 1),
-            'nb_allees' => (int) ($row['nb_allees'] ?? 1),
-            'nb_zones' => (int) ($row['nb_zones'] ?? 1),
-            'nb_positions' => (int) ($row['nb_positions'] ?? 1),
-            'nb_barres' => (int) ($row['nb_barres'] ?? 1),
-        ];
+        $out[$n] = entrepot_structure_champs_valeurs_depuis_ligne($row);
     }
 
     return $out;

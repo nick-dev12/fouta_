@@ -48,6 +48,8 @@ require_once __DIR__ . '/../models/model_categories.php';
 require_once __DIR__ . '/../models/model_variantes.php';
 require_once __DIR__ . '/../models/model_mouvements_stock.php';
 require_once __DIR__ . '/../includes/stock_alertes_notifications.php';
+require_once __DIR__ . '/../models/model_produit_formulaire_champs.php';
+require_once __DIR__ . '/../includes/produit_formulaire_champs.php';
 
 /**
  * Upload une image de produit
@@ -303,21 +305,25 @@ function process_add_produit()
     }
 
     // Validation
-    if (empty($nom)) {
+    if (produit_formulaire_champ_visible('nom') && empty($nom)) {
         $errors[] = 'Le nom du produit est obligatoire.';
     }
 
-    if ($prix_raw === '') {
-        $prix = 0.0;
-    } elseif (!is_numeric($prix_raw)) {
-        $errors[] = 'Le prix doit être un nombre valide (0 ou plus).';
-    } elseif ((float) $prix_raw < 0) {
-        $errors[] = 'Le prix ne peut pas être négatif.';
+    if (produit_formulaire_champ_visible('prix')) {
+        if ($prix_raw === '') {
+            $prix = 0.0;
+        } elseif (!is_numeric($prix_raw)) {
+            $errors[] = 'Le prix doit être un nombre valide (0 ou plus).';
+        } elseif ((float) $prix_raw < 0) {
+            $errors[] = 'Le prix ne peut pas être négatif.';
+        } else {
+            $prix = (float) $prix_raw;
+        }
     } else {
-        $prix = (float) $prix_raw;
+        $prix = 0.0;
     }
 
-    if ($prix_promotion !== null) {
+    if (produit_formulaire_champ_visible('prix_promotion') && $prix_promotion !== null) {
         if (!is_numeric($prix_promotion)) {
             $errors[] = 'Le prix promotionnel doit être un nombre valide.';
         } elseif ((float) $prix_promotion <= 0) {
@@ -329,22 +335,25 @@ function process_add_produit()
         }
     }
 
-    if ($stock < 0) {
+    if (produit_formulaire_champ_visible('stock') && $stock < 0) {
         $errors[] = 'Le stock ne peut pas être négatif.';
     }
 
-    if ($categorie_id <= 0) {
+    if (produit_formulaire_champ_visible('categorie_id') && $categorie_id <= 0) {
         $errors[] = 'Veuillez sélectionner une catégorie.';
     }
 
     // Vérifier que la catégorie existe
-    if ($categorie_id > 0 && !get_categorie_by_id($categorie_id)) {
+    if (produit_formulaire_champ_visible('categorie_id') && $categorie_id > 0 && !get_categorie_by_id($categorie_id)) {
         $errors[] = 'La catégorie sélectionnée n\'existe pas.';
     }
 
+    produit_formulaire_valider_custom($_POST, $errors);
+
     $fid_sent = isset($_POST['fournisseur_id']) ? trim((string) $_POST['fournisseur_id']) : '';
     if (
-        $fid_sent !== ''
+        produit_formulaire_champ_visible('fournisseur_id')
+        && $fid_sent !== ''
         && (int) $fid_sent > 0
         && produits_has_column('fournisseur_id')
         && $fournisseur_res['fournisseur_id'] === null
@@ -353,7 +362,7 @@ function process_add_produit()
     }
 
     $prix_achat = null;
-    if (produits_has_column('prix_achat')) {
+    if (produit_formulaire_champ_visible('prix_achat') && produits_has_column('prix_achat')) {
         $pa_raw = isset($_POST['prix_achat']) ? trim((string) $_POST['prix_achat']) : '';
         if ($pa_raw !== '') {
             if (!is_numeric($pa_raw) || (float) $pa_raw < 0) {
@@ -365,7 +374,7 @@ function process_add_produit()
     }
 
     $sous_categorie_id = null;
-    if (produits_has_column('sous_categorie_id') && function_exists('sous_categories_table_ok') && sous_categories_table_ok()) {
+    if (produit_formulaire_champ_visible('sous_categorie_id') && produits_has_column('sous_categorie_id') && function_exists('sous_categories_table_ok') && sous_categories_table_ok()) {
         $sc_post = isset($_POST['sous_categorie_id']) ? (int) $_POST['sous_categorie_id'] : 0;
         if ($sc_post > 0) {
             $row_sc = get_sous_categorie_by_id($sc_post);
@@ -378,7 +387,7 @@ function process_add_produit()
     }
 
     $marque_id_resolved = null;
-    if (produits_has_column('marque_id')) {
+    if (produit_formulaire_champ_visible('marque_id') && produits_has_column('marque_id')) {
         $mid_post = isset($_POST['marque_id']) ? (int) $_POST['marque_id'] : 0;
         if ($mid_post > 0) {
             if (!marques_table_ok() || !get_marque_by_id($mid_post)) {
@@ -390,7 +399,7 @@ function process_add_produit()
     }
 
     $reference_fournisseur_val = null;
-    if (produits_has_column('reference_fournisseur')) {
+    if (produit_formulaire_champ_visible('reference_fournisseur') && produits_has_column('reference_fournisseur')) {
         $rf_raw = isset($_POST['reference_fournisseur']) ? trim((string) $_POST['reference_fournisseur']) : '';
         if ($rf_raw !== '') {
             $reference_fournisseur_val = function_exists('mb_substr')
@@ -400,7 +409,7 @@ function process_add_produit()
     }
 
     $identifiant_attribue = null;
-    if (produits_has_column('identifiant_interne')) {
+    if (produit_formulaire_champ_visible('identifiant_interne') && produits_has_column('identifiant_interne')) {
         $identifiant_attribue = produits_allouer_identifiant_fpl_9_auto(0);
         if (!$identifiant_attribue) {
             $errors[] = 'Impossible d\'attribuer une référence interne unique. Réessayez.';
@@ -411,7 +420,10 @@ function process_add_produit()
     // Si lié à un article en stock, on utilise son image si pas d'upload
     $image_principale = null;
     $images_supp = [];
-    if (isset($_FILES['images_produit']) && is_array($_FILES['images_produit']['name'])) {
+    if (
+        produit_formulaire_champ_visible('images_produit')
+        && isset($_FILES['images_produit']) && is_array($_FILES['images_produit']['name'])
+    ) {
         $img_err = null;
         $uploaded = upload_produit_images_multiples($_FILES, 'images_produit', $img_err);
         if ($img_err !== null && $img_err !== '') {
@@ -432,7 +444,8 @@ function process_add_produit()
 
     $image_etiquette_fpl = null;
     if (
-        produits_has_column('image_etiquette_fpl')
+        produit_formulaire_champ_visible('image_etiquette_fpl')
+        && produits_has_column('image_etiquette_fpl')
         && isset($_FILES['image_etiquette_fpl'])
         && (int) ($_FILES['image_etiquette_fpl']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK
     ) {
@@ -540,6 +553,7 @@ function process_add_produit()
                 }
             }
             stock_alertes_notifier_baisse_stock((int) $produit_id, PHP_INT_MAX, (int) $stock);
+            produit_formulaire_enregistrer_valeurs_custom((int) $produit_id, $_POST);
         } else {
             $errors[] = 'Une erreur est survenue lors de l\'ajout du produit.';
         }
@@ -639,21 +653,25 @@ function process_update_produit($produit_id)
     }
 
     // Validation (identique à l'ajout)
-    if (empty($nom)) {
+    if (produit_formulaire_champ_visible('nom') && empty($nom)) {
         $errors[] = 'Le nom du produit est obligatoire.';
     }
 
-    if ($prix_raw === '') {
-        $prix = 0.0;
-    } elseif (!is_numeric($prix_raw)) {
-        $errors[] = 'Le prix doit être un nombre valide (0 ou plus).';
-    } elseif ((float) $prix_raw < 0) {
-        $errors[] = 'Le prix ne peut pas être négatif.';
+    if (produit_formulaire_champ_visible('prix')) {
+        if ($prix_raw === '') {
+            $prix = 0.0;
+        } elseif (!is_numeric($prix_raw)) {
+            $errors[] = 'Le prix doit être un nombre valide (0 ou plus).';
+        } elseif ((float) $prix_raw < 0) {
+            $errors[] = 'Le prix ne peut pas être négatif.';
+        } else {
+            $prix = (float) $prix_raw;
+        }
     } else {
-        $prix = (float) $prix_raw;
+        $prix = isset($produit['prix']) ? (float) $produit['prix'] : 0.0;
     }
 
-    if ($prix_promotion !== null) {
+    if (produit_formulaire_champ_visible('prix_promotion') && $prix_promotion !== null) {
         if (!is_numeric($prix_promotion)) {
             $errors[] = 'Le prix promotionnel doit être un nombre valide.';
         } elseif ((float) $prix_promotion <= 0) {
@@ -665,21 +683,24 @@ function process_update_produit($produit_id)
         }
     }
 
-    if ($stock < 0) {
+    if (produit_formulaire_champ_visible('stock') && $stock < 0) {
         $errors[] = 'Le stock ne peut pas être négatif.';
     }
 
-    if ($categorie_id <= 0) {
+    if (produit_formulaire_champ_visible('categorie_id') && $categorie_id <= 0) {
         $errors[] = 'Veuillez sélectionner une catégorie.';
     }
 
-    if ($categorie_id > 0 && !get_categorie_by_id($categorie_id)) {
+    if (produit_formulaire_champ_visible('categorie_id') && $categorie_id > 0 && !get_categorie_by_id($categorie_id)) {
         $errors[] = 'La catégorie sélectionnée n\'existe pas.';
     }
 
+    produit_formulaire_valider_custom($_POST, $errors);
+
     $fid_sent_upd = isset($_POST['fournisseur_id']) ? trim((string) $_POST['fournisseur_id']) : '';
     if (
-        $fid_sent_upd !== ''
+        produit_formulaire_champ_visible('fournisseur_id')
+        && $fid_sent_upd !== ''
         && (int) $fid_sent_upd > 0
         && produits_has_column('fournisseur_id')
         && $fournisseur_res['fournisseur_id'] === null
@@ -688,7 +709,7 @@ function process_update_produit($produit_id)
     }
 
     $prix_achat = null;
-    if (produits_has_column('prix_achat')) {
+    if (produit_formulaire_champ_visible('prix_achat') && produits_has_column('prix_achat')) {
         $pa_raw = isset($_POST['prix_achat']) ? trim((string) $_POST['prix_achat']) : '';
         if ($pa_raw !== '') {
             if (!is_numeric($pa_raw) || (float) $pa_raw < 0) {
@@ -700,7 +721,7 @@ function process_update_produit($produit_id)
     }
 
     $sous_categorie_id = null;
-    if (produits_has_column('sous_categorie_id') && function_exists('sous_categories_table_ok') && sous_categories_table_ok()) {
+    if (produit_formulaire_champ_visible('sous_categorie_id') && produits_has_column('sous_categorie_id') && function_exists('sous_categories_table_ok') && sous_categories_table_ok()) {
         $sc_post = isset($_POST['sous_categorie_id']) ? (int) $_POST['sous_categorie_id'] : 0;
         if ($sc_post > 0) {
             $row_sc = get_sous_categorie_by_id($sc_post);
@@ -713,7 +734,7 @@ function process_update_produit($produit_id)
     }
 
     $marque_id_resolved = null;
-    if (produits_has_column('marque_id')) {
+    if (produit_formulaire_champ_visible('marque_id') && produits_has_column('marque_id')) {
         $mid_post = isset($_POST['marque_id']) ? (int) $_POST['marque_id'] : 0;
         if ($mid_post > 0) {
             if (!marques_table_ok() || !get_marque_by_id($mid_post)) {
@@ -725,7 +746,7 @@ function process_update_produit($produit_id)
     }
 
     $reference_fournisseur_val = null;
-    if (produits_has_column('reference_fournisseur')) {
+    if (produit_formulaire_champ_visible('reference_fournisseur') && produits_has_column('reference_fournisseur')) {
         $rf_raw = isset($_POST['reference_fournisseur']) ? trim((string) $_POST['reference_fournisseur']) : '';
         if ($rf_raw !== '') {
             $reference_fournisseur_val = function_exists('mb_substr')
@@ -735,8 +756,12 @@ function process_update_produit($produit_id)
     }
 
     $nouvel_identifiant = null;
-    if (produits_has_column('identifiant_interne')) {
-        $ref6 = isset($_POST['reference_suffix6']) ? preg_replace('/\D/', '', (string) $_POST['reference_suffix6']) : '';
+    if (
+        produit_formulaire_champ_visible('identifiant_interne')
+        && produits_has_column('identifiant_interne')
+        && isset($_POST['reference_suffix6'])
+    ) {
+        $ref6 = preg_replace('/\D/', '', (string) $_POST['reference_suffix6']);
         if (strlen($ref6) !== 6) {
             $errors[] = 'Indiquez exactement 6 chiffres pour la fin de la référence produit.';
         } else {
@@ -759,7 +784,8 @@ function process_update_produit($produit_id)
         $image_etiquette_fpl_courant = trim((string) ($produit['image_etiquette_fpl'] ?? ''));
     }
     if (
-        produits_has_column('image_etiquette_fpl')
+        produit_formulaire_champ_visible('image_etiquette_fpl')
+        && produits_has_column('image_etiquette_fpl')
         && isset($_FILES['image_etiquette_fpl'])
         && (int) ($_FILES['image_etiquette_fpl']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK
     ) {
@@ -818,7 +844,37 @@ function process_update_produit($produit_id)
 
     // Si aucune erreur, mettre à jour le produit
     if (empty($errors)) {
-        $emplacement = produit_emplacement_from_source($_POST);
+        if (!produit_formulaire_champ_visible('nom')) {
+            $nom = (string) ($produit['nom'] ?? '');
+        }
+        if (!produit_formulaire_champ_visible('description')) {
+            $description = (string) ($produit['description'] ?? '');
+        }
+        if (!produit_formulaire_champ_visible('stock')) {
+            $stock = (int) ($produit['stock'] ?? 0);
+        }
+        if (!produit_formulaire_champ_visible('categorie_id')) {
+            $categorie_id = (int) ($produit['categorie_id'] ?? 0);
+        }
+        if (!produit_formulaire_champ_visible('prix_promotion')) {
+            $prix_promotion = isset($produit['prix_promotion']) && $produit['prix_promotion'] !== '' && $produit['prix_promotion'] !== null
+                ? (string) $produit['prix_promotion'] : null;
+        }
+        if (!produit_formulaire_champ_visible('poids')) {
+            $poids = $produit['poids'] ?? null;
+        }
+        if (!produit_formulaire_champ_visible('couleurs')) {
+            $couleurs = $produit['couleurs'] ?? null;
+        }
+        if (!produit_formulaire_champ_visible('taille')) {
+            $taille = $produit['taille'] ?? null;
+        }
+        if (!produit_formulaire_champ_visible('statut')) {
+            $statut = (string) ($produit['statut'] ?? 'actif');
+        }
+        $emplacement = produit_formulaire_champ_visible('emplacement')
+            ? produit_emplacement_from_source($_POST)
+            : produit_emplacement_from_produit($produit);
         $admin_session_id = isset($_SESSION['admin_id']) ? (int) $_SESSION['admin_id'] : 0;
         $data = [
             'nom' => $nom,
@@ -866,6 +922,7 @@ function process_update_produit($produit_id)
         if (update_produit($produit_id, $data)) {
             $success = true;
             $message = 'Produit modifié avec succès !';
+            produit_formulaire_enregistrer_valeurs_custom((int) $produit_id, $_POST);
             $stock_old = (int) ($produit['stock'] ?? 0);
             $stock_new = (int) $stock;
             stock_alertes_notifier_baisse_stock($produit_id, $stock_old, $stock_new);

@@ -1,0 +1,702 @@
+/**
+ * Page admin — Champs formulaire produit
+ */
+
+.page-champs-produit {
+  --cp-radius: 18px;
+  --cp-radius-sm: 12px;
+  --cp-shadow: 0 4px 24px rgba(53, 100, 166, 0.1);
+}
+
+.page-champs-produit .cp-wrap {
+  max-width: 960px;
+  margin: 0 auto 3rem;
+  padding: 0 1rem 2rem;
+}
+
+.page-champs-produit .cp-hero {
+  position: relative;
+  margin: 1.25rem 0 1.5rem;
+  padding: 1.75rem 1.5rem;
+  border-radius: var(--cp-radius);
+  background: linear-gradient(135deg, var(--fond-principal) 0%, var(--blanc-neige) 50%, rgba(53, 100, 166, 0.06) 100%);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--cp-shadow);
+  overflow: hidden;
+}
+
+.page-champs-produit .cp-hero::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--couleur-dominante), var(--bleu-clair), var(--accent-promo));
+}
+
+.page-champs-produit .cp-hero__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--couleur-dominante);
+  text-decoration: none;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  background: var(--bleu-pale);
+  border: 1px solid rgba(53, 100, 166, 0.15);
+}
+
+.page-champs-produit .cp-hero__row {
+  display: flex;
+  gap: 1.25rem;
+  align-items: flex-start;
+}
+
+.page-champs-produit .cp-hero__icon {
+  width: 3.5rem;
+  height: 3.5rem;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  background: var(--bleu-pale);
+  color: var(--couleur-dominante);
+  font-size: 1.35rem;
+}
+
+.page-champs-produit .cp-hero__eyebrow {
+  margin: 0 0 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--gris-moyen);
+}
+
+.page-champs-produit .cp-hero__title {
+  margin: 0 0 0.5rem;
+  font-family: var(--font-titres);
+  font-size: 1.65rem;
+  color: var(--titres);
+}
+
+.page-champs-produit .cp-hero__lead {
+  margin: 0;
+  color: var(--gris-fonce);
+  line-height: 1.55;
+  max-width: 42rem;
+}
+
+.page-champs-produit .cp-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.85rem 1rem;
+  border-radius: var(--cp-radius-sm);
+  margin-bottom: 1rem;
+  font-size: 0.92rem;
+}
+
+.page-champs-produit .cp-alert--ok {
+  background: var(--success-bg);
+  border: 1px solid var(--success-border);
+  color: var(--bleu-fonce);
+}
+
+.page-champs-produit .cp-alert--err {
+  background: var(--error-bg);
+  border: 1px solid var(--error-border);
+  color: var(--orange-fonce);
+}
+
+.page-champs-produit .cp-alert--warn,
+.page-champs-produit .cp-alert--info {
+  background: var(--bleu-pale);
+  border: 1px solid rgba(53, 100, 166, 0.2);
+  color: var(--bleu-fonce);
+}
+
+.page-champs-produit .cp-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.page-champs-produit .cp-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 1rem;
+  border-radius: 999px;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: var(--gris-fonce);
+  background: var(--fond-principal);
+  border: 1px solid var(--glass-border);
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+
+.page-champs-produit .cp-tab--active {
+  background: var(--couleur-dominante);
+  border-color: var(--couleur-dominante);
+  color: var(--blanc);
+}
+
+.page-champs-produit .cp-tab__badge {
+  font-size: 0.72rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.page-champs-produit .cp-tab:not(.cp-tab--active) .cp-tab__badge {
+  background: var(--bleu-pale);
+  color: var(--couleur-dominante);
+}
+
+.page-champs-produit .cp-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+  margin-bottom: 1.25rem;
+}
+
+.page-champs-produit .cp-toolbar__meta {
+  margin-left: auto;
+  font-size: 0.85rem;
+  color: var(--gris-moyen);
+}
+
+.page-champs-produit .cp-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 1rem;
+  border-radius: 10px;
+  border: none;
+  font-weight: 700;
+  font-size: 0.88rem;
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform 0.15s, box-shadow 0.15s, background 0.15s;
+}
+
+.page-champs-produit .cp-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.page-champs-produit .cp-btn--primary {
+  background: var(--couleur-dominante);
+  color: var(--blanc);
+  box-shadow: var(--ombre-douce);
+}
+
+.page-champs-produit .cp-btn--primary:hover:not(:disabled) {
+  background: var(--couleur-dominante-hover);
+  transform: translateY(-1px);
+}
+
+.page-champs-produit .cp-btn--secondary {
+  background: var(--fond-principal);
+  color: var(--couleur-dominante);
+  border: 1px solid rgba(53, 100, 166, 0.25);
+}
+
+.page-champs-produit .cp-btn--danger-outline {
+  background: var(--fond-principal);
+  color: var(--orange-fonce);
+  border: 1px solid rgba(255, 107, 53, 0.35);
+}
+
+.page-champs-produit .cp-btn--danger {
+  background: var(--orange);
+  color: var(--blanc);
+}
+
+.page-champs-produit .cp-btn--ghost {
+  background: transparent;
+  color: var(--gris-fonce);
+  border: 1px solid var(--glass-border);
+}
+
+.page-champs-produit .cp-section-card {
+  background: var(--fond-principal);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--cp-radius);
+  box-shadow: var(--cp-shadow);
+  margin-bottom: 1rem;
+  overflow: hidden;
+}
+
+.page-champs-produit .cp-section-card__head {
+  padding: 0.85rem 1.15rem;
+  background: var(--blanc-neige);
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.page-champs-produit .cp-section-card__head h2 {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--titres);
+}
+
+.page-champs-produit .cp-champs-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.page-champs-produit .cp-champ-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1.15rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.page-champs-produit .cp-champ-row:last-child {
+  border-bottom: none;
+}
+
+.page-champs-produit .cp-champ-row--off {
+  opacity: 0.65;
+}
+
+.page-champs-produit .cp-champ-row__main {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  min-width: 0;
+}
+
+.page-champs-produit .cp-champ-row__icon {
+  width: 2.35rem;
+  height: 2.35rem;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: var(--bleu-pale);
+  color: var(--couleur-dominante);
+}
+
+.page-champs-produit .cp-champ-row__label {
+  display: block;
+  font-size: 0.95rem;
+}
+
+.page-champs-produit .cp-champ-row__meta {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--gris-moyen);
+  margin-top: 0.15rem;
+}
+
+.page-champs-produit .cp-champ-row__toggle {
+  margin: 0;
+}
+
+.page-champs-produit .cp-champ-row__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-shrink: 0;
+}
+
+.page-champs-produit .cp-btn-icon {
+  width: 2.35rem;
+  height: 2.35rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  border: 1px solid rgba(53, 100, 166, 0.18);
+  background: var(--fond-principal);
+  color: var(--couleur-dominante);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, transform 0.15s;
+}
+
+.page-champs-produit .cp-btn-icon:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.page-champs-produit .cp-btn-icon--danger {
+  color: var(--orange-fonce);
+  border-color: rgba(255, 107, 53, 0.35);
+  background: rgba(255, 107, 53, 0.08);
+}
+
+.page-champs-produit .cp-btn-icon--danger:hover:not(:disabled) {
+  background: var(--orange);
+  color: var(--blanc);
+  border-color: var(--orange);
+}
+
+.page-champs-produit .cp-btn-icon--disabled,
+.page-champs-produit .cp-btn-icon:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.page-champs-produit .cp-switch {
+  width: 46px;
+  height: 26px;
+  border-radius: 999px;
+  border: none;
+  padding: 0;
+  background: var(--gris-clair);
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.page-champs-produit .cp-switch--on {
+  background: var(--couleur-dominante);
+}
+
+.page-champs-produit .cp-switch__knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--blanc);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+  transition: transform 0.2s;
+}
+
+.page-champs-produit .cp-switch--on .cp-switch__knob {
+  transform: translateX(20px);
+}
+
+.page-champs-produit .cp-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+}
+
+.page-champs-produit .cp-badge--on {
+  background: var(--success-bg);
+  color: var(--bleu-fonce);
+}
+
+.page-champs-produit .cp-badge--off {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--gris-moyen);
+}
+
+.page-champs-produit .cp-panel {
+  background: var(--fond-principal);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--cp-radius);
+  box-shadow: var(--cp-shadow);
+  padding: 1.25rem;
+}
+
+.page-champs-produit .cp-panel__head h2 {
+  margin: 0 0 0.35rem;
+  font-size: 1.1rem;
+}
+
+.page-champs-produit .cp-panel__head p {
+  margin: 0 0 1rem;
+  color: var(--gris-fonce);
+  font-size: 0.9rem;
+}
+
+.page-champs-produit .cp-admins-list {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--cp-radius-sm);
+  overflow: hidden;
+}
+
+.page-champs-produit .cp-admin-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.page-champs-produit .cp-admin-row:last-child {
+  border-bottom: none;
+}
+
+.page-champs-produit .cp-admin-row--locked {
+  background: var(--blanc-neige);
+}
+
+.page-champs-produit .cp-admin-row__label {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  cursor: pointer;
+}
+
+.page-champs-produit .cp-admin-row__name small {
+  display: block;
+  color: var(--gris-moyen);
+  font-size: 0.78rem;
+  font-weight: 400;
+}
+
+.page-champs-produit .cp-admin-row__role {
+  font-size: 0.78rem;
+  color: var(--gris-moyen);
+  text-transform: capitalize;
+}
+
+.page-champs-produit .cp-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: none;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 1.25rem 1rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.page-champs-produit .cp-modal[aria-hidden="false"] {
+  display: flex;
+}
+
+.page-champs-produit .cp-modal__backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(13, 13, 13, 0.45);
+}
+
+.page-champs-produit .cp-modal__dialog {
+  position: relative;
+  width: min(100%, 480px);
+  background: var(--fond-principal);
+  border-radius: var(--cp-radius);
+  box-shadow: var(--ombre-gourmande);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 2.5rem);
+  margin: auto;
+  flex-shrink: 0;
+}
+
+.page-champs-produit .cp-modal__dialog form {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.page-champs-produit .cp-modal__dialog--wide {
+  width: min(100%, 560px);
+}
+
+.page-champs-produit .cp-modal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.15rem;
+  border-bottom: 1px solid var(--glass-border);
+  flex-shrink: 0;
+}
+
+.page-champs-produit .cp-modal__title {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.page-champs-produit .cp-modal__close {
+  border: none;
+  background: transparent;
+  font-size: 1.1rem;
+  cursor: pointer;
+  color: var(--gris-moyen);
+}
+
+.page-champs-produit .cp-modal__body {
+  padding: 1rem 1.15rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  flex: 1 1 auto;
+  min-height: 0;
+  -webkit-overflow-scrolling: touch;
+}
+
+.page-champs-produit .cp-modal__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 0.85rem 1.15rem;
+  border-top: 1px solid var(--glass-border);
+  background: var(--blanc-neige);
+  flex-shrink: 0;
+}
+
+.page-champs-produit .cp-field {
+  margin-bottom: 0.85rem;
+}
+
+.page-champs-produit .cp-field label {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.page-champs-produit .cp-field input,
+.page-champs-produit .cp-field select,
+.page-champs-produit .cp-field textarea {
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--border-input);
+  border-radius: 10px;
+  font: inherit;
+}
+
+.page-champs-produit .cp-checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+.page-champs-produit .cp-impact {
+  margin-top: 1rem;
+  padding: 0.85rem;
+  border-radius: var(--cp-radius-sm);
+  background: var(--error-bg);
+  border: 1px solid var(--error-border);
+}
+
+.page-champs-produit .cp-impact--inline {
+  margin-top: 0.75rem;
+}
+
+.page-champs-produit .cp-impact__alert {
+  display: flex;
+  gap: 0.65rem;
+  color: var(--orange-fonce);
+  margin-bottom: 0.65rem;
+}
+
+.page-champs-produit .cp-impact__intro {
+  margin: 0.25rem 0 0;
+  font-size: 0.88rem;
+}
+
+.page-champs-produit .cp-impact__list {
+  margin: 0 0 0.75rem;
+  padding-left: 1.1rem;
+  font-size: 0.88rem;
+}
+
+.page-champs-produit .cp-impact__confirm {
+  display: flex;
+  gap: 0.5rem;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+.page-champs-produit .pf-custom-fields {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px dashed rgba(53, 100, 166, 0.2);
+}
+
+.page-champs-produit .cp-champ-row__access {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.78rem;
+  color: var(--gris-moyen);
+}
+
+.page-champs-produit .cp-champ-row__access i {
+  margin-right: 0.35rem;
+  color: var(--couleur-dominante);
+}
+
+.page-champs-produit .cp-roles-fieldset {
+  margin: 1rem 0 0;
+  padding: 0.85rem 0.95rem;
+  border: 1px solid rgba(53, 100, 166, 0.15);
+  border-radius: var(--cp-radius-sm);
+  background: var(--blanc-neige);
+}
+
+.page-champs-produit .cp-roles-fieldset legend {
+  padding: 0 0.35rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--texte-fonce);
+}
+
+.page-champs-produit .cp-roles-fieldset__hint {
+  margin: 0 0 0.75rem;
+  font-size: 0.8rem;
+  color: var(--gris-moyen);
+  line-height: 1.45;
+}
+
+.page-champs-produit .cp-roles-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 0.45rem;
+}
+
+.page-champs-produit .cp-role-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: 10px;
+  border: 1px solid rgba(53, 100, 166, 0.12);
+  background: var(--fond-principal);
+  cursor: pointer;
+  font-size: 0.82rem;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.page-champs-produit .cp-role-chip:hover {
+  border-color: rgba(53, 100, 166, 0.35);
+  background: var(--bleu-pale);
+}
+
+.page-champs-produit .cp-role-chip input {
+  flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .page-champs-produit .cp-champ-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .page-champs-produit .cp-toolbar__meta {
+    margin-left: 0;
+    width: 100%;
+  }
+}
