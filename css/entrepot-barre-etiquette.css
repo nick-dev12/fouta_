@@ -1,18 +1,20 @@
 /**
- * Étiquette barre entrepôt — 90 × 30 mm (fond jaune, libellé + QR).
+ * Étiquette barre / nœud entrepôt — 90 × 30 mm (fond jaune, libellé + QR).
  * Écran : aperçu réduit via transform.
- * Impression : dimensions exactes 90 × 30 mm (@media print).
+ * Impression / PDF : dimensions exactes 90 × 30 mm.
  */
 
-/* ——— Gabarit physique (identique écran + impression) ——— */
+/* ——— Gabarit physique (référence unique) ——— */
 .ee-barre-etiq {
   --ee-barre-yellow: #ffe600;
-  width: 90mm;
-  height: 30mm;
-  min-width: 90mm;
-  max-width: 90mm;
-  min-height: 30mm;
-  max-height: 30mm;
+  --ee-etiq-w: 90mm;
+  --ee-etiq-h: 30mm;
+  width: var(--ee-etiq-w);
+  height: var(--ee-etiq-h);
+  min-width: var(--ee-etiq-w);
+  max-width: var(--ee-etiq-w);
+  min-height: var(--ee-etiq-h);
+  max-height: var(--ee-etiq-h);
   box-sizing: border-box;
   margin: 0;
   padding: 2mm 3.5mm 2mm 4mm;
@@ -20,7 +22,7 @@
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  gap: 3mm;
+  gap: 2.5mm;
   background: var(--ee-barre-yellow);
   border: 0.15mm solid #d4c200;
   font-family: Arial, Helvetica, "Segoe UI", sans-serif;
@@ -32,12 +34,14 @@
 .ee-barre-etiq__text {
   flex: 1 1 auto;
   min-width: 0;
-  font-size: 11mm;
+  font-size: 9mm;
   font-weight: 800;
   line-height: 1;
   letter-spacing: 0.02em;
   color: #000;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
 }
 
 .ee-barre-etiq__qr-box {
@@ -59,7 +63,16 @@
   image-rendering: crisp-edges;
 }
 
-/* ——— Écran : aperçu compact (ne pas confondre avec l’impression) ——— */
+.ee-barre-etiq-block__label {
+  margin: 0 0 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #737373;
+}
+
+/* ——— Écran : aperçu compact ——— */
 @media screen {
   .ee-barre-etiq-row {
     display: flex;
@@ -92,6 +105,11 @@
   .ee-barre-etiq {
     box-shadow: inset 0 0 0 0.15mm rgba(0, 0, 0, 0.08);
   }
+
+  .ee-barre-etiq-row .ee-barre-etiq-actions {
+    flex: 0 1 auto;
+    margin-top: 0;
+  }
 }
 
 .ee-barre-etiq-actions {
@@ -99,13 +117,6 @@
   flex-wrap: nowrap;
   gap: 0.5rem;
   align-items: center;
-}
-
-@media screen {
-  .ee-barre-etiq-row .ee-barre-etiq-actions {
-    flex: 0 1 auto;
-    margin-top: 0;
-  }
 }
 
 .ee-barre-etiq-print-btn {
@@ -146,6 +157,7 @@
   color: #2d5690;
 }
 
+/* ——— Impression réelle 90 × 30 mm ——— */
 @media print {
   @page {
     size: 90mm 30mm;
@@ -158,34 +170,60 @@
     padding: 0 !important;
     width: 90mm !important;
     height: 30mm !important;
+    min-width: 90mm !important;
+    min-height: 30mm !important;
+    max-width: 90mm !important;
+    max-height: 30mm !important;
+    overflow: hidden !important;
     background: #fff !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
-  .ee-barre-etiq-preview-wrap {
-    width: auto !important;
-    height: auto !important;
-    overflow: visible !important;
-    box-shadow: none !important;
-    border-radius: 0 !important;
-    margin: 0 !important;
+  body * {
+    visibility: hidden !important;
   }
 
-  .ee-barre-etiq-preview-scale {
-    transform: none !important;
+  .ee-barre-etiq,
+  .ee-barre-etiq * {
+    visibility: visible !important;
+  }
+
+  .ee-barre-etiq-preview-wrap,
+  .ee-barre-etiq-preview-scale,
+  .ee-barre-etiq-block,
+  .ee-barre-etiq-row {
+    position: static !important;
     width: 90mm !important;
     height: 30mm !important;
     margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    transform: none !important;
+    background: transparent !important;
   }
 
   .ee-barre-etiq {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 90mm !important;
+    height: 30mm !important;
+    min-width: 90mm !important;
+    max-width: 90mm !important;
+    min-height: 30mm !important;
+    max-height: 30mm !important;
+    margin: 0 !important;
+    transform: none !important;
     box-shadow: none !important;
     border: none !important;
   }
 
   .ee-barre-etiq-actions,
   .ee-barre-etiq-print-btn,
+  .ee-barre-etiq-pdf-btn,
   .ee-barre-etiq-block__label {
     display: none !important;
   }

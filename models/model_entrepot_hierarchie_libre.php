@@ -574,8 +574,10 @@ function entrepot_hierarchie_def_modifier($id, $label, $icon = '', $est_etiquett
 }
 
 /**
- * Libellé étiquette / QR pour un nœud (code abrégé Niveau + numéros des autres niveaux + n° du niveau étiquette).
- * Ex. RDC0102-03 (code étage + Zone01 + Rayon02 + Barre03).
+ * Libellé étiquette pour un nœud niveau QR.
+ * Format : {code_abrégé Niveau}[{n° champ lié}]-{n° barre}
+ * — lié à Niveau (étage) : C-01
+ * — lié à un autre niveau (ex. Zone nº1) : C01-01
  *
  * @param int $noeud_id
  * @return string
@@ -660,38 +662,144 @@ function entrepot_noeud_etiquette_libelle($noeud_id) {
         $code = substr($code, 0, 10);
     }
 
-    $autres_nums = [];
-    $num_lie = null;
     $num_etiq = max(1, (int) ($noeud_etiq['numero'] ?? 1));
-    foreach ($chemin as $n) {
-        $nid = (int) ($n['niveau_id'] ?? 0);
-        $num = max(1, (int) ($n['numero'] ?? 1));
-        if ($nid === $etiq_niveau_id) {
-            break;
+    $num_lie = null;
+
+    // Uniquement le numéro du champ lié (pas toute la chaîne ancêtres).
+    if ($lie_type === 'niveau' && $lie_niveau_id > 0) {
+        foreach ($chemin as $n) {
+            $nid = (int) ($n['niveau_id'] ?? 0);
+            if ($nid === $etiq_niveau_id) {
+                break;
+            }
+            if ($nid === $lie_niveau_id) {
+                $num_lie = max(1, (int) ($n['numero'] ?? 1));
+                break;
+            }
         }
-        if ($lie_type === 'niveau' && $lie_niveau_id > 0 && $nid === $lie_niveau_id) {
-            $num_lie = $num;
-            continue;
-        }
-        // Autres niveaux : uniquement leur numéro
-        $autres_nums[] = $num;
     }
 
-    // Lié au Niveau (étage) : le code abrégé remplace un numéro de niveau lié
-    // Lié à un autre niveau : son numéro apparaît juste avant le n° étiquette
-    $mid = '';
-    foreach ($autres_nums as $n) {
-        $mid .= sprintf('%02d', $n);
-    }
+    // Format : {code_abrégé}[{n°_lié}]-{n°_barre}
+    // — lié à Niveau (étage) : le code abrégé suffit → C-01
+    // — lié à un autre niveau : C01-01
     if ($lie_type === 'niveau' && $num_lie !== null) {
-        $mid .= sprintf('%02d', $num_lie);
+        return sprintf('%s%02d-%02d', $code, $num_lie, $num_etiq);
     }
 
-    if ($mid === '') {
-        return sprintf('%s-%02d', $code, $num_etiq);
+    return sprintf('%s-%02d', $code, $num_etiq);
+}
+
+/**
+ * Génère (si besoin) le QR PNG d’un nœud étiquette.
+ *
+ * @param int $noeud_id
+ * @param string $libelle
+ * @param bool $force
+ * @return string Chemin web /upload/... ou ''
+ */
+function entrepot_noeud_etiquette_qr_web_path($noeud_id, $libelle = '', $force = false) {
+    $noeud_id = (int) $noeud_id;
+    if ($noeud_id <= 0) {
+        return '';
+    }
+    $dir = __DIR__ . '/../upload/qrcodes/';
+    $file = $dir . 'noeud_' . $noeud_id . '.png';
+    $meta = $dir . 'noeud_' . $noeud_id . '.txt';
+    $web = '/upload/qrcodes/noeud_' . $noeud_id . '.png';
+    $libelle = trim((string) $libelle);
+    if ($libelle === '') {
+        $libelle = entrepot_noeud_etiquette_libelle($noeud_id);
+    }
+    if ($libelle === '') {
+        return '';
+    }
+    $prev = is_file($meta) ? trim((string) file_get_contents($meta)) : '';
+    if (!$force && is_file($file) && $prev === $libelle) {
+        return $web;
+    }
+    if (!file_exists(__DIR__ . '/../vendor/autoload.php')) {
+        return is_file($file) ? $web : '';
+    }
+    if (!is_dir($dir)) {
+        @mkdir($dir, 0755, true);
+    }
+    try {
+        require_once __DIR__ . '/../vendor/autoload.php';
+        $qro = new \chillerlan\QRCode\QROptions([
+            'outputType' => \chillerlan\QRCode\Output\QROutputInterface::GDIMAGE_PNG,
+            'scale' => 6,
+            'imageBase64' => false,
+        ]);
+        $qr = new \chillerlan\QRCode\QRCode($qro);
+        $png = $qr->render($libelle);
+        if (!is_string($png) || $png === '') {
+            return is_file($file) ? $web : '';
+        }
+        if (file_put_contents($file, $png) === false || !is_file($file)) {
+            return '';
+        }
+        @file_put_contents($meta, $libelle);
+
+        return $web;
+    } catch (Throwable $e) {
+        return is_file($file) ? $web : '';
+    }
+}
+
+/**
+ * Données d’affichage étiquette 90×30 pour un nœud (niveau étiquette / QR).
+ *
+ * @param int $noeud_id
+ * @return array<string, mixed>|null
+ */
+function entrepot_noeud_etiquette_payload($noeud_id) {
+    $noeud_id = (int) $noeud_id;
+    if ($noeud_id <= 0) {
+        return null;
+    }
+    $etiq_def = entrepot_hierarchie_def_etiquette();
+    if ($etiq_def === null) {
+        return null;
+    }
+    $noeud = entrepot_noeud_get($noeud_id);
+    if ($noeud === null) {
+        return null;
+    }
+    if ((int) ($noeud['niveau_id'] ?? 0) !== (int) ($etiq_def['id'] ?? 0)) {
+        return null;
     }
 
-    return sprintf('%s%s-%02d', $code, $mid, $num_etiq);
+    $libelle = entrepot_noeud_etiquette_libelle($noeud_id);
+    if ($libelle === '') {
+        return null;
+    }
+
+    $legacy_barre_id = 0;
+    if (($noeud['legacy_table'] ?? '') === 'entrepot_barre' && !empty($noeud['legacy_id'])) {
+        $legacy_barre_id = (int) $noeud['legacy_id'];
+    }
+
+    // PDF toujours via nœud (libellé = code abrégé + lié + barre, format 90×30).
+    $pdf_url = 'emplacement-noeud-etiquette.php?id=' . $noeud_id;
+    $print_key = 'n' . $noeud_id;
+    $qr = '';
+
+    if ($legacy_barre_id > 0) {
+        require_once __DIR__ . '/../includes/entrepot_barcode_service.php';
+        entrepot_generer_codes_barre($legacy_barre_id);
+        $qr = get_qrcode_barre_web_path($legacy_barre_id);
+    }
+    if ($qr === '') {
+        $qr = entrepot_noeud_etiquette_qr_web_path($noeud_id, $libelle, true);
+    }
+
+    return [
+        'libelle' => $libelle,
+        'qr_url' => $qr,
+        'pdf_url' => $pdf_url,
+        'print_key' => $print_key,
+        'legacy_barre_id' => $legacy_barre_id > 0 ? $legacy_barre_id : null,
+    ];
 }
 
 /**
@@ -1281,6 +1389,8 @@ function entrepot_hierarchie_arbre_etage($numero_etage) {
     }
     $etage_id = (int) $etage['id'];
     $defs = entrepot_hierarchie_def_list_noeuds(true);
+    $etiq_def = entrepot_hierarchie_def_etiquette();
+    $etiq_niveau_id = $etiq_def ? (int) ($etiq_def['id'] ?? 0) : 0;
     $all = entrepot_noeud_liste($etage_id);
     $by_parent = [];
     foreach ($all as $n) {
@@ -1290,30 +1400,52 @@ function entrepot_hierarchie_arbre_etage($numero_etage) {
         }
         $by_parent[$pid][] = $n;
     }
-    $build = function ($parent_id, $depth) use (&$build, $by_parent, $defs) {
+    $build = function ($parent_id, $depth) use (&$build, $by_parent, $etiq_niveau_id) {
         $nodes = $by_parent[$parent_id] ?? [];
         $out = [];
         foreach ($nodes as $n) {
             $nid = (int) $n['id'];
+            $niveau_id = (int) ($n['niveau_id'] ?? 0);
             $node = [
                 'id' => $nid,
-                'niveau_id' => (int) ($n['niveau_id'] ?? 0),
+                'niveau_id' => $niveau_id,
                 'parent_id' => (int) ($n['parent_id'] ?? 0),
                 'numero' => (int) ($n['numero'] ?? 0),
                 'nom' => (string) ($n['nom'] ?? ''),
+                'legacy_table' => (string) ($n['legacy_table'] ?? ''),
+                'legacy_id' => (int) ($n['legacy_id'] ?? 0),
                 'enfants' => $build($nid, $depth + 1),
             ];
+            if ($etiq_niveau_id > 0 && $niveau_id === $etiq_niveau_id) {
+                $payload = entrepot_noeud_etiquette_payload($nid);
+                if ($payload !== null) {
+                    $node['etiquette'] = $payload;
+                }
+            }
             $out[] = $node;
         }
 
         return $out;
     };
 
+    $defs_out = [];
+    foreach ($defs as $d) {
+        $did = (int) ($d['id'] ?? 0);
+        $defs_out[] = [
+            'id' => $did,
+            'label' => (string) ($d['label'] ?? ''),
+            'icon' => (string) ($d['icon'] ?? 'fa-cube'),
+            'slug' => (string) ($d['slug'] ?? ''),
+            'est_etiquette_qr' => ($etiq_niveau_id > 0 && $did === $etiq_niveau_id) ? 1 : 0,
+        ];
+    }
+
     return [
         'etage' => $etage,
-        'defs' => $defs,
+        'defs' => $defs_out,
         'racines' => $build(0, 0),
         'mode' => 'libre',
+        'etiquette_niveau_id' => $etiq_niveau_id,
     ];
 }
 

@@ -637,4 +637,431 @@
             });
         }
     });
+
+    /* ---------- Hiérarchie libre : drill modal tableaux ---------- */
+    function eeLibreParseJson(el) {
+        if (!el || !el.textContent) {
+            return null;
+        }
+        try {
+            return JSON.parse(el.textContent);
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function eeLibreEsc(str) {
+        return String(str == null ? '' : str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    function eeLibreAttr(str) {
+        return String(str == null ? '' : str)
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/</g, '&lt;');
+    }
+
+    function eeLibreNextDef(defs, niveauId) {
+        var found = false;
+        var i;
+        for (i = 0; i < defs.length; i++) {
+            if (found) {
+                return defs[i];
+            }
+            if (parseInt(defs[i].id, 10) === parseInt(niveauId, 10)) {
+                found = true;
+            }
+        }
+        return null;
+    }
+
+    function eeLibreDefById(defs, id) {
+        var nid = parseInt(id, 10);
+        var i;
+        for (i = 0; i < defs.length; i++) {
+            if (parseInt(defs[i].id, 10) === nid) {
+                return defs[i];
+            }
+        }
+        return null;
+    }
+
+    function eeLibreCountLabel(label, count) {
+        return String(count) + '\u00a0' + (label || 'élément');
+    }
+
+    document.querySelectorAll('[data-ee-hierarchie-libre]').forEach(function (root) {
+        var jsonEl = root.querySelector('script[type="application/json"]');
+        var data = eeLibreParseJson(jsonEl);
+        if (!data || !Array.isArray(data.racines) || data.racines.length === 0) {
+            return;
+        }
+        var defs = Array.isArray(data.defs) ? data.defs : [];
+
+        var modalTitle = document.querySelector('[data-ee-drill-modal-title-text]');
+        var modalSubtitle = document.querySelector('[data-ee-drill-modal-subtitle]');
+        var modalIcon = document.querySelector('[data-ee-drill-modal-icon]');
+        var modalBody = document.querySelector('[data-ee-drill-modal-body]');
+        var modalBack = document.querySelector('[data-ee-drill-modal-back]');
+
+        var history = [];
+        var pathLabels = [];
+
+        function openDrillModal() {
+            if (typeof window.openModal === 'function') {
+                window.openModal('modalEeDrillNav');
+            }
+        }
+
+        function setHeader(view) {
+            if (modalTitle) {
+                modalTitle.textContent = view.title || '';
+            }
+            if (modalSubtitle) {
+                if (view.subtitle) {
+                    modalSubtitle.textContent = view.subtitle;
+                    modalSubtitle.hidden = false;
+                } else {
+                    modalSubtitle.textContent = '';
+                    modalSubtitle.hidden = true;
+                }
+            }
+            if (modalIcon) {
+                modalIcon.className = 'fas ' + (view.icon || 'fa-sitemap');
+            }
+            if (modalBack) {
+                modalBack.hidden = history.length <= 1;
+            }
+        }
+
+        function renderView() {
+            var view = history[history.length - 1];
+            if (!view || !modalBody) {
+                return;
+            }
+            setHeader(view);
+            modalBody.innerHTML = '';
+            var node = view.build();
+            if (node) {
+                modalBody.appendChild(node);
+            } else {
+                var empty = document.createElement('p');
+                empty.className = 'ee-h-empty ee-h-empty--sm';
+                empty.textContent = view.emptyText || 'Aucun élément.';
+                modalBody.appendChild(empty);
+            }
+        }
+
+        function pushView(view) {
+            history.push(view);
+            renderView();
+            openDrillModal();
+        }
+
+        function popView() {
+            if (history.length <= 1) {
+                return;
+            }
+            history.pop();
+            pathLabels.pop();
+            renderView();
+        }
+
+        function buildEtiquetteBlock(etiq, printKey) {
+            if (!etiq || !etiq.libelle) {
+                return '';
+            }
+            var key = String(printKey || etiq.print_key || '');
+            var cssUrl = (window.location.origin || '') + '/css/entrepot-barre-etiquette.css';
+            var qr = etiq.qr_url
+                ? ('<img src="' + eeLibreAttr(etiq.qr_url) + '" width="96" height="96" alt="QR" class="ee-barre-etiq__qr">')
+                : '';
+            var pdf = etiq.pdf_url
+                ? ('<a href="' + eeLibreAttr(etiq.pdf_url) + '" class="ee-barre-etiq-pdf-btn" target="_blank" rel="noopener">'
+                    + '<i class="fas fa-file-pdf" aria-hidden="true"></i> PDF</a>')
+                : '';
+            return '<div class="ee-barre-etiq-block" id="ee-barre-etiq-root-' + eeLibreAttr(key) + '" data-css-url="' + eeLibreAttr(cssUrl) + '">'
+                + '<p class="ee-barre-etiq-block__label">Étiquette 90×30 mm</p>'
+                + '<div class="ee-barre-etiq-row">'
+                + '<div class="ee-barre-etiq-preview-wrap"><div class="ee-barre-etiq-preview-scale">'
+                + '<article class="ee-barre-etiq" data-barre-etiq>'
+                + '<span class="ee-barre-etiq__text">' + eeLibreEsc(etiq.libelle) + '</span>'
+                + '<div class="ee-barre-etiq__qr-box">' + qr + '</div>'
+                + '</article></div></div>'
+                + '<div class="ee-barre-etiq-actions">'
+                + '<button type="button" class="ee-barre-etiq-print-btn" data-barre-print="' + eeLibreAttr(key) + '">'
+                + '<i class="fas fa-print" aria-hidden="true"></i> Imprimer l\u2019étiquette</button>'
+                + pdf
+                + '</div></div></div>';
+        }
+
+        function isEtiquetteNiveau(niveauId) {
+            var def = eeLibreDefById(defs, niveauId);
+            if (def && parseInt(def.est_etiquette_qr, 10) === 1) {
+                return true;
+            }
+            return parseInt(data.etiquette_niveau_id, 10) === parseInt(niveauId, 10)
+                && parseInt(niveauId, 10) > 0;
+        }
+
+        function bindNodeActions(container, child) {
+            var id = parseInt(child.id, 10) || 0;
+            var nom = child.nom || '';
+            var numero = parseInt(child.numero, 10) || 0;
+            var editBtn = container.querySelector('[data-ee-libre-edit]');
+            if (editBtn) {
+                editBtn.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    if (typeof window.eeOpenModifierNoeud === 'function') {
+                        window.eeOpenModifierNoeud(id, nom, numero);
+                    }
+                });
+            }
+            var delBtn = container.querySelector('[data-ee-libre-del]');
+            if (delBtn) {
+                delBtn.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    if (typeof window.eeOpenDeleteNoeudLibre === 'function') {
+                        window.eeOpenDeleteNoeudLibre(delBtn);
+                    }
+                });
+            }
+        }
+
+        function buildChildrenTable(parentNode, children) {
+            var niveauId = children.length
+                ? parseInt(children[0].niveau_id, 10)
+                : 0;
+            var def = eeLibreDefById(defs, niveauId);
+            var nextDef = eeLibreNextDef(defs, niveauId);
+            var label = (def && def.label) || 'Éléments';
+            var childCol = (nextDef && nextDef.label) || 'Contenu';
+            var canDrillLevel = !!nextDef;
+            var showEtiq = isEtiquetteNiveau(niveauId);
+
+            var wrap = document.createElement('div');
+            wrap.className = showEtiq ? 'ee-libre-etiq-list' : 'ee-table-scroll';
+
+            var sectionHead = document.createElement('header');
+            sectionHead.className = 'ee-h-drill-panel__head ee-h-drill-panel__head--modal';
+            sectionHead.innerHTML = '<h3><i class="fas '
+                + eeLibreEsc((def && def.icon) || 'fa-cube')
+                + '" aria-hidden="true"></i> '
+                + eeLibreEsc(label)
+                + '</h3>'
+                + (showEtiq
+                    ? '<p class="ee-h-drill-panel__hint">Aperçu étiquette 90×30 mm — imprimez ou ouvrez le niveau suivant.</p>'
+                    : (canDrillLevel
+                        ? '<p class="ee-h-drill-panel__hint">Cliquez une ligne pour ouvrir le niveau suivant.</p>'
+                        : ''));
+            wrap.appendChild(sectionHead);
+
+            if (showEtiq) {
+                children.forEach(function (child) {
+                    var id = parseInt(child.id, 10) || 0;
+                    var nom = child.nom || '';
+                    var numero = parseInt(child.numero, 10) || 0;
+                    var enfants = Array.isArray(child.enfants) ? child.enfants : [];
+                    var nb = enfants.length;
+                    var rowNext = eeLibreNextDef(defs, child.niveau_id);
+                    var canDrill = !!rowNext;
+                    var etiq = child.etiquette || null;
+                    var printKey = (etiq && etiq.print_key) ? etiq.print_key : ('n' + id);
+
+                    var card = document.createElement('article');
+                    card.className = 'ee-libre-etiq-card';
+                    card.setAttribute('data-ee-libre-node', String(id));
+
+                    var headHtml = '<div class="ee-libre-etiq-card__head">'
+                        + '<div class="ee-libre-etiq-card__title">'
+                        + '<strong>#' + numero + '</strong> '
+                        + '<span class="ee-entity-name">' + eeLibreEsc(nom) + '</span>'
+                        + '</div>'
+                        + '<div class="ee-libre-node__actions">'
+                        + '<button type="button" class="ee-btn-icon" title="Modifier" data-ee-libre-edit><i class="fas fa-pen"></i></button>'
+                        + '<button type="button" class="ee-btn-icon ee-btn-icon--danger" title="Supprimer"'
+                        + ' data-ee-noeud-id="' + id + '" data-ee-noeud-nom="' + eeLibreAttr(nom) + '" data-ee-libre-del>'
+                        + '<i class="fas fa-trash-can"></i></button>'
+                        + '</div></div>';
+
+                    card.innerHTML = headHtml
+                        + (etiq ? buildEtiquetteBlock(etiq, printKey) : '<p class="ee-h-empty ee-h-empty--sm">Étiquette non disponible.</p>')
+                        + (canDrill
+                            ? ('<button type="button" class="ee-libre-etiq-card__drill" data-ee-libre-drill>'
+                                + '<span class="ee-badge ee-badge--muted">' + nb + '&nbsp;'
+                                + eeLibreEsc((rowNext && rowNext.label) || 'éléments')
+                                + '</span>'
+                                + '<span>Ouvrir <i class="fas fa-chevron-right" aria-hidden="true"></i></span></button>')
+                            : '');
+
+                    bindNodeActions(card, child);
+                    var drillBtn = card.querySelector('[data-ee-libre-drill]');
+                    if (drillBtn && canDrill) {
+                        drillBtn.addEventListener('click', function (e) {
+                            e.stopPropagation();
+                            openNode(child);
+                        });
+                    }
+                    wrap.appendChild(card);
+                });
+                return wrap;
+            }
+
+            var table = document.createElement('table');
+            table.className = 'ee-table ee-table--hierarchie ee-h-pick-table';
+            table.innerHTML = '<thead><tr>'
+                + '<th scope="col">N°</th>'
+                + '<th scope="col">Nom</th>'
+                + '<th scope="col">' + eeLibreEsc(canDrillLevel ? childCol : 'Type') + '</th>'
+                + '<th scope="col" class="ee-table__actions">Actions</th>'
+                + '</tr></thead>';
+            var tbody = document.createElement('tbody');
+
+            children.forEach(function (child) {
+                var id = parseInt(child.id, 10) || 0;
+                var nom = child.nom || '';
+                var numero = parseInt(child.numero, 10) || 0;
+                var enfants = Array.isArray(child.enfants) ? child.enfants : [];
+                var nb = enfants.length;
+                var rowNext = eeLibreNextDef(defs, child.niveau_id);
+                var canDrill = !!rowNext;
+                var tr = document.createElement('tr');
+                tr.className = 'ee-h-pick-row ee-h-pick-row--libre' + (canDrill ? ' is-drillable' : '');
+                tr.setAttribute('data-ee-libre-node', String(id));
+                if (canDrill) {
+                    tr.setAttribute('tabindex', '0');
+                    tr.setAttribute('role', 'button');
+                    tr.setAttribute('aria-selected', 'false');
+                }
+
+                var countCell = canDrill
+                    ? ('<span class="ee-h-count-cell"><span class="ee-badge ee-badge--muted">'
+                        + eeLibreEsc(eeLibreCountLabel(rowNext.label, nb))
+                        + '</span><i class="fas fa-chevron-right ee-h-pick-chevron" aria-hidden="true"></i></span>')
+                    : '<span class="ee-badge ee-badge--leaf">Feuille</span>';
+
+                tr.innerHTML = '<td class="ee-table-etage-num">#' + numero + '</td>'
+                    + '<td><span class="ee-entity-name">' + eeLibreEsc(nom) + '</span></td>'
+                    + '<td>' + countCell + '</td>'
+                    + '<td class="ee-table__actions"><div class="ee-libre-node__actions">'
+                    + '<button type="button" class="ee-btn-icon" title="Modifier" data-ee-libre-edit>'
+                    + '<i class="fas fa-pen"></i></button>'
+                    + '<button type="button" class="ee-btn-icon ee-btn-icon--danger" title="Supprimer"'
+                    + ' data-ee-noeud-id="' + id + '"'
+                    + ' data-ee-noeud-nom="' + eeLibreAttr(nom) + '"'
+                    + ' data-ee-libre-del>'
+                    + '<i class="fas fa-trash-can"></i></button>'
+                    + '</div></td>';
+
+                bindNodeActions(tr, child);
+
+                if (canDrill) {
+                    bindPickRow(tr, function () {
+                        openNode(child);
+                    });
+                }
+
+                tbody.appendChild(tr);
+            });
+
+            table.appendChild(tbody);
+            wrap.appendChild(table);
+            return wrap;
+        }
+
+        function openNode(node) {
+            var enfants = Array.isArray(node.enfants) ? node.enfants : [];
+            var next = eeLibreNextDef(defs, node.niveau_id);
+            var parentIsEtiq = isEtiquetteNiveau(node.niveau_id);
+            var etiq = node.etiquette || null;
+
+            // Nœud étiquette : afficher l’étiquette + enfants (positions), même sans next si feuille
+            if (parentIsEtiq && etiq) {
+                var parentLabel = node.nom || '';
+                pathLabels.push(parentLabel);
+                var crumbE = pathLabels.join(' · ');
+                var childDef = next || null;
+                pushView({
+                    title: parentLabel || ((eeLibreDefById(defs, node.niveau_id) || {}).label) || 'Élément',
+                    subtitle: crumbE,
+                    icon: 'fa-qrcode',
+                    emptyText: childDef
+                        ? ('Aucun élément « ' + (childDef.label || 'enfant') + ' » sous « ' + parentLabel + ' ».')
+                        : 'Aucun sous-élément.',
+                    build: function () {
+                        var box = document.createElement('div');
+                        box.className = 'ee-libre-etiq-detail';
+                        box.innerHTML = buildEtiquetteBlock(etiq, etiq.print_key || ('n' + node.id));
+                        if (enfants.length && childDef) {
+                            box.appendChild(buildChildrenTable(node, enfants));
+                        } else if (childDef) {
+                            var empty = document.createElement('p');
+                            empty.className = 'ee-h-empty ee-h-empty--sm';
+                            empty.textContent = 'Aucun élément « ' + (childDef.label || 'enfant') + ' » sous « ' + parentLabel + ' ».';
+                            box.appendChild(empty);
+                        }
+                        return box;
+                    }
+                });
+                return;
+            }
+
+            if (!next) {
+                return;
+            }
+            var def = eeLibreDefById(defs, next.id);
+            var parentLabel2 = node.nom || '';
+            pathLabels.push(parentLabel2);
+            var crumb = pathLabels.join(' · ');
+            pushView({
+                title: (def && def.label) || 'Éléments',
+                subtitle: crumb,
+                icon: (def && def.icon) || 'fa-sitemap',
+                emptyText: 'Aucun élément « ' + ((def && def.label) || 'enfant') + ' » sous « ' + parentLabel2 + ' ».',
+                build: function () {
+                    if (!enfants.length) {
+                        return null;
+                    }
+                    return buildChildrenTable(node, enfants);
+                }
+            });
+        }
+
+        function findNodeById(nodes, id) {
+            var target = parseInt(id, 10);
+            var i;
+            for (i = 0; i < nodes.length; i++) {
+                if (parseInt(nodes[i].id, 10) === target) {
+                    return nodes[i];
+                }
+            }
+            return null;
+        }
+
+        root.querySelectorAll('[data-ee-libre-node].is-drillable').forEach(function (row) {
+            bindPickRow(row, function (r) {
+                var id = r.getAttribute('data-ee-libre-node');
+                var node = findNodeById(data.racines, id);
+                if (!node) {
+                    return;
+                }
+                history = [];
+                pathLabels = [];
+                openNode(node);
+            });
+        });
+
+        if (modalBack && !modalBack.getAttribute('data-ee-libre-bound')) {
+            modalBack.setAttribute('data-ee-libre-bound', '1');
+            modalBack.addEventListener('click', function () {
+                if (history.length > 1) {
+                    popView();
+                }
+            });
+        }
+    });
 })();
