@@ -93,6 +93,8 @@ if (!function_exists('migration_web_render_page')) {
             ul.links{list-style:none;padding:0;margin:1rem 0}
             ul.links li{margin:.35rem 0}
             ul.links a{color:#3564a6}
+            .stats ul{list-style:none;padding:0;margin:0 0 1rem}
+            .stats li{margin:.25rem 0}
         </style></head><body>';
         echo $body_html;
         echo '</body></html>';

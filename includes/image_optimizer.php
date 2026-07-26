@@ -37,6 +37,68 @@ function image_optimizer_webp_available() {
 }
 
 /**
+ * Cache is_file() sur la durée de la requête (évite des centaines d'appels disque).
+ */
+function image_optimizer_file_exists($abs_path) {
+    static $cache = [];
+    $key = (string) $abs_path;
+    if (!array_key_exists($key, $cache)) {
+        $cache[$key] = is_file($key);
+    }
+
+    return $cache[$key];
+}
+
+/**
+ * Indique si une image sous upload/ est déjà optimisée (WebP + variantes _md/_sm).
+ *
+ * @param string $relative_path Chemin relatif sous upload/
+ */
+function image_optimizer_is_fully_optimized($relative_path) {
+    $relative_path = trim(str_replace('\\', '/', (string) $relative_path), '/');
+    if ($relative_path === '') {
+        return false;
+    }
+    $upload_root = dirname(__DIR__) . '/upload/';
+    $resolved = image_optimizer_resolve_relative_path($relative_path);
+    if ($resolved === '') {
+        return false;
+    }
+    $ext = strtolower(pathinfo($resolved, PATHINFO_EXTENSION));
+    if ($ext !== 'webp') {
+        $dir = dirname($resolved);
+        $stem = pathinfo($resolved, PATHINFO_FILENAME);
+        if ($stem === '') {
+            return false;
+        }
+        $webp_rel = ($dir === '.' || $dir === '') ? $stem . '.webp' : $dir . '/' . $stem . '.webp';
+        if (!image_optimizer_file_exists($upload_root . $webp_rel)) {
+            return false;
+        }
+        $resolved = $webp_rel;
+    }
+    foreach (['', '_md', '_sm'] as $suffix) {
+        $dir = dirname($resolved);
+        $stem = pathinfo($resolved, PATHINFO_FILENAME);
+        if ($stem === '') {
+            return false;
+        }
+        $variant = ($dir === '.' || $dir === '') ? $stem . $suffix . '.webp' : $dir . '/' . $stem . $suffix . '.webp';
+        if ($suffix === '' && $variant === $resolved) {
+            if (!image_optimizer_file_exists($upload_root . $variant)) {
+                return false;
+            }
+            continue;
+        }
+        if (!image_optimizer_file_exists($upload_root . $variant)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/**
  * @return string
  */
 function image_optimizer_detect_mime($path) {
@@ -140,7 +202,7 @@ function image_optimizer_resolve_relative_path($relative_path) {
         return '';
     }
     $upload_root = dirname(__DIR__) . '/upload/';
-    if (is_file($upload_root . $relative_path)) {
+    if (image_optimizer_file_exists($upload_root . $relative_path)) {
         return $relative_path;
     }
     $dir = dirname($relative_path);
@@ -149,7 +211,7 @@ function image_optimizer_resolve_relative_path($relative_path) {
         return $relative_path;
     }
     $webp_rel = ($dir === '.' || $dir === '') ? $stem . '.webp' : $dir . '/' . $stem . '.webp';
-    if (is_file($upload_root . $webp_rel)) {
+    if (image_optimizer_file_exists($upload_root . $webp_rel)) {
         return $webp_rel;
     }
 
@@ -172,7 +234,7 @@ function image_optimizer_normalize_db_path($relative_path) {
         return $resolved;
     }
     $webp_rel = ($dir === '.' || $dir === '') ? $stem . '.webp' : $dir . '/' . $stem . '.webp';
-    if (is_file($upload_root . $webp_rel)) {
+    if (image_optimizer_file_exists($upload_root . $webp_rel)) {
         return $webp_rel;
     }
 
@@ -214,6 +276,23 @@ function image_optimizer_process_tmp($tmp_path, $dest_dir, $relative_subdir, $na
     }
     $filename = $base_name . '.webp';
     $dest_path = rtrim($dest_dir, '/\\') . DIRECTORY_SEPARATOR . $filename;
+
+    $relative_subdir_norm = trim(str_replace('\\', '/', $relative_subdir), '/');
+    $existing_rel = ($relative_subdir_norm !== '' ? $relative_subdir_norm . '/' : '') . $filename;
+    if (image_optimizer_is_fully_optimized($existing_rel)) {
+        $existing_abs = rtrim($dest_dir, '/\\') . DIRECTORY_SEPARATOR . $filename;
+        $bytes_after = (int) (@filesize($existing_abs) ?: 0);
+
+        return [
+            'success' => true,
+            'relative_path' => $existing_rel,
+            'filename' => $filename,
+            'message' => '',
+            'bytes_before' => $bytes_before,
+            'bytes_after' => $bytes_after,
+            'skipped_existing' => true,
+        ];
+    }
 
     if (!image_optimizer_webp_available()) {
         return image_optimizer_fallback_move($tmp_path, $dest_dir, $relative_subdir, $mime, $name_prefix, $bytes_before, $fixed_stem);
@@ -362,10 +441,10 @@ function upload_image_url($relative_path, $variant = 'md') {
     }
 
     $variant_rel = image_optimizer_variant_relative_path($relative_path, $variant);
-    if ($variant_rel !== '' && is_file($upload_root . $variant_rel)) {
+    if (image_optimizer_file_exists($upload_root . $variant_rel)) {
         return '/upload/' . $variant_rel;
     }
-    if (is_file($upload_root . $relative_path)) {
+    if (image_optimizer_file_exists($upload_root . $relative_path)) {
         return '/upload/' . $relative_path;
     }
 
