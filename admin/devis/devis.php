@@ -439,52 +439,63 @@ $devis_page_has_alert = isset($_SESSION['success_message']) || !empty($error_dev
         }
 
         function doSearch(q) {
-            if (searchLoading) searchLoading.style.visibility = 'visible';
-            fetch(ajaxUrl + '?q=' + encodeURIComponent(q) + '&limit=25')
-                .then(function(r) { return r.json(); })
-                .then(function(data) {
-                    var items = data.items || [];
+            if (productSearch) {
+                productSearch.search(q);
+            }
+        }
+
+        var productSearch = null;
+        var searchUi = window.FoutaAdminProduitSearchUi;
+        if (searchInput && searchResults && searchUi && searchUi.createAjaxSearchController) {
+            productSearch = searchUi.createAjaxSearchController({
+                ajaxUrl: ajaxUrl,
+                resultsEl: searchResults,
+                loadingEl: searchLoading,
+                onSelect: function (p) {
+                    addLigne(p);
+                    searchInput.value = '';
                     searchResults.innerHTML = '';
-                    if (items.length === 0) {
-                        searchResults.innerHTML = '<div class="search-no-results"><i class="fas fa-box-open"></i> Aucun produit trouvé.</div>';
-                    } else {
-                        items.forEach(function(p) {
-                            var el = document.createElement('div');
-                            el.className = 'search-result-item';
-                            el.setAttribute('role', 'option');
-                            el.setAttribute('tabindex', '0');
-                            var U = window.FoutaAdminProduitSearchUi;
-                            el.innerHTML = U && U.buildSearchResultHtml ? U.buildSearchResultHtml(p) : (
-                                '<span class="sr-nom">' + (p.nom || '') + '</span>' +
-                                '<span class="sr-meta">' + (p.categorie_nom || '') + '</span>'
-                            );
-                            el.addEventListener('mousedown', function(ev) {
-                                ev.preventDefault();
-                                addLigne(p);
-                                searchInput.value = '';
-                                searchResults.innerHTML = '';
-                                searchResults.setAttribute('aria-hidden', 'true');
-                            });
-                            el.addEventListener('keydown', function(ev) {
-                                if (ev.key === 'Enter' || ev.key === ' ') {
+                    searchResults.setAttribute('aria-hidden', 'true');
+                }
+            });
+        } else if (searchInput && searchResults) {
+            function doSearchLegacy(q) {
+                if (searchLoading) searchLoading.style.visibility = 'visible';
+                fetch(ajaxUrl + '?q=' + encodeURIComponent(q) + '&limit=25')
+                    .then(function(r) { return r.json(); })
+                    .then(function(data) {
+                        var items = data.items || [];
+                        searchResults.innerHTML = '';
+                        if (items.length === 0) {
+                            searchResults.innerHTML = '<div class="search-no-results"><i class="fas fa-box-open"></i> Aucun produit trouvé.</div>';
+                        } else {
+                            items.forEach(function(p) {
+                                var el = document.createElement('div');
+                                el.className = 'search-result-item';
+                                el.setAttribute('role', 'option');
+                                el.setAttribute('tabindex', '0');
+                                var U = window.FoutaAdminProduitSearchUi;
+                                el.innerHTML = U && U.buildSearchResultHtml ? U.buildSearchResultHtml(p) : (
+                                    '<span class="sr-nom">' + (p.nom || '') + '</span>' +
+                                    '<span class="sr-meta">' + (p.categorie_nom || '') + '</span>'
+                                );
+                                el.addEventListener('mousedown', function(ev) {
                                     ev.preventDefault();
                                     addLigne(p);
                                     searchInput.value = '';
                                     searchResults.innerHTML = '';
                                     searchResults.setAttribute('aria-hidden', 'true');
-                                }
+                                });
+                                searchResults.appendChild(el);
                             });
-                            searchResults.appendChild(el);
-                        });
-                    }
-                    searchResults.setAttribute('aria-hidden', 'false');
-                })
-                .catch(function() {
-                    searchResults.innerHTML = '<div class="search-no-results"><i class="fas fa-exclamation-triangle"></i> Erreur de recherche.</div>';
-                })
-                .finally(function() {
-                    if (searchLoading) searchLoading.style.visibility = 'hidden';
-                });
+                        }
+                        searchResults.setAttribute('aria-hidden', 'false');
+                    })
+                    .finally(function() {
+                        if (searchLoading) searchLoading.style.visibility = 'hidden';
+                    });
+            }
+            doSearch = doSearchLegacy;
         }
 
         var zoneSelect = document.getElementById('zone_livraison_id');

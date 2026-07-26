@@ -48,6 +48,7 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="FOUTA POIDS LOURDS">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/css/facture-lignes.css<?php echo function_exists('asset_version_query') ? asset_version_query() : ''; ?>">
     <style>
         * {
             margin: 0;
@@ -191,14 +192,6 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
             letter-spacing: 0.04em;
         }
 
-        .facture-table td .facture-ligne-ref {
-            display: block;
-            margin-top: 3px;
-            font-size: 10px;
-            font-weight: 600;
-            color: #666;
-        }
-
         .facture-meta-kv .value {
             font-size: 13px;
             line-height: 1.25;
@@ -266,36 +259,6 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
         .facture-table th:last-child,
         .facture-table td:last-child {
             text-align: right;
-        }
-
-        .facture-table th:nth-child(1),
-        .facture-table td:nth-child(1) {
-            width: 56px;
-            text-align: center;
-            vertical-align: middle;
-        }
-
-        .facture-ligne-img {
-            display: block;
-            width: 44px;
-            height: 44px;
-            object-fit: cover;
-            border-radius: 4px;
-            border: 1px solid rgba(53, 100, 166, 0.15);
-            margin: 0 auto;
-        }
-
-        .facture-ligne-img--empty {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 44px;
-            height: 44px;
-            font-size: 12px;
-            color: #a3a3a3;
-            background: #fafafa;
-            border-radius: 4px;
-            border: 1px dashed rgba(53, 100, 166, 0.2);
         }
 
         .facture-table th:nth-child(3),
@@ -677,14 +640,9 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
                 font-size: 13px !important;
             }
 
-            .facture-table th:nth-child(1),
-            .facture-table td:nth-child(1) {
-                width: 10% !important;
-            }
-
             .facture-table th:nth-child(2),
             .facture-table td:nth-child(2) {
-                width: 32% !important;
+                width: 30% !important;
             }
 
             .facture-table th:nth-child(3),
@@ -1077,12 +1035,7 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
                         ?>
                         <tr>
                             <td><?php echo facture_ligne_image_cell_html($ligne); ?></td>
-                            <td><?php echo htmlspecialchars($ligne['designation'] ?? ''); ?><?php
-                                $pid_fm = (int) ($ligne['produit_id'] ?? 0);
-                                if ($pid_fm > 0) {
-                                    echo '<span class="facture-ligne-ref">Réf. FPL' . str_pad((string) $pid_fm, 6, '0', STR_PAD_LEFT) . '</span>';
-                                }
-                            ?></td>
+                            <td><?php echo facture_ligne_article_cell_html($ligne); ?></td>
                             <td><?php echo number_format($qte_ent, 0, ',', ' '); ?></td>
                             <td><?php echo number_format((float) ($ligne['prix_unitaire_ht'] ?? 0), 2, ',', ' '); ?> CFA</td>
                             <td><?php echo number_format((float) ($ligne['total_ligne_ht'] ?? 0), 2, ',', ' '); ?> CFA</td>

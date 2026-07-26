@@ -165,9 +165,14 @@
 
   var csrf = box.getAttribute('data-csrf') || '';
   var hasIdent = box.getAttribute('data-has-ident') === '1';
-  var maxLive = 25;
+  var pageSize = 25;
+  var displayLimit = pageSize;
   var placeholderImg = '/image/produit1.jpg';
   var debounceTimer;
+
+  function resetDisplayLimit() {
+    displayLimit = pageSize;
+  }
 
   function fmtFcfa(n) {
     var x = Math.round(Number(n));
@@ -201,7 +206,7 @@
   }
 
   function collectHits(qRaw, catVal, marqueVal, fournisseurVal, cap) {
-    cap = cap || maxLive;
+    cap = cap || pageSize;
     var q = (qRaw || '').trim();
     var hasSelect = catVal !== '' || marqueVal !== '' || fournisseurVal !== '';
     var needFilter = q !== '' || hasSelect;
@@ -209,7 +214,7 @@
     var i;
 
     if (!needFilter) {
-      return [];
+      return { hits: [], total: 0 };
     }
 
     for (i = 0; i < catalog.length; i++) {
@@ -235,7 +240,7 @@
     for (i = 0; i < ranked.length && hits.length < cap; i++) {
       hits.push(ranked[i].p);
     }
-    return hits;
+    return { hits: hits, total: ranked.length };
   }
 
   function preferScanResolve(raw) {
@@ -311,7 +316,9 @@
       return;
     }
 
-    var hits = collectHits(q, catVal, marqueVal, fournisseurVal, maxLive);
+    var result = collectHits(q, catVal, marqueVal, fournisseurVal, displayLimit);
+    var hits = result.hits;
+    var hasMore = result.total > hits.length;
     if (hits.length === 0) {
       box.innerHTML = '<p class="caisse-live-empty">Aucun produit en stock ne correspond.</p>';
       box.hidden = false;
@@ -366,11 +373,13 @@
         '</div>' +
         '</div></li>';
     }
-    if (catalog.length >= 2500 && hits.length >= maxLive) {
+    if (hasMore) {
       html +=
-        '</ul><p class="caisse-live-cap-hint">Affichage limité à ' +
-        maxLive +
-        ' résultats — affinez la recherche ou utilisez « Liste complète ».</p>';
+        '</ul><button type="button" class="caisse-live-load-more" data-caisse-live-load-more>Voir plus</button>';
+      if (catalog.length >= 2500) {
+        html +=
+          '<p class="caisse-live-cap-hint">Catalogue partiel (2500 produits max) — affinez la recherche ou utilisez « Liste complète ».</p>';
+      }
     } else {
       html += '</ul>';
     }
@@ -381,18 +390,31 @@
 
   function schedule() {
     clearTimeout(debounceTimer);
+    resetDisplayLimit();
     debounceTimer = setTimeout(renderLive, 120);
   }
 
   inputQ.addEventListener('input', schedule);
-  inputQ.addEventListener('search', renderLive);
+  inputQ.addEventListener('search', function () {
+    resetDisplayLimit();
+    renderLive();
+  });
   inputQ.addEventListener('focus', schedule);
-  selCat.addEventListener('change', renderLive);
+  selCat.addEventListener('change', function () {
+    resetDisplayLimit();
+    renderLive();
+  });
   if (marqueFilterOn) {
-    selMarque.addEventListener('change', renderLive);
+    selMarque.addEventListener('change', function () {
+      resetDisplayLimit();
+      renderLive();
+    });
   }
   if (fournisseurFilterOn) {
-    selFournisseur.addEventListener('change', renderLive);
+    selFournisseur.addEventListener('change', function () {
+      resetDisplayLimit();
+      renderLive();
+    });
   }
 
   function triggerAddFromLive(pid) {
@@ -427,7 +449,7 @@
     var catVal = selCat.value;
     var marqueVal = marqueFilterOn ? selMarque.value : '';
     var fournisseurVal = fournisseurFilterOn ? selFournisseur.value : '';
-    var hitsQuick = collectHits(inputQ.value, catVal, marqueVal, fournisseurVal, 2);
+    var hitsQuick = collectHits(inputQ.value, catVal, marqueVal, fournisseurVal, 2).hits;
     if (hitsQuick.length === 1) {
       ev.preventDefault();
       triggerAddFromLive(hitsQuick[0].id);
@@ -454,6 +476,12 @@
   });
 
   document.addEventListener('click', function (ev) {
+    if (ev.target.closest && ev.target.closest('[data-caisse-live-load-more]')) {
+      ev.preventDefault();
+      displayLimit += pageSize;
+      renderLive();
+      return;
+    }
     if (ev.target.closest && ev.target.closest('[data-caisse-gallery]')) {
       return;
     }

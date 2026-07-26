@@ -4,6 +4,8 @@
 (function (global) {
     'use strict';
 
+    var SEARCH_PAGE_SIZE = 25;
+
     function esc(s) {
         var d = document.createElement('div');
         d.textContent = s == null ? '' : String(s);
@@ -228,7 +230,142 @@
         );
     }
 
+    function createSearchResultElement(p) {
+        var el = document.createElement('div');
+        el.className = 'search-result-item';
+        el.setAttribute('role', 'option');
+        el.setAttribute('tabindex', '0');
+        el.innerHTML = buildSearchResultHtml(p);
+        return el;
+    }
+
+    function removeLoadMoreButton(container) {
+        if (!container) {
+            return;
+        }
+        var btn = container.querySelector('.search-load-more-btn');
+        if (btn) {
+            btn.remove();
+        }
+    }
+
+    /**
+     * Recherche AJAX paginée (devis, BL, commandes) avec bouton « Voir plus ».
+     * @param {{ajaxUrl?: string, resultsEl: Element, loadingEl?: Element, pageSize?: number, onSelect: function}} opts
+     */
+    function createAjaxSearchController(opts) {
+        opts = opts || {};
+        var ajaxUrl = opts.ajaxUrl || 'ajax_search_produits.php';
+        var resultsEl = opts.resultsEl;
+        var loadingEl = opts.loadingEl || null;
+        var pageSize = opts.pageSize || SEARCH_PAGE_SIZE;
+        var onSelect = typeof opts.onSelect === 'function' ? opts.onSelect : function () {};
+        var state = { q: '', offset: 0, loading: false };
+
+        function bindItem(el, produit) {
+            el.addEventListener('mousedown', function (ev) {
+                ev.preventDefault();
+                onSelect(produit);
+            });
+            el.addEventListener('keydown', function (ev) {
+                if (ev.key === 'Enter' || ev.key === ' ') {
+                    ev.preventDefault();
+                    onSelect(produit);
+                }
+            });
+        }
+
+        function appendLoadMore(hasMore) {
+            removeLoadMoreButton(resultsEl);
+            if (!hasMore || !resultsEl) {
+                return;
+            }
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'search-load-more-btn';
+            btn.textContent = 'Voir plus';
+            btn.addEventListener('mousedown', function (ev) {
+                ev.preventDefault();
+            });
+            btn.addEventListener('click', function (ev) {
+                ev.preventDefault();
+                loadMore();
+            });
+            resultsEl.appendChild(btn);
+        }
+
+        function fetchPage(append) {
+            if (!resultsEl || state.loading) {
+                return Promise.resolve();
+            }
+            state.loading = true;
+            if (loadingEl) {
+                loadingEl.style.visibility = 'visible';
+            }
+            var offset = append ? state.offset : 0;
+            var url =
+                ajaxUrl +
+                '?q=' +
+                encodeURIComponent(state.q) +
+                '&limit=' +
+                pageSize +
+                '&offset=' +
+                offset;
+            return fetch(url)
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (data) {
+                    var items = data.items || [];
+                    if (!append) {
+                        resultsEl.innerHTML = '';
+                        state.offset = 0;
+                    } else {
+                        removeLoadMoreButton(resultsEl);
+                    }
+                    if (!append && items.length === 0) {
+                        resultsEl.innerHTML =
+                            '<div class="search-no-results"><i class="fas fa-box-open"></i> Aucun produit trouvé.</div>';
+                    } else if (items.length > 0) {
+                        for (var i = 0; i < items.length; i++) {
+                            var el = createSearchResultElement(items[i]);
+                            bindItem(el, items[i]);
+                            resultsEl.appendChild(el);
+                        }
+                        state.offset += items.length;
+                        appendLoadMore(!!data.has_more);
+                    }
+                    resultsEl.setAttribute('aria-hidden', 'false');
+                })
+                .catch(function () {
+                    if (!append) {
+                        resultsEl.innerHTML =
+                            '<div class="search-no-results"><i class="fas fa-exclamation-triangle"></i> Erreur de recherche.</div>';
+                    }
+                })
+                .finally(function () {
+                    state.loading = false;
+                    if (loadingEl) {
+                        loadingEl.style.visibility = 'hidden';
+                    }
+                });
+        }
+
+        function search(q) {
+            state.q = q == null ? '' : String(q);
+            state.offset = 0;
+            return fetchPage(false);
+        }
+
+        function loadMore() {
+            return fetchPage(true);
+        }
+
+        return { search: search, loadMore: loadMore };
+    }
+
     global.FoutaAdminProduitSearchUi = {
+        SEARCH_PAGE_SIZE: SEARCH_PAGE_SIZE,
         esc: esc,
         formatFcfa: formatFcfa,
         buildSearchResultHtml: buildSearchResultHtml,
@@ -237,6 +374,7 @@
         updateLigneRowTotal: updateLigneRowTotal,
         updateAllLigneTotals: updateAllLigneTotals,
         getLignesSousTotal: getLignesSousTotal,
-        bindLignesLiveRecap: bindLignesLiveRecap
+        bindLignesLiveRecap: bindLignesLiveRecap,
+        createAjaxSearchController: createAjaxSearchController
     };
 })(typeof window !== 'undefined' ? window : this);

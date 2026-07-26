@@ -8805,6 +8805,34 @@ body {
   font-weight: 700;
   color: var(--couleur-dominante);
 }
+
+.search-load-more-btn,
+.caisse-live-load-more {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0.65rem 0.85rem;
+  border: none;
+  border-top: 1px dashed rgba(53, 100, 166, 0.25);
+  background: rgba(53, 100, 166, 0.06);
+  color: var(--couleur-dominante);
+  font-family: inherit;
+  font-size: 0.88rem;
+  font-weight: 700;
+  text-align: center;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.search-load-more-btn:hover,
+.search-load-more-btn:focus,
+.caisse-live-load-more:hover,
+.caisse-live-load-more:focus {
+  background: rgba(53, 100, 166, 0.12);
+  color: var(--couleur-dominante-hover);
+  outline: none;
+}
+
 .ligne-produit-meta {
   margin-top: 6px;
   padding: 6px 8px;

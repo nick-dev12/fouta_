@@ -134,6 +134,9 @@ function get_produits_by_commande($commande_id) {
         
         $produit_nom_col = _admin_cp_has_nom_produit() ? "COALESCE(NULLIF(TRIM(cp.nom_produit), ''), p.nom) as produit_nom" : "p.nom as produit_nom";
         $cols = "cp.*, $produit_nom_col, p.image_principale, c.nom as categorie_nom";
+        if (function_exists('produits_has_column') && produits_has_column('identifiant_interne')) {
+            $cols .= ', p.identifiant_interne';
+        }
         if ($has_opts) $cols .= ", cp.couleur, cp.poids, cp.taille";
         if ($has_var) {
             $cols .= ", cp.variante_id, COALESCE(NULLIF(TRIM(cp.variante_nom), ''), pv.nom) as variante_nom, cp.surcout_poids, cp.surcout_taille";

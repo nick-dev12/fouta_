@@ -423,8 +423,12 @@ function get_devis_by_id($devis_id) {
 function get_produits_by_devis($devis_id) {
     global $db;
     try {
+        $sql_ident = '';
+        if (function_exists('produits_has_column') && produits_has_column('identifiant_interne')) {
+            $sql_ident = ', p.identifiant_interne';
+        }
         $stmt = $db->prepare("
-            SELECT dp.*, p.nom as produit_nom_defaut, p.image_principale,
+            SELECT dp.*, p.nom as produit_nom_defaut, p.image_principale{$sql_ident},
                    COALESCE(NULLIF(TRIM(dp.nom_produit), ''), p.nom) as produit_nom
             FROM devis_produits dp
             INNER JOIN produits p ON dp.produit_id = p.id

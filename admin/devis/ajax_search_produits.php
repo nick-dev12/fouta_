@@ -14,9 +14,15 @@ require_once __DIR__ . '/../../includes/admin_route_access.php';
 admin_route_enforce_json_empty();
 
 $recherche = isset($_GET['q']) ? trim($_GET['q']) : '';
-$limit = min(50, max(5, (int) ($_GET['limit'] ?? 30)));
+$limit = min(50, max(5, (int) ($_GET['limit'] ?? 25)));
+$offset = max(0, (int) ($_GET['offset'] ?? 0));
 
 require_once __DIR__ . '/../../models/model_produits.php';
-$items = search_produits_en_stock_commande_manuelle($recherche, $limit);
+$fetchLimit = $limit + 1;
+$items = search_produits_en_stock_commande_manuelle($recherche, $fetchLimit, $offset);
+$hasMore = count($items) > $limit;
+if ($hasMore) {
+    array_pop($items);
+}
 
-echo json_encode(['items' => $items]);
+echo json_encode(['items' => $items, 'has_more' => $hasMore]);

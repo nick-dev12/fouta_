@@ -2283,9 +2283,10 @@ function increment_produit_stock($produit_id, $quantite)
  * Recherche des produits en stock pour commande manuelle
  * @param string $recherche Terme de recherche (nom produit ou catégorie)
  * @param int $limit Nombre max de résultats
+ * @param int $offset Décalage pagination
  * @return array Produits avec stock > 0
  */
-function search_produits_en_stock_commande_manuelle($recherche = '', $limit = 30)
+function search_produits_en_stock_commande_manuelle($recherche = '', $limit = 30, $offset = 0)
 {
     global $db;
 
@@ -2293,7 +2294,8 @@ function search_produits_en_stock_commande_manuelle($recherche = '', $limit = 30
         $jb = produits_catalog_join_bundle();
         $selx = $jb['sel'];
         $joinx = $jb['join'];
-        $limit = max(5, min(80, (int) $limit));
+        $limit = max(1, min(80, (int) $limit));
+        $offset = max(0, (int) $offset);
 
         $sql = "
             SELECT p.id, p.nom, p.prix, p.prix_promotion, p.stock, p.image_principale, p.description,
@@ -2347,7 +2349,7 @@ function search_produits_en_stock_commande_manuelle($recherche = '', $limit = 30
             $sql .= ' AND (' . implode(' OR ', $or) . ')';
         }
 
-        $sql .= ' ORDER BY p.nom ASC LIMIT ' . $limit;
+        $sql .= ' ORDER BY p.nom ASC LIMIT ' . $offset . ', ' . $limit;
         $stmt = $db->prepare($sql);
         foreach ($params as $k => $v) {
             $stmt->bindValue(':' . $k, $v, PDO::PARAM_STR);
