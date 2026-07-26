@@ -55,13 +55,33 @@
     }
 
     function selectedPdfColumns() {
-        return getPdfColumnCheckboxes()
-            .filter(function (cb) { return cb.checked; })
-            .map(function (cb) { return cb.value; });
+        var cols = [];
+        getPdfColumnCheckboxes().forEach(function (cb) {
+            if (cb.checked || cb.disabled) {
+                cols.push(cb.value);
+            }
+        });
+        return cols;
+    }
+
+    function syncPdfCheckboxesFromVisible(visibleCols) {
+        var lookup = {};
+        visibleCols.forEach(function (key) { lookup[key] = true; });
+        getPdfColumnCheckboxes().forEach(function (cb) {
+            if (cb.disabled) {
+                cb.checked = true;
+                return;
+            }
+            cb.checked = !!lookup[cb.value];
+        });
     }
 
     function setAllPdfColumns(checked) {
         getPdfColumnCheckboxes().forEach(function (cb) {
+            if (cb.disabled) {
+                cb.checked = true;
+                return;
+            }
             cb.checked = checked;
         });
     }
@@ -78,7 +98,13 @@
         }
         pendingPdfQuery = baseQuery || '';
         showPdfError(false);
-        setAllPdfColumns(true);
+        var root = getPageRoot();
+        var visible = parseJsonAttr(root, 'data-suivi-visible-cols', null);
+        if (visible && visible.length) {
+            syncPdfCheckboxesFromVisible(visible);
+        } else {
+            setAllPdfColumns(true);
+        }
         pdfOverlay.hidden = false;
         pdfModal.hidden = false;
         document.body.classList.add('export-catalogue-modal-open');
@@ -175,7 +201,13 @@
                 showPdfError(false);
             });
         }
-        if (selectNoneBtn) selectNoneBtn.addEventListener('click', function () { setAllPdfColumns(false); });
+        if (selectNoneBtn) selectNoneBtn.addEventListener('click', function () {
+            getPdfColumnCheckboxes().forEach(function (cb) {
+                if (!cb.disabled) {
+                    cb.checked = false;
+                }
+            });
+        });
         pdfOverlay.addEventListener('click', closePdfModal);
     }
 
@@ -252,7 +284,17 @@
 
         document.querySelectorAll('[data-suivi-col]').forEach(function (el) {
             var key = el.getAttribute('data-suivi-col');
-            el.classList.toggle('is-suivi-col-hidden', !lookup[key]);
+            var hidden = !lookup[key];
+            el.classList.toggle('is-suivi-col-hidden', hidden);
+            if (el.tagName === 'COL') {
+                if (hidden) {
+                    el.setAttribute('style', 'width:0;min-width:0;max-width:0;padding:0;border:0');
+                } else if (key === 'img') {
+                    el.setAttribute('style', 'width:56px;max-width:100px');
+                } else {
+                    el.removeAttribute('style');
+                }
+            }
         });
 
         var showIdent = !!lookup.identifiant;

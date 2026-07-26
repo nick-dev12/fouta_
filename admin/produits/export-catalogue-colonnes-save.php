@@ -13,6 +13,7 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
 }
 
 require_once __DIR__ . '/../includes/require_access_json.php';
+require_once __DIR__ . '/../../conn/conn.php';
 require_once __DIR__ . '/../../includes/export_catalogue_suivi.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {

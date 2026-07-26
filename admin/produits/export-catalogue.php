@@ -105,6 +105,7 @@ $mode_labels = export_catalogue_pdf_mode_labels();
 $export_use_async_pdf = $total_export >= EXPORT_CATALOGUE_ASYNC_MIN;
 $export_has_prix_achat = export_catalogue_has_prix_achat_column();
 $pdf_columns_catalog = export_catalogue_pdf_columns_catalog($export_has_prix_achat);
+$pdf_columns_defs = export_catalogue_pdf_columns_definitions();
 $suivi_columns_catalog = export_catalogue_suivi_columns_catalog();
 $suivi_columns_defs = export_catalogue_suivi_columns_definitions();
 $suivi_visible_cols = export_catalogue_suivi_colonnes_resolved((int) $_SESSION['admin_id']);
@@ -300,9 +301,11 @@ $save_redirect_query = http_build_query(array_merge($pagination_query_base, ['pa
                             <?php
                             $def = $suivi_columns_defs[$col_key] ?? [];
                             $hidden = !isset($suivi_visible_lookup[$col_key]);
+                            $col_style = export_catalogue_suivi_col_style_attr($col_key, $hidden);
                             ?>
                             <col class="<?php echo htmlspecialchars((string) ($def['css_col'] ?? ''), ENT_QUOTES, 'UTF-8'); ?><?php echo $hidden ? ' is-suivi-col-hidden' : ''; ?>"
-                                data-suivi-col="<?php echo htmlspecialchars($col_key, ENT_QUOTES, 'UTF-8'); ?>">
+                                data-suivi-col="<?php echo htmlspecialchars($col_key, ENT_QUOTES, 'UTF-8'); ?>"
+                                <?php echo $col_style !== '' ? ' style="' . htmlspecialchars($col_style, ENT_QUOTES, 'UTF-8') . '"' : ''; ?>>
                             <?php endforeach; ?>
                         </colgroup>
                         <thead>
@@ -312,6 +315,9 @@ $save_redirect_query = http_build_query(array_merge($pagination_query_base, ['pa
                                 $def = $suivi_columns_defs[$col_key] ?? [];
                                 $hidden = !isset($suivi_visible_lookup[$col_key]);
                                 $th_class = !empty($def['num']) ? 'page-produits-export-table__num' : '';
+                                if ($col_key === 'img') {
+                                    $th_class .= ($th_class !== '' ? ' ' : '') . 'page-produits-export-table__img';
+                                }
                                 if ($hidden) {
                                     $th_class .= ($th_class !== '' ? ' ' : '') . 'is-suivi-col-hidden';
                                 }
@@ -486,10 +492,12 @@ $save_redirect_query = http_build_query(array_merge($pagination_query_base, ['pa
         <fieldset class="export-catalogue-pdf-modal__columns">
             <legend class="visually-hidden">Colonnes du PDF</legend>
             <?php foreach ($pdf_columns_catalog as $col_key => $col_label): ?>
+            <?php $pdf_locked = !empty($pdf_columns_defs[$col_key]['locked']); ?>
             <label class="export-catalogue-pdf-modal__column">
                 <input type="checkbox" name="pdf_cols[]" value="<?php echo htmlspecialchars($col_key, ENT_QUOTES, 'UTF-8'); ?>"
-                    checked data-export-pdf-col="<?php echo htmlspecialchars($col_key, ENT_QUOTES, 'UTF-8'); ?>">
-                <span><?php echo htmlspecialchars($col_label, ENT_QUOTES, 'UTF-8'); ?></span>
+                    checked data-export-pdf-col="<?php echo htmlspecialchars($col_key, ENT_QUOTES, 'UTF-8'); ?>"
+                    <?php echo $pdf_locked ? 'disabled checked data-export-pdf-col-locked="1"' : ''; ?>>
+                <span><?php echo htmlspecialchars($col_label, ENT_QUOTES, 'UTF-8'); ?><?php echo $pdf_locked ? ' (obligatoire)' : ''; ?></span>
             </label>
             <?php endforeach; ?>
         </fieldset>

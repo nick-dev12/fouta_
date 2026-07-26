@@ -3,6 +3,7 @@
  * Suivi catalogue — colonnes tableau synchronisées avec champs formulaire produit.
  */
 
+require_once __DIR__ . '/../conn/conn.php';
 require_once __DIR__ . '/export_produits_catalogue_pdf.php';
 
 /**
@@ -41,7 +42,22 @@ function export_catalogue_suivi_colonnes_ensure_schema()
 
         return true;
     } catch (PDOException $e) {
-        return false;
+        try {
+            $db->exec(
+                'CREATE TABLE IF NOT EXISTS admin_export_catalogue_colonnes (
+                    admin_id INT NOT NULL,
+                    colonnes_json TEXT NOT NULL,
+                    date_modification DATETIME NULL DEFAULT NULL,
+                    PRIMARY KEY (admin_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
+            );
+            $db->query('SELECT 1 FROM admin_export_catalogue_colonnes LIMIT 1');
+            $ok = true;
+
+            return true;
+        } catch (PDOException $e2) {
+            return false;
+        }
     }
 }
 
@@ -179,7 +195,11 @@ function export_catalogue_suivi_colonnes_save($admin_id, array $cols)
     global $db;
     $admin_id = (int) $admin_id;
     if ($admin_id <= 0 || !$db || !export_catalogue_suivi_colonnes_ensure_schema()) {
-        return ['success' => false, 'message' => 'Impossible d’enregistrer les colonnes.'];
+        if (!$db) {
+            return ['success' => false, 'message' => 'Connexion à la base de données indisponible.'];
+        }
+
+        return ['success' => false, 'message' => 'Impossible d’enregistrer les colonnes (table manquante).'];
     }
     $catalog = export_catalogue_suivi_columns_catalog();
     $defs = export_catalogue_suivi_columns_definitions();
@@ -224,6 +244,25 @@ function export_catalogue_suivi_colonnes_save($admin_id, array $cols)
     } catch (PDOException $e) {
         return ['success' => false, 'message' => 'Erreur base de données lors de l’enregistrement.'];
     }
+}
+
+/**
+ * Style inline pour <col> (les colonnes masquées ne doivent pas garder une largeur %).
+ *
+ * @param string $col_key
+ * @param bool $hidden
+ * @return string
+ */
+function export_catalogue_suivi_col_style_attr($col_key, $hidden)
+{
+    if ($hidden) {
+        return 'width:0;min-width:0;max-width:0;padding:0;border:0';
+    }
+    if ($col_key === 'img') {
+        return 'width:56px;max-width:100px';
+    }
+
+    return '';
 }
 
 /**

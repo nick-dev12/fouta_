@@ -148,11 +148,30 @@
   width: 100%;
   min-width: 760px;
   border-collapse: collapse;
-  table-layout: fixed;
+  table-layout: auto;
 }
 
-.page-produits-export-table col.page-produits-export-table__col-img { width: 56px; }
-.page-produits-export-table col.page-produits-export-table__col-nom { width: 28%; }
+.page-produits-export-table col.page-produits-export-table__col-img:not(.is-suivi-col-hidden) {
+  width: 56px;
+  max-width: 100px;
+}
+
+.page-produits-export-table thead th[data-suivi-col="img"],
+.page-produits-export-table tbody td[data-suivi-col="img"],
+.page-produits-export-table tbody td.page-produits-export-table__img,
+.page-produits-export-table thead th.page-produits-export-table__img {
+  width: 56px;
+  max-width: 100px;
+  min-width: 56px;
+  padding: 8px 6px 8px 10px;
+  box-sizing: border-box;
+  text-align: left;
+  vertical-align: middle !important;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.page-produits-export-table col.page-produits-export-table__col-nom { width: auto; min-width: 140px; }
 .page-produits-export-table col.page-produits-export-table__col-cat { width: 14%; }
 .page-produits-export-table col.page-produits-export-table__col-prix-achat { width: 11%; }
 .page-produits-export-table col.page-produits-export-table__col-prix { width: 11%; }
@@ -167,6 +186,23 @@
 .page-produits-export-table [data-suivi-col].is-suivi-col-hidden,
 .page-produits-export-table col.is-suivi-col-hidden {
   display: none;
+  width: 0 !important;
+  min-width: 0 !important;
+  max-width: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  visibility: collapse;
+}
+
+.page-produits-export-table thead th.is-suivi-col-hidden,
+.page-produits-export-table tbody td.is-suivi-col-hidden {
+  display: none !important;
+  width: 0 !important;
+  min-width: 0 !important;
+  max-width: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  visibility: collapse;
 }
 
 .is-suivi-nom-meta-hidden {
@@ -207,18 +243,19 @@
 }
 
 .page-produits-export-table__img {
-  text-align: center;
+  text-align: left;
   vertical-align: middle !important;
 }
 
 .page-produits-export-table__img img {
   width: 44px;
   height: 44px;
+  max-width: 44px;
   object-fit: cover;
   border-radius: 8px;
   border: 1px solid rgba(53, 100, 166, 0.16);
   display: block;
-  margin: 0 auto;
+  margin: 0;
 }
 
 .page-produits-export-table__no-img {

@@ -153,6 +153,16 @@ function export_catalogue_pdf_columns_catalog($has_prix_achat = null)
 }
 
 /**
+ * @return array<string, array<string, mixed>>
+ */
+function export_catalogue_pdf_columns_definitions()
+{
+    require_once __DIR__ . '/../models/model_produit_formulaire_champs.php';
+
+    return produit_formulaire_export_colonnes_definitions('pdf');
+}
+
+/**
  * @param array<string, mixed> $source
  * @param bool|null $has_prix_achat
  * @return array<int, string>
@@ -163,9 +173,11 @@ function export_catalogue_pdf_parse_selected_columns(array $source, $has_prix_ac
         $has_prix_achat = export_catalogue_has_prix_achat_column();
     }
     $catalog = export_catalogue_pdf_columns_catalog($has_prix_achat);
+    $defs = export_catalogue_pdf_columns_definitions();
     $valid = array_keys($catalog);
     $selected = [];
     $raw = [];
+    $explicit = array_key_exists('pdf_cols', $source);
     if (isset($source['pdf_cols']) && is_array($source['pdf_cols'])) {
         $raw = $source['pdf_cols'];
     } elseif (isset($source['pdf_cols']) && is_string($source['pdf_cols']) && trim($source['pdf_cols']) !== '') {
@@ -173,12 +185,17 @@ function export_catalogue_pdf_parse_selected_columns(array $source, $has_prix_ac
     }
     foreach ($raw as $key) {
         $key = trim((string) $key);
-        if (in_array($key, $valid, true)) {
+        if ($key !== '' && isset($catalog[$key])) {
+            $selected[$key] = $key;
+        }
+    }
+    foreach ($defs as $key => $def) {
+        if (!empty($def['locked']) && isset($catalog[$key])) {
             $selected[$key] = $key;
         }
     }
     if ($selected === []) {
-        return $valid;
+        return $explicit ? [] : $valid;
     }
 
     $ordered = [];
@@ -706,16 +723,23 @@ function export_catalogue_pdf_row_cell_contents(array $produit, $has_prix_achat 
 /**
  * @param array<int, array<string, mixed>> $produits
  * @param array<string, mixed> $meta date_debut, date_fin, mode, recherche, total
- * @return string HTML
+ * @return string|false HTML
  */
 function export_catalogue_build_pdf_html(array $produits, array $meta, $on_progress = null)
 {
     $ent = get_entreprise_config();
     $logo = export_catalogue_logo_data_uri();
     $has_prix_achat = export_catalogue_has_prix_achat_column();
-    $selected_cols = isset($meta['pdf_cols']) && is_array($meta['pdf_cols'])
-        ? $meta['pdf_cols']
-        : export_catalogue_pdf_parse_selected_columns($meta, $has_prix_achat);
+    if (isset($meta['pdf_cols']) && is_array($meta['pdf_cols']) && $meta['pdf_cols'] !== []) {
+        $selected_cols = export_catalogue_pdf_parse_selected_columns(['pdf_cols' => $meta['pdf_cols']], $has_prix_achat);
+    } else {
+        $selected_cols = export_catalogue_pdf_parse_selected_columns($meta, $has_prix_achat);
+    }
+    if ($selected_cols === []) {
+        export_catalogue_pdf_set_error('Sélectionnez au moins une colonne pour le PDF.');
+
+        return false;
+    }
     $columns = export_catalogue_pdf_table_columns($has_prix_achat, $selected_cols);
     $col_count = count($columns);
 
@@ -855,6 +879,13 @@ function export_catalogue_render_pdf_binary(array $produits, array $meta, $on_pr
     }
 
     $html = export_catalogue_build_pdf_html($produits, $meta, $on_progress);
+    if ($html === false || $html === '') {
+        if (export_catalogue_pdf_get_last_error() === null || export_catalogue_pdf_get_last_error() === '') {
+            export_catalogue_pdf_set_error('Impossible de générer le contenu du PDF.');
+        }
+
+        return false;
+    }
 
     if ($on_progress !== null) {
         $on_progress(72, 'Rendu PDF en cours…');
