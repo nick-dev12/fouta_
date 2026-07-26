@@ -1,14 +1,17 @@
 /**
- * Étiquette barre / nœud entrepôt — 90 × 30 mm (fond jaune, libellé + QR).
+ * Étiquette barre / nœud entrepôt.
+ * Dimensions via CSS vars (--ee-etiq-w/h/qr/texte), défaut 90 × 40 mm.
  * Écran : aperçu réduit via transform.
- * Impression / PDF : dimensions exactes 90 × 30 mm.
+ * Impression / PDF : dimensions exactes (paramètres admin).
  */
 
 /* ——— Gabarit physique (référence unique) ——— */
 .ee-barre-etiq {
   --ee-barre-yellow: #ffe600;
   --ee-etiq-w: 90mm;
-  --ee-etiq-h: 30mm;
+  --ee-etiq-h: 40mm;
+  --ee-etiq-qr: 30mm;
+  --ee-etiq-texte: 11mm;
   width: var(--ee-etiq-w);
   height: var(--ee-etiq-h);
   min-width: var(--ee-etiq-w);
@@ -17,12 +20,12 @@
   max-height: var(--ee-etiq-h);
   box-sizing: border-box;
   margin: 0;
-  padding: 2mm 3.5mm 2mm 4mm;
+  padding: 2.5mm 3.5mm 2.5mm 4mm;
   display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  gap: 2.5mm;
+  gap: 3mm;
   background: var(--ee-barre-yellow);
   border: 0.15mm solid #d4c200;
   font-family: Arial, Helvetica, "Segoe UI", sans-serif;
@@ -34,7 +37,7 @@
 .ee-barre-etiq__text {
   flex: 1 1 auto;
   min-width: 0;
-  font-size: 9mm;
+  font-size: var(--ee-etiq-texte);
   font-weight: 800;
   line-height: 1;
   letter-spacing: 0.02em;
@@ -45,12 +48,12 @@
 }
 
 .ee-barre-etiq__qr-box {
-  flex: 0 0 24mm;
-  width: 24mm;
-  height: 24mm;
+  flex: 0 0 var(--ee-etiq-qr);
+  width: var(--ee-etiq-qr);
+  height: var(--ee-etiq-qr);
   line-height: 0;
   background: #fff;
-  padding: 0.5mm;
+  padding: 0.6mm;
   box-sizing: border-box;
 }
 
@@ -88,17 +91,17 @@
   }
 
   .ee-barre-etiq-preview-wrap {
-    width: calc(90mm * 0.52);
-    height: calc(30mm * 0.52);
+    width: calc(var(--ee-etiq-w) * 0.48);
+    height: calc(var(--ee-etiq-h) * 0.48);
     overflow: hidden;
     border-radius: 4px;
     box-shadow: 0 2px 12px rgba(13, 13, 13, 0.1);
   }
 
   .ee-barre-etiq-preview-scale {
-    width: 90mm;
-    height: 30mm;
-    transform: scale(0.52);
+    width: var(--ee-etiq-w);
+    height: var(--ee-etiq-h);
+    transform: scale(0.48);
     transform-origin: top left;
   }
 
@@ -157,10 +160,10 @@
   color: #2d5690;
 }
 
-/* ——— Impression réelle 90 × 30 mm ——— */
+/* ——— Impression réelle (vars ; JS d’impression force aussi les mm) ——— */
 @media print {
   @page {
-    size: 90mm 30mm;
+    size: var(--ee-etiq-w, 90mm) var(--ee-etiq-h, 40mm);
     margin: 0;
   }
 
@@ -168,12 +171,12 @@
   body {
     margin: 0 !important;
     padding: 0 !important;
-    width: 90mm !important;
-    height: 30mm !important;
-    min-width: 90mm !important;
-    min-height: 30mm !important;
-    max-width: 90mm !important;
-    max-height: 30mm !important;
+    width: var(--ee-etiq-w, 90mm) !important;
+    height: var(--ee-etiq-h, 40mm) !important;
+    min-width: var(--ee-etiq-w, 90mm) !important;
+    min-height: var(--ee-etiq-h, 40mm) !important;
+    max-width: var(--ee-etiq-w, 90mm) !important;
+    max-height: var(--ee-etiq-h, 40mm) !important;
     overflow: hidden !important;
     background: #fff !important;
     -webkit-print-color-adjust: exact !important;
@@ -194,8 +197,8 @@
   .ee-barre-etiq-block,
   .ee-barre-etiq-row {
     position: static !important;
-    width: 90mm !important;
-    height: 30mm !important;
+    width: var(--ee-etiq-w, 90mm) !important;
+    height: var(--ee-etiq-h, 40mm) !important;
     margin: 0 !important;
     padding: 0 !important;
     overflow: visible !important;
@@ -209,12 +212,12 @@
     position: absolute !important;
     top: 0 !important;
     left: 0 !important;
-    width: 90mm !important;
-    height: 30mm !important;
-    min-width: 90mm !important;
-    max-width: 90mm !important;
-    min-height: 30mm !important;
-    max-height: 30mm !important;
+    width: var(--ee-etiq-w, 90mm) !important;
+    height: var(--ee-etiq-h, 40mm) !important;
+    min-width: var(--ee-etiq-w, 90mm) !important;
+    max-width: var(--ee-etiq-w, 90mm) !important;
+    min-height: var(--ee-etiq-h, 40mm) !important;
+    max-height: var(--ee-etiq-h, 40mm) !important;
     margin: 0 !important;
     transform: none !important;
     box-shadow: none !important;

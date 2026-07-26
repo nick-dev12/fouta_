@@ -9,6 +9,7 @@ require_once __DIR__ . '/../models/model_marques.php';
 require_once __DIR__ . '/../models/model_sous_categories.php';
 require_once __DIR__ . '/../includes/barcode_fpl.php';
 require_once __DIR__ . '/../includes/fouta_upload_limits.php';
+require_once __DIR__ . '/../includes/image_optimizer.php';
 require_once __DIR__ . '/../includes/produit_emplacement_entrepot.php';
 
 /**
@@ -104,15 +105,11 @@ function upload_produit_image($file, $field_name = 'image', &$out_error = null)
     }
 
     $upload_dir = __DIR__ . '/../upload/produits/';
-
-    // Créer le dossier s'il n'existe pas
     if (!file_exists($upload_dir)) {
-        mkdir($upload_dir, 0777, true);
+        mkdir($upload_dir, 0755, true);
     }
 
     $allowed_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-
-    // Vérifier le type
     if (!in_array($file_info['type'], $allowed_types, true)) {
         if ($out_error !== null) {
             $out_error = 'Format non autorisé (JPG, PNG, GIF, WEBP).';
@@ -120,20 +117,15 @@ function upload_produit_image($file, $field_name = 'image', &$out_error = null)
         return false;
     }
 
-    // Générer un nom unique
-    $extension = pathinfo($file_info['name'], PATHINFO_EXTENSION);
-    $filename = uniqid('produit_', true) . '.' . $extension;
-    $filepath = $upload_dir . $filename;
-
-    // Déplacer le fichier
-    if (move_uploaded_file($file_info['tmp_name'], $filepath)) {
-        return 'produits/' . $filename;
+    $result = upload_optimize_image_file($file_info, $upload_dir, 'produits', 'produit_');
+    if (empty($result['success'])) {
+        if ($out_error !== null) {
+            $out_error = !empty($result['message']) ? (string) $result['message'] : 'Impossible d’enregistrer l’image sur le serveur.';
+        }
+        return false;
     }
 
-    if ($out_error !== null) {
-        $out_error = 'Impossible d’enregistrer l’image sur le serveur.';
-    }
-    return false;
+    return (string) ($result['relative_path'] ?? '');
 }
 
 /**
@@ -793,10 +785,7 @@ function process_update_produit($produit_id)
         $up_et = upload_produit_image($_FILES, 'image_etiquette_fpl', $up_et_err);
         if ($up_et !== false) {
             if ($image_etiquette_fpl_courant !== '') {
-                $oldp = __DIR__ . '/../upload/' . $image_etiquette_fpl_courant;
-                if (is_file($oldp)) {
-                    @unlink($oldp);
-                }
+                image_optimizer_delete_with_variants($image_etiquette_fpl_courant);
             }
             $image_etiquette_fpl_courant = $up_et;
         } else {
@@ -928,9 +917,8 @@ function process_update_produit($produit_id)
             stock_alertes_notifier_baisse_stock($produit_id, $stock_old, $stock_new);
             // Supprimer du disque les images retirées par l'utilisateur
             foreach ($removed_images as $old_path) {
-                $full_path = __DIR__ . '/../upload/' . $old_path;
-                if ($old_path && file_exists($full_path)) {
-                    @unlink($full_path);
+                if ($old_path !== '') {
+                    image_optimizer_delete_with_variants((string) $old_path);
                 }
             }
             // Gestion des variantes
@@ -1052,9 +1040,21 @@ function process_delete_produit($produit_id)
         return ['success' => false, 'message' => 'Produit introuvable.'];
     }
 
-    // Supprimer l'image si elle existe
-    if ($produit['image_principale'] && file_exists(__DIR__ . '/../upload/' . $produit['image_principale'])) {
-        @unlink(__DIR__ . '/../upload/' . $produit['image_principale']);
+    if (!empty($produit['image_principale'])) {
+        image_optimizer_delete_with_variants((string) $produit['image_principale']);
+    }
+    if (!empty($produit['images'])) {
+        $imgs = json_decode((string) $produit['images'], true);
+        if (is_array($imgs)) {
+            foreach ($imgs as $img_path) {
+                if (trim((string) $img_path) !== '') {
+                    image_optimizer_delete_with_variants((string) $img_path);
+                }
+            }
+        }
+    }
+    if (!empty($produit['image_etiquette_fpl'])) {
+        image_optimizer_delete_with_variants((string) $produit['image_etiquette_fpl']);
     }
 
     // Supprimer le produit

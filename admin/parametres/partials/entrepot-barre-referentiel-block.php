@@ -30,6 +30,12 @@ $lie_barre_elements = $lie_barre_elements ?? [];
 $champ_element_fixe = isset($champ_element_fixe) ? (int) $champ_element_fixe : null;
 $afficher_lie_select = !empty($afficher_lie_select);
 $lie_barre_champ = $lie_barre_champ ?? null;
+if (!isset($ee_etiq_dims) || !is_array($ee_etiq_dims)) {
+    require_once __DIR__ . '/../../../models/model_entrepot_etiquette_parametres.php';
+    $ee_etiq_dims = entrepot_etiquette_dims();
+}
+$ee_etiq_label = (string) ($ee_etiq_dims['label'] ?? 'Étiquette 90×40 mm');
+$ee_etiq_data = entrepot_etiquette_dims_data_attrs($ee_etiq_dims);
 ?>
 <div class="ee-barre-in-rayon" id="barre-edit-<?php echo $bid; ?>" data-barre-id="<?php echo $bid; ?>">
     <div class="ee-barre-in-rayon__head">
@@ -78,8 +84,8 @@ $lie_barre_champ = $lie_barre_champ ?? null;
             <?php endif; ?>
         </div>
     </div>
-    <div class="ee-barre-etiq-block" id="ee-barre-etiq-root-<?php echo $bid; ?>" data-css-url="<?php echo htmlspecialchars($origin_et . $barre_etiq_css, ENT_QUOTES, 'UTF-8'); ?>">
-        <p class="ee-barre-etiq-block__label">Étiquette 90×30 mm</p>
+    <div class="ee-barre-etiq-block" id="ee-barre-etiq-root-<?php echo $bid; ?>" data-css-url="<?php echo htmlspecialchars($origin_et . $barre_etiq_css, ENT_QUOTES, 'UTF-8'); ?>" <?php echo $ee_etiq_data; ?>>
+        <p class="ee-barre-etiq-block__label"><?php echo htmlspecialchars($ee_etiq_label, ENT_QUOTES, 'UTF-8'); ?></p>
         <div class="ee-barre-etiq-row">
             <div class="ee-barre-etiq-preview-wrap">
                 <div class="ee-barre-etiq-preview-scale">

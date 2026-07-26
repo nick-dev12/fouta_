@@ -12,7 +12,8 @@ require_once __DIR__ . '/../conn/conn.php';
 /**
  * @return bool
  */
-function entrepot_hierarchie_libre_schema_ok() {
+function entrepot_hierarchie_libre_schema_ok()
+{
     global $db;
     if (!$db) {
         return false;
@@ -37,7 +38,8 @@ function entrepot_hierarchie_libre_schema_ok() {
  *
  * @return bool
  */
-function entrepot_hierarchie_etiquette_schema_ok($force_refresh = false) {
+function entrepot_hierarchie_etiquette_schema_ok($force_refresh = false)
+{
     global $db;
     if (!$db || !entrepot_hierarchie_libre_schema_ok()) {
         return false;
@@ -65,7 +67,8 @@ function entrepot_hierarchie_etiquette_schema_ok($force_refresh = false) {
 /**
  * @return bool
  */
-function entrepot_hierarchie_etiquette_ensure_schema() {
+function entrepot_hierarchie_etiquette_ensure_schema()
+{
     if (entrepot_hierarchie_etiquette_schema_ok()) {
         return true;
     }
@@ -83,7 +86,8 @@ function entrepot_hierarchie_etiquette_ensure_schema() {
 /**
  * @return bool
  */
-function entrepot_hierarchie_libre_ensure_schema() {
+function entrepot_hierarchie_libre_ensure_schema()
+{
     if (!entrepot_hierarchie_libre_schema_ok()) {
         $runner = __DIR__ . '/../migrations/run_migrate_entrepot_hierarchie_libre.php';
         if (!is_file($runner)) {
@@ -105,7 +109,8 @@ function entrepot_hierarchie_libre_ensure_schema() {
 /**
  * Slug réservé pour la hiérarchie « Niveau » (étages / code abrégé).
  */
-function entrepot_hierarchie_def_slug_etage() {
+function entrepot_hierarchie_def_slug_etage()
+{
     return 'etage';
 }
 
@@ -113,7 +118,8 @@ function entrepot_hierarchie_def_slug_etage() {
  * @param array<string, mixed>|null $def
  * @return bool
  */
-function entrepot_hierarchie_def_est_etage($def) {
+function entrepot_hierarchie_def_est_etage($def)
+{
     if (!is_array($def)) {
         return false;
     }
@@ -127,7 +133,8 @@ function entrepot_hierarchie_def_est_etage($def) {
  *
  * @return array<string, mixed>|null
  */
-function entrepot_hierarchie_def_ensure_racine_etage() {
+function entrepot_hierarchie_def_ensure_racine_etage()
+{
     global $db;
     if (!$db || !entrepot_hierarchie_libre_schema_ok()) {
         return null;
@@ -151,10 +158,10 @@ function entrepot_hierarchie_def_ensure_racine_etage() {
             'INSERT INTO entrepot_hierarchie_niveau (slug, label, icon, ordre, actif, date_creation)
              VALUES (:slug, :label, :icon, 1, 1, NOW())'
         )->execute([
-            ':slug' => entrepot_hierarchie_def_slug_etage(),
-            ':label' => 'Niveau',
-            ':icon' => 'fa-layer-group',
-        ]);
+                    ':slug' => entrepot_hierarchie_def_slug_etage(),
+                    ':label' => 'Niveau',
+                    ':icon' => 'fa-layer-group',
+                ]);
         $id = (int) $db->lastInsertId();
 
         return entrepot_hierarchie_def_get($id);
@@ -167,7 +174,8 @@ function entrepot_hierarchie_def_ensure_racine_etage() {
  * @param int $id
  * @return bool
  */
-function entrepot_hierarchie_def_id_est_etage($id) {
+function entrepot_hierarchie_def_id_est_etage($id)
+{
     return entrepot_hierarchie_def_est_etage(entrepot_hierarchie_def_get((int) $id));
 }
 
@@ -175,7 +183,8 @@ function entrepot_hierarchie_def_id_est_etage($id) {
  * @param string $label
  * @return string
  */
-function entrepot_hierarchie_def_slug_depuis_label($label) {
+function entrepot_hierarchie_def_slug_depuis_label($label)
+{
     $label = trim((string) $label);
     if ($label === '') {
         return '';
@@ -202,7 +211,8 @@ function entrepot_hierarchie_def_slug_depuis_label($label) {
  * @param bool $actifs_seulement
  * @return array<int, array<string, mixed>>
  */
-function entrepot_hierarchie_def_list($actifs_seulement = false) {
+function entrepot_hierarchie_def_list($actifs_seulement = false)
+{
     global $db;
     entrepot_hierarchie_libre_ensure_schema();
     if (!$db || !entrepot_hierarchie_libre_schema_ok()) {
@@ -226,7 +236,8 @@ function entrepot_hierarchie_def_list($actifs_seulement = false) {
  * @param int $id
  * @return array<string, mixed>|null
  */
-function entrepot_hierarchie_def_get($id) {
+function entrepot_hierarchie_def_get($id)
+{
     global $db;
     $id = (int) $id;
     if ($id <= 0 || !entrepot_hierarchie_libre_schema_ok()) {
@@ -247,7 +258,8 @@ function entrepot_hierarchie_def_get($id) {
  *
  * @return string
  */
-function entrepot_hierarchie_chemin_libelle() {
+function entrepot_hierarchie_chemin_libelle()
+{
     $parts = [];
     foreach (entrepot_hierarchie_def_list(true) as $def) {
         $lab = trim((string) ($def['label'] ?? ''));
@@ -268,7 +280,8 @@ function entrepot_hierarchie_chemin_libelle() {
  * @param bool $actifs_seulement
  * @return array<int, array<string, mixed>>
  */
-function entrepot_hierarchie_def_list_noeuds($actifs_seulement = false) {
+function entrepot_hierarchie_def_list_noeuds($actifs_seulement = false)
+{
     $out = [];
     foreach (entrepot_hierarchie_def_list($actifs_seulement) as $def) {
         if (!entrepot_hierarchie_def_est_etage($def)) {
@@ -284,7 +297,8 @@ function entrepot_hierarchie_def_list_noeuds($actifs_seulement = false) {
  *
  * @return array<string, mixed>|null
  */
-function entrepot_hierarchie_def_feuille() {
+function entrepot_hierarchie_def_feuille()
+{
     $list = entrepot_hierarchie_def_list_noeuds(true);
     if ($list === []) {
         $list = entrepot_hierarchie_def_list(true);
@@ -305,7 +319,8 @@ function entrepot_hierarchie_def_feuille() {
  * @param int $exclude_id
  * @return array{ok: bool, message: string, est: int, lie_type: string, lie_id: int|null}
  */
-function entrepot_hierarchie_def_normaliser_etiquette($est_etiquette_qr, $lie_type, $lie_niveau_id, $exclude_id = 0) {
+function entrepot_hierarchie_def_normaliser_etiquette($est_etiquette_qr, $lie_type, $lie_niveau_id, $exclude_id = 0)
+{
     $est = !empty($est_etiquette_qr) ? 1 : 0;
     $lie_type = trim((string) $lie_type);
     if ($lie_type !== 'niveau') {
@@ -356,7 +371,8 @@ function entrepot_hierarchie_def_normaliser_etiquette($est_etiquette_qr, $lie_ty
  * @param int $keep_id
  * @return void
  */
-function entrepot_hierarchie_def_clear_autres_etiquette($keep_id) {
+function entrepot_hierarchie_def_clear_autres_etiquette($keep_id)
+{
     global $db;
     $keep_id = (int) $keep_id;
     if (!$db || !entrepot_hierarchie_etiquette_schema_ok()) {
@@ -386,7 +402,8 @@ function entrepot_hierarchie_def_clear_autres_etiquette($keep_id) {
  *
  * @return array<string, mixed>|null
  */
-function entrepot_hierarchie_def_etiquette() {
+function entrepot_hierarchie_def_etiquette()
+{
     if (!entrepot_hierarchie_etiquette_ensure_schema()) {
         return null;
     }
@@ -412,7 +429,8 @@ function entrepot_hierarchie_def_etiquette() {
  * @param mixed $lie_niveau_id
  * @return array{success: bool, message: string, niveau?: array<string, mixed>}
  */
-function entrepot_hierarchie_def_ajouter($label, $icon = 'fa-cube', $est_etiquette_qr = 0, $lie_type = 'etage', $lie_niveau_id = null) {
+function entrepot_hierarchie_def_ajouter($label, $icon = 'fa-cube', $est_etiquette_qr = 0, $lie_type = 'etage', $lie_niveau_id = null)
+{
     global $db;
     if (!entrepot_hierarchie_libre_ensure_schema() || !$db) {
         return ['success' => false, 'message' => 'Schéma hiérarchie libre indisponible.'];
@@ -454,24 +472,24 @@ function entrepot_hierarchie_def_ajouter($label, $icon = 'fa-cube', $est_etiquet
                  (slug, label, icon, ordre, actif, est_etiquette_qr, etiquette_lie_type, etiquette_lie_niveau_id, date_creation)
                  VALUES (:slug, :label, :icon, :ordre, 1, :est, :lie_t, :lie_id, NOW())'
             )->execute([
-                ':slug' => $slug,
-                ':label' => $label,
-                ':icon' => $icon,
-                ':ordre' => $ordre,
-                ':est' => $etiq['est'],
-                ':lie_t' => $etiq['lie_type'],
-                ':lie_id' => $etiq['lie_id'],
-            ]);
+                        ':slug' => $slug,
+                        ':label' => $label,
+                        ':icon' => $icon,
+                        ':ordre' => $ordre,
+                        ':est' => $etiq['est'],
+                        ':lie_t' => $etiq['lie_type'],
+                        ':lie_id' => $etiq['lie_id'],
+                    ]);
         } else {
             $db->prepare(
                 'INSERT INTO entrepot_hierarchie_niveau (slug, label, icon, ordre, actif, date_creation)
                  VALUES (:slug, :label, :icon, :ordre, 1, NOW())'
             )->execute([
-                ':slug' => $slug,
-                ':label' => $label,
-                ':icon' => $icon,
-                ':ordre' => $ordre,
-            ]);
+                        ':slug' => $slug,
+                        ':label' => $label,
+                        ':icon' => $icon,
+                        ':ordre' => $ordre,
+                    ]);
         }
         $id = (int) $db->lastInsertId();
         if ($has_etiq && $etiq['est'] === 1) {
@@ -499,7 +517,8 @@ function entrepot_hierarchie_def_ajouter($label, $icon = 'fa-cube', $est_etiquet
  * @param string $icon
  * @return array{success: bool, message: string}
  */
-function entrepot_hierarchie_def_renommer($id, $label, $icon = '') {
+function entrepot_hierarchie_def_renommer($id, $label, $icon = '')
+{
     return entrepot_hierarchie_def_modifier($id, $label, $icon, null, null, null);
 }
 
@@ -515,7 +534,8 @@ function entrepot_hierarchie_def_renommer($id, $label, $icon = '') {
  * @param mixed|null $lie_niveau_id
  * @return array{success: bool, message: string}
  */
-function entrepot_hierarchie_def_modifier($id, $label, $icon = '', $est_etiquette_qr = null, $lie_type = null, $lie_niveau_id = null) {
+function entrepot_hierarchie_def_modifier($id, $label, $icon = '', $est_etiquette_qr = null, $lie_type = null, $lie_niveau_id = null)
+{
     global $db;
     $id = (int) $id;
     $def = entrepot_hierarchie_def_get($id);
@@ -551,13 +571,13 @@ function entrepot_hierarchie_def_modifier($id, $label, $icon = '', $est_etiquett
                      etiquette_lie_type = :lie_t, etiquette_lie_niveau_id = :lie_id
                  WHERE id = :id'
             )->execute([
-                ':l' => $label,
-                ':i' => $icon,
-                ':est' => $etiq['est'],
-                ':lie_t' => $etiq['lie_type'],
-                ':lie_id' => $etiq['lie_id'],
-                ':id' => $id,
-            ]);
+                        ':l' => $label,
+                        ':i' => $icon,
+                        ':est' => $etiq['est'],
+                        ':lie_t' => $etiq['lie_type'],
+                        ':lie_id' => $etiq['lie_id'],
+                        ':id' => $id,
+                    ]);
             if ($etiq['est'] === 1) {
                 entrepot_hierarchie_def_clear_autres_etiquette($id);
             }
@@ -574,15 +594,41 @@ function entrepot_hierarchie_def_modifier($id, $label, $icon = '', $est_etiquett
 }
 
 /**
+ * Segment texte pour libellé étiquette (nom de champ / nœud lié).
+ *
+ * @param string $raw
+ * @param int $fallback_num
+ * @return string
+ */
+function entrepot_noeud_etiquette_segment_lie($raw, $fallback_num = 0)
+{
+    $segment = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', trim((string) $raw)));
+    if ($segment !== '') {
+        if (strlen($segment) > 20) {
+            $segment = substr($segment, 0, 20);
+        }
+
+        return $segment;
+    }
+    $fallback_num = max(0, (int) $fallback_num);
+    if ($fallback_num > 0) {
+        return sprintf('%02d', $fallback_num);
+    }
+
+    return '';
+}
+
+/**
  * Libellé étiquette pour un nœud niveau QR.
- * Format : {code_abrégé Niveau}[{n° champ lié}]-{n° barre}
+ * Format : {code_abrégé Niveau}[{nom champ lié}]-{n° étiquette}
  * — lié à Niveau (étage) : C-01
- * — lié à un autre niveau (ex. Zone nº1) : C01-01
+ * — lié à un autre niveau (ex. Zone « A1 ») : CA1-01
  *
  * @param int $noeud_id
  * @return string
  */
-function entrepot_noeud_etiquette_libelle($noeud_id) {
+function entrepot_noeud_etiquette_libelle($noeud_id)
+{
     global $db;
     $noeud_id = (int) $noeud_id;
     if ($noeud_id <= 0 || !entrepot_hierarchie_etiquette_ensure_schema() || !$db) {
@@ -602,7 +648,7 @@ function entrepot_noeud_etiquette_libelle($noeud_id) {
     $etage_id = 0;
     try {
         $st = $db->prepare(
-            'SELECT id, parent_id, niveau_id, numero, etage_id FROM entrepot_hierarchie_noeud WHERE id = :id LIMIT 1'
+            'SELECT id, parent_id, niveau_id, numero, nom, etage_id FROM entrepot_hierarchie_noeud WHERE id = :id LIMIT 1'
         );
         while ($current > 0 && $guard < 40) {
             $guard++;
@@ -663,9 +709,9 @@ function entrepot_noeud_etiquette_libelle($noeud_id) {
     }
 
     $num_etiq = max(1, (int) ($noeud_etiq['numero'] ?? 1));
-    $num_lie = null;
+    $segment_lie = '';
 
-    // Uniquement le numéro du champ lié (pas toute la chaîne ancêtres).
+    // Nom du champ / nœud lié sur le chemin (pas le numéro seul).
     if ($lie_type === 'niveau' && $lie_niveau_id > 0) {
         foreach ($chemin as $n) {
             $nid = (int) ($n['niveau_id'] ?? 0);
@@ -673,17 +719,20 @@ function entrepot_noeud_etiquette_libelle($noeud_id) {
                 break;
             }
             if ($nid === $lie_niveau_id) {
-                $num_lie = max(1, (int) ($n['numero'] ?? 1));
+                $segment_lie = entrepot_noeud_etiquette_segment_lie(
+                    (string) ($n['nom'] ?? ''),
+                    (int) ($n['numero'] ?? 1)
+                );
                 break;
             }
         }
     }
 
-    // Format : {code_abrégé}[{n°_lié}]-{n°_barre}
-    // — lié à Niveau (étage) : le code abrégé suffit → C-01
-    // — lié à un autre niveau : C01-01
-    if ($lie_type === 'niveau' && $num_lie !== null) {
-        return sprintf('%s%02d-%02d', $code, $num_lie, $num_etiq);
+    // Format : {code_abrégé}[{nom_lie}]-{n°_étiquette}
+    // — lié à Niveau (étage) : C-01
+    // — lié à un autre niveau : CA1-01 (nom du nœud lié)
+    if ($lie_type === 'niveau' && $segment_lie !== '') {
+        return sprintf('%s%s-%02d', $code, $segment_lie, $num_etiq);
     }
 
     return sprintf('%s-%02d', $code, $num_etiq);
@@ -697,7 +746,8 @@ function entrepot_noeud_etiquette_libelle($noeud_id) {
  * @param bool $force
  * @return string Chemin web /upload/... ou ''
  */
-function entrepot_noeud_etiquette_qr_web_path($noeud_id, $libelle = '', $force = false) {
+function entrepot_noeud_etiquette_qr_web_path($noeud_id, $libelle = '', $force = false)
+{
     $noeud_id = (int) $noeud_id;
     if ($noeud_id <= 0) {
         return '';
@@ -747,12 +797,13 @@ function entrepot_noeud_etiquette_qr_web_path($noeud_id, $libelle = '', $force =
 }
 
 /**
- * Données d’affichage étiquette 90×30 pour un nœud (niveau étiquette / QR).
+ * Données d’affichage étiquette pour un nœud (niveau étiquette / QR).
  *
  * @param int $noeud_id
  * @return array<string, mixed>|null
  */
-function entrepot_noeud_etiquette_payload($noeud_id) {
+function entrepot_noeud_etiquette_payload($noeud_id)
+{
     $noeud_id = (int) $noeud_id;
     if ($noeud_id <= 0) {
         return null;
@@ -779,7 +830,7 @@ function entrepot_noeud_etiquette_payload($noeud_id) {
         $legacy_barre_id = (int) $noeud['legacy_id'];
     }
 
-    // PDF toujours via nœud (libellé = code abrégé + lié + barre, format 90×30).
+    // PDF toujours via nœud (libellé = code abrégé + lié + barre).
     $pdf_url = 'emplacement-noeud-etiquette.php?id=' . $noeud_id;
     $print_key = 'n' . $noeud_id;
     $qr = '';
@@ -807,7 +858,8 @@ function entrepot_noeud_etiquette_payload($noeud_id) {
  * @param int $actif
  * @return array{success: bool, message: string}
  */
-function entrepot_hierarchie_def_set_actif($id, $actif) {
+function entrepot_hierarchie_def_set_actif($id, $actif)
+{
     global $db;
     $id = (int) $id;
     $def = entrepot_hierarchie_def_get($id);
@@ -838,7 +890,8 @@ function entrepot_hierarchie_def_set_actif($id, $actif) {
  * @param array<int, int> $ids_ordonnes
  * @return array{success: bool, message: string}
  */
-function entrepot_hierarchie_def_reordonner(array $ids_ordonnes) {
+function entrepot_hierarchie_def_reordonner(array $ids_ordonnes)
+{
     global $db;
     if (!$db || !entrepot_hierarchie_libre_schema_ok()) {
         return ['success' => false, 'message' => 'Schéma indisponible.'];
@@ -876,7 +929,8 @@ function entrepot_hierarchie_def_reordonner(array $ids_ordonnes) {
  * @param int $niveau_id
  * @return array{noeuds: int, produits: int, descendants: int}
  */
-function entrepot_hierarchie_def_impact_suppression($niveau_id) {
+function entrepot_hierarchie_def_impact_suppression($niveau_id)
+{
     global $db;
     $niveau_id = (int) $niveau_id;
     $out = ['noeuds' => 0, 'produits' => 0, 'descendants' => 0];
@@ -917,7 +971,8 @@ function entrepot_hierarchie_def_impact_suppression($niveau_id) {
  * @param int $id
  * @return array{success: bool, message: string}
  */
-function entrepot_hierarchie_def_supprimer($id) {
+function entrepot_hierarchie_def_supprimer($id)
+{
     global $db;
     $id = (int) $id;
     $def = entrepot_hierarchie_def_get($id);
@@ -961,7 +1016,8 @@ function entrepot_hierarchie_def_supprimer($id) {
  * @param array<int, int> $ids
  * @return array<int, int>
  */
-function entrepot_noeud_collect_ids_avec_descendants(array $ids) {
+function entrepot_noeud_collect_ids_avec_descendants(array $ids)
+{
     global $db;
     $ids = array_values(array_unique(array_filter(array_map('intval', $ids))));
     if ($ids === [] || !$db) {
@@ -996,7 +1052,8 @@ function entrepot_noeud_collect_ids_avec_descendants(array $ids) {
  * @param array<int, int> $noeud_ids
  * @return int
  */
-function entrepot_noeud_compter_produits(array $noeud_ids) {
+function entrepot_noeud_compter_produits(array $noeud_ids)
+{
     global $db;
     if (!function_exists('produits_has_column')) {
         require_once __DIR__ . '/model_produits.php';
@@ -1022,7 +1079,8 @@ function entrepot_noeud_compter_produits(array $noeud_ids) {
  * @param array<int, int> $noeud_ids
  * @return int
  */
-function entrepot_noeud_detacher_produits(array $noeud_ids) {
+function entrepot_noeud_detacher_produits(array $noeud_ids)
+{
     global $db;
     if (!function_exists('produits_has_column')) {
         require_once __DIR__ . '/model_produits.php';
@@ -1048,7 +1106,8 @@ function entrepot_noeud_detacher_produits(array $noeud_ids) {
  * @param int $id
  * @return array<string, mixed>|null
  */
-function entrepot_noeud_get($id) {
+function entrepot_noeud_get($id)
+{
     global $db;
     $id = (int) $id;
     if ($id <= 0 || !entrepot_hierarchie_libre_schema_ok()) {
@@ -1070,7 +1129,8 @@ function entrepot_noeud_get($id) {
  * @param int $parent_id
  * @return array<int, array<string, mixed>>
  */
-function entrepot_noeud_liste($etage_id, $niveau_id = 0, $parent_id = -1) {
+function entrepot_noeud_liste($etage_id, $niveau_id = 0, $parent_id = -1)
+{
     global $db;
     $etage_id = (int) $etage_id;
     if ($etage_id <= 0 || !entrepot_hierarchie_libre_schema_ok()) {
@@ -1107,7 +1167,8 @@ function entrepot_noeud_liste($etage_id, $niveau_id = 0, $parent_id = -1) {
  * @param int $numero
  * @return array{success: bool, message: string, noeud?: array<string, mixed>}
  */
-function entrepot_noeud_ajouter($etage_id, $niveau_id, $parent_id, $nom, $numero = 0) {
+function entrepot_noeud_ajouter($etage_id, $niveau_id, $parent_id, $nom, $numero = 0)
+{
     global $db;
     $etage_id = (int) $etage_id;
     $niveau_id = (int) $niveau_id;
@@ -1196,12 +1257,12 @@ function entrepot_noeud_ajouter($etage_id, $niveau_id, $parent_id, $nom, $numero
              (etage_id, niveau_id, parent_id, numero, nom, date_creation)
              VALUES (:e, :n, :p, :num, :nom, NOW())'
         )->execute([
-            ':e' => $etage_id,
-            ':n' => $niveau_id,
-            ':p' => $parent_id > 0 ? $parent_id : null,
-            ':num' => $numero,
-            ':nom' => $nom,
-        ]);
+                    ':e' => $etage_id,
+                    ':n' => $niveau_id,
+                    ':p' => $parent_id > 0 ? $parent_id : null,
+                    ':num' => $numero,
+                    ':nom' => $nom,
+                ]);
         $id = (int) $db->lastInsertId();
 
         return [
@@ -1224,7 +1285,8 @@ function entrepot_noeud_ajouter($etage_id, $niveau_id, $parent_id, $nom, $numero
  * @param int $numero
  * @return array{success: bool, message: string}
  */
-function entrepot_noeud_modifier($id, $nom, $numero) {
+function entrepot_noeud_modifier($id, $nom, $numero)
+{
     global $db;
     $id = (int) $id;
     $noeud = entrepot_noeud_get($id);
@@ -1278,7 +1340,8 @@ function entrepot_noeud_modifier($id, $nom, $numero) {
  * @param int $id
  * @return array{success: bool, message: string}
  */
-function entrepot_noeud_supprimer($id) {
+function entrepot_noeud_supprimer($id)
+{
     global $db;
     $id = (int) $id;
     $noeud = entrepot_noeud_get($id);
@@ -1310,7 +1373,8 @@ function entrepot_noeud_supprimer($id) {
  * @param int $noeud_id
  * @return string
  */
-function entrepot_noeud_chemin_libelle($noeud_id) {
+function entrepot_noeud_chemin_libelle($noeud_id)
+{
     global $db;
     $noeud_id = (int) $noeud_id;
     if ($noeud_id <= 0 || !entrepot_hierarchie_libre_schema_ok()) {
@@ -1376,7 +1440,8 @@ function entrepot_noeud_chemin_libelle($noeud_id) {
  * @param int $numero_etage
  * @return array<string, mixed>|null
  */
-function entrepot_hierarchie_arbre_etage($numero_etage) {
+function entrepot_hierarchie_arbre_etage($numero_etage)
+{
     global $db;
     $numero_etage = (int) $numero_etage;
     if ($numero_etage <= 0 || !entrepot_hierarchie_libre_schema_ok()) {
@@ -1462,7 +1527,8 @@ function entrepot_hierarchie_arbre_etage($numero_etage) {
  *
  * @return array<string, mixed>
  */
-function entrepot_hierarchie_libre_json_produit() {
+function entrepot_hierarchie_libre_json_produit()
+{
     $out = [
         'mode' => 'libre',
         'etages' => [],
@@ -1528,7 +1594,8 @@ function entrepot_hierarchie_libre_json_produit() {
  * @param int $noeud_id
  * @return array<int, int> map niveau_id => noeud_id along the path
  */
-function entrepot_noeud_selection_path($noeud_id) {
+function entrepot_noeud_selection_path($noeud_id)
+{
     $path = [];
     $current = (int) $noeud_id;
     $guard = 0;

@@ -1,6 +1,6 @@
 <?php
 /**
- * Bloc barre dans l’arbre hiérarchique (étiquette 90×30, QR, positions).
+ * Bloc barre dans l’arbre hiérarchique (étiquette, QR, positions).
  *
  * @var array $b
  * @var array $etage_ctx
@@ -19,6 +19,12 @@ $etage = $etage_ctx ?? [];
 $rayon = $rayon_ctx ?? null;
 $origin_et = isset($origin_et) ? (string) $origin_et : '';
 $barre_etiq_css = isset($barre_etiq_css) ? (string) $barre_etiq_css : '/css/entrepot-barre-etiquette.css';
+if (!isset($ee_etiq_dims) || !is_array($ee_etiq_dims)) {
+    require_once __DIR__ . '/../../../models/model_entrepot_etiquette_parametres.php';
+    $ee_etiq_dims = entrepot_etiquette_dims();
+}
+$ee_etiq_label = (string) ($ee_etiq_dims['label'] ?? 'Étiquette 90×40 mm');
+$ee_etiq_data = entrepot_etiquette_dims_data_attrs($ee_etiq_dims);
 
 $qc = get_qrcode_barre_web_path($bid);
 if ($qc === '' && !empty($b['code_scan'])) {
@@ -84,8 +90,8 @@ $barre_delete_impact_json = htmlspecialchars(
     </div>
 
     <div class="ee-h-barre__grid">
-        <div class="ee-barre-etiq-block" id="ee-barre-etiq-root-<?php echo $bid; ?>" data-css-url="<?php echo htmlspecialchars($origin_et . $barre_etiq_css, ENT_QUOTES, 'UTF-8'); ?>">
-            <p class="ee-barre-etiq-block__label">Étiquette 90×30 mm</p>
+        <div class="ee-barre-etiq-block" id="ee-barre-etiq-root-<?php echo $bid; ?>" data-css-url="<?php echo htmlspecialchars($origin_et . $barre_etiq_css, ENT_QUOTES, 'UTF-8'); ?>" <?php echo $ee_etiq_data; ?>>
+            <p class="ee-barre-etiq-block__label"><?php echo htmlspecialchars($ee_etiq_label, ENT_QUOTES, 'UTF-8'); ?></p>
             <div class="ee-barre-etiq-row">
                 <div class="ee-barre-etiq-preview-wrap">
                     <div class="ee-barre-etiq-preview-scale">

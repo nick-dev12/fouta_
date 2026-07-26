@@ -60,3 +60,6 @@ desktop.ini
 # Dossier local nommé « git » (hors dépôt)
 git/
 
+# Projet local de référence (copie poid_lourd, hors dépôt)
+poid_lourd/
+

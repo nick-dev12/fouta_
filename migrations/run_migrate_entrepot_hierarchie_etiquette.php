@@ -10,7 +10,8 @@ if (!$db) {
     exit(1);
 }
 
-function migrate_etiq_colonne_existe(PDO $db, $table, $colonne) {
+function migrate_etiq_colonne_existe(PDO $db, $table, $colonne)
+{
     $stmt = $db->prepare(
         'SELECT COUNT(*) FROM information_schema.COLUMNS
          WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :tbl AND COLUMN_NAME = :col'

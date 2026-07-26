@@ -1,6 +1,6 @@
 <?php
 /**
- * PDF / impression étiquette nœud hiérarchie libre 90×30 mm (fond jaune, libellé + QR).
+ * PDF / impression étiquette nœud hiérarchie libre (dimensions paramétrables).
  */
 require_once __DIR__ . '/../../includes/admin_pdf_response.php';
 admin_pdf_request_begin();
@@ -22,6 +22,7 @@ if (!admin_can_gestion_stock_etendue()) {
 
 $noeud_id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 require_once __DIR__ . '/../../models/model_entrepot_hierarchie_libre.php';
+require_once __DIR__ . '/../../models/model_entrepot_etiquette_parametres.php';
 
 $payload = entrepot_noeud_etiquette_payload($noeud_id);
 if ($payload === null) {
@@ -29,6 +30,13 @@ if ($payload === null) {
     echo 'Étiquette introuvable pour cet élément.';
     exit;
 }
+
+$dims = entrepot_etiquette_dims();
+$mm_w = (float) $dims['largeur_mm'];
+$mm_h = (float) $dims['hauteur_mm'];
+$mm_qr = (float) $dims['qr_mm'];
+$mm_tx = (float) $dims['texte_mm'];
+$pt_tx = round(entrepot_etiquette_mm_to_pt($mm_tx), 2);
 
 $libelle = (string) ($payload['libelle'] ?? '');
 $qr_web = (string) ($payload['qr_url'] ?? '');
@@ -49,17 +57,17 @@ $qr_uri = ee_noeud_label_data_uri($qr_path);
 $libelle_h = htmlspecialchars($libelle, ENT_QUOTES, 'UTF-8');
 
 $html = '<!DOCTYPE html><html><head><meta charset="utf-8"><style>
-@page { size: 90mm 30mm; margin: 0; }
-html, body { margin: 0; padding: 0; width: 90mm; height: 30mm; overflow: hidden; }
+@page { size: ' . $mm_w . 'mm ' . $mm_h . 'mm; margin: 0; }
+html, body { margin: 0; padding: 0; width: ' . $mm_w . 'mm; height: ' . $mm_h . 'mm; overflow: hidden; }
 .ee-barre-etiq {
-  width: 90mm; height: 30mm; box-sizing: border-box;
-  padding: 2mm 3.5mm 2mm 4mm;
+  width: ' . $mm_w . 'mm; height: ' . $mm_h . 'mm; box-sizing: border-box;
+  padding: 2.5mm 3.5mm 2.5mm 4mm;
   display: flex; align-items: center; justify-content: space-between;
-  gap: 2.5mm;
+  gap: 3mm;
   background: #ffe600; font-family: DejaVu Sans, Arial, sans-serif;
 }
-.ee-barre-etiq__text { font-size: 22pt; font-weight: bold; color: #000; white-space: nowrap; line-height: 1; }
-.ee-barre-etiq__qr { width: 24mm; height: 24mm; }
+.ee-barre-etiq__text { font-size: ' . $pt_tx . 'pt; font-weight: bold; color: #000; white-space: nowrap; line-height: 1; }
+.ee-barre-etiq__qr { width: ' . $mm_qr . 'mm; height: ' . $mm_qr . 'mm; }
 </style></head><body>
 <div class="ee-barre-etiq">
   <span class="ee-barre-etiq__text">' . $libelle_h . '</span>';
@@ -83,6 +91,6 @@ $options->set('isRemoteEnabled', false);
 $options->set('defaultFont', 'DejaVu Sans');
 $dompdf = new Dompdf($options);
 $dompdf->loadHtml($html);
-$dompdf->setPaper([0, 0, 255.118, 85.039], 'landscape');
+$dompdf->setPaper([0, 0, entrepot_etiquette_mm_to_pt($mm_w), entrepot_etiquette_mm_to_pt($mm_h)]);
 $dompdf->render();
 $dompdf->stream('etiquette-noeud-' . $noeud_id . '.pdf', ['Attachment' => true]);

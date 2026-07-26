@@ -771,11 +771,23 @@
             renderView();
         }
 
+        function eeEtiqDims() {
+            var d = (data && data.etiquette_dims) || window.EE_ETIQ_DIMS || {};
+            return {
+                w: parseFloat(d.largeur_mm) > 0 ? parseFloat(d.largeur_mm) : 90,
+                h: parseFloat(d.hauteur_mm) > 0 ? parseFloat(d.hauteur_mm) : 40,
+                qr: parseFloat(d.qr_mm) > 0 ? parseFloat(d.qr_mm) : 30,
+                texte: parseFloat(d.texte_mm) > 0 ? parseFloat(d.texte_mm) : 11,
+                label: d.label || ('Étiquette ' + (parseFloat(d.largeur_mm) || 90) + '\u00d7' + (parseFloat(d.hauteur_mm) || 40) + ' mm')
+            };
+        }
+
         function buildEtiquetteBlock(etiq, printKey) {
             if (!etiq || !etiq.libelle) {
                 return '';
             }
             var key = String(printKey || etiq.print_key || '');
+            var dims = eeEtiqDims();
             var cssUrl = (window.location.origin || '') + '/css/entrepot-barre-etiquette.css';
             var qr = etiq.qr_url
                 ? ('<img src="' + eeLibreAttr(etiq.qr_url) + '" width="96" height="96" alt="QR" class="ee-barre-etiq__qr">')
@@ -784,8 +796,11 @@
                 ? ('<a href="' + eeLibreAttr(etiq.pdf_url) + '" class="ee-barre-etiq-pdf-btn" target="_blank" rel="noopener">'
                     + '<i class="fas fa-file-pdf" aria-hidden="true"></i> PDF</a>')
                 : '';
-            return '<div class="ee-barre-etiq-block" id="ee-barre-etiq-root-' + eeLibreAttr(key) + '" data-css-url="' + eeLibreAttr(cssUrl) + '">'
-                + '<p class="ee-barre-etiq-block__label">Étiquette 90×30 mm</p>'
+            return '<div class="ee-barre-etiq-block" id="ee-barre-etiq-root-' + eeLibreAttr(key) + '"'
+                + ' data-css-url="' + eeLibreAttr(cssUrl) + '"'
+                + ' data-etiq-w="' + dims.w + '" data-etiq-h="' + dims.h + '"'
+                + ' data-etiq-qr="' + dims.qr + '" data-etiq-texte="' + dims.texte + '">'
+                + '<p class="ee-barre-etiq-block__label">' + eeLibreEsc(dims.label) + '</p>'
                 + '<div class="ee-barre-etiq-row">'
                 + '<div class="ee-barre-etiq-preview-wrap"><div class="ee-barre-etiq-preview-scale">'
                 + '<article class="ee-barre-etiq" data-barre-etiq>'
@@ -854,7 +869,7 @@
                 + eeLibreEsc(label)
                 + '</h3>'
                 + (showEtiq
-                    ? '<p class="ee-h-drill-panel__hint">Aperçu étiquette 90×30 mm — imprimez ou ouvrez le niveau suivant.</p>'
+                    ? '<p class="ee-h-drill-panel__hint">Aperçu étiquette — imprimez ou ouvrez le niveau suivant.</p>'
                     : (canDrillLevel
                         ? '<p class="ee-h-drill-panel__hint">Cliquez une ligne pour ouvrir le niveau suivant.</p>'
                         : ''));

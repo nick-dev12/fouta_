@@ -1,0 +1,183 @@
+/**
+ * Page paramètres — dimensions d’impression étiquettes entrepôt.
+ */
+
+.page-etiquettes-entrepot .ee-etiq-params {
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.ee-etiq-params__hero {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.1rem;
+  border-bottom: 1px solid var(--glass-border, rgba(0, 0, 0, 0.08));
+}
+
+.ee-etiq-params__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.85rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--couleur-dominante, #3564a6);
+  text-decoration: none;
+}
+
+.ee-etiq-params__back:hover {
+  color: var(--couleur-dominante-hover, #2d5690);
+}
+
+.ee-etiq-params__hero-row {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.ee-etiq-params__icon {
+  flex: 0 0 3rem;
+  width: 3rem;
+  height: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: var(--bleu-pale, rgba(53, 100, 166, 0.12));
+  color: var(--couleur-dominante, #3564a6);
+  font-size: 1.25rem;
+}
+
+.ee-etiq-params__title {
+  margin: 0 0 0.35rem;
+  font-size: clamp(1.35rem, 2.2vw, 1.7rem);
+  font-family: var(--font-titres, Georgia, serif);
+  color: var(--titres, #0d0d0d);
+}
+
+.ee-etiq-params__lead {
+  margin: 0;
+  max-width: 42rem;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: var(--texte-mute, #737373);
+}
+
+.ee-etiq-params__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+
+@media (min-width: 840px) {
+  .ee-etiq-params__grid:not(.ee-etiq-params__grid--stack) {
+    grid-template-columns: 1.1fr 0.9fr;
+    align-items: start;
+  }
+}
+
+.ee-etiq-params__form {
+  background: #fff;
+  border: 1px solid var(--glass-border, rgba(0, 0, 0, 0.08));
+  border-radius: 14px;
+  padding: 1.25rem 1.35rem 1.4rem;
+  box-shadow: var(--ombre-douce, 0 4px 20px rgba(53, 100, 166, 0.08));
+}
+
+.ee-etiq-params__fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.9rem 1rem;
+}
+
+.ee-etiq-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.ee-etiq-field__label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--gris-moyen, #737373);
+}
+
+.ee-etiq-field input {
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--border-input, rgba(53, 100, 166, 0.2));
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--texte-fonce, #0d0d0d);
+  background: var(--blanc-casse, #fafafa);
+}
+
+.ee-etiq-field input:focus {
+  outline: none;
+  border-color: var(--border-input-focus, #3564a6);
+  box-shadow: 0 0 0 3px var(--focus-ring, rgba(53, 100, 166, 0.15));
+  background: #fff;
+}
+
+.ee-etiq-params__hint {
+  margin: 1rem 0 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--texte-mute, #737373);
+}
+
+.ee-etiq-params__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 1.15rem;
+}
+
+.ee-etiq-params__save {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 1.1rem;
+  border: none;
+  border-radius: 8px;
+  background: var(--couleur-dominante, #3564a6);
+  color: #fff;
+  font-size: 0.92rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ee-etiq-params__save:hover {
+  background: var(--couleur-dominante-hover, #2d5690);
+}
+
+.ee-etiq-params__reset {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.55rem 0.95rem;
+  border: 1px solid rgba(53, 100, 166, 0.3);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--couleur-dominante, #3564a6);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ee-etiq-params__reset:hover {
+  background: rgba(53, 100, 166, 0.08);
+}
+
+.ee-etiq-params__preview {
+  background: var(--fond-secondaire, #fafafa);
+  border: 1px dashed rgba(53, 100, 166, 0.25);
+  border-radius: 14px;
+  padding: 1.15rem 1.25rem 1.35rem;
+}
+
+.ee-etiq-params__preview-note {
+  margin: 0.85rem 0 0;
+  font-size: 0.8rem;
+  color: var(--texte-mute, #737373);
+}

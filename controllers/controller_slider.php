@@ -5,6 +5,7 @@
  */
 
 require_once __DIR__ . '/../includes/fouta_upload_limits.php';
+require_once __DIR__ . '/../includes/image_optimizer.php';
 require_once __DIR__ . '/../models/model_slider.php';
 
 /**
@@ -39,22 +40,27 @@ function upload_slider_image($file_input_name, $current_image = null) {
         $_SESSION['upload_error'] = 'Le fichier est trop volumineux. Taille maximale : ' . fouta_upload_image_max_mo_int() . ' Mo';
         return false;
     }
-    
-    // Générer un nom unique
-    $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
-    $new_filename = 'slider_' . time() . '_' . uniqid() . '.' . $extension;
-    $target_path = $upload_dir . $new_filename;
-    
-    // Déplacer le fichier
-    if (move_uploaded_file($file['tmp_name'], $target_path)) {
-        // Supprimer l'ancienne image si elle existe
-        if ($current_image && file_exists($upload_dir . $current_image)) {
-            unlink($upload_dir . $current_image);
-        }
-        return $new_filename;
+
+    $name_prefix = 'slider_' . time() . '_';
+    $result = upload_optimize_image_file($file, $upload_dir, 'slider', $name_prefix);
+    if (empty($result['success'])) {
+        $_SESSION['upload_error'] = !empty($result['message'])
+            ? (string) $result['message']
+            : 'Erreur lors de l\'upload de l\'image.';
+        return false;
     }
-    
-    return false;
+
+    $new_filename = basename((string) ($result['relative_path'] ?? ''));
+    if ($new_filename === '') {
+        $_SESSION['upload_error'] = 'Erreur lors de l\'enregistrement de l\'image.';
+        return false;
+    }
+
+    if ($current_image) {
+        image_optimizer_delete_slider_file($current_image);
+    }
+
+    return $new_filename;
 }
 
 /**
@@ -213,12 +219,10 @@ function process_delete_slide($slide_id) {
     
     // Supprimer le slide
     if (delete_slide($slide_id)) {
-        // Supprimer l'image
-        $image_path = __DIR__ . '/../upload/slider/' . $slide['image'];
-        if (file_exists($image_path)) {
-            unlink($image_path);
+        if (!empty($slide['image'])) {
+            image_optimizer_delete_slider_file($slide['image']);
         }
-        
+
         return ['success' => true, 'message' => 'Slide supprimé avec succès.'];
     }
     

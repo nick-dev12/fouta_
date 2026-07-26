@@ -1,14 +1,21 @@
 /**
- * Étiquette FPL — maquette 70 × 70 mm (Zebra ZD420, 203 dpi / 8 dots·mm⁻¹).
+ * Étiquette FPL — maquette de référence 70 × 70 mm (Zebra ZD420, 203 dpi / 8 dots·mm⁻¹).
+ * Dimensions d’impression paramétrables via --fpl-w / --fpl-h (+ échelle --fpl-sx/--fpl-sy).
  *
  * Disposition conforme à l'étiquette de référence :
- * - Bande navy haute 70×6 mm, écusson logo suspendu en HAUT GAUCHE (fond 15×11 + pointe 10 mm)
- * - Colonne gauche 30 mm : réf « FPL01 807570 », nom, sous-titre gris, QR 17 mm encadré gris
- * - Trait vertical navy 1 mm sur toute la hauteur du corps
- * - Colonne droite : compatibilité (2 lignes en haut), photo produit au centre,
- *   code-barres 24×9 mm centré, « 1 pcs » en bas à droite
- * - Bande navy basse 70×6 mm : adresse + tél / web / mail
+ * - Bande navy haute, écusson logo suspendu en HAUT GAUCHE
+ * - Colonne gauche : réf, nom, sous-titre, QR
+ * - Trait vertical + colonne droite (compat, photo, code-barres, pcs)
+ * - Bande navy basse : adresse + tél / web / mail
  */
+
+:root {
+  --fpl-w: 70mm;
+  --fpl-h: 70mm;
+  --fpl-sx: 1;
+  --fpl-sy: 1;
+  --fpl-s: 1;
+}
 
 .fpl-etiquette-sheet-wrap {
   margin-top: 0.75rem;
@@ -19,11 +26,12 @@
 }
 
 .fpl-etiq-preview-scale {
-  width: 70mm;
-  height: 70mm;
+  width: var(--fpl-w);
+  height: var(--fpl-h);
+  overflow: hidden;
   transform: scale(2.2);
   transform-origin: top left;
-  margin: 0 0 calc(70mm * 1.2) 0;
+  margin: 0 0 calc(var(--fpl-h) * 1.2) 0;
 }
 
 .fpl-etiq-preview-meta {
@@ -38,12 +46,10 @@
   color: #3564a6;
 }
 
-/* ——— Carte 70 × 70 mm ——— */
+/* ——— Carte (design 70×70, mise à l’échelle via --fpl-sx/--fpl-sy) ——— */
 .fpl-etiq.fpl-etiq--fixed {
   --fpl-accent: #19377d;
   --fpl-accent-dark: #00155b;
-  --fpl-w: 70mm;
-  --fpl-h: 70mm;
   --fpl-band: 6mm;
   --fpl-divider: 1mm;
   --fpl-grey: 1mm;
@@ -63,12 +69,12 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  width: var(--fpl-w);
-  height: var(--fpl-h);
-  min-width: var(--fpl-w);
-  max-width: var(--fpl-w);
-  min-height: var(--fpl-h);
-  max-height: var(--fpl-h);
+  width: 70mm;
+  height: 70mm;
+  min-width: 70mm;
+  max-width: 70mm;
+  min-height: 70mm;
+  max-height: 70mm;
   box-sizing: border-box;
   margin: 0;
   padding: 0;
@@ -78,6 +84,8 @@
   border-radius: 0;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.14);
   font-family: Arial, Helvetica, "Segoe UI", sans-serif;
+  transform: scale(var(--fpl-sx), var(--fpl-sy));
+  transform-origin: top left;
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
 }
@@ -89,7 +97,7 @@
 /* ——— Bande haute 70 × 6 mm ——— */
 .fpl-etiq__header-zone {
   position: relative;
-  width: var(--fpl-w);
+  width: 70mm;
   height: var(--fpl-band);
   flex-shrink: 0;
   z-index: 2;
@@ -170,7 +178,7 @@
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
-  width: var(--fpl-w);
+  width: 70mm;
   min-height: 0;
   box-sizing: border-box;
   background: #ffffff;
@@ -181,7 +189,7 @@
   flex-direction: row;
   flex-wrap: nowrap;
   align-items: stretch;
-  width: var(--fpl-w);
+  width: 70mm;
   flex: 1 1 auto;
   min-height: 0;
   box-sizing: border-box;
@@ -400,7 +408,7 @@
 
 /* ——— Bande basse 70 × 6 mm ——— */
 .fpl-etiq__footer {
-  width: var(--fpl-w);
+  width: 70mm;
   height: var(--fpl-band);
   min-height: var(--fpl-band);
   max-height: var(--fpl-band);
@@ -444,10 +452,10 @@
   justify-content: flex-start;
 }
 
-/* ——— Impression Zebra ZD420 : page = étiquette 70×70 mm ——— */
+/* ——— Impression : page = dimensions paramétrées ——— */
 @media print {
   @page {
-    size: 70mm 70mm;
+    size: var(--fpl-w, 70mm) var(--fpl-h, 70mm);
     margin: 0;
   }
 
@@ -455,8 +463,8 @@
   body {
     margin: 0 !important;
     padding: 0 !important;
-    width: 70mm !important;
-    height: 70mm !important;
+    width: var(--fpl-w, 70mm) !important;
+    height: var(--fpl-h, 70mm) !important;
     background: #fff !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
@@ -465,13 +473,16 @@
   .fpl-etiq-preview-scale {
     transform: none !important;
     margin: 0 !important;
-    width: 70mm !important;
-    height: 70mm !important;
+    width: var(--fpl-w, 70mm) !important;
+    height: var(--fpl-h, 70mm) !important;
+    overflow: hidden !important;
   }
 
   .fpl-etiq.fpl-etiq--fixed {
     width: 70mm !important;
     height: 70mm !important;
+    transform: scale(var(--fpl-sx, 1), var(--fpl-sy, 1)) !important;
+    transform-origin: top left !important;
     box-shadow: none !important;
     border: none !important;
     break-inside: avoid;

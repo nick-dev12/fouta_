@@ -24,12 +24,15 @@ require_once __DIR__ . '/../../models/model_entrepot_hierarchie.php';
 require_once __DIR__ . '/../../models/model_entrepot_hierarchie_libre.php';
 require_once __DIR__ . '/../../models/model_produits.php';
 require_once __DIR__ . '/../../includes/entrepot_barcode_service.php';
+require_once __DIR__ . '/../../models/model_entrepot_etiquette_parametres.php';
 
 entrepot_structure_champs_ensure_table();
 entrepot_structure_champ_ensure_hierarchie_schema();
 entrepot_champ_element_ensure_table();
 entrepot_barre_ensure_champ_element_schema();
 entrepot_hierarchie_libre_ensure_schema();
+entrepot_etiquette_parametres_ensure_schema();
+$ee_etiq_dims = entrepot_etiquette_dims();
 
 $mode_hierarchie_libre = entrepot_hierarchie_libre_schema_ok();
 
@@ -481,6 +484,7 @@ $peut_ajouter_champ = $mode_hierarchie_libre ? true : ($niveaux_hierarchie_dispo
     <link rel="stylesheet" href="/css/admin-parametres-page.css<?php echo asset_version_query(); ?>">
     <link rel="stylesheet" href="/css/admin-emplacement-entrepot.css<?php echo asset_version_query(); ?>">
     <link rel="stylesheet" href="/css/entrepot-barre-etiquette.css<?php echo asset_version_query(); ?>">
+    <?php echo entrepot_etiquette_dims_style_block($ee_etiq_dims); ?>
 </head>
 <body class="page-parametres-admin page-emplacement-entrepot">
     <?php include __DIR__ . '/../includes/nav.php'; ?>
@@ -527,6 +531,7 @@ $peut_ajouter_champ = $mode_hierarchie_libre ? true : ($niveaux_hierarchie_dispo
             <div class="ee-toolbar__actions ee-toolbar__actions--wrap">
                 <?php if ($mode_hierarchie_libre): ?>
                 <a href="hierarchie-entrepot.php" class="ee-btn-secondary"><i class="fas fa-sliders" aria-hidden="true"></i> Configurer la hiérarchie</a>
+                <a href="etiquettes-entrepot.php" class="ee-btn-secondary"><i class="fas fa-tags" aria-hidden="true"></i> Dimensions étiquettes</a>
                 <?php endif; ?>
                 <button type="button" class="ee-btn-secondary" onclick="openModal('modalAjouterChamp')" <?php echo empty($peut_ajouter_champ) ? 'disabled title="Tous les niveaux hiérarchiques sont déjà configurés"' : ''; ?>><i class="fas fa-plus" aria-hidden="true"></i> Ajouter un champ</button>
                 <button type="button" class="ee-btn-secondary ee-btn-secondary--danger" onclick="openModal('modalSupprimerChamp')" <?php echo !$peut_supprimer_champ ? 'disabled' : ''; ?>><i class="fas fa-minus" aria-hidden="true"></i> Supprimer un champ</button>
@@ -630,6 +635,7 @@ $peut_ajouter_champ = $mode_hierarchie_libre ? true : ($niveaux_hierarchie_dispo
     <script src="/js/admin-emplacement-referentiel.js<?php echo asset_version_query(); ?>"></script>
     <script src="/js/admin-emplacement-entrepot.js<?php echo asset_version_query(); ?>"></script>
     <script src="/js/admin-emplacement-entrepot-hierarchie.js<?php echo asset_version_query(); ?>"></script>
+    <script>window.EE_ETIQ_DIMS = <?php echo json_encode($ee_etiq_dims, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;</script>
     <script>window.EE_CHAMPS_IMPACT = <?php echo json_encode($champs_impact_suppression, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;</script>
     <?php if ($cascade_modal !== ''): ?>
     <script>document.addEventListener('DOMContentLoaded', function () { openModal('<?php echo htmlspecialchars($cascade_modal, ENT_QUOTES, 'UTF-8'); ?>'); });</script>

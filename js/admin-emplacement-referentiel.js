@@ -1,5 +1,5 @@
 /**
- * Page édition référentiel entrepôt par étage — UI + impression étiquettes barres 90×30 mm.
+ * Page édition référentiel entrepôt par étage — UI + impression étiquettes barres.
  */
 (function () {
     'use strict';
@@ -148,6 +148,28 @@
         }
     }
 
+    function eeEtiqDimsFrom(root) {
+        var g = window.EE_ETIQ_DIMS || {};
+        function num(attr, key, fallback) {
+            var fromAttr = root && root.getAttribute ? root.getAttribute(attr) : null;
+            var n = parseFloat(fromAttr);
+            if (!isNaN(n) && n > 0) {
+                return n;
+            }
+            n = parseFloat(g[key]);
+            if (!isNaN(n) && n > 0) {
+                return n;
+            }
+            return fallback;
+        }
+        return {
+            w: num('data-etiq-w', 'largeur_mm', 90),
+            h: num('data-etiq-h', 'hauteur_mm', 40),
+            qr: num('data-etiq-qr', 'qr_mm', 30),
+            texte: num('data-etiq-texte', 'texte_mm', 11)
+        };
+    }
+
     function imprimerEtiquetteBarre(barreId) {
         var root = document.getElementById('ee-barre-etiq-root-' + barreId);
         if (!root) {
@@ -158,35 +180,41 @@
         if (!node || !cssHref) {
             return;
         }
+        var d = eeEtiqDimsFrom(root);
+        var mmW = d.w + 'mm';
+        var mmH = d.h + 'mm';
+        var mmQr = d.qr + 'mm';
+        var mmTx = d.texte + 'mm';
         var baseHref = window.EE_BARRE_ETIQ_ORIGIN || (window.location.origin + '/');
-        var w = window.open('', '_blank', 'width=420,height=180');
-        if (!w || !w.document) {
+        var win = window.open('', '_blank', 'width=480,height=220');
+        if (!win || !win.document) {
             return;
         }
-        var doc = w.document;
+        var doc = win.document;
         doc.open();
         doc.write('<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8">');
-        doc.write('<title>Étiquette 90×30 mm</title>');
+        doc.write('<title>Étiquette ' + d.w + '\u00d7' + d.h + ' mm</title>');
         doc.write('<base href="' + String(baseHref).replace(/"/g, '&quot;') + '">');
         doc.write('<style>');
-        doc.write('@page{size:90mm 30mm;margin:0}');
+        doc.write(':root{--ee-etiq-w:' + mmW + ';--ee-etiq-h:' + mmH + ';--ee-etiq-qr:' + mmQr + ';--ee-etiq-texte:' + mmTx + '}');
+        doc.write('@page{size:' + mmW + ' ' + mmH + ';margin:0}');
         doc.write('*{box-sizing:border-box}');
-        doc.write('html,body{margin:0!important;padding:0!important;width:90mm!important;height:30mm!important;');
+        doc.write('html,body{margin:0!important;padding:0!important;width:' + mmW + '!important;height:' + mmH + '!important;');
         doc.write('overflow:hidden!important;background:#fff!important;');
         doc.write('-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}');
-        doc.write('.ee-barre-etiq{margin:0!important;padding:2mm 3.5mm 2mm 4mm!important;');
-        doc.write('width:90mm!important;height:30mm!important;min-width:90mm!important;max-width:90mm!important;');
-        doc.write('min-height:30mm!important;max-height:30mm!important;');
+        doc.write('.ee-barre-etiq{margin:0!important;padding:2.5mm 3.5mm 2.5mm 4mm!important;');
+        doc.write('width:' + mmW + '!important;height:' + mmH + '!important;min-width:' + mmW + '!important;max-width:' + mmW + '!important;');
+        doc.write('min-height:' + mmH + '!important;max-height:' + mmH + '!important;');
         doc.write('box-shadow:none!important;transform:none!important;border:none!important;');
         doc.write('display:flex!important;align-items:center!important;justify-content:space-between!important;');
-        doc.write('gap:2.5mm!important;background:#ffe600!important}');
-        doc.write('.ee-barre-etiq__text{font-size:9mm!important;font-weight:800!important;line-height:1!important;');
+        doc.write('gap:3mm!important;background:#ffe600!important}');
+        doc.write('.ee-barre-etiq__text{font-size:' + mmTx + '!important;font-weight:800!important;line-height:1!important;');
         doc.write('color:#000!important;white-space:nowrap!important;overflow:hidden!important}');
-        doc.write('.ee-barre-etiq__qr-box{flex:0 0 24mm!important;width:24mm!important;height:24mm!important;');
-        doc.write('background:#fff!important;padding:0.5mm!important}');
+        doc.write('.ee-barre-etiq__qr-box{flex:0 0 ' + mmQr + '!important;width:' + mmQr + '!important;height:' + mmQr + '!important;');
+        doc.write('background:#fff!important;padding:0.6mm!important}');
         doc.write('.ee-barre-etiq__qr{width:100%!important;height:100%!important;display:block!important;object-fit:contain!important}');
-        doc.write('@media print{@page{size:90mm 30mm;margin:0}');
-        doc.write('html,body{width:90mm!important;height:30mm!important;margin:0!important;padding:0!important}}');
+        doc.write('@media print{@page{size:' + mmW + ' ' + mmH + ';margin:0}');
+        doc.write('html,body{width:' + mmW + '!important;height:' + mmH + '!important;margin:0!important;padding:0!important}}');
         doc.write('</style></head><body></body></html>');
         doc.close();
         doc.body.innerHTML = node.outerHTML;
@@ -195,14 +223,14 @@
         sheet.href = cssHref + (cssHref.indexOf('?') >= 0 ? '&' : '?') + 'v=' + Date.now();
         sheet.onload = function () {
             whenImagesReady(doc, function () {
-                w.requestAnimationFrame(function () {
+                win.requestAnimationFrame(function () {
                     setTimeout(function () {
                         try {
-                            w.focus();
-                            w.print();
+                            win.focus();
+                            win.print();
                         } catch (e) {}
                         try {
-                            w.close();
+                            win.close();
                         } catch (e2) {}
                     }, 180);
                 });
@@ -211,7 +239,7 @@
         sheet.onerror = function () {
             whenImagesReady(doc, function () {
                 try {
-                    w.print();
+                    win.print();
                 } catch (e) {}
             });
         };

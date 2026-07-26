@@ -116,6 +116,10 @@ if (file_exists($qr_file)) {
 
 require_once __DIR__ . '/../../models/model_categories.php';
 require_once __DIR__ . '/../../includes/etiquette_fpl.php';
+require_once __DIR__ . '/../../models/model_produit_etiquette_parametres.php';
+fpl_etiquette_parametres_ensure_schema();
+$fpl_dims = fpl_etiquette_dims();
+$fpl_dims_data = fpl_etiquette_dims_data_attrs($fpl_dims);
 
 $categorie_etiq = [];
 $categorie_nom_etiq = '—';
@@ -203,6 +207,7 @@ $can_pdf_qrcode = ($stock_info_url !== '');
     <link rel="stylesheet" href="/css/admin-dashboard.css<?php echo asset_version_query(); ?>">
     <link rel="stylesheet" href="/css/admin-ajuster-stock.css<?php echo asset_version_query(); ?>">
     <link rel="stylesheet" href="/css/fpl-etiquette.css<?php echo asset_version_query(); ?>">
+    <?php echo fpl_etiquette_dims_style_block($fpl_dims); ?>
 </head>
 
 <body class="page-ajuster-stock-body">
@@ -548,9 +553,12 @@ $can_pdf_qrcode = ($stock_info_url !== '');
     <?php if ($etiquette_fpl_ready): ?>
     <div class="fpl-etiquette-fixed-scroll">
         <div class="stock-form-block page-ajuster-stock-aux fpl-etiquette-sheet-wrap fpl-etiquette-sheet-wrap--fullwidth" id="fpl-etiquette-print-root"
-            data-css-url="<?php echo htmlspecialchars($fpl_etiq_css_abs, ENT_QUOTES, 'UTF-8'); ?>">
-            <h3 class="page-ajuster-stock-aux__title"><i class="fas fa-tags" aria-hidden="true"></i> Étiquette FPL 70×70 mm</h3>
-            <p class="fpl-etiq-preview-meta">Format d’impression <strong>70 × 70 mm</strong> · Zebra ZD420 (203 dpi ≈ 8 dots/mm · 560×560 dots) · Aperçu agrandi à l’écran</p>
+            data-css-url="<?php echo htmlspecialchars($fpl_etiq_css_abs, ENT_QUOTES, 'UTF-8'); ?>"
+            <?php echo $fpl_dims_data; ?>>
+            <h3 class="page-ajuster-stock-aux__title"><i class="fas fa-tags" aria-hidden="true"></i> <?php echo htmlspecialchars((string) $fpl_dims['label'], ENT_QUOTES, 'UTF-8'); ?></h3>
+            <p class="fpl-etiq-preview-meta"><?php echo htmlspecialchars((string) $fpl_dims['meta'], ENT_QUOTES, 'UTF-8'); ?>
+                · <a href="../parametres/etiquettes-produit.php?produit_id=<?php echo (int) $produit_id; ?>">Modifier les dimensions</a>
+            </p>
 
             <div class="fpl-etiq-preview-scale">
             <article class="fpl-etiq fpl-etiq--fixed"
@@ -760,17 +768,28 @@ $can_pdf_qrcode = ($stock_info_url !== '');
         var node = root.querySelector('.fpl-etiq');
         if (!node || !cssHref) return;
 
-        var w = window.open('', '_blank', 'width=360,height=400');
+        var mmW = parseFloat(root.getAttribute('data-fpl-w')) || 70;
+        var mmH = parseFloat(root.getAttribute('data-fpl-h')) || 70;
+        var sx = parseFloat(root.getAttribute('data-fpl-sx'));
+        var sy = parseFloat(root.getAttribute('data-fpl-sy'));
+        if (isNaN(sx) || sx <= 0) sx = mmW / 70;
+        if (isNaN(sy) || sy <= 0) sy = mmH / 70;
+        var sizeW = mmW + 'mm';
+        var sizeH = mmH + 'mm';
+
+        var w = window.open('', '_blank', 'width=420,height=460');
         if (!w || !w.document) return;
 
         var doc = w.document;
         doc.open();
-        doc.write('<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>Étiquette FPL 70×70 mm</title>');
+        doc.write('<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>Étiquette FPL ' + mmW + '\u00d7' + mmH + ' mm</title>');
         doc.write('<base href="' + String(baseHref).replace(/"/g, '&quot;') + '">');
         doc.write('<style>');
-        doc.write('@page{size:70mm 70mm;margin:0}');
-        doc.write('html,body{margin:0;padding:0;width:70mm;height:70mm;overflow:hidden;box-sizing:border-box;background:#fff;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}');
-        doc.write('.fpl-etiq{margin:0!important;box-shadow:none!important}');
+        doc.write(':root{--fpl-w:' + sizeW + ';--fpl-h:' + sizeH + ';--fpl-sx:' + sx + ';--fpl-sy:' + sy + ';--fpl-s:' + Math.min(sx, sy) + '}');
+        doc.write('@page{size:' + sizeW + ' ' + sizeH + ';margin:0}');
+        doc.write('html,body{margin:0;padding:0;width:' + sizeW + ';height:' + sizeH + ';overflow:hidden;box-sizing:border-box;background:#fff;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}');
+        doc.write('.fpl-etiq{margin:0!important;box-shadow:none!important;border:none!important;');
+        doc.write('transform:scale(' + sx + ',' + sy + ')!important;transform-origin:top left!important}');
         doc.write('</style></head><body></body></html>');
         doc.close();
 

@@ -12,6 +12,11 @@ if (empty($arbre) || !is_array($arbre) || ($arbre['mode'] ?? '') !== 'libre') {
     return;
 }
 
+require_once __DIR__ . '/../../../models/model_entrepot_etiquette_parametres.php';
+if (!isset($ee_etiq_dims) || !is_array($ee_etiq_dims)) {
+    $ee_etiq_dims = entrepot_etiquette_dims();
+}
+
 $csrf = htmlspecialchars((string) ($_SESSION['admin_csrf'] ?? ''), ENT_QUOTES, 'UTF-8');
 $uid = (int) $numero_niveau;
 $eid = (int) $etage_id;
@@ -68,6 +73,7 @@ $payload = [
     'etage_id' => $eid,
     'numero_etage' => $uid,
     'etiquette_niveau_id' => (int) ($arbre['etiquette_niveau_id'] ?? 0),
+    'etiquette_dims' => $ee_etiq_dims,
     'defs' => array_values(array_map(static function ($d) {
         return [
             'id' => (int) ($d['id'] ?? 0),

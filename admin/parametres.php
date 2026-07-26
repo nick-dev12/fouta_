@@ -130,6 +130,10 @@ if (isset($_SESSION['success_message'])) {
                         <span class="parametre-link__txt"><i class="fas fa-sitemap" aria-hidden="true"></i> Configurer la hiérarchie (niveaux)</span>
                         <i class="fas fa-chevron-right parametre-link__chev" aria-hidden="true"></i>
                     </a>
+                    <a href="parametres/etiquettes-entrepot.php" class="parametre-link">
+                        <span class="parametre-link__txt"><i class="fas fa-tags" aria-hidden="true"></i> Dimensions d’impression des étiquettes</span>
+                        <i class="fas fa-chevron-right parametre-link__chev" aria-hidden="true"></i>
+                    </a>
                 </div>
             </article>
 
@@ -164,6 +168,20 @@ if (isset($_SESSION['success_message'])) {
                             standard / moyen / haut</span>
                         <i class="fas fa-chevron-right parametre-link__chev" aria-hidden="true"></i>
                     </a>
+                </div>
+            </article>
+
+            <article class="parametre-card parametre-card--etiquettes-produit" role="listitem">
+                <div class="parametre-card__body">
+                    <div class="parametre-card__head">
+                        <div class="parametre-icon" aria-hidden="true"><i class="fas fa-tag"></i></div>
+                        <h3 class="parametre-title">Étiquettes produit (FPL)</h3>
+                    </div>
+                    <a href="parametres/etiquettes-produit.php" class="parametre-link">
+                        <span class="parametre-link__txt"><i class="fas fa-ruler-combined" aria-hidden="true"></i> Dimensions d’impression (défaut 70×70 mm)</span>
+                        <i class="fas fa-chevron-right parametre-link__chev" aria-hidden="true"></i>
+                    </a>
+                    <p class="parametre-card__hint">Appliqué à l’aperçu et à l’impression sur la page ajuster stock.</p>
                 </div>
             </article>
 
