@@ -312,5 +312,3 @@ function get_user_stats_commandes_boutique($user_id) {
     }
 }
 
-?>
-
