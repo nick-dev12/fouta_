@@ -266,4 +266,3 @@ function count_panier_items($user_id)
     }
 }
 
-?>

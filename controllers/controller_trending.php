@@ -116,5 +116,3 @@ function upload_trending_image($file) {
     }
 }
 
-?>
-

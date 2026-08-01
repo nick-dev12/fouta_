@@ -17,16 +17,23 @@ $db_name = "tresor_afri";
 $db_user = "root";
 $db_pass = "";
 
+$pdo_options = [
+    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+    PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci",
+];
+
 try {
-  // Connexion à la base avec PDO
-  $db = new PDO("mysql:host=$db_host;dbname=$db_name", $db_user, $db_pass);
+    $db = new PDO(
+        "mysql:host=$db_host;dbname=$db_name;charset=utf8mb4",
+        $db_user,
+        $db_pass,
+        $pdo_options
+    );
 
-  // Définition du mode d'erreur de PDO pour lever des exceptions  
-  $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
+    $db->exec("SET CHARACTER SET utf8mb4");
+    $db->exec("SET collation_connection = 'utf8mb4_unicode_ci'");
 
 } catch (PDOException $e) {
-  // Gestion des erreurs
+    // Gestion des erreurs
 }
-
-?>

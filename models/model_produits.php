@@ -2591,4 +2591,3 @@ function count_admin_produits_export_catalogue($date_debut, $date_fin, $mode = '
     }
 }
 
-?>

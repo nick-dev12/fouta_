@@ -730,4 +730,3 @@ function update_commande_statut_user($commande_id, $user_id, $statut) {
     }
 }
 
-?>

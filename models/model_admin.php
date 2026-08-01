@@ -501,4 +501,3 @@ function delete_admin_account($admin_id)
     }
 }
 
-?>

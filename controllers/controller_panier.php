@@ -177,4 +177,3 @@ function process_delete_from_panier()
     }
 }
 
-?>

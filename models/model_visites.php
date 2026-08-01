@@ -149,5 +149,3 @@ function get_produits_plus_visites($limit = 10) {
     }
 }
 
-?>
-

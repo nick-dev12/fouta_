@@ -229,5 +229,3 @@ function process_delete_slide($slide_id) {
     return ['success' => false, 'message' => 'Une erreur est survenue lors de la suppression.'];
 }
 
-?>
-

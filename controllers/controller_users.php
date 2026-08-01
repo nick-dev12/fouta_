@@ -364,5 +364,3 @@ function process_user_reset_password() {
     return ['success' => $success, 'message' => $message];
 }
 
-?>
-

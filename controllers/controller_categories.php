@@ -218,5 +218,3 @@ function process_delete_categorie($categorie_id) {
     }
 }
 
-?>
-

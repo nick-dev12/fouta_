@@ -120,5 +120,3 @@ function delete_trending_image($image_name) {
     return false;
 }
 
-?>
-

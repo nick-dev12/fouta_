@@ -18,5 +18,3 @@ if (isset($_SESSION['commercant_id'])) {
     ];
 }
 
-?>
-

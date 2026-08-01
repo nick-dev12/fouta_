@@ -169,5 +169,3 @@ function get_slide_image_path($slide_id) {
     return $slide ? $slide['image'] : false;
 }
 
-?>
-

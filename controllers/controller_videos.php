@@ -310,4 +310,3 @@ function upload_video_file($file)
     }
 }
 
-?>

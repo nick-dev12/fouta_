@@ -140,5 +140,3 @@ function delete_section4_image($image_name) {
     return false;
 }
 
-?>
-

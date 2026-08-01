@@ -45,4 +45,4 @@ if ($pwa_mode === 'admin') {
     }
 })();
 </script>
-<?php endif; ?>
+<?php endif; 

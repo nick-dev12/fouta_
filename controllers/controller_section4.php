@@ -100,5 +100,3 @@ function upload_section4_image($file) {
     }
 }
 
-?>
-

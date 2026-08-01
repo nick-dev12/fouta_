@@ -316,4 +316,3 @@ function get_top_categories($limit = 5)
     }
 }
 
-?>

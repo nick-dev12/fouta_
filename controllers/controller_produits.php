@@ -1129,4 +1129,3 @@ function process_ajuster_stock_produit($produit_id)
     return ['success' => false, 'message' => 'Erreur lors de la mise à jour du stock.'];
 }
 
-?>
