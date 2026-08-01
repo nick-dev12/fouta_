@@ -1,6 +1,6 @@
 /**
- * Service Worker PWA — installation et mode application
- * Fetch : réseau direct (pas de stratégie cache pour éviter données périmées admin/vitrine).
+ * Service Worker PWA — installation et mode application.
+ * Pas d'interception fetch : évite ERR_FAILED si SSL/réseau instable (prod Webuzo).
  */
 self.addEventListener('install', function () {
     self.skipWaiting();
@@ -8,8 +8,4 @@ self.addEventListener('install', function () {
 
 self.addEventListener('activate', function (event) {
     event.waitUntil(self.clients.claim());
-});
-
-self.addEventListener('fetch', function (event) {
-    event.respondWith(fetch(event.request));
 });
