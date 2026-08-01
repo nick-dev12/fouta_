@@ -2,7 +2,19 @@
 <IfModule mod_rewrite.c>
 RewriteEngine On
 RewriteBase /
+
 RewriteRule ^\.well-known/ - [L]
+
+# www → domaine canonique HTTPS
+RewriteCond %{HTTP_HOST} ^www\.e\.foutapoidslourds\.com$ [NC]
+RewriteRule ^ https://e.foutapoidslourds.com%{REQUEST_URI} [L,R=301]
+
+# HTTP → HTTPS (compatible Nginx reverse proxy Webuzo)
+RewriteCond %{HTTPS} off
+RewriteCond %{HTTP:X-Forwarded-Proto} !https [NC]
+RewriteCond %{REQUEST_URI} !^/\.well-known/acme-challenge/
+RewriteRule ^ https://e.foutapoidslourds.com%{REQUEST_URI} [L,R=301]
+
 RewriteRule ^robots\.txt$ robots.php [L]
 RewriteRule ^sitemap\.xml$ sitemap.php [L]
 </IfModule>
