@@ -15,6 +15,29 @@ if (PHP_SAPI !== 'cli') {
 }
 
 /**
+ * Score de corruption (0 = texte propre).
+ *
+ * @param string|null $text
+ * @return int
+ */
+function utf8_brokenness_score($text)
+{
+    if ($text === null || $text === '') {
+        return 0;
+    }
+    $score = 0;
+    if (!mb_check_encoding($text, 'UTF-8')) {
+        $score += 1000;
+    }
+    $score += substr_count($text, 'Ã') * 10;
+    $score += substr_count($text, 'â€') * 10;
+    $score += substr_count($text, 'Ãƒ') * 5;
+    return $score;
+}
+
+/**
+ * Corrige mojibake simple ou multiple (ex. ÃƒÂ© → é, ExtÃÂ…©rieur → Extérieur).
+ *
  * @param string|null $text
  * @return string|null
  */
@@ -24,25 +47,37 @@ function utf8_fix_text($text)
         return $text;
     }
 
-    $original = $text;
-
-    // Mojibake UTF-8 lu comme latin1 (ex. Ã‰tagÃ¨res → Étagères)
-    if (preg_match('/Ã|â€|Â./u', $text)) {
+    $current = $text;
+    if (!mb_check_encoding($current, 'UTF-8')) {
         $try = mb_convert_encoding($text, 'UTF-8', 'ISO-8859-1');
-        if ($try !== false && mb_check_encoding($try, 'UTF-8') && $try !== $text) {
-            $text = $try;
-        }
-    }
-
-    // Octets latin1 / UTF-8 invalide (ex. \xE9 = é stocké en latin1)
-    if (!mb_check_encoding($text, 'UTF-8')) {
-        $try = mb_convert_encoding($original, 'UTF-8', 'ISO-8859-1');
         if ($try !== false && mb_check_encoding($try, 'UTF-8')) {
-            $text = $try;
+            $current = $try;
         }
     }
 
-    return $text;
+    $best = $current;
+    $best_score = utf8_brokenness_score($best);
+
+    for ($pass = 0; $pass < 12; $pass++) {
+        if ($best_score === 0) {
+            break;
+        }
+
+        $try = mb_convert_encoding($current, 'UTF-8', 'ISO-8859-1');
+        if ($try === false || !mb_check_encoding($try, 'UTF-8') || $try === $current) {
+            break;
+        }
+
+        $try_score = utf8_brokenness_score($try);
+        if ($try_score < $best_score) {
+            $best = $try;
+            $best_score = $try_score;
+        }
+
+        $current = $try;
+    }
+
+    return $best;
 }
 
 /**
@@ -53,15 +88,6 @@ function utf8_fix_from_binary($bytes)
 {
     if ($bytes === '') {
         return '';
-    }
-
-    if (mb_check_encoding($bytes, 'UTF-8') && !preg_match('/Ã|â€/u', $bytes)) {
-        return utf8_fix_text($bytes);
-    }
-
-    $as_latin1 = mb_convert_encoding($bytes, 'UTF-8', 'ISO-8859-1');
-    if ($as_latin1 !== false && mb_check_encoding($as_latin1, 'UTF-8')) {
-        return utf8_fix_text($as_latin1);
     }
 
     return utf8_fix_text($bytes);
@@ -93,8 +119,10 @@ function utf8_fix_table_column(PDO $db, $table, $column, $pk = 'id')
         $id = $row['_pk'];
         $raw = (string) ($row['_raw'] ?? '');
         $new = utf8_fix_from_binary($raw);
+        $old_score = utf8_brokenness_score($raw);
+        $new_score = utf8_brokenness_score($new);
 
-        if ($new === $raw || $new === '') {
+        if ($new === $raw || $new_score >= $old_score) {
             continue;
         }
 
