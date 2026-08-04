@@ -11085,3 +11085,23 @@ body.caisse-modal-open {
   color: var(--gris-moyen, #737373);
   line-height: 1.4;
 }
+
+.page-produits-live-load-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 320px;
+  margin: 20px auto 8px;
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.page-produits-live-load-more:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}

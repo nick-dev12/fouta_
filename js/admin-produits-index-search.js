@@ -39,9 +39,73 @@
     var debounceTimer = null;
     var requestId = 0;
     var liveActive = false;
+    var liveOffset = 0;
+    var liveDisplayed = 0;
+    var liveTotal = 0;
+    var liveLimit = 60;
+    var loadMoreBtn = null;
+    var loadMoreLoading = false;
 
     function pluralProduit(n) {
       return n > 1 ? 'produits' : 'produit';
+    }
+
+    function ensureLoadMoreBtn() {
+      if (loadMoreBtn || !liveWrap) {
+        return loadMoreBtn;
+      }
+      loadMoreBtn = document.createElement('button');
+      loadMoreBtn.type = 'button';
+      loadMoreBtn.className = 'btn-secondary page-produits-live-load-more';
+      loadMoreBtn.hidden = true;
+      loadMoreBtn.addEventListener('click', function () {
+        runLiveSearch(true);
+      });
+      if (liveEmpty && liveEmpty.parentNode === liveWrap) {
+        liveWrap.insertBefore(loadMoreBtn, liveEmpty);
+      } else {
+        liveWrap.appendChild(loadMoreBtn);
+      }
+      return loadMoreBtn;
+    }
+
+    function updateLoadMoreButton(hasMore) {
+      var btn = ensureLoadMoreBtn();
+      if (!btn) {
+        return;
+      }
+      btn.hidden = !hasMore;
+      btn.disabled = loadMoreLoading;
+      if (hasMore) {
+        var remaining = Math.max(0, liveTotal - liveDisplayed);
+        var nextBatch = Math.min(remaining, liveLimit);
+        btn.innerHTML =
+          '<i class="fas fa-chevron-down" aria-hidden="true"></i> Voir plus (' +
+          nextBatch +
+          ' ' +
+          pluralProduit(nextBatch) +
+          ')';
+      }
+    }
+
+    function updateLiveMeta(displayed, total) {
+      if (!liveMeta) {
+        return;
+      }
+      if (total === 0) {
+        liveMeta.textContent = '';
+        liveMeta.hidden = true;
+        return;
+      }
+      liveMeta.textContent =
+        displayed +
+        ' ' +
+        pluralProduit(displayed) +
+        ' affiché' +
+        (displayed > 1 ? 's' : '') +
+        ' sur ' +
+        total;
+      liveMeta.hidden = false;
     }
 
     function updateCount(visible, mode) {
@@ -69,6 +133,9 @@
 
     function showCatalogView() {
       liveActive = false;
+      liveOffset = 0;
+      liveDisplayed = 0;
+      liveTotal = 0;
       if (mainWrap) {
         mainWrap.hidden = totalCatalog === 0;
       }
@@ -87,6 +154,9 @@
       }
       if (liveEmpty) {
         liveEmpty.hidden = true;
+      }
+      if (loadMoreBtn) {
+        loadMoreBtn.hidden = true;
       }
       liveGrid.innerHTML = '';
       updateCount(totalCatalog, 'catalog');
@@ -108,7 +178,7 @@
       }
     }
 
-    function buildQueryParams() {
+    function buildQueryParams(offset) {
       var params = new URLSearchParams();
       var q = (input.value || '').trim();
       if (q !== '') {
@@ -130,33 +200,80 @@
       if (selectFournisseur && selectFournisseur.value !== '0') {
         params.set('fournisseur_id', selectFournisseur.value);
       }
+      if (typeof offset === 'number' && offset > 0) {
+        params.set('offset', String(offset));
+      }
       return params;
     }
 
-    function buildFetchUrl() {
-      var params = buildQueryParams();
+    function buildFetchUrl(offset) {
+      var params = buildQueryParams(offset);
       var sep = ajaxUrl.indexOf('?') >= 0 ? '&' : '?';
       return ajaxUrl + sep + params.toString();
     }
 
-    function setLiveLoading(loading) {
-      if (liveWrap) {
+    function setLiveLoading(loading, append) {
+      if (liveWrap && !append) {
         liveWrap.classList.toggle('page-produits-live-wrap--loading', loading);
+      }
+      loadMoreLoading = loading && append;
+      if (loadMoreBtn && append) {
+        loadMoreBtn.disabled = loading;
       }
     }
 
-    function runLiveSearch() {
+    function applyLiveResponse(data, append) {
+      var total = parseInt(data.total, 10) || 0;
+      var shown = parseInt(data.shown, 10) || 0;
+      var html = data.html || '';
+      liveLimit = parseInt(data.limit, 10) || liveLimit;
+      liveTotal = total;
+
+      if (append) {
+        if (html !== '') {
+          liveGrid.insertAdjacentHTML('beforeend', html);
+        }
+        liveDisplayed += shown;
+        liveOffset = parseInt(data.next_offset, 10);
+        if (isNaN(liveOffset)) {
+          liveOffset = liveDisplayed;
+        }
+      } else {
+        liveGrid.innerHTML = html;
+        liveDisplayed = parseInt(data.displayed, 10) || shown;
+        liveOffset = parseInt(data.next_offset, 10);
+        if (isNaN(liveOffset)) {
+          liveOffset = liveDisplayed;
+        }
+      }
+
+      if (liveEmpty) {
+        liveEmpty.hidden = total > 0;
+      }
+
+      updateLiveMeta(liveDisplayed, liveTotal);
+      updateLoadMoreButton(!!data.has_more);
+      updateCount(liveTotal, 'live');
+    }
+
+    function runLiveSearch(append) {
       var q = (input.value || '').trim();
       if (q === '') {
         showCatalogView();
         return;
       }
 
-      showLiveView();
-      setLiveLoading(true);
-      var currentId = ++requestId;
+      if (!append) {
+        liveOffset = 0;
+        liveDisplayed = 0;
+      }
 
-      fetch(buildFetchUrl(), {
+      showLiveView();
+      setLiveLoading(true, append);
+      var currentId = ++requestId;
+      var fetchOffset = append ? liveOffset : 0;
+
+      fetch(buildFetchUrl(fetchOffset), {
         credentials: 'same-origin',
         headers: { Accept: 'application/json' },
       })
@@ -167,54 +284,27 @@
           if (currentId !== requestId) {
             return;
           }
-          setLiveLoading(false);
-
-          var total = parseInt(data.total, 10) || 0;
-          var shown = parseInt(data.shown, 10) || 0;
-          var html = data.html || '';
-
-          liveGrid.innerHTML = html;
-
-          if (liveEmpty) {
-            liveEmpty.hidden = total > 0;
-          }
-
-          if (liveMeta) {
-            if (total === 0) {
-              liveMeta.textContent = '';
-              liveMeta.hidden = true;
-            } else {
-              var msg =
-                shown +
-                ' ' +
-                pluralProduit(shown) +
-                ' affiché' +
-                (shown > 1 ? 's' : '') +
-                ' sur ' +
-                total;
-              if (data.truncated) {
-                msg += ' — affichage limité aux ' + shown + ' premiers résultats';
-              }
-              liveMeta.textContent = msg;
-              liveMeta.hidden = false;
-            }
-          }
-
-          updateCount(total, 'live');
+          setLiveLoading(false, append);
+          applyLiveResponse(data, append);
         })
         .catch(function () {
           if (currentId !== requestId) {
             return;
           }
-          setLiveLoading(false);
-          liveGrid.innerHTML = '';
-          if (liveEmpty) {
+          setLiveLoading(false, append);
+          if (!append) {
+            liveGrid.innerHTML = '';
+          }
+          if (liveEmpty && !append) {
             liveEmpty.hidden = false;
           }
           if (liveMeta) {
-            liveMeta.textContent = 'Erreur lors de la recherche. Réessayez.';
+            liveMeta.textContent = append
+              ? 'Erreur lors du chargement. Réessayez.'
+              : 'Erreur lors de la recherche. Réessayez.';
             liveMeta.hidden = false;
           }
+          updateLoadMoreButton(false);
         });
     }
 
@@ -222,11 +312,15 @@
       if (debounceTimer) {
         clearTimeout(debounceTimer);
       }
-      debounceTimer = setTimeout(runLiveSearch, 200);
+      debounceTimer = setTimeout(function () {
+        runLiveSearch(false);
+      }, 200);
     }
 
     input.addEventListener('input', scheduleSearch);
-    input.addEventListener('search', runLiveSearch);
+    input.addEventListener('search', function () {
+      runLiveSearch(false);
+    });
 
     if (selectCategorie) {
       selectCategorie.addEventListener('change', function () {
@@ -254,12 +348,12 @@
       var q = (input.value || '').trim();
       if (q !== '') {
         ev.preventDefault();
-        runLiveSearch();
+        runLiveSearch(false);
       }
     });
 
     if ((input.value || '').trim() !== '') {
-      runLiveSearch();
+      runLiveSearch(false);
     }
   }
 

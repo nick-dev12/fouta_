@@ -20,13 +20,22 @@ $categorie_id = isset($_GET['categorie_id']) ? (int) $_GET['categorie_id'] : 0;
 $marque_id = isset($_GET['marque_id']) ? (int) $_GET['marque_id'] : 0;
 $fournisseur_id = isset($_GET['fournisseur_id']) ? (int) $_GET['fournisseur_id'] : 0;
 $context = trim((string) ($_GET['context'] ?? 'index'));
+$offset = isset($_GET['offset']) ? max(0, (int) $_GET['offset']) : 0;
 
-$result = search_admin_produits_liste_live($recherche, $categorie_id, $marque_id, $fournisseur_id, ADMIN_PRODUITS_LIVE_SEARCH_LIMIT);
+$result = search_admin_produits_liste_live(
+    $recherche,
+    $categorie_id,
+    $marque_id,
+    $fournisseur_id,
+    ADMIN_PRODUITS_LIVE_SEARCH_LIMIT,
+    $offset
+);
 
 $html = '';
-if (!empty($result['items'])) {
+$items = $result['items'] ?? [];
+if (!empty($items)) {
     ob_start();
-    foreach ($result['items'] as $produit) {
+    foreach ($items as $produit) {
         if ($context === 'dashboard') {
             $pcm_paths = ['base' => 'produits/', 'upload' => '/upload/'];
             include __DIR__ . '/../includes/carte_produit_dashboard.php';
@@ -41,9 +50,17 @@ if (!empty($result['items'])) {
     $html = ob_get_clean();
 }
 
+$shown = count($items);
+$total = (int) ($result['total'] ?? 0);
+
 echo json_encode([
     'html' => $html,
-    'total' => (int) ($result['total'] ?? 0),
+    'total' => $total,
     'truncated' => !empty($result['truncated']),
-    'shown' => count($result['items'] ?? []),
+    'has_more' => !empty($result['truncated']),
+    'shown' => $shown,
+    'offset' => $offset,
+    'next_offset' => $offset + $shown,
+    'limit' => (int) ($result['limit'] ?? ADMIN_PRODUITS_LIVE_SEARCH_LIMIT),
+    'displayed' => $offset + $shown,
 ]);

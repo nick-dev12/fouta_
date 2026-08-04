@@ -552,18 +552,20 @@ function get_admin_produits_liste_paginated($categorie_id = 0, $marque_id = 0, $
  * @param int $marque_id
  * @param int $fournisseur_id
  * @param int $limit
- * @return array{items: array<int, array<string, mixed>>, total: int, truncated: bool}
+ * @param int $offset
+ * @return array{items: array<int, array<string, mixed>>, total: int, truncated: bool, offset: int, limit: int}
  */
-function search_admin_produits_liste_live($recherche = '', $categorie_id = 0, $marque_id = 0, $fournisseur_id = 0, $limit = 60)
+function search_admin_produits_liste_live($recherche = '', $categorie_id = 0, $marque_id = 0, $fournisseur_id = 0, $limit = 60, $offset = 0)
 {
     global $db;
 
     $recherche = trim((string) $recherche);
     if ($recherche === '') {
-        return ['items' => [], 'total' => 0, 'truncated' => false];
+        return ['items' => [], 'total' => 0, 'truncated' => false, 'offset' => 0, 'limit' => 0];
     }
 
     $limit = max(5, min(ADMIN_PRODUITS_LIVE_SEARCH_LIMIT, (int) $limit));
+    $offset = max(0, (int) $offset);
 
     try {
         $jb = produits_catalog_join_bundle();
@@ -588,23 +590,27 @@ function search_admin_produits_liste_live($recherche = '', $categorie_id = 0, $m
         $stmtCount->execute();
         $total = (int) ($stmtCount->fetch(PDO::FETCH_ASSOC)['cnt'] ?? 0);
 
-        $sql = 'SELECT p.*, c.nom AS categorie_nom ' . $selx . $baseFrom . ' ORDER BY p.nom ASC LIMIT :adm_live_limit';
+        $sql = 'SELECT p.*, c.nom AS categorie_nom ' . $selx . $baseFrom . ' ORDER BY p.nom ASC LIMIT :adm_live_limit OFFSET :adm_live_offset';
         $stmt = $db->prepare($sql);
         foreach ($params as $k => $v) {
             $stmt->bindValue(':' . $k, $v, is_int($v) ? PDO::PARAM_INT : PDO::PARAM_STR);
         }
         $stmt->bindValue(':adm_live_limit', $limit, PDO::PARAM_INT);
+        $stmt->bindValue(':adm_live_offset', $offset, PDO::PARAM_INT);
         $stmt->execute();
         $items = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
         $items = produits_appliquer_filtre_acces_liste($items);
+        $shown = count($items);
 
         return [
             'items' => $items,
             'total' => $total,
-            'truncated' => $total > count($items),
+            'truncated' => ($offset + $shown) < $total,
+            'offset' => $offset,
+            'limit' => $limit,
         ];
     } catch (PDOException $e) {
-        return ['items' => [], 'total' => 0, 'truncated' => false];
+        return ['items' => [], 'total' => 0, 'truncated' => false, 'offset' => 0, 'limit' => 0];
     }
 }
 
