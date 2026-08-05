@@ -3,6 +3,7 @@
  * Corrige les encodages corrompus après import BDD (mojibake + latin1).
  * Usage CLI : php migrations/run_fix_utf8_mojibake.php
  */
+require_once __DIR__ . '/includes/utf8_fix_functions.php';
 require_once __DIR__ . '/../conn/conn.php';
 
 if (!$db) {
@@ -12,85 +13,6 @@ if (!$db) {
 
 if (PHP_SAPI !== 'cli') {
     header('Content-Type: text/plain; charset=UTF-8');
-}
-
-/**
- * Score de corruption (0 = texte propre).
- *
- * @param string|null $text
- * @return int
- */
-function utf8_brokenness_score($text)
-{
-    if ($text === null || $text === '') {
-        return 0;
-    }
-    $score = 0;
-    if (!mb_check_encoding($text, 'UTF-8')) {
-        $score += 1000;
-    }
-    $score += substr_count($text, 'Ã') * 10;
-    $score += substr_count($text, 'â€') * 10;
-    $score += substr_count($text, 'Ãƒ') * 5;
-    return $score;
-}
-
-/**
- * Corrige mojibake simple ou multiple (ex. ÃƒÂ© → é, ExtÃÂ…©rieur → Extérieur).
- *
- * @param string|null $text
- * @return string|null
- */
-function utf8_fix_text($text)
-{
-    if ($text === null || $text === '') {
-        return $text;
-    }
-
-    $current = $text;
-    if (!mb_check_encoding($current, 'UTF-8')) {
-        $try = mb_convert_encoding($text, 'UTF-8', 'ISO-8859-1');
-        if ($try !== false && mb_check_encoding($try, 'UTF-8')) {
-            $current = $try;
-        }
-    }
-
-    $best = $current;
-    $best_score = utf8_brokenness_score($best);
-
-    for ($pass = 0; $pass < 12; $pass++) {
-        if ($best_score === 0) {
-            break;
-        }
-
-        $try = mb_convert_encoding($current, 'UTF-8', 'ISO-8859-1');
-        if ($try === false || !mb_check_encoding($try, 'UTF-8') || $try === $current) {
-            break;
-        }
-
-        $try_score = utf8_brokenness_score($try);
-        if ($try_score < $best_score) {
-            $best = $try;
-            $best_score = $try_score;
-        }
-
-        $current = $try;
-    }
-
-    return $best;
-}
-
-/**
- * @param string $bytes
- * @return string
- */
-function utf8_fix_from_binary($bytes)
-{
-    if ($bytes === '') {
-        return '';
-    }
-
-    return utf8_fix_text($bytes);
 }
 
 /**
@@ -158,6 +80,7 @@ $columns = [
     ['categories', 'description'],
     ['produits', 'nom'],
     ['produits', 'description'],
+    ['produits', 'unite'],
     ['users', 'nom'],
     ['users', 'prenom'],
     ['admin', 'nom'],
