@@ -1,0 +1,10 @@
+# Autoriser uniquement api.php
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+
+<Files "api.php">
+    <IfModule mod_authz_core.c>
+        Require all granted
+    </IfModule>
+</Files>

@@ -28,6 +28,7 @@ config/email.php
 config/site.php
 config/firebase_config.php
 config/firebase_server.php
+config/sync.php
 
 # Variables d'environnement
 .env
