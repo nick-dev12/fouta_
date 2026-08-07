@@ -1245,6 +1245,164 @@ if (!function_exists('sync_verify_remote_db')) {
     }
 }
 
+if (!function_exists('sync_file_normalize_relative_path')) {
+    function sync_file_normalize_relative_path($path) {
+        $path = str_replace('\\', '/', trim((string) $path));
+        $path = ltrim($path, '/');
+        if ($path === '') {
+            return '';
+        }
+        if (stripos($path, 'upload/') === 0) {
+            return $path;
+        }
+        return 'upload/' . ltrim($path, '/');
+    }
+}
+
+if (!function_exists('sync_file_priority_prefixes')) {
+    function sync_file_priority_prefixes(?array $config = null) {
+        $config = $config ?: sync_load_config();
+        $prefixes = $config['upload_dirs_priority'] ?? [
+            'upload/produits',
+            'upload/categories',
+            'upload/slider',
+            'upload/logos',
+            'upload/section4',
+            'upload/trending',
+            'upload/employes_photos',
+            'upload/employes_qr',
+            'upload/employes_documents',
+            'upload/videos',
+            'upload/commandes-personnalisees',
+        ];
+        $normalized = [];
+        foreach ($prefixes as $prefix) {
+            $prefix = rtrim(str_replace('\\', '/', $prefix), '/');
+            if ($prefix !== '') {
+                $normalized[] = $prefix . '/';
+            }
+        }
+        return $normalized;
+    }
+}
+
+if (!function_exists('sync_file_priority_score')) {
+    function sync_file_priority_score($relative, ?array $config = null) {
+        $relative = sync_file_normalize_relative_path($relative);
+        foreach (sync_file_priority_prefixes($config) as $index => $prefix) {
+            if (strpos($relative, $prefix) === 0) {
+                return $index;
+            }
+        }
+        return 9999;
+    }
+}
+
+if (!function_exists('sync_expand_image_variant_paths')) {
+    function sync_expand_image_variant_paths($relative) {
+        $relative = sync_file_normalize_relative_path($relative);
+        if ($relative === '') {
+            return [];
+        }
+        $paths = [$relative];
+        $info = pathinfo($relative);
+        $dir = $info['dirname'] ?? '';
+        $filename = $info['filename'] ?? '';
+        $ext = $info['extension'] ?? '';
+        if ($dir === '' || $filename === '' || $ext === '') {
+            return $paths;
+        }
+        foreach (['_md', '_sm'] as $suffix) {
+            $paths[] = $dir . '/' . $filename . $suffix . '.' . $ext;
+        }
+        return array_values(array_unique($paths));
+    }
+}
+
+if (!function_exists('sync_collect_db_media_paths')) {
+    function sync_collect_db_media_paths(PDO $db, $since = null) {
+        $paths = [];
+        $add = function ($path) use (&$paths) {
+            $normalized = sync_file_normalize_relative_path($path);
+            if ($normalized === '') {
+                return;
+            }
+            foreach (sync_expand_image_variant_paths($normalized) as $variant) {
+                $paths[$variant] = true;
+            }
+        };
+
+        $queries = [
+            "SELECT image_principale, images, image_etiquette_fpl FROM produits WHERE sync_updated_at IS NOT NULL",
+            "SELECT image FROM categories WHERE sync_updated_at IS NOT NULL",
+            "SELECT image FROM slider WHERE sync_updated_at IS NOT NULL",
+            "SELECT image FROM logos WHERE sync_updated_at IS NOT NULL",
+            "SELECT fichier_video FROM videos WHERE sync_updated_at IS NOT NULL AND fichier_video IS NOT NULL AND fichier_video != ''",
+            "SELECT photo_chemin, qr_chemin FROM employes WHERE sync_updated_at IS NOT NULL",
+        ];
+
+        foreach ($queries as $sql) {
+            if ($since) {
+                $sql .= ' AND sync_updated_at > ' . $db->quote($since);
+            }
+            try {
+                $rows = $db->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
+            } catch (PDOException $e) {
+                continue;
+            }
+            foreach ($rows as $row) {
+                foreach ($row as $value) {
+                    if ($value === null || $value === '') {
+                        continue;
+                    }
+                    if ($value[0] === '{' || $value[0] === '[') {
+                        $decoded = json_decode($value, true);
+                        if (is_array($decoded)) {
+                            foreach ($decoded as $item) {
+                                if (is_string($item) && $item !== '') {
+                                    $add($item);
+                                }
+                            }
+                            continue;
+                        }
+                    }
+                    if (strpos($value, ',') !== false) {
+                        foreach (explode(',', $value) as $part) {
+                            $part = trim($part);
+                            if ($part !== '') {
+                                $add($part);
+                            }
+                        }
+                        continue;
+                    }
+                    $add($value);
+                }
+            }
+        }
+
+        return array_keys($paths);
+    }
+}
+
+if (!function_exists('sync_files_sort_by_priority')) {
+    function sync_files_sort_by_priority(array $files, ?array $config = null) {
+        usort($files, function ($a, $b) use ($config) {
+            $pa = sync_file_priority_score($a['relative_path'] ?? '', $config);
+            $pb = sync_file_priority_score($b['relative_path'] ?? '', $config);
+            if ($pa !== $pb) {
+                return $pa <=> $pb;
+            }
+            $ma = $a['mtime'] ?? '';
+            $mb = $b['mtime'] ?? '';
+            if ($ma !== $mb) {
+                return strcmp($mb, $ma);
+            }
+            return strcmp($a['relative_path'] ?? '', $b['relative_path'] ?? '');
+        });
+        return $files;
+    }
+}
+
 if (!function_exists('sync_file_allowed_extension')) {
     function sync_file_allowed_extension($relative_path, ?array $config = null) {
         $config = $config ?: sync_load_config();
@@ -1281,12 +1439,23 @@ if (!function_exists('sync_file_mark_synced')) {
 }
 
 if (!function_exists('sync_files_scan')) {
-    function sync_files_scan(?array $config = null) {
+    function sync_files_scan(?array $config = null, array $options = []) {
         $config = $config ?: sync_load_config();
         $root = dirname(__DIR__);
         $dirs = $config['upload_dirs'] ?? [$config['upload_dir'] ?? 'upload'];
         if (!is_array($dirs)) {
             $dirs = [$dirs];
+        }
+
+        $only_paths = [];
+        if (!empty($options['db_referenced_only'])) {
+            global $db;
+            if ($db instanceof PDO) {
+                $since = $options['since'] ?? null;
+                foreach (sync_collect_db_media_paths($db, $since) as $rel) {
+                    $only_paths[$rel] = true;
+                }
+            }
         }
 
         $files = [];
@@ -1312,6 +1481,9 @@ if (!function_exists('sync_files_scan')) {
                 if (!sync_file_allowed_extension($relative, $config)) {
                     continue;
                 }
+                if ($only_paths && !isset($only_paths[$relative])) {
+                    continue;
+                }
                 $seen[$relative] = true;
                 $files[] = [
                     'relative_path' => $relative,
@@ -1321,27 +1493,191 @@ if (!function_exists('sync_files_scan')) {
                 ];
             }
         }
-        return $files;
+
+        return sync_files_sort_by_priority($files, $config);
+    }
+}
+
+if (!function_exists('sync_files_push_batch_remote')) {
+    function sync_files_push_batch_remote(array $batch_files, ?array $config = null) {
+        $config = $config ?: sync_load_config();
+        $payload_files = [];
+        foreach ($batch_files as $file) {
+            $relative = $file['relative_path'];
+            $full = dirname(__DIR__) . '/' . $relative;
+            if (!is_file($full)) {
+                continue;
+            }
+            $content = file_get_contents($full);
+            if ($content === false) {
+                continue;
+            }
+            $payload_files[] = [
+                'relative_path' => $relative,
+                'md5' => $file['md5'],
+                'content_base64' => base64_encode($content),
+            ];
+        }
+        if (!$payload_files) {
+            return ['pushed' => 0, 'skipped' => 0, 'errors' => 0, 'results' => []];
+        }
+
+        if (count($payload_files) === 1) {
+            $response = sync_remote_request('file_push', $payload_files[0], $config);
+            $pushed = empty($response['skipped']) ? 1 : 0;
+            $skipped = !empty($response['skipped']) ? 1 : 0;
+            return [
+                'pushed' => $pushed,
+                'skipped' => $skipped,
+                'errors' => 0,
+                'results' => [$response],
+            ];
+        }
+
+        try {
+            $response = sync_remote_request('file_push_batch', ['files' => $payload_files], $config);
+        } catch (Throwable $e) {
+            $pushed = 0;
+            $skipped = 0;
+            $errors = 0;
+            $results = [];
+            foreach ($payload_files as $one) {
+                try {
+                    $response = sync_remote_request('file_push', $one, $config);
+                    $results[] = $response;
+                    if (!empty($response['skipped'])) {
+                        $skipped++;
+                    } else {
+                        $pushed++;
+                    }
+                } catch (Throwable $inner) {
+                    $errors++;
+                    $results[] = [
+                        'success' => false,
+                        'relative_path' => $one['relative_path'] ?? '',
+                        'error' => $inner->getMessage(),
+                    ];
+                }
+            }
+            return [
+                'pushed' => $pushed,
+                'skipped' => $skipped,
+                'errors' => $errors,
+                'results' => $results,
+            ];
+        }
+
+        $results = $response['results'] ?? [];
+        $pushed = (int) ($response['files_pushed'] ?? 0);
+        $skipped = (int) ($response['files_skipped'] ?? 0);
+        $errors = (int) ($response['files_errors'] ?? 0);
+        return [
+            'pushed' => $pushed,
+            'skipped' => $skipped,
+            'errors' => $errors,
+            'results' => $results,
+        ];
     }
 }
 
 if (!function_exists('sync_files_push')) {
-    function sync_files_push(PDO $db, ?array $config = null, $dry_run = false) {
+    function sync_files_push(PDO $db, ?array $config = null, $dry_run = false, array $options = []) {
         $config = $config ?: sync_load_config();
         sync_ensure_infrastructure($db);
-        $files = sync_files_scan($config);
+        ini_set('max_execution_time', '0');
+
+        $scan_options = [];
+        if (!empty($options['db_referenced_only'])) {
+            $scan_options['db_referenced_only'] = true;
+            $scan_options['since'] = $options['since'] ?? sync_get_state($db, 'last_push_since', '1970-01-01 00:00:00');
+        }
+
+        $files = sync_files_scan($config, $scan_options);
         $pushed = 0;
         $skipped = 0;
         $errors = 0;
+        $processed = 0;
+        $max_per_run = (int) ($options['max_per_run'] ?? ($config['files_max_per_run'] ?? 0));
+        $batch_count = max(1, (int) ($config['files_batch_count'] ?? 8));
+        $max_batch_bytes = max(512000, (int) ($config['files_batch_max_bytes'] ?? (6 * 1024 * 1024)));
+        $show_progress = !empty($options['progress']) || (PHP_SAPI === 'cli' && !empty($options['cli_progress']));
 
+        $pending = [];
         foreach ($files as $file) {
             $relative = $file['relative_path'];
             $md5 = $file['md5'];
-
             $synced_md5 = sync_file_get_synced_md5($db, $relative);
             if ($synced_md5 === $md5) {
                 $skipped++;
                 continue;
+            }
+            $pending[] = $file;
+        }
+
+        $batch = [];
+        $batch_bytes = 0;
+        $flush_batch = function () use (&$batch, &$batch_bytes, &$pushed, &$skipped, &$errors, &$processed, $db, $config, $dry_run, $show_progress) {
+            if (!$batch) {
+                return;
+            }
+            if ($dry_run) {
+                $pushed += count($batch);
+                $processed += count($batch);
+                $batch = [];
+                $batch_bytes = 0;
+                return;
+            }
+
+            try {
+                $result = sync_files_push_batch_remote($batch, $config);
+                $results = $result['results'] ?? [];
+                if ($results) {
+                    foreach ($results as $i => $item) {
+                        if (!is_array($item) || empty($item['success'])) {
+                            $errors++;
+                            continue;
+                        }
+                        $rel = $item['relative_path'] ?? ($batch[$i]['relative_path'] ?? '');
+                        $md5 = $batch[$i]['md5'] ?? '';
+                        $size = (int) ($batch[$i]['size'] ?? 0);
+                        if ($rel !== '' && $md5 !== '') {
+                            sync_file_mark_synced($db, $rel, $md5, $size);
+                        }
+                        if (!empty($item['skipped'])) {
+                            $skipped++;
+                        } else {
+                            $pushed++;
+                        }
+                        $processed++;
+                        if ($show_progress && $rel !== '') {
+                            echo '[fichier] ' . ($item['skipped'] ?? false ? 'skip' : 'push') . ' ' . $rel . "\n";
+                        }
+                    }
+                } else {
+                    $pushed += (int) ($result['pushed'] ?? 0);
+                    $skipped += (int) ($result['skipped'] ?? 0);
+                    $errors += (int) ($result['errors'] ?? 0);
+                    $processed += count($batch);
+                    foreach ($batch as $file) {
+                        if (($result['errors'] ?? 0) === 0) {
+                            sync_file_mark_synced($db, $file['relative_path'], $file['md5'], (int) $file['size']);
+                        }
+                    }
+                }
+            } catch (Throwable $e) {
+                $errors += count($batch);
+                if ($show_progress) {
+                    echo '[fichier] ERREUR batch: ' . $e->getMessage() . "\n";
+                }
+            }
+
+            $batch = [];
+            $batch_bytes = 0;
+        };
+
+        foreach ($pending as $file) {
+            if ($max_per_run > 0 && $processed >= $max_per_run) {
+                break;
             }
 
             if ($dry_run) {
@@ -1349,36 +1685,18 @@ if (!function_exists('sync_files_push')) {
                 continue;
             }
 
-            $full = dirname(__DIR__) . '/' . $relative;
-            if (!is_file($full)) {
-                continue;
+            $size = (int) ($file['size'] ?? 0);
+            if ($batch && ($batch_bytes + $size > $max_batch_bytes || count($batch) >= $batch_count)) {
+                $flush_batch();
             }
+            $batch[] = $file;
+            $batch_bytes += $size;
 
-            $content = file_get_contents($full);
-            if ($content === false) {
-                $errors++;
-                continue;
-            }
-
-            try {
-                $response = sync_remote_request('file_push', [
-                    'relative_path' => $relative,
-                    'md5' => $md5,
-                    'content_base64' => base64_encode($content),
-                ], $config);
-
-                if (!empty($response['skipped'])) {
-                    sync_file_mark_synced($db, $relative, $md5, (int) $file['size']);
-                    $skipped++;
-                    continue;
-                }
-
-                sync_file_mark_synced($db, $relative, $md5, (int) $file['size']);
-                $pushed++;
-            } catch (Throwable $e) {
-                $errors++;
+            if (count($batch) >= $batch_count) {
+                $flush_batch();
             }
         }
+        $flush_batch();
 
         if (!$dry_run && ($pushed > 0 || $skipped > 0)) {
             sync_log_entry($db, [
@@ -1396,12 +1714,13 @@ if (!function_exists('sync_files_push')) {
             'files_skipped' => $skipped,
             'files_errors' => $errors,
             'files_scanned' => count($files),
+            'files_pending' => count($pending),
         ];
     }
 }
 
 if (!function_exists('sync_local_to_vps')) {
-    function sync_local_to_vps(PDO $db, ?array $config = null, $dry_run = false) {
+    function sync_local_to_vps(PDO $db, ?array $config = null, $dry_run = false, array $options = []) {
         $config = $config ?: sync_load_config();
         $result = [];
 
@@ -1409,10 +1728,30 @@ if (!function_exists('sync_local_to_vps')) {
             throw new RuntimeException('Push désactivé dans config/sync.php (sync_direction).');
         }
 
-        $result['push'] = sync_push($db, $config, $dry_run);
+        $files_only = !empty($options['files_only']);
+
+        if (!$files_only) {
+            try {
+                $result['push'] = sync_push($db, $config, $dry_run);
+            } catch (Throwable $e) {
+                $result['push'] = [
+                    'error' => $e->getMessage(),
+                    'records' => 0,
+                    'conflicts' => 0,
+                    'skipped' => 0,
+                ];
+            }
+        }
 
         if (!empty($config['sync_include_files'])) {
-            $result['files'] = sync_files_push($db, $config, $dry_run);
+            $file_options = [
+                'cli_progress' => true,
+                'db_referenced_only' => !empty($options['files_priority_db']),
+            ];
+            if (!empty($options['files_max_per_run'])) {
+                $file_options['max_per_run'] = (int) $options['files_max_per_run'];
+            }
+            $result['files'] = sync_files_push($db, $config, $dry_run, $file_options);
         }
 
         return $result;
@@ -1514,6 +1853,51 @@ if (!function_exists('sync_api_handle_file_push')) {
             'skipped' => false,
             'relative_path' => $relative,
             'size' => strlen($content),
+        ];
+    }
+}
+
+if (!function_exists('sync_api_handle_file_push_batch')) {
+    function sync_api_handle_file_push_batch(array $input, array $config) {
+        $files = $input['files'] ?? [];
+        if (!is_array($files)) {
+            throw new InvalidArgumentException('files invalide');
+        }
+
+        $results = [];
+        $pushed = 0;
+        $skipped = 0;
+        $errors = 0;
+
+        foreach ($files as $file) {
+            if (!is_array($file)) {
+                $errors++;
+                continue;
+            }
+            try {
+                $result = sync_api_handle_file_push($file, $config);
+                $results[] = $result;
+                if (!empty($result['skipped'])) {
+                    $skipped++;
+                } else {
+                    $pushed++;
+                }
+            } catch (Throwable $e) {
+                $errors++;
+                $results[] = [
+                    'success' => false,
+                    'relative_path' => $file['relative_path'] ?? '',
+                    'error' => $e->getMessage(),
+                ];
+            }
+        }
+
+        return [
+            'success' => true,
+            'files_pushed' => $pushed,
+            'files_skipped' => $skipped,
+            'files_errors' => $errors,
+            'results' => $results,
         ];
     }
 }

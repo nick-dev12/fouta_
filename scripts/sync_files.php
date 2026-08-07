@@ -1,7 +1,10 @@
 <?php
 /**
- * Sync fichiers upload/ vers le nœud distant.
- * CLI : php scripts/sync_files.php [--dry-run]
+ * Sync fichiers upload/ vers le VPS.
+ * CLI :
+ *   php scripts/sync_files.php
+ *   php scripts/sync_files.php --priority   (uniquement images référencées en BDD)
+ *   php scripts/sync_files.php --dry-run
  */
 
 require_once __DIR__ . '/../conn/conn.php';
@@ -19,13 +22,21 @@ if (!$db instanceof PDO) {
     exit(1);
 }
 
-$dry_run = in_array('--dry-run', $argv ?? [], true);
+$argv = $argv ?? [];
+$dry_run = in_array('--dry-run', $argv, true);
+$priority = in_array('--priority', $argv, true);
 
 try {
-    ini_set('max_execution_time', '600');
+    ini_set('max_execution_time', '0');
     $config = sync_load_config();
     echo "=== Sync fichiers upload (node: {$config['node_id']}) ===\n";
-    $result = sync_files_push($db, $config, $dry_run);
+    if ($priority) {
+        echo "Mode priorité BDD (produits/catégories modifiés)\n";
+    }
+    $result = sync_files_push($db, $config, $dry_run, [
+        'cli_progress' => true,
+        'db_referenced_only' => $priority,
+    ]);
     echo json_encode($result, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) . "\n";
     exit(0);
 } catch (Throwable $e) {

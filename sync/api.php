@@ -75,6 +75,11 @@ try {
             echo json_encode($result, JSON_UNESCAPED_UNICODE);
             break;
 
+        case 'file_push_batch':
+            $result = sync_api_handle_file_push_batch($input, $config);
+            echo json_encode($result, JSON_UNESCAPED_UNICODE);
+            break;
+
         default:
             sync_api_json_error('Action inconnue : ' . $action);
     }

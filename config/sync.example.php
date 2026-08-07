@@ -49,6 +49,28 @@ return [
     // Dossiers médias à synchroniser (chemins relatifs à la racine du projet)
     'upload_dirs' => ['upload'],
 
+    // Priorité : ces dossiers sont synchronisés en premier (images produits, etc.)
+    'upload_dirs_priority' => [
+        'upload/produits',
+        'upload/categories',
+        'upload/slider',
+        'upload/logos',
+        'upload/section4',
+        'upload/trending',
+        'upload/employes_photos',
+        'upload/employes_qr',
+        'upload/employes_documents',
+        'upload/videos',
+        'upload/commandes-personnalisees',
+    ],
+
+    // Fichiers par requête HTTP (file_push_batch)
+    'files_batch_count' => 8,
+    'files_batch_max_bytes' => 6291456,
+
+    // Limite par exécution (0 = illimité). Utile en cron pour étaler les gros volumes.
+    'files_max_per_run' => 0,
+
     // Extensions synchronisées (vide = tous les fichiers des dossiers upload_dirs)
     'upload_file_extensions' => [
         'jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'ico', 'avif',
@@ -56,7 +78,7 @@ return [
     ],
 
     // Timeout HTTP vers le nœud distant (secondes)
-    'http_timeout' => 120,
+    'http_timeout' => 300,
 
     // Vérification SSL (mettre false uniquement en dev local si certificat auto-signé)
     'verify_ssl' => true,
