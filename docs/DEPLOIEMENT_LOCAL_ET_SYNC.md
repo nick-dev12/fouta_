@@ -38,7 +38,7 @@ Guide complet pour installer l'application Fouta en réseau local (sans Internet
                             ▼
 ┌─────────────────────────────────────────────────────────────┐
 │  VPS Contabo — Webuzo                                        │
-│  https://www.foutapoidslourds.com                            │
+│  https://infra.goo-bridge.com                                │
 │  MySQL jomas_fouta3                                          │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -208,7 +208,7 @@ return ['site_url' => 'http://192.168.1.100'];
 ```php
 return [
     'node_id' => 'local_entreprise',
-    'remote_url' => 'https://www.foutapoidslourds.com',
+    'remote_url' => 'https://infra.goo-bridge.com',
     'remote_api_token' => 'TOKEN_IDENTIQUE_SUR_LES_DEUX_NOEUDS',
     'node_priority_on_tie' => false,
 ];
@@ -414,7 +414,7 @@ Sur le **serveur local** :
 
 ```php
 'node_id' => 'local_entreprise',
-'remote_url' => 'https://www.foutapoidslourds.com',
+'remote_url' => 'https://infra.goo-bridge.com',
 'remote_api_token' => 'VOTRE_TOKEN',
 ```
 
@@ -500,7 +500,7 @@ copy config\sync.example.php config\sync.php
 
 ```php
 'node_id' => 'dev_wamp',
-'remote_url' => 'https://www.foutapoidslourds.com',
+'remote_url' => 'https://infra.goo-bridge.com',
 'remote_api_token' => 'TOKEN_IDENTIQUE_AU_VPS',
 'remote_db_verify' => [
     'host' => 'IP_VPS',
@@ -555,7 +555,7 @@ php migrations/run_assign_sync_uuids.php
 ### 10.5 Test connexion API (curl)
 
 ```bash
-curl -X POST "https://www.foutapoidslourds.com/sync/api.php?action=ping" \
+curl -X POST "https://infra.goo-bridge.com/sync/api.php?action=ping" \
   -H "Authorization: Bearer VOTRE_TOKEN" \
   -H "Content-Type: application/json"
 ```

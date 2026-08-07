@@ -10,7 +10,7 @@ return [
     'node_id' => 'local_entreprise',
 
     // URL de base du nœud distant (sans slash final)
-    // Production Fouta : https://e.foutapoidslourds.com
+    // Production Fouta VPS : https://infra.goo-bridge.com
     'remote_url' => 'https://www.example.com',
 
     // Chemin de l'API sync depuis la racine web (DocumentRoot)

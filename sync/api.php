@@ -6,6 +6,10 @@
 
 declare(strict_types=1);
 
+// Réponses JSON propres (pas de warnings PHP affichés)
+ini_set('display_errors', '0');
+error_reporting(E_ALL & ~E_DEPRECATED & ~E_NOTICE);
+
 header('Content-Type: application/json; charset=utf-8');
 
 require_once dirname(__DIR__) . '/conn/conn.php';

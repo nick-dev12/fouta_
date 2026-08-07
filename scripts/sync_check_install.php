@@ -46,4 +46,4 @@ if (is_file($root . '/sync/api.php')) {
 }
 
 echo "\nURL publique attendue :\n";
-echo "https://e.foutapoidslourds.com/sync/api.php?action=ping\n";
+echo "https://infra.goo-bridge.com/sync/api.php?action=ping\n";
