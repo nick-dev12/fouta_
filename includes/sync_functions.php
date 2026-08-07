@@ -564,10 +564,22 @@ if (!function_exists('sync_apply_batch')) {
     }
 }
 
-if (!function_exists('sync_remote_request')) {
-    function sync_remote_request($action, array $payload, array $config = null) {
+if (!function_exists('sync_build_api_url')) {
+    function sync_build_api_url($action, ?array $config = null) {
         $config = $config ?: sync_load_config();
-        $url = rtrim($config['remote_url'] ?? '', '/') . '/sync/api.php?action=' . urlencode($action);
+        $base = rtrim($config['remote_url'] ?? '', '/');
+        $path = $config['remote_api_path'] ?? '/sync/api.php';
+        if ($path === '' || $path[0] !== '/') {
+            $path = '/' . ltrim($path, '/');
+        }
+        return $base . $path . '?action=' . urlencode($action);
+    }
+}
+
+if (!function_exists('sync_remote_request')) {
+    function sync_remote_request($action, array $payload, ?array $config = null) {
+        $config = $config ?: sync_load_config();
+        $url = sync_build_api_url($action, $config);
 
         $json = json_encode($payload, JSON_UNESCAPED_UNICODE);
         if ($json === false) {
@@ -615,6 +627,10 @@ if (!function_exists('sync_remote_request')) {
 
         if ($http_code >= 400 || empty($decoded['success'])) {
             $message = $decoded['error'] ?? ('HTTP ' . $http_code);
+            if ($http_code === 404) {
+                $message .= ' — URL appelée : ' . $url
+                    . ' (vérifiez remote_url et remote_api_path ; sync/api.php doit être dans la racine web)';
+            }
             throw new RuntimeException('Sync API : ' . $message);
         }
 
@@ -664,7 +680,7 @@ if (!function_exists('sync_pull_table')) {
 }
 
 if (!function_exists('sync_pull')) {
-    function sync_pull(PDO $db, array $config = null, $dry_run = false) {
+    function sync_pull(PDO $db, ?array $config = null, $dry_run = false) {
         $config = $config ?: sync_load_config();
         sync_bootstrap_connection($db, $config);
         sync_ensure_infrastructure($db);
@@ -763,7 +779,7 @@ if (!function_exists('sync_push_table')) {
 }
 
 if (!function_exists('sync_push')) {
-    function sync_push(PDO $db, array $config = null, $dry_run = false) {
+    function sync_push(PDO $db, ?array $config = null, $dry_run = false) {
         $config = $config ?: sync_load_config();
         sync_bootstrap_connection($db, $config);
         sync_ensure_infrastructure($db);
@@ -821,7 +837,7 @@ if (!function_exists('sync_push')) {
 }
 
 if (!function_exists('sync_run')) {
-    function sync_run(PDO $db, array $config = null, $dry_run = false) {
+    function sync_run(PDO $db, ?array $config = null, $dry_run = false) {
         $pull = sync_pull($db, $config, $dry_run);
         $push = sync_push($db, $config, $dry_run);
         return ['pull' => $pull, 'push' => $push];
@@ -829,7 +845,7 @@ if (!function_exists('sync_run')) {
 }
 
 if (!function_exists('sync_verify_remote_db')) {
-    function sync_verify_remote_db(PDO $local_db, array $config = null) {
+    function sync_verify_remote_db(PDO $local_db, ?array $config = null) {
         $config = $config ?: sync_load_config();
         if (empty($config['remote_db_verify']) || !is_array($config['remote_db_verify'])) {
             throw new RuntimeException('remote_db_verify non configuré dans config/sync.php');
@@ -865,7 +881,7 @@ if (!function_exists('sync_verify_remote_db')) {
 }
 
 if (!function_exists('sync_files_scan')) {
-    function sync_files_scan(array $config = null) {
+    function sync_files_scan(?array $config = null) {
         $config = $config ?: sync_load_config();
         $upload_dir = dirname(__DIR__) . '/' . ltrim($config['upload_dir'] ?? 'upload', '/');
         $files = [];
@@ -894,7 +910,7 @@ if (!function_exists('sync_files_scan')) {
 }
 
 if (!function_exists('sync_files_push')) {
-    function sync_files_push(PDO $db, array $config = null, $dry_run = false) {
+    function sync_files_push(PDO $db, ?array $config = null, $dry_run = false) {
         $config = $config ?: sync_load_config();
         $files = sync_files_scan($config);
         $since = sync_get_state($db, 'last_files_push_since', '1970-01-01 00:00:00');

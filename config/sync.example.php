@@ -10,8 +10,11 @@ return [
     'node_id' => 'local_entreprise',
 
     // URL de base du nœud distant (sans slash final)
-    // Exemple VPS : https://www.foutapoidslourds.com
+    // Production Fouta : https://e.foutapoidslourds.com
     'remote_url' => 'https://www.example.com',
+
+    // Chemin de l'API sync depuis la racine web (DocumentRoot)
+    'remote_api_path' => '/sync/api.php',
 
     // Token partagé identique sur les deux nœuds (min. 32 caractères)
     'remote_api_token' => 'CHANGEZ_MOI_TOKEN_SECRET_TRES_LONG_32_CHARS',
