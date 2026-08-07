@@ -1042,25 +1042,63 @@ if (!function_exists('sync_api_handle_file_push')) {
     }
 }
 
-if (!function_exists('sync_api_verify_token')) {
-    function sync_api_verify_token(array $config) {
-        $headers = function_exists('getallheaders') ? getallheaders() : [];
-        $auth = '';
-        foreach ($headers as $key => $value) {
-            if (strtolower($key) === 'authorization') {
-                $auth = $value;
-                break;
+if (!function_exists('sync_api_get_authorization_header')) {
+    function sync_api_get_authorization_header() {
+        if (function_exists('getallheaders')) {
+            foreach (getallheaders() as $key => $value) {
+                if (strtolower((string) $key) === 'authorization') {
+                    return trim((string) $value);
+                }
             }
         }
-        if ($auth === '' && isset($_SERVER['HTTP_AUTHORIZATION'])) {
-            $auth = $_SERVER['HTTP_AUTHORIZATION'];
+
+        $server_keys = [
+            'HTTP_AUTHORIZATION',
+            'REDIRECT_HTTP_AUTHORIZATION',
+            'Authorization',
+            'HTTP_X_SYNC_TOKEN',
+        ];
+        foreach ($server_keys as $key) {
+            if (!empty($_SERVER[$key])) {
+                $value = trim((string) $_SERVER[$key]);
+                if ($key === 'HTTP_X_SYNC_TOKEN' && stripos($value, 'Bearer ') !== 0) {
+                    return 'Bearer ' . $value;
+                }
+                return $value;
+            }
         }
 
-        $expected = 'Bearer ' . ($config['remote_api_token'] ?? '');
-        if ($expected === 'Bearer ' || !hash_equals($expected, $auth)) {
+        if (!empty($_GET['token'])) {
+            return 'Bearer ' . trim((string) $_GET['token']);
+        }
+
+        return '';
+    }
+}
+
+if (!function_exists('sync_api_verify_token')) {
+    function sync_api_verify_token(array $config) {
+        $auth = sync_api_get_authorization_header();
+        $token = trim((string) ($config['remote_api_token'] ?? ''));
+        if ($token === '') {
             return false;
         }
-        return true;
+
+        $expected = 'Bearer ' . $token;
+        if ($auth === '') {
+            return false;
+        }
+
+        if (hash_equals($expected, $auth)) {
+            return true;
+        }
+
+        // Accepte aussi le token seul sans préfixe Bearer
+        if (hash_equals($token, preg_replace('/^Bearer\s+/i', '', $auth))) {
+            return true;
+        }
+
+        return false;
     }
 }
 
