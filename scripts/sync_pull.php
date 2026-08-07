@@ -24,6 +24,11 @@ $dry_run = in_array('--dry-run', $argv ?? [], true);
 try {
     ini_set('max_execution_time', '600');
     $config = sync_load_config();
+    $force = in_array('--force', $argv ?? [], true);
+    if (!$force && !sync_direction_allows_pull($config)) {
+        fwrite(STDERR, "Pull désactivé (sync_direction = push_only). Utilisez --force pour forcer.\n");
+        exit(1);
+    }
     echo "=== Sync PULL (node: {$config['node_id']}) ===\n";
     $result = sync_pull($db, $config, $dry_run);
     echo json_encode($result, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) . "\n";

@@ -402,52 +402,50 @@ php migrations/run_assign_sync_uuids.php
 
 **Important :** exécuter d'abord sur le VPS, puis faire un **pull initial** sur le local pour aligner les UUID.
 
-### 9.3 Configuration identique du token
-
-Le `remote_api_token` doit être **identique** sur les deux nœuds. Générer un token fort :
-
-```bash
-php -r "echo bin2hex(random_bytes(32));"
-```
-
-Sur le **serveur local** :
+### 9.3 Configuration (`config/sync.php`)
 
 ```php
 'node_id' => 'local_entreprise',
 'remote_url' => 'https://infra.goo-bridge.com',
+'remote_api_path' => '/sync/api.php',
 'remote_api_token' => 'VOTRE_TOKEN',
+
+// Mode sync (recommandé magasin local) :
+'sync_direction' => 'push_only',   // local → VPS uniquement
+// 'sync_direction' => 'pull_only',    // VPS → local uniquement
+// 'sync_direction' => 'bidirectional', // pull + push
 ```
 
-Sur le **VPS** :
+| Valeur | Comportement |
+|--------|--------------|
+| `push_only` | **Local → VPS** (ventes, caisse, stock consommé) — **recommandé** |
+| `pull_only` | VPS → local (catalogue depuis le cloud) |
+| `bidirectional` | Pull puis push |
 
-```php
-'node_id' => 'vps_prod',
-'remote_url' => 'http://192.168.1.100',  // inutilisé si sync initiée depuis local uniquement
-'remote_api_token' => 'VOTRE_TOKEN',
-```
+Le `remote_api_token` doit être **identique** sur le serveur local et le VPS.
 
-### 9.4 Première synchronisation
+### 9.4 Synchronisation (mode push_only — local → VPS)
 
-Ordre recommandé :
+En production magasin, seules les **données créées/modifiées en local** sont envoyées au VPS :
 
 ```bash
-# 1. Pull initial (aligner local sur VPS)
-php scripts/sync_pull.php
+# Envoi des changements locaux vers le VPS
+php scripts/sync_push.php
 
-# 2. Sync fichiers images
+# Ou push + fichiers upload
+php scripts/sync_run.php
 php scripts/sync_files.php
-
-# 3. Vérification
-php scripts/sync_verify.php
 ```
+
+> **Note :** un pull initial (`sync_pull.php --force`) reste possible pour aligner une base locale vide sur le VPS, mais n'est pas exécuté automatiquement en mode `push_only`.
 
 ### 9.5 Commandes CLI
 
 | Commande | Action |
 |----------|--------|
-| `php scripts/sync_pull.php` | Récupère les changements du VPS |
-| `php scripts/sync_push.php` | Envoie les changements locaux au VPS |
-| `php scripts/sync_run.php` | Pull puis push (bidirectionnel) |
+| `php scripts/sync_push.php` | Envoie les changements locaux au VPS (**principal**) |
+| `php scripts/sync_run.php` | Sync selon `sync_direction` (push seul si `push_only`) |
+| `php scripts/sync_pull.php` | Pull VPS → local (désactivé si `push_only`, `--force` pour forcer) |
 | `php scripts/sync_files.php` | Sync dossier `upload/` |
 | `php scripts/sync_verify.php` | Compare comptages par table |
 | `php scripts/sync_run.php --dry-run` | Simulation sans écriture |

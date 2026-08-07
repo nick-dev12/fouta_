@@ -963,11 +963,63 @@ if (!function_exists('sync_push')) {
     }
 }
 
+if (!function_exists('sync_get_direction')) {
+    function sync_get_direction(?array $config = null) {
+        $config = $config ?: sync_load_config();
+        $dir = strtolower(trim((string) ($config['sync_direction'] ?? 'push_only')));
+        if (!in_array($dir, ['push_only', 'pull_only', 'bidirectional'], true)) {
+            return 'push_only';
+        }
+        return $dir;
+    }
+}
+
+if (!function_exists('sync_direction_allows_pull')) {
+    function sync_direction_allows_pull(?array $config = null) {
+        $dir = sync_get_direction($config);
+        return $dir === 'pull_only' || $dir === 'bidirectional';
+    }
+}
+
+if (!function_exists('sync_direction_allows_push')) {
+    function sync_direction_allows_push(?array $config = null) {
+        $dir = sync_get_direction($config);
+        return $dir === 'push_only' || $dir === 'bidirectional';
+    }
+}
+
+if (!function_exists('sync_direction_label')) {
+    function sync_direction_label(?array $config = null) {
+        switch (sync_get_direction($config)) {
+            case 'pull_only':
+                return 'VPS → local uniquement';
+            case 'bidirectional':
+                return 'Bidirectionnelle (pull + push)';
+            case 'push_only':
+            default:
+                return 'Local → VPS uniquement';
+        }
+    }
+}
+
 if (!function_exists('sync_run')) {
     function sync_run(PDO $db, ?array $config = null, $dry_run = false) {
-        $pull = sync_pull($db, $config, $dry_run);
-        $push = sync_push($db, $config, $dry_run);
-        return ['pull' => $pull, 'push' => $push];
+        $config = $config ?: sync_load_config();
+        $result = [];
+
+        if (sync_direction_allows_pull($config)) {
+            $result['pull'] = sync_pull($db, $config, $dry_run);
+        }
+
+        if (sync_direction_allows_push($config)) {
+            $result['push'] = sync_push($db, $config, $dry_run);
+        }
+
+        if (!$result) {
+            return ['message' => 'Aucune direction sync active dans config/sync.php'];
+        }
+
+        return $result;
     }
 }
 

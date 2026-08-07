@@ -29,6 +29,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ini_set('max_execution_time', '600');
         $config = sync_load_config();
 
+        if ($action === 'pull' && !sync_direction_allows_pull($config)) {
+            throw new RuntimeException('Pull désactivé : mode sync local → VPS uniquement (push_only).');
+        }
+        if ($action === 'push' && !sync_direction_allows_push($config)) {
+            throw new RuntimeException('Push désactivé : mode sync VPS → local uniquement (pull_only).');
+        }
+
         switch ($action) {
             case 'pull':
                 $last_result = sync_pull($db, $config, false);
@@ -42,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 break;
             case 'run':
                 $last_result = sync_run($db, $config, false);
-                $message = 'Synchronisation bidirectionnelle terminée.';
+                $message = 'Synchronisation terminée (' . sync_direction_label($config) . ').';
                 break;
             case 'files':
                 $last_result = sync_files_push($db, $config, false);
@@ -62,6 +69,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $logs = [];
 $config_info = [];
+$sync_allows_pull = false;
+$sync_allows_push = true;
 try {
     if ($db instanceof PDO) {
         sync_ensure_infrastructure($db);
@@ -70,10 +79,13 @@ try {
         $config_info = [
             'node_id' => $config['node_id'] ?? '',
             'remote_url' => $config['remote_url'] ?? '',
+            'sync_direction' => sync_direction_label($config),
             'last_pull' => sync_get_state($db, 'last_pull_since', '—'),
             'last_push' => sync_get_state($db, 'last_push_since', '—'),
             'tables' => count(sync_registry_sort_tables($db, $config)),
         ];
+        $sync_allows_pull = sync_direction_allows_pull($config);
+        $sync_allows_push = sync_direction_allows_push($config);
     }
 } catch (Throwable $e) {
     $error = $error ?: $e->getMessage();
@@ -109,7 +121,7 @@ try {
 
 <section class="produits-section" style="padding: 2rem;">
     <h1><i class="fas fa-sync-alt"></i> Synchronisation des données</h1>
-    <p>Synchronisation bidirectionnelle entre ce nœud et le serveur distant (VPS).</p>
+    <p>Envoi des données locales vers le serveur distant (VPS) — mode configurable dans <code>config/sync.php</code>.</p>
 
     <?php if ($message): ?>
         <div class="message success"><?php echo htmlspecialchars($message); ?></div>
@@ -122,10 +134,15 @@ try {
         <h2>Configuration actuelle</h2>
         <?php if ($config_info): ?>
             <dl class="sync-meta">
+                <div><dt>Direction</dt><dd><?php echo htmlspecialchars($config_info['sync_direction']); ?></dd></div>
                 <div><dt>Nœud local</dt><dd><?php echo htmlspecialchars($config_info['node_id']); ?></dd></div>
                 <div><dt>URL distante</dt><dd><?php echo htmlspecialchars($config_info['remote_url']); ?></dd></div>
+                <?php if (!empty($sync_allows_pull)): ?>
                 <div><dt>Dernier pull</dt><dd><?php echo htmlspecialchars($config_info['last_pull']); ?></dd></div>
+                <?php endif; ?>
+                <?php if (!empty($sync_allows_push)): ?>
                 <div><dt>Dernier push</dt><dd><?php echo htmlspecialchars($config_info['last_push']); ?></dd></div>
+                <?php endif; ?>
                 <div><dt>Tables sync</dt><dd><?php echo (int) $config_info['tables']; ?></dd></div>
             </dl>
         <?php else: ?>
@@ -134,10 +151,14 @@ try {
 
         <form method="post" class="sync-actions">
             <button type="submit" name="sync_action" value="ping">Tester connexion</button>
+            <?php if (!empty($sync_allows_pull)): ?>
             <button type="submit" name="sync_action" value="pull">Pull (distant → local)</button>
+            <?php endif; ?>
+            <?php if (!empty($sync_allows_push)): ?>
             <button type="submit" name="sync_action" value="push">Push (local → distant)</button>
-            <button type="submit" name="sync_action" value="run">Sync complète</button>
+            <button type="submit" name="sync_action" value="run">Synchroniser (local → VPS)</button>
             <button type="submit" name="sync_action" value="files" class="secondary">Sync fichiers upload</button>
+            <?php endif; ?>
         </form>
     </div>
 

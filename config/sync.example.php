@@ -19,6 +19,12 @@ return [
     // Token partagé identique sur les deux nœuds (min. 32 caractères)
     'remote_api_token' => 'CHANGEZ_MOI_TOKEN_SECRET_TRES_LONG_32_CHARS',
 
+    // Direction de synchronisation :
+    // - push_only      : local → VPS uniquement (recommandé magasin local)
+    // - pull_only      : VPS → local uniquement
+    // - bidirectional  : pull puis push
+    'sync_direction' => 'push_only',
+
     // Priorité en cas d'égalité de sync_updated_at (true = ce nœud gagne)
     'node_priority_on_tie' => false,
 
