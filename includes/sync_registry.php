@@ -218,6 +218,84 @@ if (!function_exists('sync_registry_table_columns')) {
     }
 }
 
+if (!function_exists('sync_registry_unique_indexes')) {
+    function sync_registry_unique_indexes(PDO $db, $table) {
+        $db_name = $db->query('SELECT DATABASE()')->fetchColumn();
+        $stmt = $db->prepare(
+            "SELECT INDEX_NAME, COLUMN_NAME, SEQ_IN_INDEX
+             FROM information_schema.STATISTICS
+             WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?
+               AND NON_UNIQUE = 0 AND INDEX_NAME <> 'PRIMARY'
+             ORDER BY INDEX_NAME, SEQ_IN_INDEX"
+        );
+        $stmt->execute([$db_name, $table]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        $indexes = [];
+        foreach ($rows as $row) {
+            $name = $row['INDEX_NAME'];
+            if (!isset($indexes[$name])) {
+                $indexes[$name] = [];
+            }
+            $indexes[$name][] = $row['COLUMN_NAME'];
+        }
+
+        $result = [];
+        foreach ($indexes as $columns) {
+            $columns = array_values(array_filter($columns, function ($col) {
+                return !in_array($col, ['sync_uuid'], true);
+            }));
+            if ($columns) {
+                $result[] = $columns;
+            }
+        }
+
+        usort($result, function ($a, $b) {
+            return count($a) <=> count($b);
+        });
+
+        return $result;
+    }
+}
+
+if (!function_exists('sync_find_local_by_unique_keys')) {
+    function sync_find_local_by_unique_keys(PDO $db, $table, array $data, $pk_col) {
+        foreach (sync_registry_unique_indexes($db, $table) as $columns) {
+            $where = [];
+            $params = [];
+            $usable = true;
+            foreach ($columns as $col) {
+                if ($col === $pk_col) {
+                    continue;
+                }
+                if (!array_key_exists($col, $data)) {
+                    $usable = false;
+                    break;
+                }
+                $val = $data[$col];
+                if ($val === null || $val === '') {
+                    $usable = false;
+                    break;
+                }
+                $where[] = "`$col` = ?";
+                $params[] = $val;
+            }
+            if (!$usable || !$where) {
+                continue;
+            }
+
+            $sql = "SELECT `$pk_col` FROM `$table` WHERE " . implode(' AND ', $where) . ' LIMIT 1';
+            $stmt = $db->prepare($sql);
+            $stmt->execute($params);
+            $pk = $stmt->fetchColumn();
+            if ($pk !== false) {
+                return $pk;
+            }
+        }
+
+        return null;
+    }
+}
+
 if (!function_exists('sync_registry_has_sync_columns')) {
     function sync_registry_has_sync_columns(PDO $db, $table) {
         $columns = sync_registry_table_columns($db, $table);

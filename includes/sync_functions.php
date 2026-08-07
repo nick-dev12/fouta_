@@ -109,17 +109,63 @@ if (!function_exists('sync_add_columns_to_tables')) {
     }
 }
 
-if (!function_exists('sync_table_primary_key')) {
-    function sync_table_primary_key(PDO $db, $table) {
+if (!function_exists('sync_table_primary_key_columns')) {
+    function sync_table_primary_key_columns(PDO $db, $table) {
         $db_name = $db->query('SELECT DATABASE()')->fetchColumn();
         $stmt = $db->prepare(
             "SELECT COLUMN_NAME FROM information_schema.COLUMNS
              WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_KEY = 'PRI'
-             ORDER BY ORDINAL_POSITION ASC LIMIT 1"
+             ORDER BY ORDINAL_POSITION ASC"
         );
         $stmt->execute([$db_name, $table]);
-        $pk = $stmt->fetchColumn();
-        return $pk !== false ? $pk : 'id';
+        $cols = $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
+        return $cols ?: ['id'];
+    }
+}
+
+if (!function_exists('sync_table_primary_key')) {
+    function sync_table_primary_key(PDO $db, $table) {
+        $cols = sync_table_primary_key_columns($db, $table);
+        return $cols[0] ?? 'id';
+    }
+}
+
+if (!function_exists('sync_find_local_by_primary_key')) {
+    function sync_find_local_by_primary_key(PDO $db, $table, array $data) {
+        $pk_cols = sync_table_primary_key_columns($db, $table);
+        $where = [];
+        $params = [];
+        foreach ($pk_cols as $col) {
+            if (!array_key_exists($col, $data)) {
+                return null;
+            }
+            $where[] = "`$col` = ?";
+            $params[] = $data[$col];
+        }
+        if (!$where) {
+            return null;
+        }
+        $sql = 'SELECT * FROM `' . $table . '` WHERE ' . implode(' AND ', $where) . ' LIMIT 1';
+        $stmt = $db->prepare($sql);
+        $stmt->execute($params);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row ?: null;
+    }
+}
+
+if (!function_exists('sync_build_pk_where')) {
+    function sync_build_pk_where(PDO $db, $table, array $row) {
+        $pk_cols = sync_table_primary_key_columns($db, $table);
+        $where = [];
+        $params = [];
+        foreach ($pk_cols as $col) {
+            if (!array_key_exists($col, $row)) {
+                return [null, []];
+            }
+            $where[] = "`$col` = ?";
+            $params[] = $row[$col];
+        }
+        return [implode(' AND ', $where), $params];
     }
 }
 
@@ -415,8 +461,11 @@ if (!function_exists('sync_apply_record')) {
         $data = is_array($item['data'] ?? null) ? $item['data'] : [];
         $fk_uuids = is_array($item['fk_uuids'] ?? null) ? $item['fk_uuids'] : [];
 
-        $pk_col = sync_table_primary_key($db, $table);
-        unset($data[$pk_col]);
+        $pk_cols = sync_table_primary_key_columns($db, $table);
+        $pk_col = $pk_cols[0];
+        foreach ($pk_cols as $col) {
+            unset($data[$col]);
+        }
         if ($pk_col !== 'id') {
             unset($data['id']);
         }
@@ -438,19 +487,42 @@ if (!function_exists('sync_apply_record')) {
         $stmt = $db->prepare("SELECT `$pk_col`, sync_updated_at FROM `$table` WHERE sync_uuid = ? LIMIT 1");
         $stmt->execute([$sync_uuid]);
         $local = $stmt->fetch(PDO::FETCH_ASSOC);
+        $merged_by_unique = false;
+
+        if (!$local) {
+            $existing_pk = sync_find_local_by_unique_keys($db, $table, $data, $pk_col);
+            $existing_row = null;
+            if ($existing_pk !== null) {
+                $stmt = $db->prepare("SELECT * FROM `$table` WHERE `$pk_col` = ? LIMIT 1");
+                $stmt->execute([$existing_pk]);
+                $existing_row = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+            }
+            if (!$existing_row) {
+                $original_data = is_array($item['data'] ?? null) ? $item['data'] : [];
+                if ($original_data) {
+                    $existing_row = sync_find_local_by_primary_key($db, $table, $original_data);
+                }
+            }
+            if ($existing_row) {
+                $local = $existing_row;
+                $merged_by_unique = true;
+            }
+        }
 
         if ($local) {
-            $local_pk = $local[$pk_col];
-            $local_updated = $local['sync_updated_at'] ?? null;
-            if ($local_updated && $remote_updated && strtotime($local_updated) > strtotime($remote_updated)) {
-                $stats['conflicts']++;
-                return false;
-            }
-            if ($local_updated && $remote_updated && strtotime($local_updated) === strtotime($remote_updated)) {
-                $local_node_wins = !empty($config['node_priority_on_tie']);
-                if ($local_node_wins) {
+            $local_pk = $local[$pk_col] ?? null;
+            if (!$merged_by_unique) {
+                $local_updated = $local['sync_updated_at'] ?? null;
+                if ($local_updated && $remote_updated && strtotime($local_updated) > strtotime($remote_updated)) {
                     $stats['conflicts']++;
                     return false;
+                }
+                if ($local_updated && $remote_updated && strtotime($local_updated) === strtotime($remote_updated)) {
+                    $local_node_wins = !empty($config['node_priority_on_tie']);
+                    if ($local_node_wins) {
+                        $stats['conflicts']++;
+                        return false;
+                    }
                 }
             }
 
@@ -471,16 +543,28 @@ if (!function_exists('sync_apply_record')) {
             if (!$sets) {
                 return false;
             }
-            $values[] = $sync_uuid;
+
+            list($pk_where, $pk_params) = sync_build_pk_where($db, $table, $local);
+            if ($pk_where === null) {
+                $stats['errors']++;
+                return false;
+            }
+            $values = array_merge($values, $pk_params);
 
             $db->exec('SET @sync_applying = 1');
-            $sql = "UPDATE `$table` SET " . implode(', ', $sets) . ' WHERE sync_uuid = ?';
+            $sql = "UPDATE `$table` SET " . implode(', ', $sets) . ' WHERE ' . $pk_where;
             $upd = $db->prepare($sql);
             $upd->execute($values);
             $db->exec('SET @sync_applying = 0');
 
-            sync_store_id_map($db, $table, $sync_uuid, is_numeric($local_pk) ? (int) $local_pk : $local_pk);
-            $stats['updated']++;
+            if (count($pk_cols) === 1 && is_numeric($local_pk)) {
+                sync_store_id_map($db, $table, $sync_uuid, (int) $local_pk);
+            }
+            if ($merged_by_unique) {
+                $stats['merged'] = ($stats['merged'] ?? 0) + 1;
+            } else {
+                $stats['updated']++;
+            }
             return true;
         }
 
@@ -517,10 +601,53 @@ if (!function_exists('sync_apply_record')) {
         }
 
         $db->exec('SET @sync_applying = 1');
-        $sql = 'INSERT INTO `' . $table . '` (' . implode(', ', $fields) . ') VALUES (' . implode(', ', $placeholders) . ')';
-        $ins = $db->prepare($sql);
-        $ins->execute($values);
-        $new_id = (int) $db->lastInsertId();
+        try {
+            $sql = 'INSERT INTO `' . $table . '` (' . implode(', ', $fields) . ') VALUES (' . implode(', ', $placeholders) . ')';
+            $ins = $db->prepare($sql);
+            $ins->execute($values);
+            $new_id = (int) $db->lastInsertId();
+        } catch (PDOException $e) {
+            $db->exec('SET @sync_applying = 0');
+            if (stripos($e->getMessage(), 'Duplicate') !== false) {
+                $original_data = is_array($item['data'] ?? null) ? $item['data'] : $insert_data;
+                $existing_row = sync_find_local_by_primary_key($db, $table, $original_data);
+                if (!$existing_row) {
+                    $existing_pk = sync_find_local_by_unique_keys($db, $table, $insert_data, $pk_col);
+                    if ($existing_pk !== null) {
+                        $stmt = $db->prepare("SELECT * FROM `$table` WHERE `$pk_col` = ? LIMIT 1");
+                        $stmt->execute([$existing_pk]);
+                        $existing_row = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+                    }
+                }
+                if ($existing_row) {
+                    list($pk_where, $pk_params) = sync_build_pk_where($db, $table, $existing_row);
+                    if ($pk_where !== null) {
+                        $upd_data = $insert_data;
+                        $sets = [];
+                        $upd_values = [];
+                        foreach ($upd_data as $col => $val) {
+                            if (!sync_table_has_column($db, $table, $col)) {
+                                continue;
+                            }
+                            $sets[] = "`$col` = ?";
+                            $upd_values[] = $val;
+                        }
+                        $upd_values = array_merge($upd_values, $pk_params);
+                        $db->exec('SET @sync_applying = 1');
+                        $upd = $db->prepare('UPDATE `' . $table . '` SET ' . implode(', ', $sets) . ' WHERE ' . $pk_where);
+                        $upd->execute($upd_values);
+                        $db->exec('SET @sync_applying = 0');
+                        if (count($pk_cols) === 1 && isset($existing_row[$pk_col]) && is_numeric($existing_row[$pk_col])) {
+                            sync_store_id_map($db, $table, $sync_uuid, (int) $existing_row[$pk_col]);
+                        }
+                        $stats['merged'] = ($stats['merged'] ?? 0) + 1;
+                        return true;
+                    }
+                }
+            }
+            $stats['errors']++;
+            return false;
+        }
         $db->exec('SET @sync_applying = 0');
 
         sync_store_id_map($db, $table, $sync_uuid, $new_id);
@@ -531,7 +658,7 @@ if (!function_exists('sync_apply_record')) {
 
 if (!function_exists('sync_apply_batch')) {
     function sync_apply_batch(PDO $db, array $batch, array $config) {
-        $stats = ['inserted' => 0, 'updated' => 0, 'conflicts' => 0, 'errors' => 0];
+        $stats = ['inserted' => 0, 'updated' => 0, 'merged' => 0, 'conflicts' => 0, 'errors' => 0];
         sync_bootstrap_connection($db, $config);
 
         $by_table = [];
@@ -659,7 +786,7 @@ if (!function_exists('sync_pull_table')) {
             }
 
             $stats = sync_apply_batch($db, $batch, $config);
-            $total += ($stats['inserted'] + $stats['updated']);
+            $total += ($stats['inserted'] + $stats['updated'] + ($stats['merged'] ?? 0));
             $conflicts += $stats['conflicts'];
 
             foreach ($batch as $item) {
@@ -758,7 +885,7 @@ if (!function_exists('sync_push_table')) {
             ], $config);
 
             $stats = $response['stats'] ?? [];
-            $total += (int) (($stats['inserted'] ?? 0) + ($stats['updated'] ?? 0));
+            $total += (int) (($stats['inserted'] ?? 0) + ($stats['updated'] ?? 0) + ($stats['merged'] ?? 0));
             $conflicts += (int) ($stats['conflicts'] ?? 0);
 
             foreach ($batch as $item) {
@@ -993,7 +1120,7 @@ if (!function_exists('sync_api_handle_push')) {
         sync_log_entry($db, [
             'direction' => 'push',
             'table_name' => null,
-            'records_count' => ($stats['inserted'] + $stats['updated']),
+            'records_count' => ($stats['inserted'] + $stats['updated'] + ($stats['merged'] ?? 0)),
             'conflicts_count' => $stats['conflicts'],
             'status' => $stats['errors'] > 0 ? 'partial' : 'success',
             'message' => 'Réception batch distant',
