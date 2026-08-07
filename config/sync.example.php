@@ -43,8 +43,17 @@ return [
     // Taille des lots (enregistrements par requête)
     'batch_limit' => 500,
 
-    // Dossier upload relatif à la racine du projet
-    'upload_dir' => 'upload',
+    // Inclure la sync fichiers (images upload/) dans sync_run / sync_local_to_vps
+    'sync_include_files' => true,
+
+    // Dossiers médias à synchroniser (chemins relatifs à la racine du projet)
+    'upload_dirs' => ['upload'],
+
+    // Extensions synchronisées (vide = tous les fichiers des dossiers upload_dirs)
+    'upload_file_extensions' => [
+        'jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'ico', 'avif',
+        'pdf', 'mp4', 'webm', 'mov',
+    ],
 
     // Timeout HTTP vers le nœud distant (secondes)
     'http_timeout' => 120,

@@ -15,6 +15,7 @@ $paths = [
     'migrations/create_sync_infrastructure.sql',
     'migrations/run_add_sync_columns.php',
     'migrations/run_assign_sync_uuids.php',
+    'scripts/sync_local_to_vps.php',
     'scripts/sync_run.php',
     'scripts/sync_push.php',
     'scripts/sync_pull.php',

@@ -426,26 +426,34 @@ Le `remote_api_token` doit être **identique** sur le serveur local et le VPS.
 
 ### 9.4 Synchronisation (mode push_only — local → VPS)
 
-En production magasin, seules les **données créées/modifiées en local** sont envoyées au VPS :
+**Une seule commande** pour tout envoyer (données + images) :
 
 ```bash
-# Envoi des changements locaux vers le VPS
-php scripts/sync_push.php
-
-# Ou push + fichiers upload
+php scripts/sync_local_to_vps.php
+# ou alias :
 php scripts/sync_run.php
-php scripts/sync_files.php
 ```
 
-> **Note :** un pull initial (`sync_pull.php --force`) reste possible pour aligner une base locale vide sur le VPS, mais n'est pas exécuté automatiquement en mode `push_only`.
+**Incrémental automatique :**
+- **BDD** : seuls les enregistrements modifiés depuis le dernier push (`sync_updated_at` > dernier push) sont envoyés ; les données déjà identiques sur le VPS sont ignorées.
+- **Fichiers** : parcours récursif de `upload/` (produits, slider, employés, vidéos, etc.) ; envoi uniquement si le MD5 a changé ou si le fichier n'a jamais été synchronisé. Le VPS ignore aussi les fichiers déjà présents avec le même contenu.
+
+Dossiers images synchronisés (structure conservée) :
+- `upload/produits/` — images produits
+- `upload/slider/` — bannières
+- `upload/categories/` — catégories
+- `upload/employes_documents/`, `upload/employes_qr/`
+- `upload/videos/`, `upload/qrcodes/`, `upload/commandes-personnalisees/`
+- et tous les sous-dossiers de `upload/`
 
 ### 9.5 Commandes CLI
 
 | Commande | Action |
 |----------|--------|
-| `php scripts/sync_push.php` | Envoie les changements locaux au VPS (**principal**) |
-| `php scripts/sync_run.php` | Sync selon `sync_direction` (push seul si `push_only`) |
-| `php scripts/sync_pull.php` | Pull VPS → local (désactivé si `push_only`, `--force` pour forcer) |
+| `php scripts/sync_local_to_vps.php` | **Commande principale** : BDD + images (incrémental) |
+| `php scripts/sync_run.php` | Alias de sync_local_to_vps.php |
+| `php scripts/sync_push.php` | BDD uniquement (incrémental) |
+| `php scripts/sync_files.php` | Images / fichiers upload uniquement (incrémental MD5) |
 | `php scripts/sync_files.php` | Sync dossier `upload/` |
 | `php scripts/sync_verify.php` | Compare comptages par table |
 | `php scripts/sync_run.php --dry-run` | Simulation sans écriture |

@@ -48,12 +48,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     . (int) ($last_result['conflicts'] ?? 0) . ' conflit(s).';
                 break;
             case 'run':
-                $last_result = sync_run($db, $config, false);
-                $message = 'Synchronisation terminée (' . sync_direction_label($config) . ').';
+                $last_result = sync_local_to_vps($db, $config, false);
+                $push_n = (int) ($last_result['push']['records'] ?? 0);
+                $skip_n = (int) ($last_result['push']['skipped'] ?? 0);
+                $files_n = (int) ($last_result['files']['files_pushed'] ?? 0);
+                $files_skip = (int) ($last_result['files']['files_skipped'] ?? 0);
+                $message = "Sync terminée : $push_n enregistrement(s) envoyé(s), $skip_n déjà à jour en BDD, "
+                    . "$files_n fichier(s) envoyé(s), $files_skip fichier(s) déjà sur le VPS.";
                 break;
             case 'files':
                 $last_result = sync_files_push($db, $config, false);
-                $message = 'Fichiers synchronisés : ' . (int) ($last_result['files'] ?? 0);
+                $message = 'Fichiers : ' . (int) ($last_result['files_pushed'] ?? 0) . ' envoyé(s), '
+                    . (int) ($last_result['files_skipped'] ?? 0) . ' déjà à jour.';
                 break;
             case 'ping':
                 $last_result = sync_remote_request('ping', [], $config);
@@ -155,9 +161,9 @@ try {
             <button type="submit" name="sync_action" value="pull">Pull (distant → local)</button>
             <?php endif; ?>
             <?php if (!empty($sync_allows_push)): ?>
-            <button type="submit" name="sync_action" value="push">Push (local → distant)</button>
-            <button type="submit" name="sync_action" value="run">Synchroniser (local → VPS)</button>
-            <button type="submit" name="sync_action" value="files" class="secondary">Sync fichiers upload</button>
+            <button type="submit" name="sync_action" value="push">Push BDD uniquement</button>
+            <button type="submit" name="sync_action" value="run">Sync complète (BDD + images)</button>
+            <button type="submit" name="sync_action" value="files" class="secondary">Images / fichiers uniquement</button>
             <?php endif; ?>
         </form>
     </div>

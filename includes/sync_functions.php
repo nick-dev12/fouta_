@@ -513,6 +513,11 @@ if (!function_exists('sync_apply_record')) {
             $local_pk = $local[$pk_col] ?? null;
             if (!$merged_by_unique) {
                 $local_updated = $local['sync_updated_at'] ?? null;
+                if ($local_updated && $remote_updated && strtotime($local_updated) === strtotime($remote_updated)) {
+                    sync_store_id_map($db, $table, $sync_uuid, is_numeric($local_pk) ? (int) $local_pk : $local_pk);
+                    $stats['skipped'] = ($stats['skipped'] ?? 0) + 1;
+                    return true;
+                }
                 if ($local_updated && $remote_updated && strtotime($local_updated) > strtotime($remote_updated)) {
                     $stats['conflicts']++;
                     return false;
@@ -658,7 +663,7 @@ if (!function_exists('sync_apply_record')) {
 
 if (!function_exists('sync_apply_batch')) {
     function sync_apply_batch(PDO $db, array $batch, array $config) {
-        $stats = ['inserted' => 0, 'updated' => 0, 'merged' => 0, 'conflicts' => 0, 'errors' => 0];
+        $stats = ['inserted' => 0, 'updated' => 0, 'merged' => 0, 'skipped' => 0, 'conflicts' => 0, 'errors' => 0];
         sync_bootstrap_connection($db, $config);
 
         $by_table = [];
@@ -871,6 +876,7 @@ if (!function_exists('sync_push_table')) {
         $cursor = $since ?: sync_get_state($db, 'last_push_since', '1970-01-01 00:00:00');
         $total = 0;
         $conflicts = 0;
+        $skipped = 0;
         $max_seen = $cursor;
 
         do {
@@ -887,6 +893,7 @@ if (!function_exists('sync_push_table')) {
             $stats = $response['stats'] ?? [];
             $total += (int) (($stats['inserted'] ?? 0) + ($stats['updated'] ?? 0) + ($stats['merged'] ?? 0));
             $conflicts += (int) ($stats['conflicts'] ?? 0);
+            $skipped += (int) ($stats['skipped'] ?? 0);
 
             foreach ($batch as $item) {
                 $ts = $item['sync_updated_at'] ?? null;
@@ -901,7 +908,7 @@ if (!function_exists('sync_push_table')) {
             $cursor = $max_seen;
         } while (true);
 
-        return ['records' => $total, 'conflicts' => $conflicts, 'max_seen' => $max_seen];
+        return ['records' => $total, 'conflicts' => $conflicts, 'skipped' => $skipped, 'max_seen' => $max_seen];
     }
 }
 
@@ -919,12 +926,14 @@ if (!function_exists('sync_push')) {
         $tables = sync_registry_sort_tables($db, $config);
         $total_records = 0;
         $total_conflicts = 0;
+        $total_skipped = 0;
         $max_seen = $since;
 
         foreach ($tables as $table) {
             $result = sync_push_table($db, $table, $config, $since);
             $total_records += $result['records'];
             $total_conflicts += $result['conflicts'];
+            $total_skipped += (int) ($result['skipped'] ?? 0);
             if ($result['max_seen'] && strtotime($result['max_seen']) > strtotime($max_seen)) {
                 $max_seen = $result['max_seen'];
             }
@@ -957,6 +966,7 @@ if (!function_exists('sync_push')) {
         return [
             'records' => $total_records,
             'conflicts' => $total_conflicts,
+            'skipped' => $total_skipped,
             'since' => $since,
             'max_seen' => $max_seen,
         ];
@@ -1012,7 +1022,14 @@ if (!function_exists('sync_run')) {
         }
 
         if (sync_direction_allows_push($config)) {
+            if (!empty($config['sync_include_files']) && sync_get_direction($config) === 'push_only') {
+                $result = sync_local_to_vps($db, $config, $dry_run);
+                return $result;
+            }
             $result['push'] = sync_push($db, $config, $dry_run);
+            if (!empty($config['sync_include_files'])) {
+                $result['files'] = sync_files_push($db, $config, $dry_run);
+            }
         }
 
         if (!$result) {
@@ -1059,30 +1076,81 @@ if (!function_exists('sync_verify_remote_db')) {
     }
 }
 
+if (!function_exists('sync_file_allowed_extension')) {
+    function sync_file_allowed_extension($relative_path, ?array $config = null) {
+        $config = $config ?: sync_load_config();
+        $exts = $config['upload_file_extensions'] ?? [];
+        if (!$exts) {
+            return true;
+        }
+        $ext = strtolower(pathinfo($relative_path, PATHINFO_EXTENSION));
+        return in_array($ext, array_map('strtolower', $exts), true);
+    }
+}
+
+if (!function_exists('sync_file_get_synced_md5')) {
+    function sync_file_get_synced_md5(PDO $db, $relative_path) {
+        $stmt = $db->prepare(
+            "SELECT file_md5 FROM sync_file_queue WHERE relative_path = ? AND status = 'done' LIMIT 1"
+        );
+        $stmt->execute([$relative_path]);
+        $md5 = $stmt->fetchColumn();
+        return $md5 !== false ? (string) $md5 : null;
+    }
+}
+
+if (!function_exists('sync_file_mark_synced')) {
+    function sync_file_mark_synced(PDO $db, $relative_path, $md5, $size = 0) {
+        $stmt = $db->prepare(
+            "INSERT INTO sync_file_queue (relative_path, file_md5, file_size, direction, status, sync_updated_at)
+             VALUES (?, ?, ?, 'push', 'done', NOW())
+             ON DUPLICATE KEY UPDATE file_md5 = VALUES(file_md5), file_size = VALUES(file_size),
+             status = 'done', last_error = NULL, sync_updated_at = NOW()"
+        );
+        $stmt->execute([$relative_path, $md5, (int) $size]);
+    }
+}
+
 if (!function_exists('sync_files_scan')) {
     function sync_files_scan(?array $config = null) {
         $config = $config ?: sync_load_config();
-        $upload_dir = dirname(__DIR__) . '/' . ltrim($config['upload_dir'] ?? 'upload', '/');
-        $files = [];
-        if (!is_dir($upload_dir)) {
-            return $files;
+        $root = dirname(__DIR__);
+        $dirs = $config['upload_dirs'] ?? [$config['upload_dir'] ?? 'upload'];
+        if (!is_array($dirs)) {
+            $dirs = [$dirs];
         }
 
-        $iterator = new RecursiveIteratorIterator(
-            new RecursiveDirectoryIterator($upload_dir, FilesystemIterator::SKIP_DOTS)
-        );
-        foreach ($iterator as $file) {
-            if (!$file->isFile()) {
+        $files = [];
+        $seen = [];
+        foreach ($dirs as $dir) {
+            $upload_dir = $root . '/' . ltrim($dir, '/');
+            if (!is_dir($upload_dir)) {
                 continue;
             }
-            $full = $file->getPathname();
-            $relative = ltrim(str_replace('\\', '/', substr($full, strlen(dirname(__DIR__) . '/'))), '/');
-            $files[] = [
-                'relative_path' => $relative,
-                'md5' => md5_file($full),
-                'size' => filesize($full),
-                'mtime' => date('Y-m-d H:i:s', filemtime($full)),
-            ];
+
+            $iterator = new RecursiveIteratorIterator(
+                new RecursiveDirectoryIterator($upload_dir, FilesystemIterator::SKIP_DOTS)
+            );
+            foreach ($iterator as $file) {
+                if (!$file->isFile()) {
+                    continue;
+                }
+                $full = $file->getPathname();
+                $relative = ltrim(str_replace('\\', '/', substr($full, strlen($root . '/'))), '/');
+                if (isset($seen[$relative])) {
+                    continue;
+                }
+                if (!sync_file_allowed_extension($relative, $config)) {
+                    continue;
+                }
+                $seen[$relative] = true;
+                $files[] = [
+                    'relative_path' => $relative,
+                    'md5' => md5_file($full),
+                    'size' => filesize($full),
+                    'mtime' => date('Y-m-d H:i:s', filemtime($full)),
+                ];
+            }
         }
         return $files;
     }
@@ -1091,45 +1159,94 @@ if (!function_exists('sync_files_scan')) {
 if (!function_exists('sync_files_push')) {
     function sync_files_push(PDO $db, ?array $config = null, $dry_run = false) {
         $config = $config ?: sync_load_config();
+        sync_ensure_infrastructure($db);
         $files = sync_files_scan($config);
-        $since = sync_get_state($db, 'last_files_push_since', '1970-01-01 00:00:00');
         $pushed = 0;
+        $skipped = 0;
+        $errors = 0;
 
         foreach ($files as $file) {
-            if (($file['mtime'] ?? '') <= $since) {
+            $relative = $file['relative_path'];
+            $md5 = $file['md5'];
+
+            $synced_md5 = sync_file_get_synced_md5($db, $relative);
+            if ($synced_md5 === $md5) {
+                $skipped++;
                 continue;
             }
+
             if ($dry_run) {
                 $pushed++;
                 continue;
             }
 
-            $full = dirname(__DIR__) . '/' . $file['relative_path'];
-            $content = file_get_contents($full);
-            if ($content === false) {
+            $full = dirname(__DIR__) . '/' . $relative;
+            if (!is_file($full)) {
                 continue;
             }
 
-            sync_remote_request('file_push', [
-                'relative_path' => $file['relative_path'],
-                'md5' => $file['md5'],
-                'content_base64' => base64_encode($content),
-            ], $config);
-            $pushed++;
+            $content = file_get_contents($full);
+            if ($content === false) {
+                $errors++;
+                continue;
+            }
+
+            try {
+                $response = sync_remote_request('file_push', [
+                    'relative_path' => $relative,
+                    'md5' => $md5,
+                    'content_base64' => base64_encode($content),
+                ], $config);
+
+                if (!empty($response['skipped'])) {
+                    sync_file_mark_synced($db, $relative, $md5, (int) $file['size']);
+                    $skipped++;
+                    continue;
+                }
+
+                sync_file_mark_synced($db, $relative, $md5, (int) $file['size']);
+                $pushed++;
+            } catch (Throwable $e) {
+                $errors++;
+            }
         }
 
-        if (!$dry_run && $pushed > 0) {
-            sync_set_state($db, 'last_files_push_since', date('Y-m-d H:i:s'));
+        if (!$dry_run && ($pushed > 0 || $skipped > 0)) {
             sync_log_entry($db, [
                 'direction' => 'files',
                 'records_count' => $pushed,
-                'status' => 'success',
-                'message' => 'Fichiers upload synchronisés',
+                'conflicts_count' => 0,
+                'status' => $errors > 0 ? 'partial' : 'success',
+                'message' => "Fichiers: $pushed envoyé(s), $skipped déjà à jour, $errors erreur(s)",
                 'node_id' => $config['node_id'],
             ]);
         }
 
-        return ['files' => $pushed];
+        return [
+            'files_pushed' => $pushed,
+            'files_skipped' => $skipped,
+            'files_errors' => $errors,
+            'files_scanned' => count($files),
+        ];
+    }
+}
+
+if (!function_exists('sync_local_to_vps')) {
+    function sync_local_to_vps(PDO $db, ?array $config = null, $dry_run = false) {
+        $config = $config ?: sync_load_config();
+        $result = [];
+
+        if (!sync_direction_allows_push($config)) {
+            throw new RuntimeException('Push désactivé dans config/sync.php (sync_direction).');
+        }
+
+        $result['push'] = sync_push($db, $config, $dry_run);
+
+        if (!empty($config['sync_include_files'])) {
+            $result['files'] = sync_files_push($db, $config, $dry_run);
+        }
+
+        return $result;
     }
 }
 
@@ -1211,10 +1328,21 @@ if (!function_exists('sync_api_handle_file_push')) {
             throw new InvalidArgumentException('Checksum fichier invalide');
         }
 
+        if (is_file($target) && md5_file($target) === $md5) {
+            return [
+                'success' => true,
+                'skipped' => true,
+                'relative_path' => $relative,
+                'size' => filesize($target),
+                'message' => 'Fichier déjà présent avec le même contenu',
+            ];
+        }
+
         file_put_contents($target, $content);
 
         return [
             'success' => true,
+            'skipped' => false,
             'relative_path' => $relative,
             'size' => strlen($content),
         ];
