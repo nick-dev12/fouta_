@@ -9,6 +9,7 @@ $paths = [
     'sync/api.php',
     'sync/.htaccess',
     'includes/sync_registry.php',
+    'includes/sync_fk_static.php',
     'includes/sync_functions.php',
     'includes/sync_hooks.php',
     'config/sync.example.php',

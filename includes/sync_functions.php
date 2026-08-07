@@ -373,7 +373,7 @@ if (!function_exists('sync_resolve_fk_value')) {
             return null;
         }
         $pk_col = sync_table_primary_key($db, $ref_table);
-        $stmt = $db->prepare("SELECT `$pk_col` FROM `$ref_table` WHERE sync_uuid = ? AND (sync_deleted_at IS NULL) LIMIT 1");
+        $stmt = $db->prepare("SELECT `$pk_col` FROM `$ref_table` WHERE sync_uuid = ? LIMIT 1");
         $stmt->execute([$sync_uuid]);
         $id = $stmt->fetchColumn();
         return $id !== false ? $id : null;
@@ -387,6 +387,159 @@ if (!function_exists('sync_store_id_map')) {
              ON DUPLICATE KEY UPDATE local_id = VALUES(local_id)'
         );
         $stmt->execute([$table, $sync_uuid, (int) $local_id]);
+    }
+}
+
+if (!function_exists('sync_record_to_batch_item')) {
+    function sync_record_to_batch_item(PDO $db, $table, array $row) {
+        $sync_cols = ['sync_uuid', 'sync_updated_at', 'sync_deleted_at', 'sync_origin_node'];
+        $meta = [];
+        $data = $row;
+        foreach ($sync_cols as $col) {
+            if (array_key_exists($col, $data)) {
+                $meta[$col] = $data[$col];
+                unset($data[$col]);
+            }
+        }
+
+        return [
+            'table' => $table,
+            'sync_uuid' => $meta['sync_uuid'] ?? null,
+            'sync_updated_at' => $meta['sync_updated_at'] ?? null,
+            'sync_deleted_at' => $meta['sync_deleted_at'] ?? null,
+            'sync_origin_node' => $meta['sync_origin_node'] ?? null,
+            'data' => $data,
+            'fk_uuids' => sync_build_fk_uuid_map($db, $table, $data),
+        ];
+    }
+}
+
+if (!function_exists('sync_fetch_row_by_uuid')) {
+    function sync_fetch_row_by_uuid(PDO $db, $table, $sync_uuid) {
+        if ($sync_uuid === '' || !sync_registry_has_sync_columns($db, $table)) {
+            return null;
+        }
+        $stmt = $db->prepare("SELECT * FROM `$table` WHERE sync_uuid = ? LIMIT 1");
+        $stmt->execute([$sync_uuid]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row ?: null;
+    }
+}
+
+if (!function_exists('sync_expand_batch_fk_parents')) {
+    function sync_expand_batch_fk_parents(PDO $db, array $batch) {
+        $expanded = [];
+        $seen = [];
+        $queue = $batch;
+
+        while ($queue) {
+            $item = array_shift($queue);
+            $uuid = (string) ($item['sync_uuid'] ?? '');
+            if ($uuid !== '' && isset($seen[$uuid])) {
+                continue;
+            }
+            if ($uuid !== '') {
+                $seen[$uuid] = true;
+            }
+            $expanded[] = $item;
+
+            foreach ($item['fk_uuids'] ?? [] as $fk) {
+                if (!is_array($fk)) {
+                    continue;
+                }
+                $parent_uuid = (string) ($fk['sync_uuid'] ?? '');
+                $parent_table = (string) ($fk['ref_table'] ?? '');
+                if ($parent_uuid === '' || $parent_table === '' || isset($seen[$parent_uuid])) {
+                    continue;
+                }
+                $parent_row = sync_fetch_row_by_uuid($db, $parent_table, $parent_uuid);
+                if (!$parent_row) {
+                    continue;
+                }
+                $queue[] = sync_record_to_batch_item($db, $parent_table, $parent_row);
+            }
+        }
+
+        return $expanded;
+    }
+}
+
+if (!function_exists('sync_resolve_record_foreign_keys')) {
+    function sync_resolve_record_foreign_keys(PDO $db, $table, array &$data, array $fk_uuids, &$stats) {
+        foreach (sync_registry_foreign_keys($db, $table) as $fk) {
+            $col = $fk['COLUMN_NAME'];
+            if (!array_key_exists($col, $data)) {
+                continue;
+            }
+            $ref_table = $fk['REFERENCED_TABLE_NAME'];
+            if (!sync_registry_has_sync_columns($db, $ref_table)) {
+                continue;
+            }
+
+            $uuid = null;
+            if (isset($fk_uuids[$col]) && is_array($fk_uuids[$col])) {
+                $uuid = $fk_uuids[$col]['sync_uuid'] ?? null;
+            }
+
+            if ($uuid) {
+                $resolved = sync_resolve_fk_value($db, $ref_table, $uuid);
+                if ($resolved === null && $data[$col] !== null && $data[$col] !== '') {
+                    $stats['fk_missing'] = ($stats['fk_missing'] ?? 0) + 1;
+                    $stats['errors']++;
+                    return false;
+                }
+                if ($resolved !== null) {
+                    $data[$col] = $resolved;
+                }
+                continue;
+            }
+
+            if ($data[$col] !== null && $data[$col] !== '') {
+                $stats['fk_missing'] = ($stats['fk_missing'] ?? 0) + 1;
+                $stats['errors']++;
+                return false;
+            }
+        }
+
+        return true;
+    }
+}
+
+if (!function_exists('sync_batch_item_has_unresolved_fk')) {
+    function sync_batch_item_has_unresolved_fk(PDO $db, array $item) {
+        $table = $item['table'] ?? '';
+        $data = is_array($item['data'] ?? null) ? $item['data'] : [];
+        $fk_uuids = is_array($item['fk_uuids'] ?? null) ? $item['fk_uuids'] : [];
+
+        foreach (sync_registry_foreign_keys($db, $table) as $fk) {
+            $col = $fk['COLUMN_NAME'];
+            if (!array_key_exists($col, $data) || $data[$col] === null || $data[$col] === '') {
+                continue;
+            }
+            $ref_table = $fk['REFERENCED_TABLE_NAME'];
+            if (!sync_registry_has_sync_columns($db, $ref_table)) {
+                continue;
+            }
+            $uuid = $fk_uuids[$col]['sync_uuid'] ?? null;
+            if (!$uuid) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+}
+
+if (!function_exists('sync_filter_batch_unresolved_fk')) {
+    function sync_filter_batch_unresolved_fk(PDO $db, array $batch) {
+        $filtered = [];
+        foreach ($batch as $item) {
+            if (sync_batch_item_has_unresolved_fk($db, $item)) {
+                continue;
+            }
+            $filtered[] = $item;
+        }
+        return $filtered;
     }
 }
 
@@ -470,18 +623,8 @@ if (!function_exists('sync_apply_record')) {
             unset($data['id']);
         }
 
-        foreach ($fk_uuids as $col => $fk) {
-            if (!is_array($fk)) {
-                continue;
-            }
-            $resolved = sync_resolve_fk_value($db, $fk['ref_table'] ?? '', $fk['sync_uuid'] ?? '');
-            if ($resolved === null && !empty($data[$col])) {
-                $stats['errors']++;
-                return false;
-            }
-            if ($resolved !== null) {
-                $data[$col] = $resolved;
-            }
+        if (!sync_resolve_record_foreign_keys($db, $table, $data, $fk_uuids, $stats)) {
+            return false;
         }
 
         $stmt = $db->prepare("SELECT `$pk_col`, sync_updated_at FROM `$table` WHERE sync_uuid = ? LIMIT 1");
@@ -557,9 +700,15 @@ if (!function_exists('sync_apply_record')) {
             $values = array_merge($values, $pk_params);
 
             $db->exec('SET @sync_applying = 1');
-            $sql = "UPDATE `$table` SET " . implode(', ', $sets) . ' WHERE ' . $pk_where;
-            $upd = $db->prepare($sql);
-            $upd->execute($values);
+            try {
+                $sql = "UPDATE `$table` SET " . implode(', ', $sets) . ' WHERE ' . $pk_where;
+                $upd = $db->prepare($sql);
+                $upd->execute($values);
+            } catch (PDOException $e) {
+                $db->exec('SET @sync_applying = 0');
+                $stats['errors']++;
+                return false;
+            }
             $db->exec('SET @sync_applying = 0');
 
             if (count($pk_cols) === 1 && is_numeric($local_pk)) {
@@ -880,9 +1029,36 @@ if (!function_exists('sync_push_table')) {
         $max_seen = $cursor;
 
         do {
-            $batch = sync_get_pending_records($db, $table, $cursor, $limit, true);
-            if (!$batch) {
+            $raw_batch = sync_get_pending_records($db, $table, $cursor, $limit, true);
+            if (!$raw_batch) {
                 break;
+            }
+
+            foreach ($raw_batch as $item) {
+                $ts = $item['sync_updated_at'] ?? null;
+                if ($ts && strtotime($ts) > strtotime($max_seen)) {
+                    $max_seen = $ts;
+                }
+            }
+
+            $valid = [];
+            foreach ($raw_batch as $item) {
+                if (sync_batch_item_has_unresolved_fk($db, $item)) {
+                    $skipped++;
+                    continue;
+                }
+                $valid[] = $item;
+            }
+
+            $batch = $valid ? sync_expand_batch_fk_parents($db, $valid) : [];
+            $batch = sync_filter_batch_unresolved_fk($db, $batch);
+
+            if (!$batch) {
+                if (count($raw_batch) < $limit) {
+                    break;
+                }
+                $cursor = $max_seen;
+                continue;
             }
 
             $response = sync_remote_request('push', [
@@ -895,14 +1071,7 @@ if (!function_exists('sync_push_table')) {
             $conflicts += (int) ($stats['conflicts'] ?? 0);
             $skipped += (int) ($stats['skipped'] ?? 0);
 
-            foreach ($batch as $item) {
-                $ts = $item['sync_updated_at'] ?? null;
-                if ($ts && strtotime($ts) > strtotime($max_seen)) {
-                    $max_seen = $ts;
-                }
-            }
-
-            if (count($batch) < $limit) {
+            if (count($raw_batch) < $limit) {
                 break;
             }
             $cursor = $max_seen;

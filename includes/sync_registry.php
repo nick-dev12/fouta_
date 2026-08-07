@@ -4,6 +4,8 @@
  * Les tables absentes de la base locale sont ignorées automatiquement.
  */
 
+require_once __DIR__ . '/sync_fk_static.php';
+
 if (!function_exists('sync_registry_priority_tables')) {
     function sync_registry_priority_tables() {
         return [
@@ -135,8 +137,22 @@ if (!function_exists('sync_registry_foreign_keys')) {
                AND REFERENCED_TABLE_NAME IS NOT NULL"
         );
         $stmt->execute([$db_name, $table]);
+        $fks = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
-        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        $static = sync_registry_static_foreign_keys($table);
+        if (!$fks) {
+            return $static;
+        }
+        if (!$static) {
+            return $fks;
+        }
+
+        $by_col = [];
+        foreach (array_merge($static, $fks) as $fk) {
+            $by_col[$fk['COLUMN_NAME']] = $fk;
+        }
+
+        return array_values($by_col);
     }
 }
 
