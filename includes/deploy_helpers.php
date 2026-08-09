@@ -157,7 +157,7 @@ function deploy_dump_database_via_jump_server(array $server, array $prod_db, $du
     $scp_cnf = deploy_scp_to_server($server, $local_cnf, $remote_cnf, false);
     @unlink($local_cnf);
     if ($scp_cnf['code'] !== 0) {
-        deploy_log('Impossible d\'envoyer la config MySQL sur fplserver.');
+        deploy_log('Impossible d\'envoyer la config MySQL sur fplserver : ' . implode("\n", $scp_cnf['output']));
         return false;
     }
 
@@ -226,40 +226,60 @@ function deploy_import_database(array $db_cfg, $mysql, $dump_file, $recreate, $d
     return $res;
 }
 
-function deploy_ssh_base(array $ssh) {
-    $host = $ssh['host'] ?? '';
-    $user = $ssh['user'] ?? '';
+function deploy_ssh_port_opts(array $ssh) {
     $port = (int) ($ssh['port'] ?? 22);
     $opts = '-p ' . $port . ' -o StrictHostKeyChecking=accept-new';
     if (!empty($ssh['identity_file']) && is_readable($ssh['identity_file'])) {
         $opts .= ' -i ' . escapeshellarg($ssh['identity_file']);
     }
+    return $opts;
+}
+
+function deploy_scp_port_opts(array $ssh) {
+    $port = (int) ($ssh['port'] ?? 22);
+    $opts = '-P ' . $port . ' -o StrictHostKeyChecking=accept-new';
+    if (!empty($ssh['identity_file']) && is_readable($ssh['identity_file'])) {
+        $opts .= ' -i ' . escapeshellarg($ssh['identity_file']);
+    }
+    return $opts;
+}
+
+function deploy_ssh_target(array $ssh) {
+    return ($ssh['user'] ?? '') . '@' . ($ssh['host'] ?? '');
+}
+
+function deploy_scp_remote_spec(array $ssh, $remote_path) {
+    return deploy_ssh_target($ssh) . ':' . $remote_path;
+}
+
+function deploy_ssh_base(array $ssh) {
     return [
-        'target' => escapeshellarg($user . '@' . $host),
-        'opts' => $opts,
+        'target' => deploy_ssh_target($ssh),
+        'opts' => deploy_ssh_port_opts($ssh),
+        'scp_opts' => deploy_scp_port_opts($ssh),
     ];
 }
 
 function deploy_scp_to_server(array $ssh, $local_path, $remote_path, $dry_run, $recursive = false) {
     $base = deploy_ssh_base($ssh);
     $recursive_flag = $recursive ? ' -r' : '';
-    $cmd = 'scp ' . $base['opts'] . $recursive_flag . ' '
+    $cmd = 'scp ' . $base['scp_opts'] . $recursive_flag . ' '
         . escapeshellarg($local_path) . ' '
-        . $base['target'] . ':' . escapeshellarg($remote_path);
+        . escapeshellarg(deploy_scp_remote_spec($ssh, $remote_path));
     return deploy_run($cmd, $dry_run);
 }
 
 function deploy_scp_from_server(array $ssh, $remote_path, $local_path, $dry_run) {
     $base = deploy_ssh_base($ssh);
-    $cmd = 'scp ' . $base['opts'] . ' '
-        . $base['target'] . ':' . escapeshellarg($remote_path) . ' '
+    $cmd = 'scp ' . $base['scp_opts'] . ' '
+        . escapeshellarg(deploy_scp_remote_spec($ssh, $remote_path)) . ' '
         . escapeshellarg($local_path);
     return deploy_run($cmd, $dry_run);
 }
 
 function deploy_ssh_run(array $ssh, $remote_cmd, $dry_run) {
     $base = deploy_ssh_base($ssh);
-    $cmd = 'ssh ' . $base['opts'] . ' ' . $base['target'] . ' ' . escapeshellarg($remote_cmd);
+    $cmd = 'ssh ' . $base['opts'] . ' ' . escapeshellarg($base['target']) . ' ' . escapeshellarg($remote_cmd);
     return deploy_run($cmd, $dry_run);
 }
 
