@@ -68,23 +68,23 @@ return [
         'sync_upload_to_server' => true,
         'run_sync_migrations_on_server' => true,
 
-        // Phase 3 : sync incrémentale WAMP + serveur → VPS infra
+        // Phase 3 : sync incrémentale WAMP + serveur → production
         'configure_sync' => true,
     ],
 
     // --- Sync incrémentale (module sync_run.php) ---
     'sync' => [
-        'remote_url' => 'https://infra.goo-bridge.com',
+        'remote_url' => 'https://e.foutapoidslourds.com',
         'remote_api_token' => 'FoutaSync2026DevTokenChangeInProduction!',
         'setup_cron' => true,
 
-        // WAMP : bidirectionnel avec le VPS infra (dev)
+        // WAMP : bidirectionnel avec la production (dev)
         'wamp' => [
             'node_id' => 'dev_wamp',
             'sync_direction' => 'bidirectional',
         ],
 
-        // Serveur entreprise fplserver : push vers VPS (ventes, stock)
+        // Serveur entreprise fplserver : push vers production (ventes, stock)
         'local_server' => [
             'node_id' => 'local_entreprise',
             'sync_direction' => 'push_only',

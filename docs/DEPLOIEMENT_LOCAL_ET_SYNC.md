@@ -37,13 +37,15 @@ Guide complet pour installer l'application Fouta en réseau local (sans Internet
                             │ HTTPS (quand Internet disponible)
                             ▼
 ┌─────────────────────────────────────────────────────────────┐
-│  VPS Contabo — Webuzo                                        │
-│  https://infra.goo-bridge.com                                │
-│  MySQL jomas_fouta3                                          │
+│  PRODUCTION — e.foutapoidslourds.com (Contabo / Webuzo)      │
+│  https://e.foutapoidslourds.com                              │
+│  MySQL jomas_fouta + sync/api.php                            │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**Principe :** tous les postes du bureau accèdent au serveur Ubuntu via le réseau local. La synchronisation vers le VPS s'effectue quand Internet est disponible, lancée **depuis le serveur local** (le VPS ne peut pas initier la connexion vers un réseau privé).
+**Principe :** tous les postes du bureau accèdent au serveur Ubuntu via le réseau local. La synchronisation vers la **production** ([e.foutapoidslourds.com](https://e.foutapoidslourds.com/)) s'effectue quand Internet est disponible, lancée **depuis le serveur local** (la production ne peut pas initier la connexion vers un réseau privé).
+
+> **Note :** `infra.goo-bridge.com` était l'ancien environnement de test — ne plus l'utiliser.
 
 ---
 
@@ -208,7 +210,7 @@ return ['site_url' => 'http://192.168.1.100'];
 ```php
 return [
     'node_id' => 'local_entreprise',
-    'remote_url' => 'https://infra.goo-bridge.com',
+    'remote_url' => 'https://e.foutapoidslourds.com',
     'remote_api_token' => 'TOKEN_IDENTIQUE_SUR_LES_DEUX_NOEUDS',
     'node_priority_on_tie' => false,
 ];
@@ -406,7 +408,7 @@ php migrations/run_assign_sync_uuids.php
 
 ```php
 'node_id' => 'local_entreprise',
-'remote_url' => 'https://infra.goo-bridge.com',
+'remote_url' => 'https://e.foutapoidslourds.com',
 'remote_api_path' => '/sync/api.php',
 'remote_api_token' => 'VOTRE_TOKEN',
 
@@ -506,7 +508,7 @@ copy config\sync.example.php config\sync.php
 
 ```php
 'node_id' => 'dev_wamp',
-'remote_url' => 'https://infra.goo-bridge.com',
+'remote_url' => 'https://e.foutapoidslourds.com',
 'remote_api_token' => 'TOKEN_IDENTIQUE_AU_VPS',
 'remote_db_verify' => [
     'host' => 'IP_VPS',
@@ -561,7 +563,7 @@ php migrations/run_assign_sync_uuids.php
 ### 10.5 Test connexion API (curl)
 
 ```bash
-curl -X POST "https://infra.goo-bridge.com/sync/api.php?action=ping" \
+curl -X POST "https://e.foutapoidslourds.com/sync/api.php?action=ping" \
   -H "Authorization: Bearer VOTRE_TOKEN" \
   -H "Content-Type: application/json"
 ```
@@ -569,7 +571,7 @@ curl -X POST "https://infra.goo-bridge.com/sync/api.php?action=ping" \
 Réponse attendue :
 
 ```json
-{"success":true,"node_id":"vps_prod","time":"...","tables":42}
+{"success":true,"node_id":"production","time":"...","tables":42}
 ```
 
 ### 10.6 Limitation réseau WAMP

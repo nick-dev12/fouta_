@@ -413,7 +413,7 @@ function deploy_setup_sync_nodes($project_root, array $sync_cfg, array $server, 
     $setup_wamp = !$server_only;
     $setup_server = !$wamp_only;
 
-    $remote_url = $sync_cfg['remote_url'] ?? 'https://infra.goo-bridge.com';
+    $remote_url = $sync_cfg['remote_url'] ?? 'https://e.foutapoidslourds.com';
     $token = $sync_cfg['remote_api_token'] ?? '';
     if ($token === '') {
         deploy_log('Sync ignorée : remote_api_token vide dans deploy_wamp.php');
@@ -464,7 +464,7 @@ function deploy_setup_sync_nodes($project_root, array $sync_cfg, array $server, 
             deploy_log('Cron sync serveur local : toutes les 30 min');
         }
 
-        deploy_log('Test connexion sync VPS depuis le serveur local...');
+        deploy_log('Test connexion sync production depuis le serveur local...');
         deploy_ssh_run($server, 'cd ' . escapeshellarg($web_root) . ' && sudo -u www-data php scripts/sync_test_ping.php', $dry_run);
 
         if (!$dry_run && is_file($tmp_sync)) {
@@ -472,5 +472,5 @@ function deploy_setup_sync_nodes($project_root, array $sync_cfg, array $server, 
         }
     }
 
-    deploy_log('Sync configurée. WAMP : php scripts/sync_run.php | Serveur : cron auto push_only → VPS');
+    deploy_log('Sync configurée. WAMP : php scripts/sync_run.php | Serveur : cron auto push_only → production');
 }

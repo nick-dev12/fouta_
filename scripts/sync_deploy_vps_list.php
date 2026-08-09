@@ -36,7 +36,7 @@ foreach ($paths as $rel) {
 
 echo "\n=== Étapes post-upload VPS ===\n";
 echo "1. cp config/sync.example.php config/sync.php\n";
-echo "2. Configurer node_id=vps_prod et remote_api_token (identique au local)\n";
+echo "2. Configurer node_id=production sur e.foutapoidslourds.com et remote_api_token (identique au local)\n";
 echo "3. php migrations/run_add_sync_columns.php\n";
 echo "4. php migrations/run_assign_sync_uuids.php\n";
 echo "5. php scripts/sync_test_ping.php (depuis WAMP)\n";

@@ -209,7 +209,7 @@ Script tout-en-un : **production → WAMP → fplserver** (BDD + images).
 | `--files-only` | Images upload/ uniquement |
 | `--dry-run` | Simulation |
 
-### Sync incrémentale (WAMP ↔ VPS + serveur → VPS)
+### Sync incrémentale (WAMP ↔ production + serveur → production)
 
 Configurer sans refaire le deploy complet :
 
@@ -225,13 +225,13 @@ php scripts/setup_sync_nodes.php --server-only
 |------|---------|-----------|
 | WAMP dev | `dev_wamp` | `bidirectional` |
 | Serveur fplserver | `local_entreprise` | `push_only` |
-| VPS hub | `vps_prod` | (distant) |
+| Production | `production` | (distant — e.foutapoidslourds.com) |
 
-Token partagé : identique dans `deploy_wamp.php` → section `sync` et sur le VPS `config/sync.php`.
+Token partagé : identique dans `deploy_wamp.php` → section `sync` et sur **e.foutapoidslourds.com** (`config/sync.php`).
 
 **Exploitation :**
 - Refresh complet prod → WAMP → fplserver : `sync_prod_to_wamp_and_server.bat`
-- Sync quotidienne magasin → VPS : cron auto sur fplserver (toutes les 30 min)
+- Sync quotidienne magasin → production : cron auto sur fplserver (toutes les 30 min)
 - Dev WAMP : `php scripts/sync_run.php`
 
 ---
@@ -243,6 +243,6 @@ Token partagé : identique dans `deploy_wamp.php` → section `sync` et sur le V
 | Page blanche | `tail -f /var/log/apache2/fouta-error.log` |
 | Redirection HTTPS prod | Vérifier `.htaccess` (lignes e.foutapoidslourds.com commentées) |
 | BDD inaccessible | Vérifier `conn/conn.php` |
-| Sync échoue | `php scripts/sync_test_ping.php` + token identique VPS |
+| Sync échoue | `php scripts/sync_test_ping.php` + token identique sur e.foutapoidslourds.com |
 
 Voir aussi : [DEPLOIEMENT_LOCAL_ET_SYNC.md](DEPLOIEMENT_LOCAL_ET_SYNC.md)

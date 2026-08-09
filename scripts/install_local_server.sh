@@ -18,7 +18,7 @@ FOUTA_LAN_IP="${FOUTA_LAN_IP:-192.168.1.217}"
 FOUTA_GIT_REPO="${FOUTA_GIT_REPO:-https://github.com/nick-dev12/fouta_.git}"
 FOUTA_SYNC_TOKEN="${FOUTA_SYNC_TOKEN:-}"
 FOUTA_NODE_ID="${FOUTA_NODE_ID:-local_entreprise}"
-FOUTA_REMOTE_URL="${FOUTA_REMOTE_URL:-https://infra.goo-bridge.com}"
+FOUTA_REMOTE_URL="${FOUTA_REMOTE_URL:-https://e.foutapoidslourds.com}"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
