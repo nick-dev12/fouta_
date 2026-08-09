@@ -82,8 +82,8 @@ if (!$server_only && !empty($opts['pull_from_production'])) {
     if (!$files_only) {
         deploy_log('Export BDD production (' . ($prod_db['name'] ?? '') . '@' . ($prod_db['host'] ?? '') . ')...');
         if (!$dry_run) {
-            if (!deploy_dump_database($prod_db, $tools['mysqldump'], $dump_file, false)) {
-                deploy_fail('Export BDD production impossible. Vérifiez production_db et l’accès MySQL distant.');
+            if (!deploy_dump_production($prod_db, $tools, $server, $dump_file, false)) {
+                deploy_fail('Export BDD production impossible (local + via fplserver).');
             }
             deploy_log('Dump production : ' . round(filesize($dump_file) / 1024 / 1024, 1) . ' Mo');
         }

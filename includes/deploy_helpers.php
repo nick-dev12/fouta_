@@ -125,12 +125,65 @@ function deploy_dump_database(array $db_cfg, $mysqldump, $dump_file, $dry_run) {
         return true;
     }
     if ($res['code'] !== 0 || !is_file($dump_file) || filesize($dump_file) < 500) {
-        if (!empty($res['output'])) {
-            deploy_log('Dump échoué : ' . implode("\n", $res['output']));
+        $err = trim(implode("\n", $res['output'] ?? []));
+        if ($err !== '') {
+            deploy_log('Dump local échoué : ' . $err);
+        } elseif (is_file($dump_file)) {
+            deploy_log('Dump local échoué : fichier trop petit (' . filesize($dump_file) . ' octets).');
+        } else {
+            deploy_log('Dump local échoué : fichier non créé.');
         }
         return false;
     }
     return true;
+}
+
+/**
+ * Export BDD production via fplserver (contourne MySQL 9 WAMP + mysql_native_password).
+ */
+function deploy_dump_database_via_jump_server(array $server, array $prod_db, $dump_file, $dry_run) {
+    $remote_dump = '/tmp/fouta_prod_jump_' . getmypid() . '.sql';
+    $host = $prod_db['host'] ?? 'localhost';
+    $user = $prod_db['user'] ?? '';
+    $pass = $prod_db['pass'] ?? '';
+    $name = $prod_db['name'] ?? '';
+
+    deploy_log('Export via serveur local ' . ($server['host'] ?? '') . ' ...');
+
+    $remote_cmd = 'mysqldump -h ' . escapeshellarg($host)
+        . ' -u ' . escapeshellarg($user)
+        . ' -p' . escapeshellarg($pass)
+        . ' --single-transaction --quick --routines --triggers --set-gtid-purged=OFF '
+        . escapeshellarg($name)
+        . ' > ' . escapeshellarg($remote_dump)
+        . ' && test -s ' . escapeshellarg($remote_dump);
+
+    $res = deploy_ssh_run($server, $remote_cmd, $dry_run);
+    if (!$dry_run && $res['code'] !== 0) {
+        deploy_log('Dump via fplserver échoué : ' . implode("\n", $res['output']));
+        return false;
+    }
+
+    deploy_log('Téléchargement du dump vers WAMP...');
+    $res2 = deploy_scp_from_server($server, $remote_dump, $dump_file, $dry_run);
+    deploy_ssh_run($server, 'rm -f ' . escapeshellarg($remote_dump), $dry_run);
+
+    if ($dry_run) {
+        return true;
+    }
+    if ($res2['code'] !== 0 || !is_file($dump_file) || filesize($dump_file) < 500) {
+        deploy_log('Dump via fplserver : fichier invalide ou SCP échoué.');
+        return false;
+    }
+    return true;
+}
+
+function deploy_dump_production(array $prod_db, array $tools, array $server, $dump_file, $dry_run) {
+    if (deploy_dump_database($prod_db, $tools['mysqldump'], $dump_file, $dry_run)) {
+        return true;
+    }
+    deploy_log('Repli : export production via fplserver (MySQL 9 WAMP incompatible mysql_native_password).');
+    return deploy_dump_database_via_jump_server($server, $prod_db, $dump_file, $dry_run);
 }
 
 function deploy_import_database(array $db_cfg, $mysql, $dump_file, $recreate, $dry_run) {
@@ -183,6 +236,14 @@ function deploy_scp_to_server(array $ssh, $local_path, $remote_path, $dry_run, $
     $cmd = 'scp ' . $base['opts'] . $recursive_flag . ' '
         . escapeshellarg($local_path) . ' '
         . $base['target'] . ':' . escapeshellarg($remote_path);
+    return deploy_run($cmd, $dry_run);
+}
+
+function deploy_scp_from_server(array $ssh, $remote_path, $local_path, $dry_run) {
+    $base = deploy_ssh_base($ssh);
+    $cmd = 'scp ' . $base['opts'] . ' '
+        . $base['target'] . ':' . escapeshellarg($remote_path) . ' '
+        . escapeshellarg($local_path);
     return deploy_run($cmd, $dry_run);
 }
 
