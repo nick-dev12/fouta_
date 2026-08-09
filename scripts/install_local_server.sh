@@ -70,6 +70,15 @@ GRANT ALL PRIVILEGES ON \`${FOUTA_DB_NAME}\`.* TO '${FOUTA_DB_USER}'@'localhost'
 FLUSH PRIVILEGES;
 SQL
 
+log "MySQL : autorisation triggers sync (log_bin_trust_function_creators)"
+mysql -u root <<'SQL'
+SET GLOBAL log_bin_trust_function_creators = 1;
+SQL
+if ! grep -q 'log_bin_trust_function_creators' /etc/mysql/mysql.conf.d/mysqld.cnf 2>/dev/null; then
+    echo 'log_bin_trust_function_creators = 1' >> /etc/mysql/mysql.conf.d/mysqld.cnf
+    systemctl restart mysql
+fi
+
 log "=== 3/10 — Code application ==="
 mkdir -p "$(dirname "$FOUTA_WEB_ROOT")"
 if [[ ! -d "$FOUTA_WEB_ROOT/.git" ]]; then
@@ -180,6 +189,16 @@ if [[ -f .htaccess ]]; then
 fi
 
 log "=== 7/10 — Apache VirtualHost ==="
+# S'assurer qu'un seul mod_php est actif pour Apache
+if command -v a2query >/dev/null 2>&1; then
+    ENABLED_PHP=$(a2query -m 2>/dev/null | grep -oE 'php[0-9.]+' | head -1 || true)
+    CLI_PHP_VER=$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;')
+    if [[ -n "$ENABLED_PHP" && "$ENABLED_PHP" != "php${CLI_PHP_VER}" ]]; then
+        warn "Apache utilise $ENABLED_PHP, CLI en PHP $CLI_PHP_VER — bascule vers php${CLI_PHP_VER}"
+        a2dismod "$ENABLED_PHP" >/dev/null 2>&1 || true
+        a2enmod "php${CLI_PHP_VER}" >/dev/null 2>&1 || true
+    fi
+fi
 cp deploy/apache/fouta-local.conf /etc/apache2/sites-available/fouta.conf
 sed -i "s/ServerName .*/ServerName ${FOUTA_LAN_IP}/" /etc/apache2/sites-available/fouta.conf
 

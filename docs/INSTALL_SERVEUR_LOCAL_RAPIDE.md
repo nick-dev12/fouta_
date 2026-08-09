@@ -101,7 +101,19 @@ sudo chmod -R 775 /var/www/fouta/upload
 
 ---
 
-## Étape 5 — Vérifications
+## Corriger erreur sync triggers (1419)
+
+Si `run_add_sync_columns.php` affiche l'erreur `SUP privilege / log_bin_trust_function_creators` :
+
+```bash
+sudo mysql -u root -e "SET GLOBAL log_bin_trust_function_creators = 1;"
+echo 'log_bin_trust_function_creators = 1' | sudo tee -a /etc/mysql/mysql.conf.d/mysqld.cnf
+sudo systemctl restart mysql
+cd /var/www/fouta
+sudo -u www-data php migrations/run_add_sync_columns.php
+sudo -u www-data php migrations/run_assign_sync_uuids.php
+```
+
 
 ```bash
 cd /var/www/fouta
