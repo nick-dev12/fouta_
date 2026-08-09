@@ -150,6 +150,19 @@ if (!$dry_run && is_file($dump_file) && filesize($dump_file) > 0) {
     @unlink($dump_file);
 }
 
+// -------------------------------------------------------------------------
+// PHASE 3 — Configuration sync incrémentale (WAMP + serveur → VPS)
+// -------------------------------------------------------------------------
+if (!empty($opts['configure_sync']) && !empty($cfg['sync'])) {
+    $sync_scope = [];
+    if ($prod_only) {
+        $sync_scope = ['wamp_only' => true];
+    } elseif ($server_only) {
+        $sync_scope = ['server_only' => true];
+    }
+    deploy_setup_sync_nodes($root, $cfg['sync'], $server, $dry_run, $sync_scope);
+}
+
 deploy_log('');
 deploy_log('=== Déploiement terminé ===');
 deploy_log('WAMP    : http://localhost/Fouta/');

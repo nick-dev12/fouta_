@@ -177,9 +177,10 @@ function deploy_ssh_base(array $ssh) {
     ];
 }
 
-function deploy_scp_to_server(array $ssh, $local_path, $remote_path, $dry_run) {
+function deploy_scp_to_server(array $ssh, $local_path, $remote_path, $dry_run, $recursive = false) {
     $base = deploy_ssh_base($ssh);
-    $cmd = 'scp ' . $base['opts'] . ' -r '
+    $recursive_flag = $recursive ? ' -r' : '';
+    $cmd = 'scp ' . $base['opts'] . $recursive_flag . ' '
         . escapeshellarg($local_path) . ' '
         . $base['target'] . ':' . escapeshellarg($remote_path);
     return deploy_run($cmd, $dry_run);
@@ -402,4 +403,74 @@ function deploy_finalize_server(array $server, $dry_run) {
         . ' > config/site.php';
 
     deploy_ssh_run($server, $cmd, $dry_run);
+}
+
+function deploy_setup_sync_nodes($project_root, array $sync_cfg, array $server, $dry_run, array $scope = []) {
+    require_once $project_root . '/includes/sync_config_builder.php';
+
+    $wamp_only = !empty($scope['wamp_only']);
+    $server_only = !empty($scope['server_only']);
+    $setup_wamp = !$server_only;
+    $setup_server = !$wamp_only;
+
+    $remote_url = $sync_cfg['remote_url'] ?? 'https://infra.goo-bridge.com';
+    $token = $sync_cfg['remote_api_token'] ?? '';
+    if ($token === '') {
+        deploy_log('Sync ignorée : remote_api_token vide dans deploy_wamp.php');
+        return;
+    }
+
+    deploy_log('');
+    deploy_log('--- Phase 3 : Configuration sync incrémentale ---');
+
+    if ($setup_wamp) {
+        $wamp_profile = array_merge(
+            ['node_id' => 'dev_wamp', 'sync_direction' => 'bidirectional', 'node_priority_on_tie' => false],
+            $sync_cfg['wamp'] ?? []
+        );
+        $wamp_config = sync_config_build($wamp_profile, $remote_url, $token);
+        $wamp_sync_path = $project_root . DIRECTORY_SEPARATOR . 'config' . DIRECTORY_SEPARATOR . 'sync.php';
+
+        if ($dry_run) {
+            deploy_log('(dry-run) WAMP config/sync.php → ' . $wamp_profile['node_id'] . ' (' . $wamp_profile['sync_direction'] . ')');
+        } else {
+            sync_config_write($wamp_sync_path, $wamp_config);
+            deploy_log('WAMP config/sync.php → ' . $wamp_profile['node_id'] . ' (' . $wamp_profile['sync_direction'] . ')');
+        }
+    }
+
+    if ($setup_server) {
+        $server_profile = array_merge(
+            ['node_id' => 'local_entreprise', 'sync_direction' => 'push_only', 'node_priority_on_tie' => true],
+            $sync_cfg['local_server'] ?? []
+        );
+        $server_config = sync_config_build($server_profile, $remote_url, $token);
+        $tmp_sync = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'fouta_sync_server_' . getmypid() . '.php';
+
+        if (!$dry_run) {
+            sync_config_write($tmp_sync, $server_config);
+        }
+
+        $web_root = rtrim($server['web_root'] ?? '/var/www/fouta', '/');
+        deploy_log('Serveur ' . $web_root . '/config/sync.php → ' . $server_profile['node_id'] . ' (' . $server_profile['sync_direction'] . ')');
+        deploy_scp_to_server($server, $tmp_sync, $web_root . '/config/sync.php', $dry_run);
+
+        if (!empty($sync_cfg['setup_cron'])) {
+            $cron_line = '*/30 * * * * www-data /usr/bin/php ' . $web_root . '/scripts/sync_local_to_vps.php >> /var/log/fouta-sync.log 2>&1';
+            $cron_cmd = 'grep -qF ' . escapeshellarg('sync_local_to_vps.php') . ' /etc/crontab 2>/dev/null || '
+                . 'echo ' . escapeshellarg($cron_line) . ' | sudo tee -a /etc/crontab';
+            deploy_ssh_run($server, $cron_cmd, $dry_run);
+            deploy_ssh_run($server, 'sudo touch /var/log/fouta-sync.log && sudo chown www-data:www-data /var/log/fouta-sync.log', $dry_run);
+            deploy_log('Cron sync serveur local : toutes les 30 min');
+        }
+
+        deploy_log('Test connexion sync VPS depuis le serveur local...');
+        deploy_ssh_run($server, 'cd ' . escapeshellarg($web_root) . ' && sudo -u www-data php scripts/sync_test_ping.php', $dry_run);
+
+        if (!$dry_run && is_file($tmp_sync)) {
+            @unlink($tmp_sync);
+        }
+    }
+
+    deploy_log('Sync configurée. WAMP : php scripts/sync_run.php | Serveur : cron auto push_only → VPS');
 }

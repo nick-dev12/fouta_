@@ -11,7 +11,7 @@ return [
 
     // URL de base du nœud distant (sans slash final)
     // Production Fouta VPS : https://infra.goo-bridge.com
-    'remote_url' => 'https://www.example.com',
+    'remote_url' => 'https://infra.goo-bridge.com',
 
     // Chemin de l'API sync depuis la racine web (DocumentRoot)
     'remote_api_path' => '/sync/api.php',

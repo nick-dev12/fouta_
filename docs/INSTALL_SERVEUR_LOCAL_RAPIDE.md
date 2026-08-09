@@ -209,7 +209,30 @@ Script tout-en-un : **production → WAMP → fplserver** (BDD + images).
 | `--files-only` | Images upload/ uniquement |
 | `--dry-run` | Simulation |
 
-Prérequis Windows : OpenSSH (`scp`/`ssh`), WAMP MySQL, extension PHP `zip` et `ftp`.
+### Sync incrémentale (WAMP ↔ VPS + serveur → VPS)
+
+Configurer sans refaire le deploy complet :
+
+```powershell
+scripts\setup_sync_nodes.bat
+# ou :
+php scripts/setup_sync_nodes.php
+php scripts/setup_sync_nodes.php --wamp-only
+php scripts/setup_sync_nodes.php --server-only
+```
+
+| Nœud | node_id | Direction |
+|------|---------|-----------|
+| WAMP dev | `dev_wamp` | `bidirectional` |
+| Serveur fplserver | `local_entreprise` | `push_only` |
+| VPS hub | `vps_prod` | (distant) |
+
+Token partagé : identique dans `deploy_wamp.php` → section `sync` et sur le VPS `config/sync.php`.
+
+**Exploitation :**
+- Refresh complet prod → WAMP → fplserver : `sync_prod_to_wamp_and_server.bat`
+- Sync quotidienne magasin → VPS : cron auto sur fplserver (toutes les 30 min)
+- Dev WAMP : `php scripts/sync_run.php`
 
 ---
 
