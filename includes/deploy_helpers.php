@@ -111,34 +111,23 @@ function deploy_wamp_db_cfg(array $wamp, $project_root) {
 
 function deploy_dump_database(array $db_cfg, $mysqldump, $dump_file, $dry_run) {
     $cnf = deploy_write_mysql_cnf($db_cfg, 'dump');
+    $cnf_path = str_replace('\\', '/', $cnf);
     $cmd = escapeshellarg($mysqldump)
-        . ' --defaults-extra-file=' . escapeshellarg($cnf)
+        . ' --defaults-extra-file=' . escapeshellarg($cnf_path)
         . ' --single-transaction --quick --routines --triggers --set-gtid-purged=OFF '
-        . escapeshellarg($db_cfg['name']);
+        . escapeshellarg($db_cfg['name'])
+        . ' > ' . escapeshellarg(str_replace('\\', '/', $dump_file));
+
+    $res = deploy_run($cmd, $dry_run);
+    @unlink($cnf);
 
     if ($dry_run) {
-        @unlink($cnf);
-        deploy_run($cmd . ' > ' . escapeshellarg($dump_file), true);
         return true;
     }
-
-    $descriptors = [
-        0 => ['pipe', 'r'],
-        1 => ['file', $dump_file, 'w'],
-        2 => ['pipe', 'w'],
-    ];
-    $proc = proc_open($cmd, $descriptors, $pipes);
-    @unlink($cnf);
-    if (!is_resource($proc)) {
-        return false;
-    }
-    fclose($pipes[0]);
-    $stderr = stream_get_contents($pipes[2]);
-    fclose($pipes[2]);
-    $code = proc_close($proc);
-
-    if ($code !== 0 || !is_file($dump_file) || filesize($dump_file) < 500) {
-        deploy_log('Dump échoué : ' . trim($stderr));
+    if ($res['code'] !== 0 || !is_file($dump_file) || filesize($dump_file) < 500) {
+        if (!empty($res['output'])) {
+            deploy_log('Dump échoué : ' . implode("\n", $res['output']));
+        }
         return false;
     }
     return true;
