@@ -1,24 +1,16 @@
 <?php
 /**
  * Déploiement complet depuis WAMP :
- *   1. Production (e.foutapoidslourds.com) → WAMP (BDD + images FTP)
+ *   1. Production (e.foutapoidslourds.com) → WAMP (BDD + images)
  *   2. WAMP → serveur local fplserver (BDD + upload/)
  *
- * Prérequis WAMP :
- *   - config/deploy_wamp.php (copie de deploy_wamp.example.php)
- *   - PHP CLI, extension zip, ftp
- *   - mysqldump / mysql (WAMP)
- *   - scp + ssh (OpenSSH Windows)
+ * Refresh complet quotidien (recommandé) :
+ *   php scripts/sync_prod_to_wamp_and_server.php --full
+ *   scripts/sync_full_refresh.bat
  *
- * Usage :
- *   php scripts/sync_prod_to_wamp_and_server.php
- *   php scripts/sync_prod_to_wamp_and_server.php --prod-only
- *   php scripts/sync_prod_to_wamp_and_server.php --server-only
- *   php scripts/sync_prod_to_wamp_and_server.php --db-only
- *   php scripts/sync_prod_to_wamp_and_server.php --files-only
- *   php scripts/sync_prod_to_wamp_and_server.php --dry-run
- *
- * Ou double-clic : scripts/sync_prod_to_wamp_and_server.bat
+ * Autres options :
+ *   --prod-only | --server-only | --db-only | --files-only | --dry-run
+ *   --with-sync-config  (reconfigurer sync incrémentale en plus)
  */
 
 if (PHP_SAPI !== 'cli') {
@@ -39,10 +31,12 @@ $cfg = require $config_path;
 $argv = $argv ?? [];
 
 $dry_run = in_array('--dry-run', $argv, true);
+$full = in_array('--full', $argv, true);
 $prod_only = in_array('--prod-only', $argv, true);
 $server_only = in_array('--server-only', $argv, true);
 $db_only = in_array('--db-only', $argv, true);
 $files_only = in_array('--files-only', $argv, true);
+$with_sync_config = in_array('--with-sync-config', $argv, true);
 
 $prod_db = $cfg['production_db'] ?? [];
 $prod_files = $cfg['production_files'] ?? [];
@@ -50,19 +44,32 @@ $wamp = $cfg['wamp'] ?? [];
 $server = $cfg['local_server'] ?? [];
 $opts = $cfg['options'] ?? [];
 
+if ($full) {
+    $opts['full_refresh'] = true;
+}
+$opts = deploy_apply_full_refresh_options($opts);
+if ($with_sync_config) {
+    $opts['configure_sync'] = true;
+}
+
 $wamp_root = rtrim(str_replace('\\', '/', $wamp['web_root'] ?? $root), '/');
 $wamp_root_os = str_replace('/', DIRECTORY_SEPARATOR, $wamp_root);
 $wamp_upload = $wamp_root_os . DIRECTORY_SEPARATOR . 'upload';
 
 $tools = deploy_mysql_tools($wamp);
 $wamp_db = deploy_wamp_db_cfg($wamp, $root);
+$site_url = $cfg['production_site_url'] ?? 'https://e.foutapoidslourds.com';
 
-deploy_log('=== Déploiement WAMP → serveur local ===');
-deploy_log('Production : ' . ($cfg['production_site_url'] ?? ''));
+deploy_log('=== Déploiement Fouta ===');
+if (!empty($opts['full_refresh'])) {
+    deploy_log('Mode : REFRESH COMPLET (production → WAMP → serveur local)');
+}
+deploy_log('Production : ' . $site_url);
 deploy_log('WAMP       : ' . $wamp_root_os . ' (' . $wamp_db['name'] . ')');
 deploy_log('Serveur    : ' . ($server['site_url'] ?? '') . ' (' . ($server['web_root'] ?? '') . ')');
 
 $dump_file = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'fouta_deploy_' . date('Ymd_His') . '.sql';
+$wamp_pdo = null;
 
 // -------------------------------------------------------------------------
 // PHASE 1 — Production → WAMP
@@ -81,7 +88,7 @@ if (!$server_only && !empty($opts['pull_from_production'])) {
             deploy_log('Dump production : ' . round(filesize($dump_file) / 1024 / 1024, 1) . ' Mo');
         }
 
-        deploy_log('Import dans WAMP (' . $wamp_db['name'] . ')...');
+        deploy_log('Import dans WAMP (' . $wamp_db['name'] . ') — recréation complète...');
         $res = deploy_import_database(
             $wamp_db,
             $tools['mysql'],
@@ -93,10 +100,26 @@ if (!$server_only && !empty($opts['pull_from_production'])) {
             deploy_fail('Import WAMP : ' . implode("\n", $res['output']));
         }
         deploy_log('Base WAMP mise à jour.');
+        if (!$dry_run) {
+            try {
+                $wamp_pdo = deploy_connect_wamp_db($wamp_db);
+                $count = (int) $wamp_pdo->query('SELECT COUNT(*) FROM produits')->fetchColumn();
+                deploy_log('Produits en BDD WAMP : ' . $count);
+            } catch (Throwable $e) {
+                deploy_log('Note : impossible de compter les produits WAMP.');
+            }
+        }
     }
 
     if (!$db_only && !empty($opts['sync_upload_to_wamp'])) {
-        deploy_sync_upload_from_production($prod_files, $wamp_upload, $opts, $dry_run);
+        deploy_sync_upload_from_production(
+            $prod_files,
+            $wamp_upload,
+            $opts,
+            $dry_run,
+            $wamp_pdo,
+            $site_url
+        );
     }
 }
 
@@ -119,7 +142,7 @@ if (!$prod_only && !empty($opts['push_to_local_server'])) {
             deploy_log('Dump WAMP : ' . round(filesize($wamp_dump) / 1024 / 1024, 1) . ' Mo');
         }
 
-        deploy_log('Envoi + import BDD sur serveur local...');
+        deploy_log('Envoi + import BDD sur serveur local — recréation complète...');
         deploy_push_database_to_server(
             $server,
             $dry_run ? $dump_file : $wamp_dump,
@@ -136,7 +159,14 @@ if (!$prod_only && !empty($opts['push_to_local_server'])) {
         if (!is_dir($wamp_upload) && !$dry_run) {
             deploy_fail('Dossier upload/ WAMP introuvable : ' . $wamp_upload);
         }
-        deploy_push_upload_zip_to_server($server, $wamp_upload, $dry_run);
+        $file_count = $dry_run ? 0 : deploy_count_files($wamp_upload);
+        deploy_log('Fichiers upload/ WAMP à envoyer : ' . $file_count);
+        deploy_push_upload_zip_to_server(
+            $server,
+            $wamp_upload,
+            $dry_run,
+            !empty($opts['wipe_upload_on_server'])
+        );
         deploy_log('Images envoyées sur le serveur local.');
     }
 
@@ -151,7 +181,7 @@ if (!$dry_run && is_file($dump_file) && filesize($dump_file) > 0) {
 }
 
 // -------------------------------------------------------------------------
-// PHASE 3 — Configuration sync incrémentale (WAMP + serveur → VPS)
+// PHASE 3 — Configuration sync incrémentale (optionnel)
 // -------------------------------------------------------------------------
 if (!empty($opts['configure_sync']) && !empty($cfg['sync'])) {
     $sync_scope = [];
@@ -166,4 +196,4 @@ if (!empty($opts['configure_sync']) && !empty($cfg['sync'])) {
 deploy_log('');
 deploy_log('=== Déploiement terminé ===');
 deploy_log('WAMP    : http://localhost/Fouta/');
-deploy_log('Serveur : ' . ($server['site_url'] ?? 'http://192.168.1.217') . '/');
+deploy_log('Serveur : http://100.120.171.2/ (Tailscale) ou http://192.168.1.217/ (LAN)');

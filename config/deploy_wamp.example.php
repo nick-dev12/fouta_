@@ -19,8 +19,8 @@ return [
 
     // --- Production : images upload/ (FTP Webuzo — SSH shell désactivé) ---
     'production_files' => [
-        // ftp | ftps | skip (garder upload/ WAMP tel quel)
-        'method' => 'ftp',
+    // auto = FTP puis HTTP si FTP échoue | ftp | http_db | skip
+        'method' => 'auto',
         'host' => '62.171.190.193',
         'port' => 21,
         'user' => 'VOTRE_USER_FTP',
@@ -57,19 +57,18 @@ return [
     ],
 
     'options' => [
-        // Phase 1 : production → WAMP
+        // Refresh complet à chaque exécution (--full activé par sync_full_refresh.bat)
+        'full_refresh' => true,
         'pull_from_production' => true,
         'recreate_wamp_database' => true,
         'sync_upload_to_wamp' => true,
-
-        // Phase 2 : WAMP → serveur local
+        'wipe_upload_before_pull' => true,
         'push_to_local_server' => true,
         'recreate_server_database' => true,
         'sync_upload_to_server' => true,
-        'run_sync_migrations_on_server' => true,
-
-        // Phase 3 : sync incrémentale WAMP + serveur → production
-        'configure_sync' => true,
+        'wipe_upload_on_server' => true,
+        'run_sync_migrations_on_server' => false,
+        'configure_sync' => false,
     ],
 
     // --- Sync incrémentale (module sync_run.php) ---

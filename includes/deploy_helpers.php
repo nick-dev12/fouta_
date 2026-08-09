@@ -301,36 +301,277 @@ function deploy_ftp_download_recursive($conn, $remote_dir, $local_dir, &$count =
     }
 }
 
-function deploy_sync_upload_from_production(array $files_cfg, $local_upload, array $opts, $dry_run) {
-    $method = strtolower($files_cfg['method'] ?? 'skip');
-    if ($method === 'skip') {
-        deploy_log('Images production : ignorées (method=skip). Utilisation upload/ WAMP existant.');
+function deploy_connect_wamp_db(array $wamp_db) {
+    $dsn = 'mysql:host=' . ($wamp_db['host'] ?? 'localhost')
+        . ';dbname=' . ($wamp_db['name'] ?? '')
+        . ';charset=utf8mb4';
+    return new PDO($dsn, $wamp_db['user'] ?? 'root', $wamp_db['pass'] ?? '', [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+    ]);
+}
+
+function deploy_apply_full_refresh_options(array $opts) {
+    if (empty($opts['full_refresh'])) {
+        return $opts;
+    }
+    return array_merge($opts, [
+        'pull_from_production' => true,
+        'recreate_wamp_database' => true,
+        'sync_upload_to_wamp' => true,
+        'push_to_local_server' => true,
+        'recreate_server_database' => true,
+        'sync_upload_to_server' => true,
+        'wipe_upload_before_pull' => true,
+        'wipe_upload_on_server' => true,
+        'configure_sync' => false,
+        'run_sync_migrations_on_server' => !empty($opts['run_sync_migrations_on_server']),
+    ]);
+}
+
+function deploy_wipe_directory($dir, $dry_run = false) {
+    $dir = rtrim(str_replace('/', DIRECTORY_SEPARATOR, $dir), DIRECTORY_SEPARATOR);
+    if (!is_dir($dir)) {
         return;
     }
-    if ($method === 'ssh') {
-        deploy_log('SSH production indisponible pour ce compte — utilisez FTP ou method=skip.');
-        deploy_fail('Configurez production_files.method=ftp dans config/deploy_wamp.php');
-    }
-    if ($method !== 'ftp' && $method !== 'ftps') {
-        deploy_fail('Méthode production_files inconnue : ' . $method);
-    }
+    deploy_log('Nettoyage complet : ' . $dir);
     if ($dry_run) {
-        deploy_log('(dry-run) Téléchargement FTP ' . ($files_cfg['remote_path'] ?? '') . ' → ' . $local_upload);
+        return;
+    }
+    $items = scandir($dir);
+    if (!is_array($items)) {
+        return;
+    }
+    foreach ($items as $item) {
+        if ($item === '.' || $item === '..') {
+            continue;
+        }
+        $path = $dir . DIRECTORY_SEPARATOR . $item;
+        if (is_dir($path)) {
+            deploy_wipe_directory($path, false);
+            @rmdir($path);
+        } else {
+            @unlink($path);
+        }
+    }
+}
+
+function deploy_collect_upload_paths_from_db(PDO $db) {
+    $paths = [];
+    $add = function ($raw) use (&$paths) {
+        if ($raw === null || $raw === '') {
+            return;
+        }
+        $raw = trim(str_replace('\\', '/', (string) $raw));
+        if ($raw === '') {
+            return;
+        }
+        if (strpos($raw, 'upload/') === 0) {
+            $raw = substr($raw, 7);
+        }
+        $paths[$raw] = true;
+        $dir = dirname($raw);
+        $base = basename($raw);
+        if ($dir !== '.' && $dir !== '') {
+            $paths[$dir] = true;
+        }
+        if (preg_match('/^(.+)(\.(webp|jpg|jpeg|png|gif))$/i', $base, $m)) {
+            foreach (['_md', '_sm'] as $suffix) {
+                $paths[($dir !== '.' ? $dir . '/' : '') . $m[1] . $suffix . $m[2]] = true;
+            }
+        }
+    };
+
+    $queries = [
+        "SELECT image_principale AS img FROM produits WHERE image_principale IS NOT NULL AND image_principale != ''",
+        "SELECT image AS img FROM categories WHERE image IS NOT NULL AND image != ''",
+        "SELECT image AS img FROM slider WHERE image IS NOT NULL AND image != ''",
+        "SELECT logo AS img FROM logos WHERE logo IS NOT NULL AND logo != ''",
+        "SELECT image AS img FROM section4 WHERE image IS NOT NULL AND image != ''",
+        "SELECT image AS img FROM trending WHERE image IS NOT NULL AND image != ''",
+        "SELECT photo AS img FROM employes WHERE photo IS NOT NULL AND photo != ''",
+        "SELECT images FROM produits WHERE images IS NOT NULL AND images != ''",
+    ];
+
+    foreach ($queries as $sql) {
+        try {
+            $stmt = $db->query($sql);
+            if (!$stmt) {
+                continue;
+            }
+            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                if (isset($row['images'])) {
+                    $dec = json_decode((string) $row['images'], true);
+                    if (is_array($dec)) {
+                        foreach ($dec as $img) {
+                            $add($img);
+                        }
+                    }
+                    continue;
+                }
+                $add($row['img'] ?? '');
+            }
+        } catch (Throwable $e) {
+            // Table ou colonne absente — ignorer
+        }
+    }
+
+    return array_keys($paths);
+}
+
+function deploy_count_files($dir) {
+    $dir = rtrim(str_replace('/', DIRECTORY_SEPARATOR, $dir), DIRECTORY_SEPARATOR);
+    if (!is_dir($dir)) {
+        return 0;
+    }
+    $count = 0;
+    $iterator = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS)
+    );
+    foreach ($iterator as $item) {
+        if ($item->isFile()) {
+            $count++;
+        }
+    }
+    return $count;
+}
+
+function deploy_http_download_file($url, $local_path, $timeout = 60) {
+    $dir = dirname($local_path);
+    if (!is_dir($dir)) {
+        mkdir($dir, 0775, true);
+    }
+    if (is_file($local_path) && filesize($local_path) > 0) {
+        return true;
+    }
+
+    if (!function_exists('curl_init')) {
+        $ctx = stream_context_create(['http' => ['timeout' => $timeout], 'ssl' => ['verify_peer' => true]]);
+        $data = @file_get_contents($url, false, $ctx);
+        if ($data === false || $data === '') {
+            return false;
+        }
+        return file_put_contents($local_path, $data) !== false;
+    }
+
+    $fp = fopen($local_path, 'wb');
+    if (!$fp) {
+        return false;
+    }
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_FILE => $fp,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_TIMEOUT => $timeout,
+        CURLOPT_SSL_VERIFYPEER => true,
+    ]);
+    $ca = dirname(__DIR__) . '/config/cacert.pem';
+    if (is_file($ca)) {
+        curl_setopt($ch, CURLOPT_CAINFO, $ca);
+    }
+    $ok = curl_exec($ch);
+    $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    fclose($fp);
+    if (!$ok || $code >= 400) {
+        @unlink($local_path);
+        return false;
+    }
+    return is_file($local_path) && filesize($local_path) > 0;
+}
+
+function deploy_sync_upload_http_from_db($site_url, PDO $db, $local_upload, array $files_cfg, $dry_run) {
+    $site_url = rtrim((string) $site_url, '/');
+    $paths = deploy_collect_upload_paths_from_db($db);
+    deploy_log('Téléchargement HTTP production → WAMP (' . count($paths) . ' fichiers référencés en BDD)...');
+    if ($dry_run) {
         return;
     }
 
+    $ok = 0;
+    $fail = 0;
+    foreach ($paths as $rel) {
+        if ($rel === '' || strpos($rel, '..') !== false) {
+            continue;
+        }
+        $url = $site_url . '/upload/' . ltrim(str_replace('\\', '/', $rel), '/');
+        $local = rtrim($local_upload, '/\\') . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $rel);
+        if (deploy_http_download_file($url, $local)) {
+            $ok++;
+        } else {
+            $fail++;
+        }
+        if (($ok + $fail) % 500 === 0) {
+            deploy_log('HTTP : ' . $ok . ' OK, ' . $fail . ' échecs...');
+        }
+    }
+    deploy_log('HTTP terminé : ' . $ok . ' fichiers, ' . $fail . ' introuvables.');
+}
+
+function deploy_sync_upload_ftp(array $files_cfg, $local_upload, $dry_run) {
+    if ($dry_run) {
+        deploy_log('(dry-run) Téléchargement FTP ' . ($files_cfg['remote_path'] ?? '') . ' → ' . $local_upload);
+        return true;
+    }
     deploy_log('Téléchargement FTP production → WAMP (' . ($files_cfg['remote_path'] ?? '') . ')...');
     $conn = deploy_ftp_connect($files_cfg);
     if (!$conn) {
-        deploy_fail('Connexion FTP production impossible. Vérifiez production_files dans config/deploy_wamp.php');
+        return false;
     }
     $count = 0;
     deploy_ftp_download_recursive($conn, $files_cfg['remote_path'] ?? '/', $local_upload, $count);
     ftp_close($conn);
     deploy_log('FTP terminé : ' . $count . ' fichiers.');
+    return $count > 0;
 }
 
-function deploy_push_upload_zip_to_server(array $server, $upload_dir, $dry_run) {
+function deploy_sync_upload_from_production(array $files_cfg, $local_upload, array $opts, $dry_run, PDO $db = null, $site_url = '') {
+    $method = strtolower($files_cfg['method'] ?? 'auto');
+
+    if (!empty($opts['wipe_upload_before_pull']) && $method !== 'skip') {
+        deploy_wipe_directory($local_upload, $dry_run);
+    }
+
+    if ($method === 'skip') {
+        deploy_log('Images production : ignorées (method=skip). Utilisation upload/ WAMP existant.');
+        return;
+    }
+
+    if ($method === 'auto') {
+        if (deploy_sync_upload_ftp($files_cfg, $local_upload, $dry_run)) {
+            return;
+        }
+        deploy_log('FTP indisponible — repli sur téléchargement HTTP (fichiers référencés en BDD)...');
+        if (!$db instanceof PDO) {
+            deploy_fail('BDD WAMP requise pour method=auto/http_db. Importez la BDD production d’abord.');
+        }
+        deploy_sync_upload_http_from_db($site_url, $db, $local_upload, $files_cfg, $dry_run);
+        return;
+    }
+
+    if ($method === 'http_db') {
+        if (!$db instanceof PDO) {
+            deploy_fail('BDD WAMP requise pour method=http_db.');
+        }
+        deploy_sync_upload_http_from_db($site_url, $db, $local_upload, $files_cfg, $dry_run);
+        return;
+    }
+
+    if ($method === 'ssh') {
+        deploy_fail('SSH production indisponible — utilisez method=auto ou ftp.');
+    }
+
+    if ($method === 'ftp' || $method === 'ftps') {
+        if (!deploy_sync_upload_ftp($files_cfg, $local_upload, $dry_run)) {
+            deploy_fail('Connexion FTP production impossible. Vérifiez production_files dans config/deploy_wamp.php');
+        }
+        return;
+    }
+
+    deploy_fail('Méthode production_files inconnue : ' . $method);
+}
+
+function deploy_push_upload_zip_to_server(array $server, $upload_dir, $dry_run, $wipe_server_upload = false) {
     $web_root = rtrim($server['web_root'] ?? '/var/www/fouta', '/');
     $zip_local = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'fouta_upload_' . date('Ymd_His') . '.zip';
     $zip_remote = '/tmp/fouta_upload_deploy.zip';
@@ -345,8 +586,13 @@ function deploy_push_upload_zip_to_server(array $server, $upload_dir, $dry_run) 
 
     deploy_scp_to_server($server, $zip_local, $zip_remote, $dry_run);
 
+    $wipe = $wipe_server_upload
+        ? 'find ' . escapeshellarg($web_root . '/upload') . ' -mindepth 1 -delete 2>/dev/null || true; '
+        : '';
+
     $remote_cmd = 'set -e; '
         . 'mkdir -p ' . escapeshellarg($web_root . '/upload') . '; '
+        . $wipe
         . 'unzip -o ' . escapeshellarg($zip_remote) . ' -d ' . escapeshellarg($web_root . '/upload') . '; '
         . 'rm -f ' . escapeshellarg($zip_remote) . '; '
         . 'sudo chown -R www-data:www-data ' . escapeshellarg($web_root . '/upload') . '; '

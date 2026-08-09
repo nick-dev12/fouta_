@@ -209,6 +209,22 @@ Script tout-en-un : **production → WAMP → fplserver** (BDD + images).
 | `--files-only` | Images upload/ uniquement |
 | `--dry-run` | Simulation |
 
+### Refresh complet quotidien (production → WAMP → fplserver)
+
+Double-clic ou PowerShell :
+
+```powershell
+cd C:\wamp64\www\Fouta
+scripts\sync_full_refresh.bat
+```
+
+À chaque exécution :
+1. **BDD production** → recréée sur WAMP puis sur fplserver
+2. **Images** → FTP production, ou HTTP si FTP indisponible
+3. **upload/** serveur → remplacé entièrement
+
+Configurez `production_files` (FTP Webuzo) dans `config/deploy_wamp.php` pour un miroir complet des images.
+
 ### Sync incrémentale (WAMP ↔ production + serveur → production)
 
 Configurer sans refaire le deploy complet :
