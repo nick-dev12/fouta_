@@ -42,7 +42,6 @@ function sync_config_defaults() {
         ],
         'http_timeout' => 300,
         'verify_ssl' => true,
-        'ca_bundle' => '__DIR__ . \'/cacert.pem\'',
     ];
 }
 
@@ -61,8 +60,10 @@ function sync_config_build(array $profile, $remote_url, $remote_api_token) {
 
 function sync_config_to_php(array $config) {
     $export = var_export($config, true);
-    $export = str_replace("'__DIR__ . '/cacert.pem'", "__DIR__ . '/cacert.pem'", $export);
-    return "<?php\n/**\n * Configuration sync — généré automatiquement.\n * NE PAS committer.\n */\n\nreturn " . $export . ";\n";
+    return "<?php\n/**\n * Configuration sync — généré automatiquement.\n * NE PAS committer.\n */\n\n"
+        . '$cfg = ' . $export . ";\n"
+        . "\$cfg['ca_bundle'] = __DIR__ . '/cacert.pem';\n\n"
+        . "return \$cfg;\n";
 }
 
 function sync_config_write($path, array $config) {

@@ -874,6 +874,9 @@ if (!function_exists('sync_remote_request')) {
         $ch = curl_init($url);
         $verify_ssl = !empty($config['verify_ssl']);
         $ca_bundle = $config['ca_bundle'] ?? (dirname(__DIR__) . '/config/cacert.pem');
+        if (!is_string($ca_bundle) || $ca_bundle === '' || !is_file($ca_bundle)) {
+            $ca_bundle = dirname(__DIR__) . '/config/cacert.pem';
+        }
         $curl_opts = [
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => $json,
