@@ -143,34 +143,44 @@ function deploy_dump_database(array $db_cfg, $mysqldump, $dump_file, $dry_run) {
  */
 function deploy_dump_database_via_jump_server(array $server, array $prod_db, $dump_file, $dry_run) {
     $remote_dump = '/tmp/fouta_prod_jump_' . getmypid() . '.sql';
-    $host = $prod_db['host'] ?? 'localhost';
-    $user = $prod_db['user'] ?? '';
-    $pass = $prod_db['pass'] ?? '';
+    $remote_cnf = '/tmp/fouta_mysql_jump_' . getmypid() . '.cnf';
     $name = $prod_db['name'] ?? '';
 
     deploy_log('Export via serveur local ' . ($server['host'] ?? '') . ' ...');
 
-    $remote_cmd = 'mysqldump -h ' . escapeshellarg($host)
-        . ' -u ' . escapeshellarg($user)
-        . ' -p' . escapeshellarg($pass)
+    if ($dry_run) {
+        deploy_log('(dry-run) mysqldump via fplserver avec fichier .cnf');
+        return true;
+    }
+
+    $local_cnf = deploy_write_mysql_cnf($prod_db, 'jump');
+    $scp_cnf = deploy_scp_to_server($server, $local_cnf, $remote_cnf, false);
+    @unlink($local_cnf);
+    if ($scp_cnf['code'] !== 0) {
+        deploy_log('Impossible d\'envoyer la config MySQL sur fplserver.');
+        return false;
+    }
+
+    deploy_ssh_run($server, 'chmod 600 ' . escapeshellarg($remote_cnf), false);
+
+    $remote_cmd = 'mysqldump --defaults-extra-file=' . escapeshellarg($remote_cnf)
         . ' --single-transaction --quick --routines --triggers --set-gtid-purged=OFF '
         . escapeshellarg($name)
         . ' > ' . escapeshellarg($remote_dump)
-        . ' && test -s ' . escapeshellarg($remote_dump);
+        . ' ; EC=$?; rm -f ' . escapeshellarg($remote_cnf)
+        . '; exit $EC';
 
-    $res = deploy_ssh_run($server, $remote_cmd, $dry_run);
-    if (!$dry_run && $res['code'] !== 0) {
+    $res = deploy_ssh_run($server, $remote_cmd, false);
+    if ($res['code'] !== 0) {
         deploy_log('Dump via fplserver échoué : ' . implode("\n", $res['output']));
+        deploy_ssh_run($server, 'rm -f ' . escapeshellarg($remote_dump), false);
         return false;
     }
 
     deploy_log('Téléchargement du dump vers WAMP...');
-    $res2 = deploy_scp_from_server($server, $remote_dump, $dump_file, $dry_run);
-    deploy_ssh_run($server, 'rm -f ' . escapeshellarg($remote_dump), $dry_run);
+    $res2 = deploy_scp_from_server($server, $remote_dump, $dump_file, false);
+    deploy_ssh_run($server, 'rm -f ' . escapeshellarg($remote_dump), false);
 
-    if ($dry_run) {
-        return true;
-    }
     if ($res2['code'] !== 0 || !is_file($dump_file) || filesize($dump_file) < 500) {
         deploy_log('Dump via fplserver : fichier invalide ou SCP échoué.');
         return false;
