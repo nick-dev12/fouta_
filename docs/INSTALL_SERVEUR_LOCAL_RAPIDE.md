@@ -48,9 +48,38 @@ Le script installe : Apache, PHP, MySQL, clone le code, Composer, Apache vhost, 
 
 ---
 
-## Étape 3 — Importer la base de données
+## Étape 3 — Importer depuis la PRODUCTION (recommandé)
 
-### Option A — Depuis WAMP (recommandé pour vos tests)
+Site production : [https://e.foutapoidslourds.com/](https://e.foutapoidslourds.com/)
+
+```bash
+cd /var/www/fouta
+git pull origin main
+
+# 1. Créer la config (une seule fois)
+cp config/import_production.example.php config/import_production.php
+nano config/import_production.php
+# → Renseigner production_db, production_ssh.upload_path, local.db_pass
+
+# 2. Trouver le chemin upload/ sur le VPS si besoin
+php scripts/import_from_production.php --find-upload-path
+
+# 3. Import complet (BDD + images)
+sudo php scripts/import_from_production.php
+```
+
+Options :
+
+| Commande | Action |
+|----------|--------|
+| `php scripts/import_from_production.php` | BDD + upload/ |
+| `php scripts/import_from_production.php --db-only` | BDD seulement |
+| `php scripts/import_from_production.php --files-only` | Images seulement |
+| `php scripts/import_from_production.php --find-upload-path` | Lister chemins upload sur VPS |
+
+---
+
+## Étape 3 bis — Importer depuis WAMP (alternative)
 
 Sur **Windows** (WAMP), exporter la base :
 
