@@ -30,6 +30,7 @@ config/firebase_config.php
 config/firebase_server.php
 config/sync.php
 config/import_production.php
+config/deploy_wamp.php
 
 # Variables d'environnement
 .env

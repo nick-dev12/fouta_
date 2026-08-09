@@ -180,6 +180,39 @@ sudo systemctl reload apache2
 
 ---
 
+## Déploiement depuis WAMP (Windows → serveur local)
+
+Script tout-en-un : **production → WAMP → fplserver** (BDD + images).
+
+1. Copier la config :
+   ```powershell
+   cd C:\wamp64\www\Fouta
+   copy config\deploy_wamp.example.php config\deploy_wamp.php
+   notepad config\deploy_wamp.php
+   ```
+   Renseigner : `production_db`, `local_server`, et FTP si besoin (`production_files.method` = `ftp` ou `skip`).
+
+2. Lancer (double-clic ou PowerShell) :
+   ```powershell
+   scripts\sync_prod_to_wamp_and_server.bat
+   ```
+   Ou :
+   ```powershell
+   php scripts/sync_prod_to_wamp_and_server.php
+   ```
+
+| Option | Action |
+|--------|--------|
+| `--prod-only` | Production → WAMP seulement |
+| `--server-only` | WAMP → serveur local seulement |
+| `--db-only` | Base de données uniquement |
+| `--files-only` | Images upload/ uniquement |
+| `--dry-run` | Simulation |
+
+Prérequis Windows : OpenSSH (`scp`/`ssh`), WAMP MySQL, extension PHP `zip` et `ftp`.
+
+---
+
 ## Dépannage
 
 | Problème | Solution |
