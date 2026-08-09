@@ -126,12 +126,25 @@ function import_ssh_rsync(array $ssh, $remote_upload, $local_upload, array $opts
         $exclude = "--exclude 'barcodes/'";
     }
 
-    $cmd = "rsync -avz --progress -e \"ssh -p {$port} -o StrictHostKeyChecking=accept-new\" {$exclude} "
+    $ssh_opts = '-T -p ' . $port . ' -o StrictHostKeyChecking=accept-new -o BatchMode=no';
+    if (!empty($ssh['identity_file']) && is_readable($ssh['identity_file'])) {
+        $ssh_opts .= ' -i ' . escapeshellarg($ssh['identity_file']);
+    }
+
+    $cmd = 'rsync -avz --progress -e ' . escapeshellarg('ssh ' . $ssh_opts) . ' ' . $exclude . ' '
         . escapeshellarg($remote) . ' ' . escapeshellarg($local_upload . '/');
+
+    // rsync/SSH doit tourner sous l'utilisateur qui possède les clés SSH (pas root via sudo)
+    $run_as = getenv('SUDO_USER') ?: '';
+    if ($run_as !== '' && function_exists('posix_geteuid') && posix_geteuid() === 0) {
+        $cmd = 'sudo -u ' . escapeshellarg($run_as) . ' ' . $cmd;
+    }
 
     $res = import_run($cmd, $dry_run);
     if ($res['code'] !== 0) {
-        import_fail("rsync échoué :\n" . implode("\n", $res['output']));
+        import_fail("rsync échoué :\n" . implode("\n", $res['output'])
+            . "\n\nAstuce : lancez rsync manuellement en tant que jomas (sans sudo),"
+            . " ou configurez une clé SSH (production_ssh.identity_file).");
     }
     import_log('Upload copié vers ' . $local_upload);
 }
