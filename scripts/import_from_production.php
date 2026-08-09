@@ -271,8 +271,12 @@ if (is_file($htaccess)) {
 }
 
 // --- Permissions ---
-import_run('chown -R www-data:www-data ' . escapeshellarg($local_root), false);
-import_run('chmod -R 775 ' . escapeshellarg($local_upload), false);
+$owner = getenv('SUDO_USER') ?: (function_exists('posix_getpwuid') ? (posix_getpwuid(posix_geteuid())['name'] ?? 'www-data') : 'jomas');
+if ($owner === 'root') {
+    $owner = 'jomas';
+}
+import_run('chown -R ' . escapeshellarg($owner) . ':www-data ' . escapeshellarg($local_root), false);
+import_run('chown -R www-data:www-data ' . escapeshellarg($local_upload), false);
 
 // --- Migrations sync ---
 if (!empty($import_opts['run_sync_migrations'])) {

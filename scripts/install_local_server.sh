@@ -209,7 +209,8 @@ systemctl reload apache2
 
 log "=== 8/10 — Permissions upload ==="
 mkdir -p upload
-chown -R www-data:www-data "$FOUTA_WEB_ROOT"
+chown -R "$REAL_USER:www-data" "$FOUTA_WEB_ROOT"
+chown -R www-data:www-data "$FOUTA_WEB_ROOT/upload"
 find "$FOUTA_WEB_ROOT" -type d -exec chmod 755 {} \;
 find "$FOUTA_WEB_ROOT" -type f -exec chmod 644 {} \;
 chmod -R 775 "$FOUTA_WEB_ROOT/upload"
