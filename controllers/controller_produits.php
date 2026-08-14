@@ -1034,10 +1034,13 @@ function process_update_produit($produit_id)
  */
 function process_delete_produit($produit_id)
 {
-    // Vérifier que le produit existe
     $produit = get_produit_by_id($produit_id);
     if (!$produit) {
         return ['success' => false, 'message' => 'Produit introuvable.'];
+    }
+
+    if (!delete_produit($produit_id)) {
+        return ['success' => false, 'message' => 'Une erreur est survenue lors de la suppression.'];
     }
 
     if (!empty($produit['image_principale'])) {
@@ -1057,12 +1060,12 @@ function process_delete_produit($produit_id)
         image_optimizer_delete_with_variants((string) $produit['image_etiquette_fpl']);
     }
 
-    // Supprimer le produit
-    if (delete_produit($produit_id)) {
-        return ['success' => true, 'message' => 'Produit supprimé avec succès !'];
-    } else {
-        return ['success' => false, 'message' => 'Une erreur est survenue lors de la suppression.'];
+    $qr = dirname(__DIR__) . '/upload/qrcodes/produit_' . (int) $produit_id . '.png';
+    if (is_file($qr)) {
+        @unlink($qr);
     }
+
+    return ['success' => true, 'message' => 'Produit supprimé avec succès !'];
 }
 
 /**

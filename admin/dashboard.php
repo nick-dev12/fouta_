@@ -15,6 +15,11 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
 require_once __DIR__ . '/includes/require_access.php';
 require_once __DIR__ . '/../includes/admin_permissions.php';
 
+$dashboard_roles = ['admin', 'informaticien', 'developpeur', 'gestion_stock_general'];
+if (!in_array(admin_current_role(), $dashboard_roles, true)) {
+    admin_redirect_role_home();
+}
+
 require_once __DIR__ . '/../models/model_commandes_admin.php';
 require_once __DIR__ . '/../models/model_commandes_personnalisees.php';
 require_once __DIR__ . '/../models/model_produits.php';
@@ -608,18 +613,9 @@ if (!empty($fournisseurs_filtre)) {
             var deleteConfirm = document.getElementById('deleteConfirmConfirm');
             var currentDeleteLink = null;
 
-            function positionModal(triggerElement) {
-                var rect = triggerElement.getBoundingClientRect();
-                var modalWidth = deleteModal.offsetWidth || 360;
-                var modalHeight = deleteModal.offsetHeight || 300;
-                var left = rect.left + (rect.width / 2) - (modalWidth / 2);
-                var top = rect.top + rect.height + 10;
-                if (left < 10) left = 10;
-                if (left + modalWidth > window.innerWidth - 10) left = window.innerWidth - modalWidth - 10;
-                if (top + modalHeight > window.innerHeight - 10) top = rect.top - modalHeight - 10;
-                if (top < 10) top = 10;
-                deleteModal.style.left = left + 'px';
-                deleteModal.style.top = top + 'px';
+            function positionModal() {
+                deleteModal.style.removeProperty('left');
+                deleteModal.style.removeProperty('top');
             }
 
             function showModal(link) {

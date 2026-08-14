@@ -293,26 +293,9 @@ if (!empty($fournisseurs_filtre)) {
             var deleteConfirm = document.getElementById('deleteConfirmConfirm');
             var currentDeleteLink = null;
 
-            function positionModal(triggerElement) {
-                var rect = triggerElement.getBoundingClientRect();
-                var modalWidth = deleteModal.offsetWidth || 360;
-                var modalHeight = deleteModal.offsetHeight || 300;
-
-                var left = rect.left + (rect.width / 2) - (modalWidth / 2);
-                var top = rect.top + rect.height + 10;
-
-                // Ajuster si dépasse l'écran
-                if (left < 10) left = 10;
-                if (left + modalWidth > window.innerWidth - 10) {
-                    left = window.innerWidth - modalWidth - 10;
-                }
-                if (top + modalHeight > window.innerHeight - 10) {
-                    top = rect.top - modalHeight - 10;
-                }
-                if (top < 10) top = 10;
-
-                deleteModal.style.left = left + 'px';
-                deleteModal.style.top = top + 'px';
+            function positionModal() {
+                deleteModal.style.removeProperty('left');
+                deleteModal.style.removeProperty('top');
             }
 
             function showModal(link) {

@@ -156,11 +156,15 @@
   var marqueFilterOn = box.getAttribute('data-marque-filter') === '1' && selMarque;
   var fournisseurFilterOn = box.getAttribute('data-fournisseur-filter') === '1' && selFournisseur;
   var catalog = [];
+  var catalogReady = false;
 
   try {
     catalog = JSON.parse(elJson.textContent || '[]');
   } catch (e) {
     catalog = [];
+  }
+  if (catalog.length > 0) {
+    catalogReady = true;
   }
 
   var csrf = box.getAttribute('data-csrf') || '';
@@ -271,7 +275,7 @@
         esc(marqueNom) +
         '</p>';
     }
-    var descEx = (p.desc_preview || p.desc_excerpt || p.desc_short || '').trim();
+    var descEx = (p.desc || p.desc_preview || p.desc_excerpt || p.desc_short || '').trim();
     if (descEx) {
       html += '<p class="caisse-live-desc-line produit-card-desc">' + esc(descEx) + '</p>';
     }
@@ -312,6 +316,13 @@
     if (!needFilter) {
       box.innerHTML = '';
       box.hidden = true;
+      box.classList.remove('is-empty');
+      return;
+    }
+
+    if (!catalogReady) {
+      box.innerHTML = '<p class="caisse-live-empty">Chargement du catalogue…</p>';
+      box.hidden = false;
       box.classList.remove('is-empty');
       return;
     }
@@ -510,6 +521,32 @@
       }
     }
   });
+
+  function applyCatalog(items) {
+    catalog = Array.isArray(items) ? items : [];
+    catalogReady = true;
+    renderLive();
+  }
+
+  function loadCatalog() {
+    var url = box.getAttribute('data-catalog-url') || '';
+    if (!url) {
+      catalogReady = true;
+      return;
+    }
+    fetch(url, { credentials: 'same-origin', headers: { Accept: 'application/json' } })
+      .then(function (res) {
+        return res.json();
+      })
+      .then(function (data) {
+        applyCatalog(data && data.items ? data.items : []);
+      })
+      .catch(function () {
+        catalogReady = true;
+      });
+  }
+
+  loadCatalog();
 })();
 
 (function (global) {

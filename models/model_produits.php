@@ -2048,6 +2048,90 @@ function update_produit($id, $data)
 }
 
 /**
+ * Indique si une table existe dans la base courante.
+ */
+function produits_db_table_exists($table)
+{
+    global $db;
+    static $cache = [];
+    $table = preg_replace('/[^a-zA-Z0-9_]/', '', (string) $table);
+    if ($table === '') {
+        return false;
+    }
+    if (array_key_exists($table, $cache)) {
+        return $cache[$table];
+    }
+    try {
+        $stmt = $db->query('SHOW TABLES LIKE ' . $db->quote($table));
+        $cache[$table] = (bool) $stmt->fetchColumn();
+    } catch (PDOException $e) {
+        $cache[$table] = false;
+    }
+    return $cache[$table];
+}
+
+/**
+ * Rend produit_id nullable et passe la FK en ON DELETE SET NULL
+ * (conserve l’historique commandes / devis / caisse tout en autorisant la suppression du produit).
+ */
+function produits_ensure_fk_produit_on_delete_set_null($table)
+{
+    global $db;
+    $table = preg_replace('/[^a-zA-Z0-9_]/', '', (string) $table);
+    if ($table === '' || !produits_db_table_exists($table)) {
+        return;
+    }
+    try {
+        $stmt = $db->query("SHOW COLUMNS FROM `$table` LIKE 'produit_id'");
+        $col = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$col) {
+            return;
+        }
+        if (strtoupper((string) ($col['Null'] ?? '')) === 'YES') {
+            return;
+        }
+
+        $schema = $db->query('SELECT DATABASE()')->fetchColumn();
+        $fkStmt = $db->prepare("
+            SELECT DISTINCT CONSTRAINT_NAME
+            FROM information_schema.KEY_COLUMN_USAGE
+            WHERE TABLE_SCHEMA = :schema
+              AND TABLE_NAME = :table
+              AND COLUMN_NAME = 'produit_id'
+              AND REFERENCED_TABLE_NAME = 'produits'
+        ");
+        $fkStmt->execute(['schema' => $schema, 'table' => $table]);
+        $fks = $fkStmt->fetchAll(PDO::FETCH_COLUMN);
+        foreach ($fks as $fkName) {
+            $fkName = preg_replace('/[^a-zA-Z0-9_]/', '', (string) $fkName);
+            if ($fkName === '') {
+                continue;
+            }
+            try {
+                $db->exec("ALTER TABLE `$table` DROP FOREIGN KEY `$fkName`");
+            } catch (PDOException $e) {
+                // contrainte déjà absente
+            }
+        }
+
+        $type = (string) ($col['Type'] ?? 'int(11)');
+        if (!preg_match('/^[a-zA-Z0-9(),\s]+$/', $type)) {
+            $type = 'int(11)';
+        }
+        $db->exec("ALTER TABLE `$table` MODIFY `produit_id` $type NULL");
+
+        $newFk = 'fk_' . $table . '_produit_id';
+        try {
+            $db->exec("ALTER TABLE `$table` ADD CONSTRAINT `$newFk` FOREIGN KEY (`produit_id`) REFERENCES `produits` (`id`) ON DELETE SET NULL ON UPDATE CASCADE");
+        } catch (PDOException $e) {
+            // déjà en place
+        }
+    } catch (PDOException $e) {
+        // ignore : la suppression tentera quand même de détacher les lignes
+    }
+}
+
+/**
  * Supprime un produit
  * @param int $id L'ID du produit
  * @return bool True en cas de succès, False sinon
@@ -2056,10 +2140,71 @@ function delete_produit($id)
 {
     global $db;
 
+    $id = (int) $id;
+    if ($id <= 0 || !$db) {
+        return false;
+    }
+
+    $tables_historique = [
+        'commande_produits',
+        'devis_produits',
+        'caisse_vente_lignes',
+        'bl_lignes',
+        'stock_mouvements',
+        'commandes_retours_lignes',
+    ];
+    $tables_catalogue = [
+        'produits_variantes',
+        'panier',
+        'favoris',
+        'produits_visites',
+        'produit_champ_valeur',
+    ];
+
+    foreach ($tables_historique as $table) {
+        produits_ensure_fk_produit_on_delete_set_null($table);
+    }
+
     try {
+        $db->beginTransaction();
+
+        foreach ($tables_historique as $table) {
+            if (!produits_db_table_exists($table)) {
+                continue;
+            }
+            try {
+                $stmt = $db->prepare("UPDATE `$table` SET produit_id = NULL WHERE produit_id = :id");
+                $stmt->execute(['id' => $id]);
+            } catch (PDOException $e) {
+                // colonne encore NOT NULL : la FK SET NULL prendra le relais au DELETE
+            }
+        }
+
+        foreach ($tables_catalogue as $table) {
+            if (!produits_db_table_exists($table)) {
+                continue;
+            }
+            $stmt = $db->prepare("DELETE FROM `$table` WHERE produit_id = :id");
+            $stmt->execute(['id' => $id]);
+        }
+
         $stmt = $db->prepare("DELETE FROM produits WHERE id = :id");
-        return $stmt->execute(['id' => $id]);
+        $ok = $stmt->execute(['id' => $id]);
+        if (!$ok || $stmt->rowCount() < 1) {
+            $db->rollBack();
+            return false;
+        }
+
+        $db->commit();
+        $caisse_cache = dirname(__DIR__) . '/cache/caisse_catalog_live.json';
+        if (is_file($caisse_cache)) {
+            @unlink($caisse_cache);
+        }
+        return true;
     } catch (PDOException $e) {
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
         return false;
     }
 }

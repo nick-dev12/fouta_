@@ -52,11 +52,11 @@ if (!function_exists('admin_current_role')) {
     }
 
     /**
-     * BL, bons de retour B2B, hub index.php — commercial général ou informaticien / développeur (pas le rôle « Commercial » seul).
+     * BL, bons de retour B2B, hub index.php — commercial, commercial général, informaticien / développeur.
      */
     function admin_can_bl_retours_b2b() {
         $r = admin_current_role();
-        return in_array($r, ['commercial_general', 'informaticien', 'developpeur'], true);
+        return in_array($r, ['commercial', 'commercial_general', 'informaticien', 'developpeur'], true);
     }
 
     function admin_can_comptabilite() {

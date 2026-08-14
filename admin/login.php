@@ -6,9 +6,11 @@
 
 session_start();
 
-// Si l'admin est déjà connecté, rediriger vers le dashboard
+// Si l'admin est déjà connecté, rediriger vers l’accueil de son rôle
 if (isset($_SESSION['admin_id']) && isset($_SESSION['admin_email'])) {
-    header('Location: dashboard.php');
+    require_once __DIR__ . '/../includes/admin_route_access.php';
+    $role_redir = admin_normalize_role_for_route($_SESSION['admin_role'] ?? 'admin');
+    header('Location: ' . admin_route_build_url(admin_role_default_redirect_path($role_redir)));
     exit;
 }
 
@@ -33,7 +35,8 @@ if (isset($result['success']) && $result['success'] && $result['admin']) {
     $_SESSION['admin_role'] = normalize_admin_role($result['admin']['role'] ?? 'admin');
 
     require_once __DIR__ . '/../includes/post_login_welcome.php';
-    $next_after_login = '/admin/dashboard.php';
+    require_once __DIR__ . '/../includes/admin_route_access.php';
+    $next_after_login = admin_route_build_url(admin_role_default_redirect_path($_SESSION['admin_role']));
     if (!empty($_POST['next'])) {
         $next_after_login = (string) $_POST['next'];
     } elseif (!empty($_GET['next'])) {

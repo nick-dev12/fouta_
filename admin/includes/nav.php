@@ -12,6 +12,7 @@ require_once __DIR__ . '/../../includes/site_url.php';
  * Évite les liens relatifs cassés depuis admin/comptes/employes/, admin/parametres/, etc.
  */
 $admin_nav_base = rtrim(get_public_root_uri_path(), '/') . '/admin/';
+$admin_nav_home = $admin_nav_base . admin_role_default_redirect_path(admin_normalize_role_for_route($_SESSION['admin_role'] ?? 'admin'));
 
 $current_dir = dirname($_SERVER['PHP_SELF']);
 $current_page = basename($_SERVER['PHP_SELF']);
@@ -87,7 +88,7 @@ include __DIR__ . '/../../includes/pwa_admin_boot.php';
     <!-- Barre de navigation verticale -->
     <aside class="admin-sidebar" id="adminSidebar">
         <div class="sidebar-header">
-            <a href="<?php echo htmlspecialchars($admin_nav_base . 'dashboard.php'); ?>" class="sidebar-header-brand" title="Administration — FOUTA POIDS LOURDS">
+            <a href="<?php echo htmlspecialchars($admin_nav_home); ?>" class="sidebar-header-brand" title="Administration — FOUTA POIDS LOURDS">
                 <img src="/image/logo-fpl.png" alt="FOUTA POIDS LOURDS" class="sidebar-header-logo" loading="eager" decoding="async" width="220" height="60">
             </a>
         </div>
@@ -177,7 +178,7 @@ include __DIR__ . '/../../includes/pwa_admin_boot.php';
                 <span class="menu-item-text">Zones de livraison</span>
             </a>
             <?php endif; ?>
-            <?php elseif ($admin_role === 'commercial_general'): ?>
+            <?php elseif ($admin_role === 'commercial_general' || $admin_role === 'commercial'): ?>
             <?php if ($nav_can_devis): ?>
             <a href="<?php echo $admin_nav_base; ?>devis/devis.php"
                 class="menu-item mi-devis<?php echo $is_nav_devis_section ? ' active' : ''; ?>">
@@ -198,27 +199,9 @@ include __DIR__ . '/../../includes/pwa_admin_boot.php';
                 <span class="menu-item-text">Commandes</span>
             </a>
             <a href="<?php echo $admin_nav_base; ?>caisse/index.php"
-                class="menu-item mi-caisse<?php echo ($is_caisse && !$is_caisse_encaisser) ? ' active' : ''; ?>">
+                class="menu-item mi-caisse<?php echo ($is_caisse && $current_page === 'index.php') ? ' active' : ''; ?>">
                 <span class="menu-item-icon" aria-hidden="true"><i class="fas fa-cash-register"></i></span>
-                <span class="menu-item-text">Caisse</span>
-            </a>
-            <?php elseif ($admin_role === 'commercial'): ?>
-            <?php if ($nav_can_devis): ?>
-            <a href="<?php echo $admin_nav_base; ?>devis/devis.php"
-                class="menu-item mi-devis<?php echo $is_nav_devis_section ? ' active' : ''; ?>">
-                <span class="menu-item-icon" aria-hidden="true"><i class="fas fa-file-invoice"></i></span>
-                <span class="menu-item-text">Devis</span>
-            </a>
-            <?php endif; ?>
-            <a href="<?php echo $admin_nav_base; ?>commandes/index.php"
-                class="menu-item mi-commandes<?php echo ($is_commandes && ($current_page == 'index.php' || $current_page == 'livrees.php' || $current_page == 'annulees.php' || $current_page == 'details.php' || $current_page == 'historique-ventes.php')) ? ' active' : ''; ?>">
-                <span class="menu-item-icon" aria-hidden="true"><i class="fas fa-shopping-cart"></i></span>
-                <span class="menu-item-text">Commandes</span>
-            </a>
-            <a href="<?php echo $admin_nav_base; ?>caisse/index.php"
-                class="menu-item mi-caisse<?php echo ($is_caisse && !$is_caisse_encaisser) ? ' active' : ''; ?>">
-                <span class="menu-item-icon" aria-hidden="true"><i class="fas fa-cash-register"></i></span>
-                <span class="menu-item-text">Caisse</span>
+                <span class="menu-item-text">Caisse magasin</span>
             </a>
             <?php elseif ($admin_role === 'caissier'): ?>
             <a href="<?php echo $admin_nav_base; ?>caisse/encaisser-ticket.php"

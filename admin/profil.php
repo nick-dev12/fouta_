@@ -12,6 +12,8 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
     exit;
 }
 
+require_once __DIR__ . '/includes/require_access.php';
+
 // Récupérer les informations de l'administrateur
 require_once __DIR__ . '/../models/model_admin.php';
 $admin = get_admin_by_id($_SESSION['admin_id']);

@@ -13,8 +13,7 @@ require_once __DIR__ . '/../includes/require_access.php';
 
 require_once __DIR__ . '/../../includes/admin_permissions.php';
 if (!admin_can_devis()) {
-    header('Location: ../dashboard.php');
-    exit;
+    admin_redirect_role_home();
 }
 
 require_once __DIR__ . '/../../models/model_factures_devis.php';

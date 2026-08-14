@@ -180,6 +180,162 @@ function caisse_prix_unitaire_produit(array $p)
     return $promo !== null ? $promo : $base;
 }
 
+/** Nombre max d’articles dans le catalogue live caisse */
+if (!defined('CAISSE_CATALOG_LIVE_LIMIT')) {
+    define('CAISSE_CATALOG_LIVE_LIMIT', 2500);
+}
+
+/**
+ * Fichier cache du catalogue live (TTL court).
+ */
+function caisse_catalog_live_cache_file()
+{
+    return dirname(__DIR__) . '/cache/caisse_catalog_live.json';
+}
+
+function caisse_catalog_live_cache_invalidate()
+{
+    $f = caisse_catalog_live_cache_file();
+    if (is_file($f)) {
+        @unlink($f);
+    }
+}
+
+/**
+ * Première image catalogue (colonne principale uniquement — pas de JSON galerie).
+ */
+function caisse_catalog_first_image_url(array $p)
+{
+    $rel = trim(str_replace('\\', '/', (string) ($p['image_principale'] ?? '')));
+    if ($rel === '') {
+        return '';
+    }
+    return '/upload/' . ltrim($rel, '/');
+}
+
+/**
+ * Catalogue caisse allégé : produits actifs en stock, colonnes utiles seulement.
+ *
+ * @return array<int, array<string, mixed>>
+ */
+function caisse_catalog_live_items($limit = null)
+{
+    global $db;
+    $limit = $limit === null ? CAISSE_CATALOG_LIVE_LIMIT : max(1, min(5000, (int) $limit));
+    if (!$db) {
+        return [];
+    }
+
+    $has_ident = produits_has_column('identifiant_interne');
+    $has_marque = produits_has_column('marque_id');
+    $has_fourn = produits_has_column('fournisseur_id');
+    $has_ref_f = produits_has_column('reference_fournisseur');
+    $has_promo = produits_has_column('prix_promotion');
+
+    $sel = 'p.id, p.nom, p.stock, p.prix, p.categorie_id, p.image_principale, LEFT(p.description, 280) AS description';
+    if ($has_ident) {
+        $sel .= ', p.identifiant_interne';
+    }
+    if ($has_marque) {
+        $sel .= ', p.marque_id';
+    }
+    if ($has_fourn) {
+        $sel .= ', p.fournisseur_id';
+    }
+    if ($has_ref_f) {
+        $sel .= ', p.reference_fournisseur';
+    }
+    if ($has_promo) {
+        $sel .= ', p.prix_promotion';
+    }
+
+    $jb = function_exists('produits_catalog_join_bundle') ? produits_catalog_join_bundle() : ['sel' => '', 'join' => ''];
+    $sql = "SELECT $sel, c.nom AS categorie_nom" . ($jb['sel'] ?? '') . "
+            FROM produits p
+            LEFT JOIN categories c ON p.categorie_id = c.id
+            " . ($jb['join'] ?? '') . "
+            WHERE p.statut = 'actif' AND p.stock > 0
+            ORDER BY p.nom ASC
+            LIMIT " . (int) $limit;
+
+    try {
+        $stmt = $db->query($sql);
+        $rows = $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : [];
+    } catch (PDOException $e) {
+        return [];
+    }
+
+    $out = [];
+    foreach ($rows as $pr) {
+        $nom = (string) ($pr['nom'] ?? '');
+        $ref = $has_ident ? strtoupper(trim((string) ($pr['identifiant_interne'] ?? ''))) : '';
+        $refF = $has_ref_f ? trim((string) ($pr['reference_fournisseur'] ?? '')) : '';
+        $marqueNom = function_exists('produits_marque_libelle_from_row')
+            ? produits_marque_libelle_from_row($pr)
+            : trim((string) ($pr['marque_libelle_catalogue'] ?? ''));
+        $fournisseurNom = function_exists('produits_fournisseur_nom_affichage')
+            ? trim(produits_fournisseur_nom_affichage($pr))
+            : '';
+        $categorieNom = trim((string) ($pr['categorie_nom'] ?? ''));
+        $desc = '';
+        if (function_exists('produits_description_excerpt')) {
+            $desc = produits_description_excerpt($pr['description'] ?? '', 80);
+        }
+        $search_parts = [$nom, $ref, $refF, $marqueNom, $fournisseurNom, $categorieNom, $desc];
+        $img = caisse_catalog_first_image_url($pr);
+        $out[] = [
+            'id' => (int) ($pr['id'] ?? 0),
+            'nom' => $nom,
+            'nom_norm' => function_exists('produits_recherche_normalize') ? produits_recherche_normalize($nom) : mb_strtolower($nom),
+            'search' => function_exists('produits_recherche_normalize')
+                ? produits_recherche_normalize(implode(' ', $search_parts))
+                : mb_strtolower(implode(' ', $search_parts)),
+            'ref' => $ref,
+            'ref_f' => $refF,
+            'marque_nom' => $marqueNom,
+            'desc' => $desc,
+            'fournisseur_nom' => $fournisseurNom,
+            'categorie_nom' => $categorieNom,
+            'cat_id' => (int) ($pr['categorie_id'] ?? 0),
+            'marque_id' => $has_marque ? (int) ($pr['marque_id'] ?? 0) : 0,
+            'fournisseur_id' => $has_fourn ? (int) ($pr['fournisseur_id'] ?? 0) : 0,
+            'prix' => round((float) caisse_prix_unitaire_produit($pr), 2),
+            'stock' => (int) ($pr['stock'] ?? 0),
+            'imgs' => $img !== '' ? [$img] : [],
+        ];
+    }
+
+    return $out;
+}
+
+/**
+ * JSON du catalogue live (cache fichier 90 s).
+ */
+function caisse_catalog_live_json($limit = null)
+{
+    $limit = $limit === null ? CAISSE_CATALOG_LIVE_LIMIT : max(1, min(5000, (int) $limit));
+    $cache_dir = dirname(__DIR__) . '/cache';
+    $cache_file = caisse_catalog_live_cache_file();
+    $ttl = 90;
+    if (is_file($cache_file) && (time() - (int) filemtime($cache_file)) < $ttl) {
+        $raw = @file_get_contents($cache_file);
+        if (is_string($raw) && $raw !== '' && $raw[0] === '[') {
+            return $raw;
+        }
+    }
+    $json = json_encode(caisse_catalog_live_items($limit), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    if ($json === false) {
+        $json = '[]';
+    }
+    if (!is_dir($cache_dir)) {
+        @mkdir($cache_dir, 0755, true);
+    }
+    if (is_dir($cache_dir) && is_writable($cache_dir)) {
+        @file_put_contents($cache_file, $json, LOCK_EX);
+    }
+    return $json;
+}
+
 /**
  * Parse un montant saisi en caisse (espaces, virgule décimale…)
  *

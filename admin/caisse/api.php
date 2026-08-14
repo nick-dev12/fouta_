@@ -56,7 +56,17 @@ function caisse_api_check_csrf(array $input)
 }
 
 $input = caisse_api_read_input();
-$action = trim((string) ($input['action'] ?? ''));
+$action = trim((string) ($input['action'] ?? $_GET['action'] ?? ''));
+
+if ($action === 'catalog') {
+    if (!admin_can_caisse_vendeur() && !admin_can_caisse()) {
+        caisse_api_out(['ok' => false, 'error' => 'Accès refusé.'], 403);
+    }
+    $items_json = caisse_catalog_live_json();
+    header('Cache-Control: private, max-age=30');
+    echo '{"ok":true,"items":' . $items_json . '}';
+    exit;
+}
 
 if ($action === 'csrf') {
     caisse_api_out(['ok' => true, 'csrf_token' => (string) $_SESSION['admin_csrf']]);

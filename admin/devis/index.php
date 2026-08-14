@@ -18,8 +18,7 @@ if (isset($_GET['tab']) && $_GET['tab'] === 'devis') {
 
 require_once __DIR__ . '/../../includes/admin_permissions.php';
 if (!admin_can_bl_retours_b2b()) {
-    header('Location: ../dashboard.php');
-    exit;
+    admin_redirect_role_home();
 }
 
 require_once __DIR__ . '/../../models/model_zones_livraison.php';

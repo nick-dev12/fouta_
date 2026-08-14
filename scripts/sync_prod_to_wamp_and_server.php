@@ -26,6 +26,7 @@ if (!is_file($config_path)) {
 }
 
 require_once $root . '/includes/deploy_helpers.php';
+deploy_init_realtime_output();
 
 $cfg = require $config_path;
 $argv = $argv ?? [];
@@ -85,7 +86,7 @@ if (!$server_only && !empty($opts['pull_from_production'])) {
             if (!deploy_dump_production($prod_db, $tools, $server, $dump_file, false)) {
                 deploy_fail('Export BDD production impossible (local + via fplserver).');
             }
-            deploy_log('Dump production : ' . round(filesize($dump_file) / 1024 / 1024, 1) . ' Mo');
+            deploy_log_sql_dump_stats($dump_file, 'Dump production');
         }
 
         deploy_log('Import dans WAMP (' . $wamp_db['name'] . ') — recréation complète...');

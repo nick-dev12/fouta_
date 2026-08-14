@@ -17,17 +17,18 @@ return [
         'pass' => 'CHANGEZ_MOI',
     ],
 
-    // --- Production : images upload/ (FTP Webuzo — SSH shell désactivé) ---
+    // --- Production : images upload/ (FTP Webuzo) ---
+    // Compte jomas (home /home/jomas/) — PAS jomas_e.foutapoidslourds.com (dossier vide)
     'production_files' => [
     // auto = FTP puis HTTP si FTP échoue | ftp | http_db | skip
         'method' => 'auto',
         'host' => '62.171.190.193',
         'port' => 21,
-        'user' => 'VOTRE_USER_FTP',
-        'pass' => 'VOTRE_PASS_FTP',
+        'user' => 'jomas',
+        'pass' => 'CHANGEZ_MOI',
         'passive' => true,
-        // Chemin FTP vers upload (souvent relatif au home FTP)
-        'remote_path' => '/domains/e.foutapoidslourds.com/public_html/upload',
+        // Chemin depuis la racine FTP (/home/jomas/)
+        'remote_path' => '/foutapoidslourds.com/upload',
     ],
 
     'production_site_url' => 'https://e.foutapoidslourds.com',

@@ -31,6 +31,8 @@ config/firebase_server.php
 config/sync.php
 config/import_production.php
 config/deploy_wamp.php
+config/pull_prod_dev.php
+config/pull_prod_entreprise.php
 
 # Variables d'environnement
 .env
@@ -47,6 +49,9 @@ logs/
 cache/
 tmp/
 temp/
+
+# Profils client FTP (identifiants)
+*.coreftp
 
 # IDE et éditeurs
 .idea/

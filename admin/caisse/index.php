@@ -17,8 +17,7 @@ if (admin_current_role() === 'caissier') {
     exit;
 }
 if (!admin_can_caisse_vendeur()) {
-    header('Location: ../dashboard.php');
-    exit;
+    admin_redirect_role_home();
 }
 
 if (empty($_SESSION['admin_csrf'])) {
@@ -26,13 +25,10 @@ if (empty($_SESSION['admin_csrf'])) {
 }
 
 require_once __DIR__ . '/../../models/model_caisse.php';
-require_once __DIR__ . '/../../models/model_caisse_compta.php';
-require_once __DIR__ . '/../../includes/barcode_caisse_ticket.php';
 require_once __DIR__ . '/../../models/model_produits.php';
 require_once __DIR__ . '/../../models/model_categories.php';
 require_once __DIR__ . '/../../models/model_marques.php';
 require_once __DIR__ . '/../../includes/produit_formulaire_champs.php';
-produit_formulaire_champs_ensure_schema();
 
 // Panier géré côté client (AJAX) — suppression de l’ancien panier session
 caisse_cart_clear();
@@ -91,67 +87,11 @@ $categories = get_all_categories();
 
 $has_ident = function_exists('produits_has_column') && produits_has_column('identifiant_interne');
 
-/** Catalogue actif (stock > 0) pour filtrage temps réel côté navigateur — limite pour poids de page */
-$caisse_catalog_json = [];
-$caisse_catalog_limit = 2500;
-$caisse_catalog_rows = search_produits_with_filters('', null, null, null, 'nom', 0, $caisse_catalog_limit, null);
-foreach ($caisse_catalog_rows as $pr) {
-    if ((int) ($pr['stock'] ?? 0) <= 0) {
-        continue;
-    }
-    $mid = 0;
-    if ($marque_has_col) {
-        $mid = (int) ($pr['marque_id'] ?? 0);
-    }
-    $imgs = function_exists('produits_galerie_web_urls') ? produits_galerie_web_urls($pr) : [];
-    $refF = '';
-    if (function_exists('produits_has_column') && produits_has_column('reference_fournisseur')) {
-        $refF = trim((string) ($pr['reference_fournisseur'] ?? ''));
-    }
-    $descPreview = function_exists('produits_description_excerpt')
-        ? produits_description_excerpt($pr['description'] ?? '', 200)
-        : mb_substr(trim(strip_tags((string) ($pr['description'] ?? ''))), 0, 200);
-    $descShort = function_exists('produits_description_excerpt')
-        ? produits_description_excerpt($pr['description'] ?? '', 50)
-        : $descPreview;
-    $marqueNom = function_exists('produits_marque_libelle_from_row')
-        ? produits_marque_libelle_from_row($pr)
-        : trim((string) ($pr['marque_libelle_catalogue'] ?? $pr['marque_nom'] ?? ''));
-    $fournisseurNom = function_exists('produits_fournisseur_nom_affichage')
-        ? trim(produits_fournisseur_nom_affichage($pr))
-        : '';
-    $categorieNom = trim((string) ($pr['categorie_nom'] ?? ''));
-    $fid = 0;
-    if ($fournisseur_has_col) {
-        $fid = (int) ($pr['fournisseur_id'] ?? 0);
-    }
-    $caisse_catalog_json[] = [
-        'id' => (int) ($pr['id'] ?? 0),
-        'nom' => (string) ($pr['nom'] ?? ''),
-        'nom_norm' => produits_recherche_normalize((string) ($pr['nom'] ?? '')),
-        'search' => produit_admin_liste_search_blob($pr),
-        'ref' => $has_ident ? strtoupper(trim((string) ($pr['identifiant_interne'] ?? ''))) : '',
-        'ref_f' => $refF,
-        'marque_nom' => $marqueNom,
-        'desc_short' => $descShort,
-        'desc_preview' => $descPreview,
-        'desc_excerpt' => $descPreview,
-        'fournisseur_nom' => $fournisseurNom,
-        'categorie_nom' => $categorieNom,
-        'cat_id' => (int) ($pr['categorie_id'] ?? 0),
-        'marque_id' => $mid,
-        'fournisseur_id' => $fid,
-        'prix' => round((float) caisse_prix_unitaire_produit($pr), 2),
-        'stock' => (int) ($pr['stock'] ?? 0),
-        'imgs' => $imgs,
-    ];
-}
-$caisse_catalog_json_script = json_encode($caisse_catalog_json, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS);
-if ($caisse_catalog_json_script === false) {
-    $caisse_catalog_json_script = '[]';
-}
-
 $ticket_id = isset($_GET['ticket']) ? (int) $_GET['ticket'] : 0;
+if ($ticket_id > 0) {
+    require_once __DIR__ . '/../../models/model_caisse_compta.php';
+    require_once __DIR__ . '/../../includes/barcode_caisse_ticket.php';
+}
 $ticket_data = ($ticket_id > 0) ? caisse_get_vente_by_id($ticket_id) : null;
 $ticket_introuvable = ($ticket_id > 0 && !$ticket_data);
 $ticket_recap = $ticket_data ? caisse_vente_recap_fiscal_affichage($ticket_data) : null;
@@ -374,6 +314,7 @@ $manque_preview = null;
                                 data-has-ident="<?php echo $has_ident ? '1' : '0'; ?>"
                                 data-marque-filter="<?php echo ($marque_has_col && !empty($marques_liste)) ? '1' : '0'; ?>"
                                 data-fournisseur-filter="<?php echo ($fournisseur_has_col && !empty($fournisseurs_liste)) ? '1' : '0'; ?>"
+                                data-catalog-url="api.php?action=catalog"
                                 hidden></div>
                         </div>
                         <form id="caisse-add-scan-fallback" method="post" action="post.php" class="visually-hidden" tabindex="-1" aria-hidden="true">
@@ -537,7 +478,7 @@ $manque_preview = null;
         </div>
     </div>
 
-    <script type="application/json" id="caisse-catalog-json"><?php echo $caisse_catalog_json_script; ?></script>
+    <script type="application/json" id="caisse-catalog-json">[]</script>
     <script src="/js/admin-caisse-live-search.js<?php echo asset_version_query(); ?>"></script>
     <script src="/js/admin-caisse-panier.js<?php echo asset_version_query(); ?>"></script>
     <script>

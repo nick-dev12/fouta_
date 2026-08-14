@@ -37,7 +37,7 @@ function process_admin_inscription() {
         $errors[] = 'Le nom est obligatoire.';
     } elseif (strlen($nom) < 2) {
         $errors[] = 'Le nom doit contenir au moins 2 caractères.';
-    } elseif (!preg_match('/^[a-zA-ZÀ-ÿ\s\-\']+$/u', $nom)) {
+    } elseif (!preg_match('/^[a-zA-ZÀ-ÿ0-9\s\-\'_]+$/u', $nom)) {
         $errors[] = 'Le nom contient des caractères invalides.';
     }
     
@@ -46,7 +46,7 @@ function process_admin_inscription() {
         $errors[] = 'Le prénom est obligatoire.';
     } elseif (strlen($prenom) < 2) {
         $errors[] = 'Le prénom doit contenir au moins 2 caractères.';
-    } elseif (!preg_match('/^[a-zA-ZÀ-ÿ\s\-\']+$/u', $prenom)) {
+    } elseif (!preg_match('/^[a-zA-ZÀ-ÿ0-9\s\-\'_]+$/u', $prenom)) {
         $errors[] = 'Le prénom contient des caractères invalides.';
     }
     

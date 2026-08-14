@@ -10,9 +10,20 @@ if (!function_exists('admin_route_relative_path')) {
      * Chemin relatif sous admin/ (ex. devis/bl_enregistrer.php)
      */
     function admin_route_relative_path() {
-        $script = str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? '');
-        if (preg_match('#/admin/(.+\.php)$#', $script, $m)) {
-            return $m[1];
+        $uri_path = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH);
+        $candidates = [
+            $_SERVER['SCRIPT_NAME'] ?? '',
+            $_SERVER['PHP_SELF'] ?? '',
+            is_string($uri_path) ? $uri_path : '',
+        ];
+        foreach ($candidates as $script) {
+            $script = str_replace('\\', '/', (string) $script);
+            if ($script === '') {
+                continue;
+            }
+            if (preg_match('#(?:^|/)admin/(.+\.php)$#', $script, $m)) {
+                return $m[1];
+            }
         }
         return '';
     }
@@ -153,7 +164,7 @@ if (!function_exists('admin_route_relative_path')) {
         }
 
         // Pages communes à tous les comptes connectés
-        if ($p === 'profil.php') {
+        if ($p === 'profil.php' || $p === 'logout.php' || $p === 'dashboard.php') {
             return true;
         }
 
@@ -163,16 +174,9 @@ if (!function_exists('admin_route_relative_path')) {
 
         switch ($r) {
             case 'commercial_general':
+            case 'commercial':
                 return $starts('devis/')
                     || $starts('commandes/')
-                    || $starts('caisse/')
-                    || $starts('commercial/');
-
-            case 'commercial':
-                if (in_array($p, admin_route_commercial_devis_scripts(), true)) {
-                    return true;
-                }
-                return $starts('commandes/')
                     || $starts('caisse/')
                     || $starts('commercial/');
 
@@ -239,6 +243,15 @@ if (!function_exists('admin_route_relative_path')) {
             return $m[1] . '/admin/' . ltrim($relativeUnderAdmin, '/');
         }
         return '/admin/' . ltrim($relativeUnderAdmin, '/');
+    }
+
+    /**
+     * Redirige vers la page d’accueil du rôle (évite le tableau de bord si le rôle n’y a pas accès).
+     */
+    function admin_redirect_role_home() {
+        $role = $_SESSION['admin_role'] ?? 'admin';
+        header('Location: ' . admin_route_build_url(admin_role_default_redirect_path($role)));
+        exit;
     }
 
     /**
