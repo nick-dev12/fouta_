@@ -68,6 +68,162 @@ function export_catalogue_prix_draft_clear()
 }
 
 /**
+ * Normalise un brouillon prix (requête ou JSON) en map produit_id => champs.
+ *
+ * @param mixed $raw
+ * @return array<int, array<string, string>>
+ */
+function export_catalogue_prix_draft_normalize($raw)
+{
+    if (!is_array($raw)) {
+        return [];
+    }
+    $out = [];
+    foreach ($raw as $pid => $row) {
+        $pid = (int) $pid;
+        if ($pid <= 0 || !is_array($row)) {
+            continue;
+        }
+        $item = [];
+        if (array_key_exists('prix', $row)) {
+            $item['prix'] = (string) $row['prix'];
+        }
+        if (array_key_exists('prix_achat', $row)) {
+            $item['prix_achat'] = (string) $row['prix_achat'];
+        }
+        if ($item !== []) {
+            $out[$pid] = $item;
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * Extrait et fusionne un brouillon prix depuis une requête HTTP (export PDF).
+ *
+ * @param array<string, mixed> $source
+ * @return array<int, array<string, string>>
+ */
+function export_catalogue_prix_draft_from_request(array $source)
+{
+    $incoming = [];
+    if (isset($source['prix_draft']) && is_string($source['prix_draft']) && trim($source['prix_draft']) !== '') {
+        $decoded = json_decode($source['prix_draft'], true);
+        if (is_array($decoded)) {
+            $incoming = export_catalogue_prix_draft_normalize($decoded);
+        }
+    } elseif (isset($source['prix_draft']) && is_array($source['prix_draft'])) {
+        $incoming = export_catalogue_prix_draft_normalize($source['prix_draft']);
+    }
+
+    if ($incoming === []) {
+        return export_catalogue_prix_draft_get();
+    }
+
+    $merged = export_catalogue_prix_draft_get();
+    foreach ($incoming as $pid => $row) {
+        if (!isset($merged[$pid]) || !is_array($merged[$pid])) {
+            $merged[$pid] = [];
+        }
+        if (array_key_exists('prix', $row)) {
+            $merged[$pid]['prix'] = (string) $row['prix'];
+        }
+        if (array_key_exists('prix_achat', $row)) {
+            $merged[$pid]['prix_achat'] = (string) $row['prix_achat'];
+        }
+    }
+    export_catalogue_prix_draft_store($merged);
+
+    return $merged;
+}
+
+/**
+ * Applique un brouillon prix aux lignes produits avant export PDF.
+ *
+ * @param array<int, array<string, mixed>> $produits
+ * @param array<int, array<string, string>> $draft
+ * @return array<int, array<string, mixed>>
+ */
+function export_catalogue_merge_prix_draft_into_produits(array $produits, array $draft)
+{
+    if ($produits === [] || $draft === []) {
+        return $produits;
+    }
+
+    require_once __DIR__ . '/../models/model_produits.php';
+
+    foreach ($produits as $i => $produit) {
+        if (!is_array($produit)) {
+            continue;
+        }
+        $pid = (int) ($produit['id'] ?? 0);
+        if ($pid <= 0 || !isset($draft[$pid]) || !is_array($draft[$pid])) {
+            continue;
+        }
+        $row = $draft[$pid];
+        if (array_key_exists('prix', $row)) {
+            $raw = trim((string) $row['prix']);
+            if ($raw === '') {
+                $produits[$i]['prix'] = null;
+            } else {
+                $norm = export_catalogue_prix_normalise_stockage($raw);
+                if ($norm !== false) {
+                    $produits[$i]['prix'] = $norm;
+                }
+            }
+        }
+        if (array_key_exists('prix_achat', $row)) {
+            $raw = trim((string) $row['prix_achat']);
+            if ($raw === '') {
+                $produits[$i]['prix_achat'] = null;
+            } else {
+                $norm = export_catalogue_prix_normalise_stockage($raw);
+                if ($norm !== false) {
+                    $produits[$i]['prix_achat'] = $norm;
+                }
+            }
+        }
+    }
+
+    return $produits;
+}
+
+/**
+ * Charge tous les produits filtrés pour l’export PDF (sans pagination aperçu).
+ *
+ * @param array<string, mixed> $filters
+ * @param array<int, array<string, string>>|null $prix_draft
+ * @param callable|null $progress_callback function(int $loaded, int $total): void
+ * @return array<int, array<string, mixed>>
+ */
+function export_catalogue_load_produits_for_pdf(array $filters, $prix_draft = null, $progress_callback = null)
+{
+    require_once __DIR__ . '/export_catalogue_job.php';
+    require_once __DIR__ . '/../models/model_produits.php';
+
+    $parsed = export_catalogue_filters_from_request($filters);
+    $produits = get_admin_produits_export_catalogue_all(
+        (string) $parsed['date_debut'],
+        (string) $parsed['date_fin'],
+        (string) $parsed['mode'],
+        (string) $parsed['recherche'],
+        (int) $parsed['categorie_id'],
+        (int) $parsed['marque_id'],
+        (int) ($parsed['fournisseur_id'] ?? 0),
+        defined('EXPORT_CATALOGUE_BATCH_SIZE') ? EXPORT_CATALOGUE_BATCH_SIZE : 200,
+        $progress_callback,
+        true
+    );
+
+    if ($prix_draft === null) {
+        $prix_draft = export_catalogue_prix_draft_get();
+    }
+
+    return export_catalogue_merge_prix_draft_into_produits($produits, $prix_draft);
+}
+
+/**
  * @return string
  */
 function export_catalogue_filters_session_key()

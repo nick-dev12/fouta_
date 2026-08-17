@@ -19,6 +19,7 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
 
 require_once __DIR__ . '/../includes/require_access_json.php';
 require_once __DIR__ . '/../../includes/export_catalogue_job.php';
+require_once __DIR__ . '/../../includes/export_catalogue_suivi.php';
 require_once __DIR__ . '/../../includes/export_produits_catalogue_pdf.php';
 
 $source = array_merge($_GET, $_POST);
@@ -60,6 +61,11 @@ if ($total > EXPORT_CATALOGUE_PDF_MAX) {
 $job_filters = array_merge($filters, [
     'pdf_cols' => $meta['pdf_cols'] ?? [],
 ]);
+
+$prix_draft = export_catalogue_prix_draft_from_request($source);
+if ($prix_draft !== []) {
+    $meta['prix_draft'] = $prix_draft;
+}
 
 $job = export_catalogue_job_create((int) $_SESSION['admin_id'], $job_filters, $meta);
 if ($job === null) {

@@ -631,12 +631,17 @@ function export_catalogue_job_run($job_id, $token) {
 
     export_catalogue_require_db();
     require_once __DIR__ . '/export_produits_catalogue_pdf.php';
+    require_once __DIR__ . '/export_catalogue_suivi.php';
     require_once __DIR__ . '/../models/model_produits.php';
 
     export_catalogue_job_update_progress($job, 2, 'Préparation des données…', 'running');
 
     $filters = is_array($job['filters'] ?? null) ? $job['filters'] : [];
     $meta = is_array($job['meta'] ?? null) ? $job['meta'] : export_catalogue_build_meta_from_filters($filters);
+    $prix_draft = [];
+    if (isset($meta['prix_draft']) && is_array($meta['prix_draft'])) {
+        $prix_draft = export_catalogue_prix_draft_normalize($meta['prix_draft']);
+    }
     $total = (int) ($meta['total'] ?? 0);
 
     if ($total <= 0) {
@@ -663,17 +668,7 @@ function export_catalogue_job_run($job_id, $token) {
     };
 
     try {
-        $produits = get_admin_produits_export_catalogue_all(
-            (string) ($filters['date_debut'] ?? ''),
-            (string) ($filters['date_fin'] ?? ''),
-            (string) ($filters['mode'] ?? 'tous'),
-            (string) ($filters['recherche'] ?? ''),
-            (int) ($filters['categorie_id'] ?? 0),
-            (int) ($filters['marque_id'] ?? 0),
-            (int) ($filters['fournisseur_id'] ?? 0),
-            EXPORT_CATALOGUE_BATCH_SIZE,
-            $progress_load
-        );
+        $produits = export_catalogue_load_produits_for_pdf($filters, $prix_draft, $progress_load);
     } catch (RuntimeException $e) {
         if ($e->getMessage() === 'cancelled') {
             return false;
@@ -685,6 +680,21 @@ function export_catalogue_job_run($job_id, $token) {
         export_catalogue_job_fail($job, 'Export annulé.');
         return false;
     }
+
+    $loaded = count($produits);
+    if ($loaded <= 0) {
+        export_catalogue_job_fail($job, 'Aucun produit à exporter.');
+        return false;
+    }
+    if ($total > 0 && $loaded < $total) {
+        export_catalogue_job_fail(
+            $job,
+            'Chargement incomplet des produits (' . $loaded . ' / ' . $total . '). Réessayez l’export.'
+        );
+        return false;
+    }
+
+    $meta['total'] = $loaded;
 
     export_catalogue_job_update_progress($job, 42, 'Construction du document PDF…', 'running');
 

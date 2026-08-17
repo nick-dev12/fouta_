@@ -2683,7 +2683,7 @@ function admin_produits_export_periode_sql($mode, $date_debut, $date_fin, array 
  * @return array<int, array<string, mixed>>
  */
 
-function get_admin_produits_export_catalogue($date_debut, $date_fin, $mode = 'tous', $recherche = '', $categorie_id = 0, $marque_id = 0, $fournisseur_id = 0, $limit = 500, $offset = 0)
+function get_admin_produits_export_catalogue($date_debut, $date_fin, $mode = 'tous', $recherche = '', $categorie_id = 0, $marque_id = 0, $fournisseur_id = 0, $limit = 500, $offset = 0, $for_pdf = false)
 {
     global $db;
 
@@ -2729,10 +2729,12 @@ function get_admin_produits_export_catalogue($date_debut, $date_fin, $mode = 'to
         $stmt->bindValue(':exp_limit', $limit, PDO::PARAM_INT);
         $stmt->execute();
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        $rows = produits_appliquer_filtre_acces_liste($rows ? $rows : []);
+        if (!$for_pdf) {
+            $rows = produits_appliquer_filtre_acces_liste($rows ? $rows : []);
+        }
         require_once __DIR__ . '/model_produit_formulaire_champs.php';
 
-        return produit_formulaire_attacher_valeurs_custom_liste($rows);
+        return produit_formulaire_attacher_valeurs_custom_liste($rows ? $rows : []);
     } catch (PDOException $e) {
         return [];
     }
@@ -2744,7 +2746,7 @@ function get_admin_produits_export_catalogue($date_debut, $date_fin, $mode = 'to
  * @param callable|null $progress_callback function(int $loaded, int $total): void
  * @return array<int, array<string, mixed>>
  */
-function get_admin_produits_export_catalogue_all($date_debut, $date_fin, $mode = 'tous', $recherche = '', $categorie_id = 0, $marque_id = 0, $fournisseur_id = 0, $batch_size = 200, $progress_callback = null)
+function get_admin_produits_export_catalogue_all($date_debut, $date_fin, $mode = 'tous', $recherche = '', $categorie_id = 0, $marque_id = 0, $fournisseur_id = 0, $batch_size = 200, $progress_callback = null, $for_pdf = false)
 {
     $total = count_admin_produits_export_catalogue($date_debut, $date_fin, $mode, $recherche, $categorie_id, $marque_id, $fournisseur_id);
     $batch_size = max(50, min(500, (int) $batch_size));
@@ -2761,7 +2763,8 @@ function get_admin_produits_export_catalogue_all($date_debut, $date_fin, $mode =
             $marque_id,
             $fournisseur_id,
             $batch_size,
-            $offset
+            $offset,
+            $for_pdf
         );
         if ($chunk === []) {
             break;

@@ -15,10 +15,12 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
 
 require_once __DIR__ . '/../includes/require_access.php';
 require_once __DIR__ . '/../../includes/export_catalogue_job.php';
+require_once __DIR__ . '/../../includes/export_catalogue_suivi.php';
 require_once __DIR__ . '/../../includes/export_produits_catalogue_pdf.php';
 
 $filters = export_catalogue_filters_from_request($_GET);
 $meta = export_catalogue_build_meta_from_filters($_GET);
+$prix_draft = export_catalogue_prix_draft_from_request($_GET);
 $total = (int) ($meta['total'] ?? 0);
 
 $redirect_query = [
@@ -43,16 +45,12 @@ if ($total >= EXPORT_CATALOGUE_ASYNC_MIN) {
 
 require_once __DIR__ . '/../../models/model_produits.php';
 
-$produits = get_admin_produits_export_catalogue(
-    $filters['date_debut'],
-    $filters['date_fin'],
-    $filters['mode'],
-    $filters['recherche'],
-    $filters['categorie_id'],
-    $filters['marque_id'],
-    $filters['fournisseur_id'],
-    EXPORT_CATALOGUE_PDF_MAX
+$produits = export_catalogue_load_produits_for_pdf(
+    array_merge($filters, isset($meta['pdf_cols']) ? ['pdf_cols' => $meta['pdf_cols']] : []),
+    $prix_draft
 );
+
+$meta['total'] = count($produits);
 
 $back_query = $redirect_query;
 unset($back_query['async_pdf']);

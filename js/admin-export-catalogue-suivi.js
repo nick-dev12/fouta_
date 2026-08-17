@@ -132,9 +132,21 @@
         params.delete('pdf_cols');
         params.delete('pdf_cols[]');
         params.delete('async_pdf');
+        params.delete('prix_draft');
         columns.forEach(function (col) {
             params.append('pdf_cols[]', col);
         });
+        return params.toString();
+    }
+
+    function appendPrixDraftToQuery(query) {
+        var map = readPrixDraftMap();
+        snapshotPrixInputsIntoMap(map);
+        if (Object.keys(map).length === 0) {
+            return query;
+        }
+        var params = new URLSearchParams(query);
+        params.set('prix_draft', JSON.stringify(map));
         return params.toString();
     }
 
@@ -166,7 +178,7 @@
             return;
         }
         closePdfModal();
-        startPdfExport(buildQueryWithPdfColumns(pendingPdfQuery, cols));
+        startPdfExport(appendPrixDraftToQuery(buildQueryWithPdfColumns(pendingPdfQuery, cols)));
     }
 
     function bindPdfModal() {
