@@ -782,7 +782,7 @@ function export_catalogue_build_pdf_html(array $produits, array $meta, $on_progr
         $header_cells .= export_catalogue_pdf_table_cell('th', $col['width'], $col['class'], export_catalogue_pdf_escape($col['label']));
     }
 
-    $rows_html = '';
+    $row_htmls = [];
     $i = 0;
     foreach ($produits as $p) {
         $i++;
@@ -793,7 +793,7 @@ function export_catalogue_build_pdf_html(array $produits, array $meta, $on_progr
             $inner = $cell_contents[$key] ?? '—';
             $row_cells .= export_catalogue_pdf_table_cell('td', $col['width'], $col['class'], $inner);
         }
-        $rows_html .= '<tr>' . $row_cells . '</tr>';
+        $row_htmls[] = '<tr>' . $row_cells . '</tr>';
 
         if ($on_progress !== null && ($i % 5 === 0 || $i === $count)) {
             $pct = 42 + (int) floor(28 * $i / max(1, $count));
@@ -801,8 +801,34 @@ function export_catalogue_build_pdf_html(array $produits, array $meta, $on_progr
         }
     }
 
-    if ($rows_html === '') {
-        $rows_html = '<tr><td colspan="' . $col_count . '" class="empty">Aucun produit pour les critères sélectionnés.</td></tr>';
+    if ($row_htmls === []) {
+        $row_htmls[] = '<tr><td colspan="' . $col_count . '" class="empty">Aucun produit pour les critères sélectionnés.</td></tr>';
+    }
+
+    $has_img = in_array('img', $selected_cols, true);
+    $first_chunk = $has_img ? 7 : 11;
+    $next_chunk = $has_img ? 12 : 16;
+    $chunks = [];
+    $offset_rows = 0;
+    $total_rows = count($row_htmls);
+    while ($offset_rows < $total_rows) {
+        $size = $chunks === [] ? $first_chunk : $next_chunk;
+        $chunks[] = array_slice($row_htmls, $offset_rows, $size);
+        $offset_rows += $size;
+    }
+
+    $tables_html = '';
+    $chunk_count = count($chunks);
+    foreach ($chunks as $ci => $chunk_rows) {
+        $page_class = 'catalogue-page';
+        if ($ci === $chunk_count - 1) {
+            $page_class .= ' catalogue-page--last';
+        }
+        $tables_html .= '<div class="' . $page_class . '">'
+            . '<table class="catalogue">'
+            . '<thead><tr>' . $header_cells . '</tr></thead>'
+            . '<tbody>' . implode('', $chunk_rows) . '</tbody>'
+            . '</table></div>';
     }
 
     $logo_html = $logo !== ''
@@ -816,66 +842,67 @@ function export_catalogue_build_pdf_html(array $produits, array $meta, $on_progr
 <title>Export catalogue produits</title>
 <style>
 @page { margin: 12mm 8mm 14mm 8mm; }
-body { font-family: DejaVu Sans, sans-serif; font-size: 9px; color: #0d0d0d; margin: 0; }
-.header { display: table; width: 100%; margin-bottom: 14px; border-bottom: 2px solid #3564a6; padding-bottom: 10px; }
-.header-left { display: table-cell; vertical-align: top; width: 58%; }
-.header-right { display: table-cell; vertical-align: top; text-align: right; width: 42%; }
+html, body { font-family: DejaVu Sans, sans-serif; font-size: 9px; color: #0d0d0d; margin: 0; padding: 0; }
+.header { width: 100%; margin-bottom: 10px; border-bottom: 2px solid #3564a6; padding-bottom: 8px; border-collapse: collapse; }
+.header td { vertical-align: top; padding: 0; }
+.header-left { width: 58%; }
+.header-right { width: 42%; text-align: right; }
 .logo { max-width: 72px; max-height: 72px; margin-bottom: 6px; }
 .entreprise h1 { font-size: 16px; margin: 0 0 6px; color: #0d0d0d; }
 .entreprise p { margin: 0 0 3px; font-size: 8.5px; color: #444; line-height: 1.35; }
 .doc-title { font-size: 13px; font-weight: bold; color: #3564a6; margin: 0 0 8px; line-height: 1.3; }
 .doc-meta { font-size: 8.5px; color: #555; line-height: 1.4; margin: 0 0 4px; }
 .doc-meta strong { color: #0d0d0d; }
-.doc-filtres { margin: 0 0 6px; padding: 8px 10px; background: #f4f7fb; border: 1px solid #dde6f2; border-radius: 4px; }
+.doc-filtres { margin: 0 0 6px; padding: 8px 10px; background: #f4f7fb; border: 1px solid #dde6f2; }
 .doc-filtre { margin: 0 0 5px; font-size: 8.5px; line-height: 1.35; }
 .doc-filtre:last-child { margin-bottom: 0; }
 .doc-filtre__label { display: block; font-size: 7px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.04em; color: #3564a6; margin-bottom: 1px; }
 .doc-filtre__value { color: #0d0d0d; }
 .doc-filtre__value strong { color: #0d0d0d; }
-table.catalogue { width: 100%; border-collapse: collapse; margin-top: 8px; table-layout: fixed; }
-table.catalogue th { background: #3564a6; color: #fff; font-size: 7.5px; text-transform: uppercase; padding: 6px 4px; text-align: left; vertical-align: middle; word-wrap: break-word; overflow: hidden; }
+.catalogue-page { page-break-after: always; }
+.catalogue-page--last { page-break-after: auto; }
+table.catalogue { width: 100%; border-collapse: collapse; margin-top: 6px; table-layout: fixed; page-break-inside: auto; }
+table.catalogue thead { display: table-header-group; }
+table.catalogue tr { page-break-inside: avoid; page-break-after: auto; }
+table.catalogue th { background: #3564a6; color: #fff; font-size: 7.5px; text-transform: uppercase; padding: 6px 4px; text-align: left; vertical-align: middle; word-wrap: break-word; }
 table.catalogue td { border-bottom: 1px solid #e5e5e5; padding: 5px 4px; vertical-align: top; font-size: 8px; word-wrap: break-word; overflow-wrap: break-word; }
 table.catalogue tr:nth-child(even) td { background: #f8fafc; }
 .col-img { text-align: center; vertical-align: middle !important; }
-.prod-img { width: 34px; height: 34px; object-fit: cover; border-radius: 4px; border: 1px solid #ddd; display: block; margin: 0 auto; }
+.prod-img { width: 32px; height: 32px; border: 1px solid #ddd; display: block; margin: 0 auto; }
 .prod-no-img { color: #999; }
 .col-nom { line-height: 1.35; }
 .col-text { line-height: 1.35; }
 .col-num { text-align: center; vertical-align: middle; }
 table.catalogue th.col-num { text-align: center; }
-.col-date { font-size: 7.5px; color: #555; vertical-align: top; line-height: 1.3; }
 .muted { color: #666; font-size: 7.5px; }
 .empty { text-align: center; padding: 20px; color: #666; }
-.footer { margin-top: 12px; font-size: 7.5px; color: #777; text-align: center; border-top: 1px solid #eee; padding-top: 8px; }
+.footer { margin-top: 10px; font-size: 7.5px; color: #777; text-align: center; border-top: 1px solid #eee; padding-top: 8px; }
 </style>
 </head>
 <body>
-<div class="header">
-    <div class="header-left">
-        <div class="entreprise">'
+<table class="header">
+    <tr>
+        <td class="header-left">
+            <div class="entreprise">'
         . $logo_html
         . '<h1>' . export_catalogue_pdf_escape($ent['nom']) . '</h1>
-            <p>R.C : ' . export_catalogue_pdf_escape($ent['rc']) . '</p>
-            <p>N.I.N.E.A : ' . export_catalogue_pdf_escape($ent['ninea']) . '</p>
-            <p>' . export_catalogue_pdf_escape($ent['adresse']) . '</p>
-            <p>+221 ' . export_catalogue_pdf_escape($ent['tel1']) . '</p>
-            <p>' . export_catalogue_pdf_escape($ent['site']) . ' · ' . export_catalogue_pdf_escape($ent['email']) . '</p>
-        </div>
-    </div>
-    <div class="header-right">
-        <p class="doc-title">' . export_catalogue_pdf_escape($doc_title) . '</p>
-        <div class="doc-filtres">
-        ' . $filtres_header_html . '
-        </div>
-        <p class="doc-meta">' . $total . ' produit(s) · Généré le ' . $genere_le . '</p>
-    </div>
-</div>
-<table class="catalogue">
-    <thead>
-        <tr>' . $header_cells . '</tr>
-    </thead>
-    <tbody>' . $rows_html . '</tbody>
+                <p>R.C : ' . export_catalogue_pdf_escape($ent['rc']) . '</p>
+                <p>N.I.N.E.A : ' . export_catalogue_pdf_escape($ent['ninea']) . '</p>
+                <p>' . export_catalogue_pdf_escape($ent['adresse']) . '</p>
+                <p>+221 ' . export_catalogue_pdf_escape($ent['tel1']) . '</p>
+                <p>' . export_catalogue_pdf_escape($ent['site']) . ' · ' . export_catalogue_pdf_escape($ent['email']) . '</p>
+            </div>
+        </td>
+        <td class="header-right">
+            <p class="doc-title">' . export_catalogue_pdf_escape($doc_title) . '</p>
+            <div class="doc-filtres">
+            ' . $filtres_header_html . '
+            </div>
+            <p class="doc-meta">' . $total . ' produit(s) · Généré le ' . $genere_le . '</p>
+        </td>
+    </tr>
 </table>
+' . $tables_html . '
 <p class="footer">Document généré par l’administration FOUTA POIDS LOURDS — export catalogue interne.</p>
 </body>
 </html>';
@@ -925,8 +952,11 @@ function export_catalogue_render_pdf_binary(array $produits, array $meta, $on_pr
         $options->set('isHtml5ParserEnabled', true);
         $options->set('defaultFont', 'DejaVu Sans');
         $options->set('chroot', $root);
+        $options->set('dpi', 96);
+        $options->set('isFontSubsettingEnabled', true);
 
         $dompdf = new \Dompdf\Dompdf($options);
+        $dompdf->setBasePath($root);
         $dompdf->loadHtml($html, 'UTF-8');
         $dompdf->setPaper('A4', 'landscape');
         $dompdf->render();
@@ -938,6 +968,11 @@ function export_catalogue_render_pdf_binary(array $produits, array $meta, $on_pr
         $pdf_output = $dompdf->output();
         if ($pdf_output === '' || $pdf_output === false) {
             export_catalogue_pdf_set_error('Dompdf n’a produit aucun contenu PDF.');
+
+            return false;
+        }
+        if (strpos($pdf_output, '%PDF') !== 0 || strpos($pdf_output, '%%EOF') === false) {
+            export_catalogue_pdf_set_error('Le PDF généré est incomplet. Réessayez l’export.');
 
             return false;
         }
