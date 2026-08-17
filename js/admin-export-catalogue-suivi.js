@@ -470,6 +470,125 @@
         });
     }
 
+    var PRIX_DRAFT_KEY = 'fouta_export_catalogue_prix_draft';
+    var FILTERS_KEY = 'fouta_export_catalogue_filters';
+
+    function bindFilterPersistence() {
+        var form = document.querySelector('.page-produits-export-filters');
+        if (!form) {
+            return;
+        }
+        function snapshotFilters() {
+            try {
+                var params = new URLSearchParams(new FormData(form));
+                if (!params.has('page')) {
+                    params.set('page', '1');
+                }
+                sessionStorage.setItem(FILTERS_KEY, params.toString());
+            } catch (e) {
+                /* ignore */
+            }
+        }
+        form.addEventListener('submit', snapshotFilters);
+        form.addEventListener('change', snapshotFilters);
+        if (window.location.search.length > 1) {
+            snapshotFilters();
+        }
+    }
+
+    function getPrixInputs() {
+        return Array.prototype.slice.call(document.querySelectorAll('.page-produits-export-table__price-input[data-export-prix-pid]'));
+    }
+
+    function readPrixDraftMap() {
+        try {
+            var raw = sessionStorage.getItem(PRIX_DRAFT_KEY);
+            if (!raw) {
+                return {};
+            }
+            var data = JSON.parse(raw);
+            return data && typeof data === 'object' ? data : {};
+        } catch (e) {
+            return {};
+        }
+    }
+
+    function writePrixDraftMap(map) {
+        try {
+            sessionStorage.setItem(PRIX_DRAFT_KEY, JSON.stringify(map));
+        } catch (e) {
+            /* quota */
+        }
+    }
+
+    function snapshotPrixInputsIntoMap(map) {
+        getPrixInputs().forEach(function (input) {
+            var pid = String(input.getAttribute('data-export-prix-pid') || '');
+            var field = String(input.getAttribute('data-export-prix-field') || '');
+            if (!pid || !field) {
+                return;
+            }
+            if (!map[pid]) {
+                map[pid] = {};
+            }
+            map[pid][field] = input.value;
+        });
+        return map;
+    }
+
+    function bindPrixDrafts() {
+        var root = getPageRoot();
+        if (!root) {
+            return;
+        }
+        var saveState = root.getAttribute('data-export-prix-save') || '';
+        var map = readPrixDraftMap();
+
+        if (saveState === 'ok') {
+            getPrixInputs().forEach(function (input) {
+                var pid = String(input.getAttribute('data-export-prix-pid') || '');
+                if (pid && map[pid]) {
+                    delete map[pid];
+                }
+            });
+            writePrixDraftMap(map);
+        } else {
+            getPrixInputs().forEach(function (input) {
+                var pid = String(input.getAttribute('data-export-prix-pid') || '');
+                var field = String(input.getAttribute('data-export-prix-field') || '');
+                if (!pid || !field || !map[pid] || map[pid][field] === undefined) {
+                    return;
+                }
+                input.value = map[pid][field];
+            });
+        }
+
+        document.addEventListener('input', function (event) {
+            var input = event.target;
+            if (!input || !input.classList || !input.classList.contains('page-produits-export-table__price-input')) {
+                return;
+            }
+            var next = readPrixDraftMap();
+            snapshotPrixInputsIntoMap(next);
+            writePrixDraftMap(next);
+        });
+
+        var form = document.querySelector('.page-produits-export-save-form');
+        if (form) {
+            form.addEventListener('submit', function () {
+                var next = readPrixDraftMap();
+                snapshotPrixInputsIntoMap(next);
+                writePrixDraftMap(next);
+            });
+        }
+
+        window.addEventListener('pagehide', function () {
+            var next = readPrixDraftMap();
+            snapshotPrixInputsIntoMap(next);
+            writePrixDraftMap(next);
+        });
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
         if (!getPageRoot()) {
             return;
@@ -478,5 +597,7 @@
         bindTableModal();
         bindEscapeClose();
         bindDateMasks();
+        bindPrixDrafts();
+        bindFilterPersistence();
     });
 })();

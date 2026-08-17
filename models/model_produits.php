@@ -1056,28 +1056,40 @@ function count_produits_by_sous_categorie_id($sous_categorie_id)
 }
 
 /**
- * Récupère un produit par son ID
- * @param int $id L'ID du produit
- * @return array|false Les données du produit ou False si non trouvé
+ * Récupère un produit par son ID, sans masquer les champs selon le rôle.
+ * Réservé aux traitements internes (mise à jour, suppression) pour ne pas écraser
+ * des colonnes que le profil n’a pas le droit de voir.
+ *
+ * @param int $id
+ * @return array|false
  */
-function get_produit_by_id($id)
+function get_produit_by_id_sans_filtre_acces($id)
 {
     global $db;
 
     try {
         $stmt = $db->prepare("
             SELECT p.*, c.nom as categorie_nom
-            FROM produits p 
-            LEFT JOIN categories c ON p.categorie_id = c.id 
+            FROM produits p
+            LEFT JOIN categories c ON p.categorie_id = c.id
             WHERE p.id = :id
         ");
         $stmt->execute(['id' => $id]);
-        $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: false;
 
-        return produits_appliquer_filtre_acces_champs($row);
+        return $stmt->fetch(PDO::FETCH_ASSOC) ?: false;
     } catch (PDOException $e) {
         return false;
     }
+}
+
+/**
+ * Récupère un produit par son ID
+ * @param int $id L'ID du produit
+ * @return array|false Les données du produit ou False si non trouvé
+ */
+function get_produit_by_id($id)
+{
+    return produits_appliquer_filtre_acces_champs(get_produit_by_id_sans_filtre_acces($id));
 }
 
 /**
@@ -1979,12 +1991,12 @@ function update_produit($id, $data)
             $enid = $data['entrepot_noeud_id'] ?? null;
             $params['entrepot_noeud_id'] = ($enid !== null && (int) $enid > 0) ? (int) $enid : null;
         }
-        if (produits_has_column('fournisseur_id')) {
+        if (produits_has_column('fournisseur_id') && array_key_exists('fournisseur_id', $data)) {
             $sets .= ", fournisseur_id = :fournisseur_id";
             $fid = $data['fournisseur_id'] ?? null;
             $params['fournisseur_id'] = ($fid !== null && (int) $fid > 0) ? (int) $fid : null;
         }
-        if (produits_has_column('nom_fournisseur')) {
+        if (produits_has_column('nom_fournisseur') && array_key_exists('nom_fournisseur', $data)) {
             $sets .= ", nom_fournisseur = :nom_fournisseur";
             $nf = $data['nom_fournisseur'] ?? null;
             $params['nom_fournisseur'] = ($nf !== null && $nf !== '' && trim((string) $nf) !== '') ? trim((string) $nf) : null;
@@ -1993,11 +2005,11 @@ function update_produit($id, $data)
             $sets .= ", admin_dernier_modificateur_id = :admin_dernier_modificateur_id";
             $params['admin_dernier_modificateur_id'] = (int) $data['admin_dernier_modificateur_id'];
         }
-        if (produits_has_column('prix_achat')) {
+        if (produits_has_column('prix_achat') && array_key_exists('prix_achat', $data)) {
             $sets .= ", prix_achat = :prix_achat";
-            $params['prix_achat'] = array_key_exists('prix_achat', $data) ? $data['prix_achat'] : null;
+            $params['prix_achat'] = $data['prix_achat'];
         }
-        if (produits_has_column('sous_categorie_id')) {
+        if (produits_has_column('sous_categorie_id') && array_key_exists('sous_categorie_id', $data)) {
             $sets .= ", sous_categorie_id = :sous_categorie_id";
             $scid = $data['sous_categorie_id'] ?? null;
             $params['sous_categorie_id'] = ($scid !== null && (int) $scid > 0) ? (int) $scid : null;
@@ -2007,12 +2019,12 @@ function update_produit($id, $data)
             $ief = $data['image_etiquette_fpl'];
             $params['image_etiquette_fpl'] = ($ief !== null && $ief !== '') ? trim((string) $ief) : null;
         }
-        if (produits_has_column('marque_id')) {
+        if (produits_has_column('marque_id') && array_key_exists('marque_id', $data)) {
             $sets .= ", marque_id = :marque_id";
             $mid = $data['marque_id'] ?? null;
             $params['marque_id'] = ($mid !== null && (int) $mid > 0) ? (int) $mid : null;
         }
-        if (produits_has_column('reference_fournisseur')) {
+        if (produits_has_column('reference_fournisseur') && array_key_exists('reference_fournisseur', $data)) {
             $sets .= ", reference_fournisseur = :reference_fournisseur";
             $rf = $data['reference_fournisseur'] ?? null;
             $params['reference_fournisseur'] = ($rf !== null && trim((string) $rf) !== '') ? trim((string) $rf) : null;
@@ -2210,6 +2222,32 @@ function delete_produit($id)
 }
 
 /**
+ * Normalise un prix saisi pour comparaison / stockage (vide et ≤ 0 = null).
+ *
+ * @param mixed $value
+ * @return float|null
+ */
+function export_catalogue_prix_normalise_stockage($value)
+{
+    $raw = trim((string) $value);
+    if ($raw === '') {
+        return null;
+    }
+    if (!is_numeric($raw)) {
+        return false;
+    }
+    $n = round((float) $raw, 2);
+    if ($n < 0) {
+        return false;
+    }
+    if ($n <= 0) {
+        return null;
+    }
+
+    return $n;
+}
+
+/**
  * Mise à jour rapide des prix depuis le suivi catalogue (page courante).
  *
  * @param array<int, array<string, mixed>> $rows clé produit_id => ['prix' => ?, 'prix_achat' => ?]
@@ -2223,38 +2261,84 @@ function export_catalogue_maj_prix_produits(array $rows, $admin_id = null)
     if (!$db || $rows === []) {
         return ['success' => false, 'message' => 'Aucune modification à enregistrer.', 'updated' => 0];
     }
+
+    require_once __DIR__ . '/model_produit_formulaire_champs.php';
     $has_prix_achat = produits_has_column('prix_achat');
     $has_admin_mod = produits_has_column('admin_dernier_modificateur_id');
+    $can_prix = produit_formulaire_champ_visible('prix');
+    $can_prix_achat = $has_prix_achat && produit_formulaire_champ_visible('prix_achat');
+    if (!$can_prix && !$can_prix_achat) {
+        return ['success' => false, 'message' => 'Vous n’avez pas l’autorisation de modifier les prix.', 'updated' => 0];
+    }
+
+    $ids = [];
+    foreach ($rows as $pid => $data) {
+        $pid = (int) $pid;
+        if ($pid > 0 && is_array($data)) {
+            $ids[] = $pid;
+        }
+    }
+    $ids = array_values(array_unique($ids));
+    if ($ids === []) {
+        return ['success' => false, 'message' => 'Aucune modification à enregistrer.', 'updated' => 0];
+    }
+
     try {
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $sql_cur = 'SELECT id, prix' . ($has_prix_achat ? ', prix_achat' : '') . ' FROM produits WHERE id IN (' . $placeholders . ')';
+        $st_cur = $db->prepare($sql_cur);
+        $st_cur->execute($ids);
+        $current = [];
+        while ($row = $st_cur->fetch(PDO::FETCH_ASSOC)) {
+            $current[(int) $row['id']] = $row;
+        }
+
+        $db->beginTransaction();
         foreach ($rows as $pid => $data) {
             $pid = (int) $pid;
-            if ($pid <= 0 || !is_array($data)) {
+            if ($pid <= 0 || !is_array($data) || !isset($current[$pid])) {
                 continue;
             }
             $sets = [];
             $params = [':id' => $pid];
-            if (array_key_exists('prix', $data)) {
+            $cur = $current[$pid];
+
+            if ($can_prix && array_key_exists('prix', $data)) {
                 $prix_raw = trim((string) $data['prix']);
-                if ($prix_raw === '') {
-                    continue;
+                if ($prix_raw !== '') {
+                    $prix_norm = export_catalogue_prix_normalise_stockage($prix_raw);
+                    if ($prix_norm === false) {
+                        $db->rollBack();
+
+                        return ['success' => false, 'message' => 'Prix vente invalide pour le produit #' . $pid . '.', 'updated' => $updated];
+                    }
+                    $cur_prix = export_catalogue_prix_normalise_stockage($cur['prix'] ?? null);
+                    if ($prix_norm !== $cur_prix) {
+                        $sets[] = 'prix = :prix';
+                        $params[':prix'] = $prix_norm !== null ? $prix_norm : 0;
+                    }
                 }
-                if (!is_numeric($prix_raw) || (float) $prix_raw < 0) {
-                    return ['success' => false, 'message' => 'Prix vente invalide pour le produit #' . $pid . '.', 'updated' => $updated];
-                }
-                $sets[] = 'prix = :prix';
-                $params[':prix'] = round((float) $prix_raw, 2);
             }
-            if ($has_prix_achat && array_key_exists('prix_achat', $data)) {
+
+            if ($can_prix_achat && array_key_exists('prix_achat', $data)) {
                 $pa_raw = trim((string) $data['prix_achat']);
-                if ($pa_raw === '') {
-                    $sets[] = 'prix_achat = NULL';
-                } elseif (!is_numeric($pa_raw) || (float) $pa_raw < 0) {
+                $pa_norm = export_catalogue_prix_normalise_stockage($pa_raw);
+                if ($pa_norm === false) {
+                    $db->rollBack();
+
                     return ['success' => false, 'message' => 'Prix achat invalide pour le produit #' . $pid . '.', 'updated' => $updated];
-                } else {
-                    $sets[] = 'prix_achat = :prix_achat';
-                    $params[':prix_achat'] = round((float) $pa_raw, 2);
+                }
+                $cur_pa = export_catalogue_prix_normalise_stockage($cur['prix_achat'] ?? null);
+                if ($pa_norm !== $cur_pa) {
+                    if ($pa_norm === null) {
+                        $sets[] = 'prix_achat = NULL';
+                    } else {
+                        $sets[] = 'prix_achat = :prix_achat';
+                        $params[':prix_achat'] = $pa_norm;
+                    }
                 }
             }
+
             if ($sets === []) {
                 continue;
             }
@@ -2266,15 +2350,19 @@ function export_catalogue_maj_prix_produits(array $rows, $admin_id = null)
             $sql = 'UPDATE produits SET ' . implode(', ', $sets) . ' WHERE id = :id';
             $st = $db->prepare($sql);
             $st->execute($params);
-            if ($st->rowCount() > 0) {
-                $updated++;
-            }
+            $updated++;
         }
+        $db->commit();
     } catch (PDOException $e) {
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
+
         return ['success' => false, 'message' => 'Erreur : ' . $e->getMessage(), 'updated' => $updated];
     }
+
     if ($updated === 0) {
-        return ['success' => false, 'message' => 'Aucune ligne modifiée.', 'updated' => 0];
+        return ['success' => true, 'message' => 'Aucun prix modifié (valeurs identiques à la base).', 'updated' => 0];
     }
 
     return ['success' => true, 'message' => $updated . ' produit(s) mis à jour.', 'updated' => $updated];

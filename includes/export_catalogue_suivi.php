@@ -7,6 +7,135 @@ require_once __DIR__ . '/../conn/conn.php';
 require_once __DIR__ . '/export_produits_catalogue_pdf.php';
 
 /**
+ * Brouillon des prix saisis (conservé en session en cas d’erreur).
+ *
+ * @return array<int, array<string, string>>
+ */
+function export_catalogue_prix_draft_get()
+{
+    if (empty($_SESSION['export_catalogue_prix_draft']) || !is_array($_SESSION['export_catalogue_prix_draft'])) {
+        return [];
+    }
+    $out = [];
+    foreach ($_SESSION['export_catalogue_prix_draft'] as $pid => $row) {
+        $pid = (int) $pid;
+        if ($pid <= 0 || !is_array($row)) {
+            continue;
+        }
+        $item = [];
+        if (array_key_exists('prix', $row)) {
+            $item['prix'] = (string) $row['prix'];
+        }
+        if (array_key_exists('prix_achat', $row)) {
+            $item['prix_achat'] = (string) $row['prix_achat'];
+        }
+        if ($item !== []) {
+            $out[$pid] = $item;
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * @param array<int, array<string, mixed>> $rows
+ */
+function export_catalogue_prix_draft_store(array $rows)
+{
+    $clean = [];
+    foreach ($rows as $pid => $row) {
+        $pid = (int) $pid;
+        if ($pid <= 0 || !is_array($row)) {
+            continue;
+        }
+        $item = [];
+        if (array_key_exists('prix', $row)) {
+            $item['prix'] = (string) $row['prix'];
+        }
+        if (array_key_exists('prix_achat', $row)) {
+            $item['prix_achat'] = (string) $row['prix_achat'];
+        }
+        if ($item !== []) {
+            $clean[$pid] = $item;
+        }
+    }
+    $_SESSION['export_catalogue_prix_draft'] = $clean;
+}
+
+function export_catalogue_prix_draft_clear()
+{
+    unset($_SESSION['export_catalogue_prix_draft']);
+}
+
+/**
+ * @return string
+ */
+function export_catalogue_filters_session_key()
+{
+    return 'export_catalogue_last_filters';
+}
+
+/**
+ * @param array<string, mixed> $source
+ * @return bool
+ */
+function export_catalogue_request_has_filter_params(array $source)
+{
+    foreach (['date_debut', 'date_fin', 'mode', 'recherche', 'categorie_id', 'marque_id', 'page'] as $key) {
+        if (array_key_exists($key, $source)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * @param array<string, mixed> $filters
+ */
+function export_catalogue_filters_save_session(array $filters)
+{
+    $_SESSION[export_catalogue_filters_session_key()] = [
+        'date_debut' => export_catalogue_format_date_input_fr($filters['date_debut']),
+        'date_fin' => export_catalogue_format_date_input_fr($filters['date_fin']),
+        'mode' => (string) ($filters['mode'] ?? 'tous'),
+        'recherche' => trim((string) ($filters['recherche'] ?? '')),
+        'categorie_id' => (int) ($filters['categorie_id'] ?? 0),
+        'marque_id' => (int) ($filters['marque_id'] ?? 0),
+        'page' => max(1, (int) ($filters['page'] ?? 1)),
+    ];
+}
+
+/**
+ * Réinitialise les filtres mémorisés (« Aujourd’hui »).
+ */
+function export_catalogue_filters_handle_reset()
+{
+    if (!isset($_GET['reset']) || (string) $_GET['reset'] !== '1') {
+        return;
+    }
+    unset($_SESSION[export_catalogue_filters_session_key()]);
+    header('Location: export-catalogue.php');
+    exit;
+}
+
+/**
+ * Restaure le dernier filtre si la page est ouverte sans paramètres GET.
+ */
+function export_catalogue_filters_restore_redirect_if_needed()
+{
+    if (export_catalogue_request_has_filter_params($_GET)) {
+        return;
+    }
+    $saved = $_SESSION[export_catalogue_filters_session_key()] ?? null;
+    if (!is_array($saved) || $saved === []) {
+        return;
+    }
+    header('Location: export-catalogue.php?' . http_build_query($saved));
+    exit;
+}
+
+/**
  * @return bool
  */
 function export_catalogue_suivi_colonnes_ensure_schema()
@@ -371,19 +500,27 @@ function export_catalogue_suivi_render_cell_html($key, array $produit, array $ct
 
         case 'prix_achat':
             $val = export_catalogue_prix_input_value($produit['prix_achat'] ?? null);
+            if (isset($ctx['prix_draft'][$pid]) && is_array($ctx['prix_draft'][$pid]) && array_key_exists('prix_achat', $ctx['prix_draft'][$pid])) {
+                $val = (string) $ctx['prix_draft'][$pid]['prix_achat'];
+            }
 
             return '<input type="number" class="page-produits-export-table__price-input"'
                 . ' name="prix[' . $pid . '][prix_achat]"'
                 . ' value="' . htmlspecialchars($val, ENT_QUOTES, 'UTF-8') . '"'
-                . ' min="0" step="1" inputmode="numeric" placeholder="—" aria-label="Prix achat">';
+                . ' min="0" step="1" inputmode="numeric" placeholder="—" aria-label="Prix achat"'
+                . ' data-export-prix-pid="' . $pid . '" data-export-prix-field="prix_achat" autocomplete="off">';
 
         case 'prix':
             $val = export_catalogue_prix_input_value($produit['prix'] ?? null);
+            if (isset($ctx['prix_draft'][$pid]) && is_array($ctx['prix_draft'][$pid]) && array_key_exists('prix', $ctx['prix_draft'][$pid])) {
+                $val = (string) $ctx['prix_draft'][$pid]['prix'];
+            }
 
             return '<input type="number" class="page-produits-export-table__price-input"'
                 . ' name="prix[' . $pid . '][prix]"'
                 . ' value="' . htmlspecialchars($val, ENT_QUOTES, 'UTF-8') . '"'
-                . ' min="0" step="1" inputmode="numeric" placeholder="—" aria-label="Prix vente">';
+                . ' min="0" step="1" inputmode="numeric" placeholder="—" aria-label="Prix vente"'
+                . ' data-export-prix-pid="' . $pid . '" data-export-prix-field="prix" autocomplete="off">';
 
         case 'promo':
             return htmlspecialchars(

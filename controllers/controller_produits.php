@@ -574,8 +574,8 @@ function process_update_produit($produit_id)
         return ['success' => false, 'message' => ''];
     }
 
-    // Vérifier que le produit existe
-    $produit = get_produit_by_id($produit_id);
+    // Vérifier que le produit existe (sans filtre d’accès : conserver les champs masqués)
+    $produit = get_produit_by_id_sans_filtre_acces($produit_id);
     if (!$produit) {
         return ['success' => false, 'message' => 'Produit introuvable.'];
     }
@@ -583,7 +583,12 @@ function process_update_produit($produit_id)
     // Récupération et validation des données (stock géré via produits.stock)
     $nom = isset($_POST['nom']) ? trim($_POST['nom']) : '';
     $description = isset($_POST['description']) ? trim($_POST['description']) : '';
-    $fournisseur_res = produits_resolve_fournisseur_from_post($_POST);
+    $fournisseur_res = produit_formulaire_champ_visible('fournisseur_id')
+        ? produits_resolve_fournisseur_from_post($_POST)
+        : [
+            'fournisseur_id' => $produit['fournisseur_id'] ?? null,
+            'nom_fournisseur' => $produit['nom_fournisseur'] ?? null,
+        ];
     $prix_raw = isset($_POST['prix']) ? trim((string) $_POST['prix']) : '';
     $prix_promotion = null;
     if (isset($_POST['prix_promotion']) && trim((string) ($_POST['prix_promotion'] ?? '')) !== '') {
@@ -831,6 +836,12 @@ function process_update_produit($produit_id)
     $images_json = !empty($final_images) ? json_encode($final_images) : null;
     $removed_images = array_diff($all_images, $images_to_keep);
 
+    if (!produit_formulaire_champ_visible('images_produit')) {
+        $image_principale = $produit['image_principale'] ?? null;
+        $images_json = $produit['images'] ?? null;
+        $removed_images = [];
+    }
+
     // Si aucune erreur, mettre à jour le produit
     if (empty($errors)) {
         if (!produit_formulaire_champ_visible('nom')) {
@@ -886,23 +897,26 @@ function process_update_produit($produit_id)
         foreach ($emplacement as $col => $val) {
             $data[$col] = $val;
         }
-        if (produits_has_column('prix_achat')) {
+        if (produit_formulaire_champ_visible('prix_achat') && produits_has_column('prix_achat')) {
             $data['prix_achat'] = $prix_achat;
         }
-        if (produits_has_column('sous_categorie_id')) {
+        if (produit_formulaire_champ_visible('sous_categorie_id') && produits_has_column('sous_categorie_id')) {
             $data['sous_categorie_id'] = $sous_categorie_id;
         }
         if ($nouvel_identifiant !== null && produits_has_column('identifiant_interne')) {
             $data['identifiant_interne'] = $nouvel_identifiant;
         }
-        if (produits_has_column('image_etiquette_fpl')) {
+        if (produit_formulaire_champ_visible('image_etiquette_fpl') && produits_has_column('image_etiquette_fpl')) {
             $data['image_etiquette_fpl'] = $image_etiquette_fpl_courant !== '' ? $image_etiquette_fpl_courant : null;
         }
-        if (produits_has_column('marque_id')) {
+        if (produit_formulaire_champ_visible('marque_id') && produits_has_column('marque_id')) {
             $data['marque_id'] = $marque_id_resolved;
         }
-        if (produits_has_column('reference_fournisseur')) {
+        if (produit_formulaire_champ_visible('reference_fournisseur') && produits_has_column('reference_fournisseur')) {
             $data['reference_fournisseur'] = $reference_fournisseur_val;
+        }
+        if (!produit_formulaire_champ_visible('fournisseur_id')) {
+            unset($data['fournisseur_id'], $data['nom_fournisseur']);
         }
         if ($admin_session_id > 0) {
             $data['admin_dernier_modificateur_id'] = $admin_session_id;
@@ -921,7 +935,8 @@ function process_update_produit($produit_id)
                     image_optimizer_delete_with_variants((string) $old_path);
                 }
             }
-            // Gestion des variantes
+            // Gestion des variantes (ne pas les vider si le champ est masqué pour ce profil)
+            if (produit_formulaire_champ_visible('variantes')) {
             $variantes_nom = isset($_POST['variantes_nom']) && is_array($_POST['variantes_nom']) ? $_POST['variantes_nom'] : [];
             $variantes_prix = isset($_POST['variantes_prix']) && is_array($_POST['variantes_prix']) ? $_POST['variantes_prix'] : [];
             $variantes_prix_promo = isset($_POST['variantes_prix_promo']) && is_array($_POST['variantes_prix_promo']) ? $_POST['variantes_prix_promo'] : [];
@@ -980,6 +995,7 @@ function process_update_produit($produit_id)
                     delete_variante($eid);
                 }
             }
+            }
             if ($nouvel_identifiant !== null && produits_has_column('identifiant_interne')) {
                 $old_id = strtoupper(trim((string) ($produit['identifiant_interne'] ?? '')));
                 $new_id = strtoupper(trim((string) $nouvel_identifiant));
@@ -1034,7 +1050,7 @@ function process_update_produit($produit_id)
  */
 function process_delete_produit($produit_id)
 {
-    $produit = get_produit_by_id($produit_id);
+    $produit = get_produit_by_id_sans_filtre_acces($produit_id);
     if (!$produit) {
         return ['success' => false, 'message' => 'Produit introuvable.'];
     }

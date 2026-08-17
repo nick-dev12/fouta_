@@ -35,6 +35,12 @@ if (isset($_SESSION['export_catalogue_flash'])) {
     }
 }
 
+$prix_draft = export_catalogue_prix_draft_get();
+if ($flash_type === 'ok') {
+    export_catalogue_prix_draft_clear();
+    $prix_draft = [];
+}
+
 $has_marque_filtre = produits_has_column('marque_id');
 $marques_filtre = [];
 $categories = get_all_categories();
@@ -46,7 +52,11 @@ if ($has_marque_filtre) {
     }
 }
 
+export_catalogue_filters_handle_reset();
+export_catalogue_filters_restore_redirect_if_needed();
+
 $filters = export_catalogue_filters_from_request($_GET);
+export_catalogue_filters_save_session($filters);
 $date_debut = $filters['date_debut'];
 $date_fin = $filters['date_fin'];
 $mode = $filters['mode'];
@@ -133,6 +143,7 @@ $save_redirect_query = http_build_query(array_merge($pagination_query_base, ['pa
     <div class="page-produits-admin page-produits-export" data-export-total="<?php echo (int) $total_export; ?>"
         data-export-async-min="<?php echo (int) EXPORT_CATALOGUE_ASYNC_MIN; ?>"
         data-export-use-async="<?php echo $export_use_async_pdf ? '1' : '0'; ?>"
+        data-export-prix-save="<?php echo htmlspecialchars($flash_type, ENT_QUOTES, 'UTF-8'); ?>"
         data-suivi-visible-cols="<?php echo htmlspecialchars(json_encode($suivi_visible_cols, JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8'); ?>"
         data-suivi-catalog-cols="<?php echo htmlspecialchars(json_encode($suivi_columns_catalog, JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8'); ?>"
         data-suivi-csrf="<?php echo htmlspecialchars($csrf, ENT_QUOTES, 'UTF-8'); ?>">
@@ -256,7 +267,7 @@ $save_redirect_query = http_build_query(array_merge($pagination_query_base, ['pa
                     <button type="submit" class="btn-primary">
                         <i class="fas fa-search"></i> Afficher
                     </button>
-                    <a href="export-catalogue.php" class="btn-filter-reset">
+                    <a href="export-catalogue.php?reset=1" class="btn-filter-reset">
                         <i class="fas fa-rotate-left"></i>&nbsp;Aujourd’hui
                     </a>
                     <button type="button" class="btn-secondary page-produits-export-options-btn"
@@ -336,6 +347,7 @@ $save_redirect_query = http_build_query(array_merge($pagination_query_base, ['pa
                             $cell_ctx = [
                                 'pid' => $pid,
                                 'visible_cols' => $suivi_visible_cols,
+                                'prix_draft' => $prix_draft,
                             ];
                             ?>
                             <tr>

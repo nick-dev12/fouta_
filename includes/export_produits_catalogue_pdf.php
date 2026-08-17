@@ -523,7 +523,7 @@ function export_catalogue_has_prix_achat_column()
  * @param array<int, string>|null $selected_keys
  * @return array<int, array{key: string, label: string, width: string, class: string}>
  */
-function export_catalogue_pdf_table_columns($has_prix_achat = null, array $selected_keys = null)
+function export_catalogue_pdf_table_columns($has_prix_achat = null, ?array $selected_keys = null)
 {
     if ($selected_keys === null) {
         $selected_keys = array_keys(export_catalogue_pdf_columns_catalog($has_prix_achat));
@@ -649,7 +649,7 @@ function export_catalogue_pdf_table_cell($tag, $width, $class, $inner_html)
  * @param array<int, string>|null $selected_cols
  * @return array<string, string>
  */
-function export_catalogue_pdf_row_cell_contents(array $produit, $has_prix_achat = null, array $selected_cols = null)
+function export_catalogue_pdf_row_cell_contents(array $produit, $has_prix_achat = null, ?array $selected_cols = null)
 {
     if ($selected_cols === null) {
         $selected_cols = array_keys(export_catalogue_pdf_columns_catalog($has_prix_achat));
