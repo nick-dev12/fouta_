@@ -404,9 +404,36 @@
         hideUi();
     }
 
-    function startAsyncExport(query) {
+    function cancelStoredJobQuietly(stored) {
+        if (!stored || !stored.job_id || !stored.token) {
+            return;
+        }
+        fetch(endpoint('cancel'), {
+            method: 'POST',
+            credentials: 'same-origin',
+            cache: 'no-store',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+            },
+            body: 'job=' + encodeURIComponent(stored.job_id) + '&token=' + encodeURIComponent(stored.token)
+        }).catch(function () {
+            /* ignore */
+        });
+    }
+
+    function startAsyncExport(query, forceNew) {
+        if (!query) {
+            return;
+        }
+
         var existing = loadStoredJob();
-        if (existing && existing.job_id && existing.token && !existing.cancelled && !existing.failed && !existing.downloaded) {
+        if (forceNew) {
+            stopPolling();
+            if (existing && existing.job_id && existing.token && !existing.cancelled && !existing.downloaded) {
+                cancelStoredJobQuietly(existing);
+            }
+            clearStoredJob();
+        } else if (existing && existing.job_id && existing.token && !existing.cancelled && !existing.failed && !existing.downloaded) {
             startPolling();
             return;
         }
@@ -461,7 +488,9 @@
         }
     }
 
-    window.exportCatalogueStartPdf = startAsyncExport;
+    window.exportCatalogueStartPdf = function (query) {
+        startAsyncExport(query, true);
+    };
 
     window.exportCatalogueDownloadSync = function (query) {
         if (!query) {

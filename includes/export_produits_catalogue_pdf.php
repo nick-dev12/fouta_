@@ -182,6 +182,9 @@ function export_catalogue_pdf_parse_selected_columns(array $source, $has_prix_ac
         $raw = $source['pdf_cols'];
     } elseif (isset($source['pdf_cols']) && is_string($source['pdf_cols']) && trim($source['pdf_cols']) !== '') {
         $raw = explode(',', $source['pdf_cols']);
+    } elseif (isset($source['pdf_cols[]'])) {
+        $explicit = true;
+        $raw = is_array($source['pdf_cols[]']) ? $source['pdf_cols[]'] : [(string) $source['pdf_cols[]']];
     }
     foreach ($raw as $key) {
         $key = trim((string) $key);
@@ -580,6 +583,31 @@ function export_catalogue_pdf_table_columns($has_prix_achat = null, ?array $sele
         ];
     }
 
+    $count_cols = count($cols);
+    if ($count_cols > 0) {
+        $weights = [];
+        $sum = 0.0;
+        foreach ($cols as $i => $col) {
+            $w = (float) str_replace('%', '', (string) $col['width']);
+            if ($w <= 0) {
+                $w = 9.0;
+            }
+            $weights[$i] = $w;
+            $sum += $w;
+        }
+        $assigned = 0;
+        $last = $count_cols - 1;
+        foreach ($cols as $i => $col) {
+            if ($i === $last) {
+                $pct = max(1, 100 - $assigned);
+            } else {
+                $pct = max(1, (int) floor(100 * $weights[$i] / max(1.0, $sum)));
+                $assigned += $pct;
+            }
+            $cols[$i]['width'] = $pct . '%';
+        }
+    }
+
     return $cols;
 }
 
@@ -806,7 +834,7 @@ body { font-family: DejaVu Sans, sans-serif; font-size: 9px; color: #0d0d0d; mar
 .doc-filtre__value strong { color: #0d0d0d; }
 table.catalogue { width: 100%; border-collapse: collapse; margin-top: 8px; table-layout: fixed; }
 table.catalogue th { background: #3564a6; color: #fff; font-size: 7.5px; text-transform: uppercase; padding: 6px 4px; text-align: left; vertical-align: middle; word-wrap: break-word; overflow: hidden; }
-table.catalogue td { border-bottom: 1px solid #e5e5e5; padding: 5px 4px; vertical-align: top; font-size: 8px; word-wrap: break-word; overflow-wrap: break-word; overflow: hidden; }
+table.catalogue td { border-bottom: 1px solid #e5e5e5; padding: 5px 4px; vertical-align: top; font-size: 8px; word-wrap: break-word; overflow-wrap: break-word; }
 table.catalogue tr:nth-child(even) td { background: #f8fafc; }
 .col-img { text-align: center; vertical-align: middle !important; }
 .prod-img { width: 34px; height: 34px; object-fit: cover; border-radius: 4px; border: 1px solid #ddd; display: block; margin: 0 auto; }

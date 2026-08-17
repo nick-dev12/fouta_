@@ -96,7 +96,7 @@
         if (!pdfModal || !pdfOverlay) {
             return;
         }
-        pendingPdfQuery = baseQuery || '';
+        pendingPdfQuery = getLiveFilterQuery() || baseQuery || '';
         showPdfError(false);
         var root = getPageRoot();
         var visible = parseJsonAttr(root, 'data-suivi-visible-cols', null);
@@ -127,12 +127,23 @@
         showPdfError(false);
     }
 
+    function getLiveFilterQuery() {
+        var form = document.querySelector('.page-produits-export-filters');
+        if (form) {
+            var live = new URLSearchParams(new FormData(form));
+            live.delete('page');
+            return live.toString();
+        }
+        return pendingPdfQuery || '';
+    }
+
     function buildQueryWithPdfColumns(baseQuery, columns) {
         var params = new URLSearchParams(baseQuery);
         params.delete('pdf_cols');
         params.delete('pdf_cols[]');
         params.delete('async_pdf');
         params.delete('prix_draft');
+        params.delete('page');
         columns.forEach(function (col) {
             params.append('pdf_cols[]', col);
         });
@@ -173,12 +184,14 @@
             showPdfError(true);
             return;
         }
-        if (pendingPdfQuery === '') {
+        var baseQuery = getLiveFilterQuery() || pendingPdfQuery;
+        if (baseQuery === '') {
             closePdfModal();
             return;
         }
+        var exportQuery = appendPrixDraftToQuery(buildQueryWithPdfColumns(baseQuery, cols));
         closePdfModal();
-        startPdfExport(appendPrixDraftToQuery(buildQueryWithPdfColumns(pendingPdfQuery, cols)));
+        startPdfExport(exportQuery);
     }
 
     function bindPdfModal() {
