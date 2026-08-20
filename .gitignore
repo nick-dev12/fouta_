@@ -68,6 +68,7 @@ desktop.ini
 # Dossier local nommé « git » (hors dépôt)
 git/
 
-# Projet local de référence (copie poid_lourd, hors dépôt)
+# Projets locaux de référence (copies / archives, hors dépôt)
 poid_lourd/
+fpl_natif-main/
 

@@ -1,0 +1,64 @@
+/**
+ * Tokens FPL — source de vérité des couleurs et rythme
+ * Bleu outremer #10316F (encre étiquette imprimée)
+ */
+
+:root {
+  --navy: #10316F;
+  --navy-deep: #0C2350;
+  --navy-ink: #08193A;
+  --blue: #2957AE;
+  --blue-600: #1D4590;
+  --blue-tint: #EDF1F8;
+  --blue-tint-2: #D8E0EE;
+
+  --side-text: #C4D1E9;
+  --side-text-soft: #8B9EC1;
+  --side-title: #7084A9;
+
+  --ink: #16203A;
+  --slate: #5C6A85;
+  --slate-soft: #8894A8;
+  --line: #DFE4EC;
+  --line-soft: #EDF0F5;
+  --ground: #F4F6FA;
+  --surface: #FFFFFF;
+
+  --ok: #12694A;
+  --ok-bg: #E4F2EB;
+  --warn: #8F6212;
+  --warn-bg: #F8EFDC;
+  --danger: #A32D24;
+  --danger-bg: #F8E7E5;
+
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 20px;
+  --s6: 24px;
+  --s7: 32px;
+  --s8: 40px;
+
+  --r-sm: 5px;
+  --r: 8px;
+  --r-lg: 12px;
+  --r-full: 999px;
+
+  --sh-1: 0 1px 2px rgba(15, 32, 64, .05), 0 1px 3px rgba(15, 32, 64, .04);
+  --sh-2: 0 2px 4px rgba(15, 32, 64, .06), 0 4px 12px rgba(15, 32, 64, .05);
+  --sh-3: 0 8px 24px rgba(15, 32, 64, .12);
+
+  --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+
+  --fpl-navy: var(--navy);
+  --fpl-navy-dark: var(--navy-deep);
+  --fpl-blue: var(--blue);
+  --fpl-blue-soft: var(--blue-tint);
+  --fpl-gray: #B3B3B3;
+  --bg: var(--ground);
+  --card: var(--surface);
+  --ink-2: var(--slate);
+  --radius: var(--r);
+  --shadow: var(--sh-1);
+}

@@ -1,28 +1,24 @@
-    </main>
+<?php
+if (!function_exists('fpl_css_link')) {
+    require_once __DIR__ . '/../../includes/fpl_assets.php';
+}
+?>
+        </main>
+    </div>
 </div>
 
 <script>
-    (function() {
-        function closeAdminSidebar() {
-            var sidebar = document.getElementById('adminSidebar');
-            var overlay = document.getElementById('sidebarOverlay');
-            if (sidebar && overlay) {
-                sidebar.classList.remove('show');
-                overlay.classList.remove('show');
-                document.body.style.overflow = '';
-            }
-        }
-        window.addEventListener('resize', function() {
-            if (window.innerWidth > 1024) {
-                closeAdminSidebar();
-            }
-        });
-    })();
+(function () {
+    var alerte = document.querySelector('.content > .alert, .admin-content > .alert, .alert-success, .alert-error');
+    if (alerte) {
+        alerte.classList.add('alert-neuve');
+    }
+})();
 </script>
 <?php require_once __DIR__ . '/../../includes/asset_version.php'; ?>
-<link rel="stylesheet" href="/css/admin-export-catalogue-tracker.css<?php echo asset_version_query(); ?>">
-<script src="/js/admin-pdf-download.js<?php echo asset_version_query(); ?>"></script>
-<script src="/js/admin-export-catalogue-pdf.js<?php echo asset_version_query(); ?>"></script>
+<?php fpl_css_link('admin-export-catalogue-tracker.css'); ?>
+<script src="<?php echo htmlspecialchars(fpl_script_src('admin-pdf-download.js'), ENT_QUOTES, 'UTF-8'); ?><?php echo asset_version_query(); ?>"></script>
+<script src="<?php echo htmlspecialchars(fpl_script_src('admin-export-catalogue-pdf.js'), ENT_QUOTES, 'UTF-8'); ?><?php echo asset_version_query(); ?>"></script>
 <?php
 if (!empty($_SESSION['admin_id'])) {
     require_once __DIR__ . '/../../models/model_produit_formulaire_champs.php';
@@ -32,4 +28,3 @@ if (!empty($_SESSION['admin_id'])) {
 ?>
 </body>
 </html>
-

@@ -15,6 +15,8 @@ admin_route_enforce_json_empty();
 
 require_once __DIR__ . '/../../models/model_produits.php';
 
+require_once __DIR__ . '/../../includes/site_url.php';
+
 $recherche = trim($_GET['q'] ?? $_GET['recherche'] ?? '');
 $categorie_id = isset($_GET['categorie_id']) ? (int) $_GET['categorie_id'] : 0;
 $marque_id = isset($_GET['marque_id']) ? (int) $_GET['marque_id'] : 0;
@@ -40,11 +42,13 @@ if (!empty($items)) {
             $pcm_paths = ['base' => 'produits/', 'upload' => '/upload/'];
             include __DIR__ . '/../includes/carte_produit_dashboard.php';
         } elseif ($context === 'categorie') {
-            $pcm_paths = ['base' => '../produits/', 'upload' => '../../upload/'];
-            $pcm_categorie_nom = (string) ($produit['categorie_nom'] ?? '');
-            include __DIR__ . '/../includes/carte_produit_dashboard.php';
+            $upload_base = rtrim(get_public_root_uri_path(), '/') . '/upload/';
+            $produits_path_prefix = '../produits/';
+            $hide_categorie_col = true;
+            include __DIR__ . '/includes/ligne_produit_table.php';
         } else {
-            include __DIR__ . '/includes/carte_produit_liste.php';
+            $upload_base = rtrim(get_public_root_uri_path(), '/') . '/upload/';
+            include __DIR__ . '/includes/ligne_produit_table.php';
         }
     }
     $html = ob_get_clean();

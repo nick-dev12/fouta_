@@ -73,10 +73,9 @@ $curr_pdf_ok = $curr_pdf_rel !== '' && strpos($curr_pdf_rel, '..') === false
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Modifier employé — Administration</title>
     <?php require_once __DIR__ . '/../../../includes/asset_version.php'; ?>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="/css/admin-dashboard.css<?php echo asset_version_query(); ?>">
-    <link rel="stylesheet" href="/css/admin-comptes-page.css<?php echo asset_version_query(); ?>">
-    <link rel="stylesheet" href="/css/admin-employes-rh.css<?php echo asset_version_query(); ?>">
+<?php include __DIR__ . '/../..//includes/fpl_head.php'; ?>
+    <?php fpl_css_link('admin-comptes-page.css'); ?>
+    <?php fpl_css_link('admin-employes-rh.css'); ?>
 </head>
 <body class="page-comptes page-employes-rh page-employes-modifier">
     <?php include __DIR__ . '/../../includes/nav.php'; ?>

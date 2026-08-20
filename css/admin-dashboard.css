@@ -1,10 +1,11 @@
 /**
- * Styles pour le tableau de bord administrateur
- * Palette Sugar Paper - Dégradé uniquement sur fond de page
+ * DEPRECATED — Composants admin Fouta (chargé après fpl.css + fpl-admin-compat.css)
+ * Les règles layout/sidebar legacy sont neutralisées par fpl-admin-overrides.css
  */
 
-@import url("./variables.css");
-@import url("./admin-sidebar-nav.css");
+/**
+ * Legacy — Styles Sugar Paper
+ */
 
 * {
   margin: 0;

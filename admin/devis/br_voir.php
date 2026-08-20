@@ -53,8 +53,7 @@ $retour_compta = admin_can_comptabilite() && !admin_can_bl_retours_b2b();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($br['numero_br'] ?? 'BR'); ?> — Bon de retour</title>
     <?php require_once __DIR__ . '/../../includes/asset_version.php'; ?>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="/css/admin-dashboard.css<?php echo asset_version_query(); ?>">
+<?php include __DIR__ . '/..//includes/fpl_head.php'; ?>
 </head>
 <body>
     <?php include '../includes/nav.php'; ?>

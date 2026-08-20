@@ -1,0 +1,1373 @@
+/* ============================================================
+   FPL — Système de design applicatif
+   LE BLEU DE LA MARQUE vient de l'étiquette imprimée : l'encre
+   CMJN 100/85/12/29 TELLE QU'ELLE SE REND — #10316F, mesuré sur
+   le rendu du PDF de référence (jamais la formule naïve #001B9F).
+   L'écran parle la même langue que le support collé sur les pièces.
+   Charte : bleu #10316F · accent #2957AE · gris filet #B3B3B3
+   Interface d'exploitation : on la scanne et on l'opère —
+   la densité d'information prime sur l'effet.
+   ============================================================ */
+
+@import "fpl-tokens.css";
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  background: var(--ground);
+  color: var(--ink);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "cv05", "ss01";
+}
+
+a { color: var(--blue); text-decoration: none; }
+a:hover { color: var(--blue-600); text-decoration: underline; }
+
+:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+.icon { vertical-align: -2px; flex-shrink: 0; }
+.mono, .ref { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+
+/* ============================================================
+   STRUCTURE
+   ============================================================ */
+.app { display: flex; min-height: 100vh; }
+
+/* --- Barre latérale --- */
+.sidebar {
+  width: 256px; flex-shrink: 0; position: relative;
+  /* LE bleu du support (#10316F), en aplat SIMPLE — jamais de dégradé,
+     jamais un second bleu mêlé : décision direction du 05/08. */
+  background: var(--navy);
+  color: var(--side-text);
+  display: flex; flex-direction: column;
+}
+/* Le bloc marque est RESSERRÉ (texte collé au logo, marges réduites) :
+   « LOURDS » doit finir AVANT la pastille de repli qui chevauche le bord
+   droit — jamais un caractère caché dessous. */
+.brand {
+  display: flex; align-items: center; gap: var(--s2);
+  padding: var(--s5) 26px var(--s4) var(--s3);
+  border-bottom: 1px solid rgba(255, 255, 255, .12);
+}
+.brand-logo {
+  width: 42px; height: 42px; flex-shrink: 0;
+  object-fit: contain;
+}
+/* Le nom de la marque tient sur UNE ligne, jamais coupé. La barre à
+   256 px lui rend la place : 14,5 px passe LOIN de la pastille de repli
+   (vérifié au pixel — à re-mesurer si la largeur ou la taille bouge). */
+.brand-name {
+  font-weight: 700; color: #fff; font-size: 14.5px; line-height: 1.3;
+  letter-spacing: .01em; white-space: nowrap; min-width: 0;
+}
+.brand-name small {
+  display: block; font-weight: 400; color: #fff; font-style: italic;
+  font-size: 13px; letter-spacing: .02em; opacity: .92;
+}
+
+/* Replier le menu : pastille à cheval sur le bord droit du menu,
+   alignée sur le bandeau de marque — elle ne touche pas au texte */
+.side-toggle {
+  position: absolute; top: 12px; right: -14px; z-index: 45;
+  width: 28px; height: 28px; border-radius: var(--r-full);
+  background: var(--surface); border: 1px solid var(--line);
+  color: var(--navy); cursor: pointer; box-shadow: var(--sh-2);
+  display: flex; align-items: center; justify-content: center;
+  transition: border-color .12s ease, color .12s ease, transform .12s ease;
+}
+.side-toggle:hover { border-color: var(--blue); color: var(--blue); transform: scale(1.07); }
+@media (max-width: 1000px) {
+  /* Sur petit écran le menu est un tiroir : le bouton de la barre du haut suffit */
+  .side-toggle { display: none; }
+}
+
+.nav { padding: var(--s3) var(--s2); flex: 1; overflow-y: auto; }
+/* Chaque section du menu se plie et se déplie : le titre est le bouton.
+   Le chevron dit l'état ; le choix est mémorisé d'une page à l'autre. */
+.nav-title {
+  font-size: 12.5px; text-transform: uppercase; letter-spacing: .12em;
+  color: var(--side-title); font-weight: 650;
+  padding: var(--s4) 10px var(--s1);
+  cursor: pointer; user-select: none;
+  display: flex; align-items: center; gap: 7px;
+  transition: color .12s ease;
+}
+.nav-title:hover { color: var(--side-text); }
+.nav-title::after {
+  content: ''; width: 5px; height: 5px; flex-shrink: 0;
+  border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg) translateY(-1px); transition: transform .15s ease;
+}
+.nav-title.closed::after { transform: rotate(-45deg); }
+/* Le rappel de notification : visible seulement quand la section est fermée */
+.nav-title .nav-mini {
+  display: none; margin-left: auto;
+  background: var(--warn); color: #fff; border-radius: var(--r-full);
+  font-size: 11.5px; font-weight: 700; padding: 0 6px; line-height: 15px;
+  font-variant-numeric: tabular-nums; letter-spacing: 0;
+}
+.nav-title.closed .nav-mini { display: inline-flex; }
+.nav-group.closed { display: none; }
+/* Les sous-familles D'UN module (Catalogue / Mouvements / Pilotage) :
+   un repère discret, pas un bouton — seul le module se plie */
+.nav-sub {
+  font-size: 12px; text-transform: uppercase; letter-spacing: .1em;
+  color: var(--side-title); font-weight: 650;
+  padding: var(--s3) 10px 2px;
+}
+.nav a {
+  display: flex; align-items: center; gap: 10px;
+  color: var(--side-text); padding: 10px 12px; border-radius: var(--r-sm);
+  font-size: 17px; margin-bottom: 1px;
+  position: relative; transition: background .12s ease, color .12s ease;
+}
+.nav a .ico { width: 18px; display: inline-flex; justify-content: center; opacity: .85; }
+.nav a:hover { background: rgba(255, 255, 255, .07); color: #fff; text-decoration: none; }
+/* L'élément actif est la SEULE touche de bleu du menu : teinte claire,
+   texte outremer, filet navy — on voit où l'on est au premier coup d'œil */
+.nav a.active {
+  background: var(--blue-tint); color: var(--blue-600); font-weight: 650;
+}
+.nav a.active .ico { color: var(--blue-600); }
+.nav a.active::before {
+  content: ''; position: absolute; left: -8px; top: 50%; transform: translateY(-50%);
+  width: 3px; height: 20px; background: var(--navy); border-radius: 0 2px 2px 0;
+}
+.nav .count {
+  margin-left: auto; background: var(--warn); color: #fff;
+  border-radius: var(--r-full); font-size: 12.5px; font-weight: 700;
+  padding: 1px 7px; font-variant-numeric: tabular-nums;
+}
+
+/* Le bloc utilisateur vit SUR le marine : nom en BLANC, secondaire en
+   clair — jamais les gris du thème clair, illisibles ici. */
+.sidebar-user {
+  padding: var(--s4); border-top: 1px solid rgba(255, 255, 255, .12);
+  display: flex; align-items: flex-start; gap: 10px; font-size: 15px;
+}
+.avatar {
+  width: 34px; height: 34px; border-radius: var(--r-full);
+  background: var(--blue); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 14px; flex-shrink: 0;
+}
+.sidebar-user .who { min-width: 0; }
+.sidebar-user .who strong { color: #fff; display: block; font-weight: 650; }
+.sidebar-user .who span { color: var(--side-text); font-size: 13px; display: block; }
+.sidebar-user form button {
+  background: none; border: none; color: var(--side-text); cursor: pointer;
+  font-family: inherit; font-size: 13px; padding: 3px 0 0;
+  display: inline-flex; align-items: center; gap: 4px;
+}
+.sidebar-user form button:hover { color: #fff; }
+
+/* --- Zone principale --- */
+.main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.topbar {
+  background: var(--surface); border-bottom: 1px solid var(--line);
+  padding: var(--s3) var(--s6);
+  display: flex; align-items: center; justify-content: space-between; gap: var(--s4);
+  position: sticky; top: 0; z-index: 30;
+}
+.topbar h1 {
+  font-size: 17px; font-weight: 650; color: var(--navy);
+  letter-spacing: -.01em; text-wrap: balance;
+}
+.topbar .date { color: var(--slate); font-size: 14.5px; white-space: nowrap; }
+/* Le contenu occupe TOUTE la largeur de l'écran (décision direction du
+   06/08 : « pas d'espace vide ») — tableaux et cartes s'étendent, aucun
+   plafond ne les retient. */
+.content { padding: var(--s5) var(--s6) var(--s8); width: 100%; }
+
+.btn-back {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-sm);
+  font-family: inherit; font-size: 15px; font-weight: 550;
+  padding: 6px 11px; cursor: pointer; color: var(--navy); white-space: nowrap;
+  transition: border-color .12s ease, color .12s ease;
+}
+.btn-back:hover { border-color: var(--blue); color: var(--blue); }
+
+/* Rouvrir le menu : ce bouton n'apparaît QUE lorsque le menu est masqué
+   (sur petit écran il reste visible : le menu y est un tiroir) */
+.burger {
+  display: inline-flex; align-items: center; background: var(--surface);
+  border: 1px solid var(--line); border-radius: var(--r-sm);
+  padding: 5px 9px; cursor: pointer; color: var(--navy);
+  transition: border-color .12s ease, color .12s ease;
+}
+.burger:hover { border-color: var(--blue); color: var(--blue); }
+@media (min-width: 1001px) {
+  .app:not(.nav-hidden) .burger { display: none; }
+}
+
+/* Menu masqué : la barre se replie, le contenu occupe toute la largeur */
+.app.nav-hidden .sidebar {
+  width: 0; overflow: hidden; border: none;
+}
+.app .sidebar { transition: width .18s ease; }
+
+/* ============================================================
+   GRILLES & CARTES
+   ============================================================ */
+.grid { display: grid; gap: var(--s4); }
+.cols-4 { grid-template-columns: repeat(4, 1fr); }
+.cols-3 { grid-template-columns: repeat(3, 1fr); }
+.cols-2 { grid-template-columns: repeat(2, 1fr); }
+
+/* Le menu d'export : un bouton, quatre formats */
+.export-menu { position: relative; display: inline-block; }
+.export-menu summary { list-style: none; cursor: pointer; }
+.export-menu summary::-webkit-details-marker { display: none; }
+.export-menu .chev { font-size: 11px; margin-left: 2px; }
+.export-choices {
+  position: absolute; right: 0; top: calc(100% + 4px); z-index: 60; min-width: 150px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r);
+  box-shadow: var(--sh-3); overflow: hidden; padding: 4px;
+}
+.export-choices a {
+  display: block; padding: 8px 12px; border-radius: var(--r-sm);
+  font-size: 15px; color: var(--ink); text-decoration: none;
+}
+.export-choices a:hover { background: var(--blue-tint); text-decoration: none; }
+.export-choices strong { color: var(--navy); }
+/* Les indicateurs du jour : TOUJOURS sur une seule ligne, même au téléphone —
+   les tuiles se compactent au lieu de s'empiler. */
+.kpi-line { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s3); }
+@media (max-width: 700px) {
+  .kpi-line { gap: var(--s2); }
+  .kpi-line .tile { padding: var(--s3); }
+  .kpi-line .tile .label { font-size: 11.5px; letter-spacing: .03em; gap: 4px; }
+  .kpi-line .tile .value { font-size: 19px; margin-top: 4px; }
+}
+
+@media (max-width: 1000px) {
+  .cols-4, .cols-3, .cols-2 { grid-template-columns: 1fr; }
+  /* Sur petit écran, le menu s'ouvre en tiroir par-dessus la page */
+  .sidebar, .app.nav-hidden .sidebar {
+    position: fixed; left: -240px; top: 0; bottom: 0; z-index: 50; width: 232px;
+    transition: left .2s ease; box-shadow: var(--sh-3); overflow: visible;
+  }
+  .sidebar.open, .app.nav-hidden .sidebar.open { left: 0; }
+  /* Le voile derrière le tiroir : la page s'assombrit, un toucher dessus referme */
+  body.drawer-open::after {
+    content: ''; position: fixed; inset: 0; z-index: 49;
+    background: rgba(9, 18, 36, .45);
+    animation: voile .15s ease;
+  }
+  @keyframes voile { from { opacity: 0; } to { opacity: 1; } }
+  .content { padding: var(--s4); }
+  .topbar { padding: var(--s3) var(--s4); }
+}
+
+.card {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--r); box-shadow: var(--sh-1);
+  padding: var(--s4) var(--s5);
+}
+/* LA SIGNATURE DES TITRES : le filet outremer de l'étiquette, transposé
+   à chaque titre de section — la même marque partout, on sait toujours
+   où commence un bloc. */
+.card h2 {
+  font-size: 14px; font-weight: 650; color: var(--slate);
+  text-transform: uppercase; letter-spacing: .06em;
+  margin-bottom: var(--s3); padding-bottom: var(--s2);
+  border-bottom: 1px solid var(--line-soft);
+  border-left: 3px solid var(--navy); padding-left: 10px;
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+}
+/* En-tête de carte : le titre à gauche, l'action principale à droite.
+   Le h2 y garde son filet mais perd son propre trait bas (la carte-head
+   porte déjà le sien). */
+.card-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--s3); flex-wrap: wrap;
+  margin-bottom: var(--s3); padding-bottom: var(--s3);
+  border-bottom: 1px solid var(--line-soft);
+}
+.card-head h2 { margin: 0; padding-bottom: 0; border-bottom: none; }
+
+/* Tuiles de chiffres */
+.tile .label {
+  font-size: 13.5px; color: var(--slate); font-weight: 550;
+  display: flex; align-items: center; gap: 6px;
+  text-transform: uppercase; letter-spacing: .05em;
+}
+.tile .value {
+  font-size: 28px; font-weight: 700; color: var(--navy);
+  font-variant-numeric: tabular-nums; margin-top: 6px; letter-spacing: -.02em;
+}
+.tile .value small { font-size: 15px; font-weight: 550; color: var(--slate); letter-spacing: 0; }
+.tile .sub { font-size: 13.5px; color: var(--slate); margin-top: 4px; }
+
+/* Tuiles d'ACTION des tableaux de bord : cliquables, l'état au liséré */
+a.tile-action { display: block; color: inherit; transition: border-color .12s ease; }
+a.tile-action:hover { text-decoration: none; border-color: var(--blue); }
+a.tile-action.is-warn { border-left: 3px solid var(--warn); }
+a.tile-action.is-danger { border-left: 3px solid var(--danger); }
+
+/* Légendes des graphiques : le même code sur tous les tableaux de bord */
+.legende { display: inline-flex; gap: 14px; font-weight: 400; text-transform: none; letter-spacing: 0; }
+.legende .lg { display: inline-flex; align-items: center; gap: 5px; }
+.legende .lg-trait { width: 14px; height: 2.5px; border-radius: 2px; }
+.legende .lg-carre { width: 10px; height: 10px; border-radius: 3px; }
+.hero-num {
+  font-size: 34px; font-weight: 750; color: var(--navy);
+  font-variant-numeric: tabular-nums; letter-spacing: -.02em;
+}
+.hero-num small { font-size: 17px; font-weight: 600; color: var(--slate); }
+
+/* ============================================================
+   BADGES & PASTILLES D'ÉTAT
+   ============================================================ */
+.badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 13.5px; font-weight: 600; border-radius: var(--r-full);
+  padding: 3px 10px; white-space: nowrap; line-height: 1.4;
+}
+.badge.ok { background: var(--ok-bg); color: var(--ok); }
+.badge.warn { background: var(--warn-bg); color: var(--warn); }
+.badge.danger { background: var(--danger-bg); color: var(--danger); }
+.badge.neutral { background: #EEF1F6; color: var(--slate); }
+.badge.blue { background: var(--blue-tint); color: var(--blue-600); }
+
+/* Puce de code (référence FPL, code de barre) */
+.chip-code {
+  display: inline-block; font-family: var(--mono); font-size: 13.5px; font-weight: 600;
+  background: var(--blue-tint); color: var(--blue-600);
+  padding: 2px 7px; border-radius: var(--r-sm); letter-spacing: .02em;
+  font-variant-numeric: tabular-nums;
+}
+.ref { font-family: var(--mono); font-size: 14px; color: var(--blue-600); font-weight: 600; }
+
+/* ============================================================
+   TABLEAUX DE DONNÉES — le registre professionnel de la maison :
+   un bandeau d'en-tête net, des lignes AÉRÉES, une typo généreuse.
+   L'en-tête d'une colonne d'actions se CENTRE sur ses boutons.
+   ============================================================ */
+.table-wrap { overflow-x: auto; margin: 0 calc(-1 * var(--s5)); padding: 0 var(--s5); }
+table { width: 100%; border-collapse: collapse; font-size: 15.5px; }
+/* TOUT est CENTRÉ sur l'axe de la colonne (décision direction du
+   06/08, précisée) : le titre au milieu, et le CONTENU des cellules
+   centré sous lui — le titre tombe ainsi au milieu de la largeur du
+   contenu, jamais décalé de ce qu'il nomme. */
+th {
+  text-align: center; font-size: 13px; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--slate); font-weight: 650;
+  padding: 11px 12px; border-bottom: 2px solid var(--line);
+  white-space: nowrap; background: #F7F9FC;
+}
+td {
+  padding: 13px 12px; border-bottom: 1px solid var(--line-soft); vertical-align: middle;
+  text-align: center;
+}
+tbody tr:last-child td, tr:last-child td { border-bottom: none; }
+tbody tr { transition: background .1s ease; }
+tbody tr:hover { background: #FAFBFD; }
+/* Les nombres suivent le même axe : centrés, en chiffres tabulaires */
+td.num, th.num { font-variant-numeric: tabular-nums; }
+.muted { color: var(--slate); font-size: 14.5px; }
+.cell-title { font-weight: 600; color: var(--ink); }
+.cell-sub { color: var(--slate); font-size: 14px; margin-top: 2px; }
+.qty { font-size: 17.5px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ink); }
+.qty.zero { color: var(--danger); }
+
+.thumb {
+  /* Assez grande pour reconnaître la pièce, et en ENTIER (contain, jamais
+     rognée) : une pièce coupée est une pièce méconnaissable */
+  width: 56px; height: 56px; border-radius: var(--r-sm);
+  object-fit: contain; background: #fff; color: var(--slate-soft);
+  border: 1px solid var(--line-soft); padding: 2px;
+}
+/* Les boutons d'une ligne se CENTRENT sous leur en-tête « Actions » —
+   le titre tombe au milieu de la colonne, jamais décalé. */
+.row-actions { display: flex; gap: 5px; justify-content: center; align-items: center; }
+
+/* ============================================================
+   LE FILTRE COMPLET — la même barre sur toutes les listes :
+   recherche + critères + période, l'export juste à côté.
+   ============================================================ */
+.fc-ligne { display: flex; gap: var(--s3); align-items: flex-end; flex-wrap: wrap; }
+.fc-champ { min-width: 150px; }
+.fc-champ.fc-recherche { flex: 2; min-width: 240px; }
+.fc-champ label {
+  display: block; font-size: 13px; font-weight: 600; color: var(--slate);
+  margin-bottom: 5px; text-transform: uppercase; letter-spacing: .04em;
+}
+.fc-champ input {
+  width: 100%; padding: 9px 12px; border: 1px solid var(--line);
+  border-radius: var(--r-sm); font-family: inherit; font-size: 15px;
+  background: var(--surface); color: var(--ink);
+}
+.fc-champ input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(41, 87, 174, .14); }
+.fc-champ.fc-date { min-width: 148px; }
+.fc-actifs {
+  display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
+  margin-top: var(--s3); padding-top: var(--s3); border-top: 1px solid var(--line-soft);
+  font-size: 14px;
+}
+.cat-tag {
+  background: var(--blue-tint); color: var(--blue-600);
+  border-radius: var(--r-full); padding: 3px 11px; font-weight: 600;
+}
+.fc-effacer { margin-left: auto; font-size: 14px; }
+/* Le bouton Détail : l'action PRINCIPALE de chaque ligne, en toutes lettres */
+.btn-detail { font-weight: 650; }
+
+/* La note d'état DISCRÈTE, famille bleue — jamais de jaune décoratif */
+.note-bleue {
+  display: flex; align-items: flex-start; gap: 9px;
+  background: var(--blue-tint); color: var(--blue-600);
+  border: 1px solid var(--blue-tint-2); border-radius: var(--r);
+  padding: var(--s3) var(--s4); font-size: 14.5px; line-height: 1.5;
+}
+.note-bleue a { color: var(--blue-600); text-decoration: underline; font-weight: 600; }
+
+/* ============================================================
+   BOUTONS
+   ============================================================ */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  border: 1px solid transparent; cursor: pointer; text-decoration: none;
+  font-family: inherit; font-size: 15.5px; font-weight: 600;
+  padding: 9px 15px; border-radius: var(--r-sm); white-space: nowrap;
+  transition: background .12s ease, border-color .12s ease, color .12s ease;
+}
+.btn:hover { text-decoration: none; }
+.btn-primary { background: var(--navy); color: #fff; }
+.btn-primary:hover { background: var(--navy-deep); color: #fff; }
+/* UN SEUL bleu d'action dans toute l'application (décision direction du
+   07/08 : « la couleur change, je ne comprends pas ») : .btn-blue est
+   désormais le MÊME marine que .btn-primary — plus jamais deux bleus
+   de bouton qui alternent selon les pages. */
+.btn-blue { background: var(--navy); color: #fff; }
+.btn-blue:hover { background: var(--navy-deep); color: #fff; }
+.btn-outline { background: var(--surface); color: var(--navy); border-color: var(--line); }
+.btn-outline:hover { border-color: var(--blue); color: var(--blue); }
+.btn-ok { background: var(--ok); color: #fff; }
+/* Les gestes de stock : sortir en rouge, entrer en vert — partout pareil */
+.btn-out { background: var(--danger); color: #fff; }
+.btn-out:hover { background: #8E2720; color: #fff; }
+.btn-in { background: var(--ok); color: #fff; }
+.btn-in:hover { background: #0E5539; color: #fff; }
+.btn-danger { background: var(--surface); color: var(--danger); border-color: #E8CBC7; }
+.btn-danger:hover:not(:disabled) { background: var(--danger); color: #fff; border-color: var(--danger); }
+.btn:disabled { cursor: not-allowed; }
+.btn-sm { font-size: 14px; padding: 6px 11px; gap: 5px; }
+.btn-icon { padding: 6px 8px; }
+
+.page-actions { display: flex; gap: 10px; margin-bottom: var(--s4); flex-wrap: wrap; align-items: center; }
+
+/* Gros boutons d'action (interface de saisie terrain) */
+.action-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--s4); }
+@media (max-width: 900px) { .action-grid { grid-template-columns: repeat(2, 1fr); } }
+.action-btn {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg);
+  box-shadow: var(--sh-1); padding: var(--s6) var(--s4); text-align: center;
+  cursor: pointer; text-decoration: none; color: var(--ink); display: block;
+  transition: border-color .12s ease, box-shadow .12s ease, transform .12s ease;
+}
+.action-btn:hover { border-color: var(--blue); box-shadow: var(--sh-2); transform: translateY(-1px); text-decoration: none; }
+.action-btn .big { display: block; margin-bottom: 10px; color: var(--navy); }
+.action-btn strong { font-size: 17px; color: var(--navy); display: block; }
+.action-btn span { font-size: 13.5px; color: var(--slate); }
+
+/* ============================================================
+   FORMULAIRES
+   ============================================================ */
+
+/* Mise en page : le formulaire, et un panneau de contexte qui suit le défilement */
+.form-layout {
+  display: grid; grid-template-columns: minmax(0, 1fr) 296px;
+  gap: var(--s5); align-items: start;
+}
+
+/* DEUX COLONNES pleine largeur (décision direction du 06/08 : plus de
+   long défilement ni d'espace vide) : l'identité à gauche, le stock,
+   l'emplacement et les photos à droite — tout se voit d'un écran. */
+.form-duo {
+  display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(300px, 1fr);
+  gap: var(--s4); align-items: start;
+}
+.form-duo .form-card { max-width: none; margin-inline: 0; }
+.form-duo > .form-bar { grid-column: 1 / -1; max-width: none; margin-inline: 0; }
+@media (max-width: 1000px) { .form-duo { grid-template-columns: 1fr; } }
+@media (max-width: 1100px) { .form-layout { grid-template-columns: 1fr; } }
+.form-aside { position: sticky; top: 72px; display: flex; flex-direction: column; gap: var(--s3); }
+@media (max-width: 1100px) { .form-aside { position: static; order: -1; } }
+
+.aside-card {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--r); box-shadow: var(--sh-1); padding: var(--s4);
+}
+.aside-card h4 {
+  font-size: 12.5px; font-weight: 650; color: var(--slate-soft);
+  text-transform: uppercase; letter-spacing: .08em; margin-bottom: var(--s3);
+}
+.aside-line { display: flex; gap: 9px; align-items: flex-start; font-size: 14.5px; padding: 5px 0; }
+.aside-line .k { color: var(--slate); min-width: 76px; flex-shrink: 0; }
+.aside-line .v { color: var(--ink); font-weight: 550; word-break: break-word; }
+
+/* Une seule carte, des blocs séparés par un filet : compact et lisible.
+   Les formulaires sont centrés dans la page. */
+.form-card {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--r); box-shadow: var(--sh-1);
+  max-width: 860px; margin-inline: auto;
+}
+.form-block { padding: var(--s4) var(--s5); }
+.form-block + .form-block { border-top: 1px solid var(--line-soft); }
+.form-block > h3 {
+  font-size: 13px; font-weight: 650; color: var(--slate-soft);
+  text-transform: uppercase; letter-spacing: .08em;
+  display: flex; align-items: center; gap: 8px; margin-bottom: var(--s3);
+}
+.form-block > h3 .hint-inline {
+  text-transform: none; letter-spacing: 0; font-weight: 400;
+  color: var(--slate-soft); font-size: 13.5px; margin-left: auto;
+}
+
+/* Compat : les anciennes sections gardent une allure cohérente */
+.form-section {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--r); box-shadow: var(--sh-1);
+  padding: var(--s4) var(--s5); margin-bottom: var(--s3);
+  max-width: 860px; margin-inline: auto;
+}
+.form-section > h3 {
+  font-size: 15.5px; font-weight: 650; color: var(--navy);
+  display: flex; align-items: center; gap: 9px;
+}
+.form-section > .hint { font-size: 14px; color: var(--slate); margin: 5px 0 var(--s3); }
+.form-section .field:last-child, .form-section .field-row:last-child { margin-bottom: 0; }
+.form-block .field:last-child, .form-block .field-row:last-child { margin-bottom: 0; }
+
+/* Pastille d'étape */
+.step-num {
+  display: inline-flex; width: 20px; height: 20px; border-radius: var(--r-full);
+  background: var(--navy); color: #fff; font-size: 13px; font-weight: 700;
+  align-items: center; justify-content: center; flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Barre d'action collante : « Enregistrer » toujours atteignable */
+.form-bar {
+  position: sticky; bottom: 0; z-index: 20;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r);
+  box-shadow: 0 -2px 12px rgba(15, 32, 64, .07);
+  padding: var(--s3) var(--s4); margin-top: var(--s4);
+  display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap;
+  max-width: 860px; margin-inline: auto;
+}
+/* Sous une mise en page à deux colonnes, la barre suit la largeur du formulaire */
+.form-layout .form-bar { max-width: none; margin-inline: 0; }
+/* Utilitaire : centrer un bloc dont la largeur est bornée */
+.mx-auto { margin-inline: auto !important; }
+.form-bar .spacer { flex: 1; }
+
+/* Barre de création en ligne : quelques champs, puis l'action, séparée */
+.create-bar {
+  display: flex; gap: var(--s3); row-gap: var(--s3);
+  align-items: flex-end; flex-wrap: wrap;
+  background: #FBFCFE; border: 1px solid var(--line-soft); border-radius: var(--r);
+  padding: var(--s3) var(--s4); margin-bottom: var(--s3);
+}
+.cb-field { display: flex; flex-direction: column; gap: 4px; }
+.cb-field label { font-size: 13px; font-weight: 600; color: var(--slate); }
+.cb-field input, .cb-field select {
+  padding: 8px 11px; border: 1px solid var(--line); border-radius: var(--r-sm);
+  font-family: inherit; font-size: 15px; color: var(--ink); background: #fff; width: 100%;
+  transition: border-color .12s ease, box-shadow .12s ease;
+}
+.cb-field input:focus, .cb-field select:focus {
+  outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(41, 87, 174, .14);
+}
+/* L'action se détache des champs : poussée à droite, avec de l'air */
+.create-bar .cb-submit { margin-left: auto; padding-left: var(--s4); }
+.create-bar > .btn { margin-left: auto; }
+@media (max-width: 620px) {
+  .create-bar .cb-submit { margin-left: 0; padding-left: 0; width: 100%; }
+  .create-bar .cb-submit .btn, .create-bar > .btn { width: 100%; margin-left: 0; }
+}
+
+/* Zone de photos — barre compacte, l'aperçu prend le relais */
+.dropzone {
+  display: flex; align-items: center; gap: var(--s3);
+  border: 1.5px dashed var(--line); border-radius: var(--r-sm);
+  background: #FBFCFE; padding: 10px 14px; cursor: pointer;
+  transition: border-color .12s ease, background .12s ease;
+}
+.dropzone:hover, .dropzone.over { border-color: var(--blue); background: var(--blue-tint); }
+.dropzone .dz-icon { color: var(--blue-600); display: flex; }
+.dropzone .dz-title { font-size: 15px; font-weight: 600; color: var(--navy); }
+.dropzone .dz-sub { font-size: 13px; color: var(--slate); margin-left: auto; }
+.dropzone input[type=file] { display: none; }
+
+/* Bouton appareil photo — ouvre la caméra arrière sur mobile */
+.btn-camera {
+  display: inline-flex; align-items: center; gap: 7px;
+  margin-top: var(--s2); padding: 8px 14px;
+  border: 1.5px solid var(--line); border-radius: var(--r-sm);
+  background: #FBFCFE; color: var(--navy);
+  font-size: 15px; font-weight: 600; cursor: pointer;
+  transition: border-color .12s ease, background .12s ease;
+}
+.btn-camera:hover { border-color: var(--blue); background: var(--blue-tint); color: var(--blue-600); }
+.btn-camera .icon { color: var(--blue-600); }
+
+
+.previews { display: grid; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: var(--s2); margin-top: var(--s3); }
+.preview {
+  position: relative; border: 1px solid var(--line); border-radius: var(--r-sm);
+  overflow: hidden; background: var(--surface);
+}
+.preview img { width: 100%; height: 68px; object-fit: cover; display: block; }
+.preview .tag {
+  position: absolute; top: 5px; left: 5px; background: var(--navy); color: #fff;
+  font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+  padding: 2px 6px; border-radius: var(--r-sm);
+}
+.preview .rm {
+  position: absolute; top: 4px; right: 4px; width: 20px; height: 20px;
+  border-radius: var(--r-full); border: none; background: rgba(15, 32, 64, .72);
+  color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+.preview .rm:hover { background: var(--danger); }
+
+.field { margin-bottom: var(--s3); }
+.field label {
+  font-size: 14px; font-weight: 600; color: var(--ink);
+  margin-bottom: 4px; display: flex; align-items: center; gap: 5px;
+}
+.field label .req { color: var(--danger); }
+.field input[type=text], .field input[type=email], .field input[type=password],
+.field input[type=number], .field input[type=date], .field select, .field textarea {
+  width: 100%; padding: 8px 11px; border: 1px solid var(--line);
+  border-radius: var(--r-sm); font-family: inherit; font-size: 15.5px;
+  color: var(--ink); background: var(--surface);
+  transition: border-color .12s ease, box-shadow .12s ease;
+}
+.field input::placeholder, .field textarea::placeholder { color: var(--slate-soft); }
+.field input:focus, .field select:focus, .field textarea:focus {
+  outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(41, 87, 174, .14);
+}
+.field input[type=file] {
+  width: 100%; padding: 9px 12px; border: 1px dashed var(--line);
+  border-radius: var(--r-sm); font-family: inherit; font-size: 15px;
+  background: #FBFCFE; color: var(--slate); cursor: pointer;
+}
+.field input[type=file]:hover { border-color: var(--blue); }
+.field input[type=color] {
+  width: 52px; height: 38px; border: 1px solid var(--line);
+  border-radius: var(--r-sm); padding: 2px; background: var(--surface); cursor: pointer;
+}
+.field .help { font-size: 13px; color: var(--slate); margin-top: 4px; }
+/* Un champ qui se LIT et ne se saisit pas : sa valeur vient d'ailleurs
+   (l'année vient de la génération du modèle). Il se distingue au premier
+   regard d'un champ qu'on peut remplir. */
+.field input.champ-herite {
+  background: #F2F5F9; color: var(--slate); cursor: default;
+  border-style: dashed;
+}
+.field input.champ-herite:focus { border-color: var(--line); box-shadow: none; }
+
+/* Description générée automatiquement */
+.desc-preview {
+  padding: 11px 13px; background: #FBFCFE; border: 1px dashed var(--line);
+  border-radius: var(--r-sm); color: var(--slate); font-size: 15px; min-height: 44px;
+  transition: border-color .15s ease, color .15s ease;
+}
+.desc-preview.filled { color: var(--ink); border-style: solid; border-color: var(--blue-tint-2); background: var(--blue-tint); }
+.desc-preview.found { border-color: var(--ok); background: var(--ok-bg); color: var(--ok); }
+
+/* Cascade d'emplacement */
+.cascade { display: flex; flex-wrap: wrap; gap: var(--s2); align-items: center; }
+.cascade-path {
+  font-size: 14px; color: var(--slate); margin-top: 7px;
+  display: flex; align-items: center; gap: 5px;
+}
+.cascade-path.done { color: var(--ok); font-weight: 600; }
+.field .error { font-size: 13.5px; color: var(--danger); margin-top: 4px; font-weight: 600; }
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s3); }
+.field-row.three { grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 820px) { .field-row, .field-row.three { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 560px) { .field-row, .field-row.three { grid-template-columns: 1fr; } }
+
+.alert {
+  border-radius: 8px; padding: 12px 16px; margin-bottom: var(--s4);
+  font-size: 15px; display: flex; align-items: flex-start; gap: 8px;
+  border: 1px solid transparent;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+}
+.alert.success { background: #E0F2FE; color: #0369A1; border-color: #BAE6FD; }
+.alert.error { background: #FEE2E2; color: #991B1B; border-color: #FCA5A5; }
+/* Ni un succès ni une erreur : ce qui reste à faire (une fiche à compléter) */
+.alert.warn { background: #F1F5F9; color: #475569; border-color: #E2E8F0; }
+.alert.warn a { color: inherit; text-decoration: underline; }
+
+/* Le message qui vient d'arriver se signale : un refus de suppression doit
+   se remarquer, jamais passer pour un bouton qui n'a rien fait. */
+.alert-neuve { animation: alerte-apparait .5s ease-out; }
+@keyframes alerte-apparait {
+  0% { opacity: 0; transform: translateY(-6px); }
+  60% { opacity: 1; transform: none; }
+  100% { box-shadow: 0 0 0 4px rgba(30, 58, 109, .06); }
+}
+
+/* ============================================================
+   CONNEXION — écran d'entrée de l'application
+   Deux volets : la marque à gauche, le formulaire à droite.
+   ============================================================ */
+/* ============================================================
+   CONNEXION — écran d'entrée de l'application
+   Centré avec carte blanche sur fond dégradé premium.
+   ============================================================ */
+.auth {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Fond outremer PLEIN (décision direction) : UN seul bleu, jamais de
+     dégradé, jamais de grille — l'aplat simple de la marque. */
+  background: var(--navy);
+  padding: clamp(12px, 3vh, 28px);
+  position: relative;
+  overflow-x: hidden;
+}
+
+.auth-panel {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  z-index: 10;
+}
+
+.auth-container {
+  width: 100%;
+  max-width: 440px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: authFadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes authFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* --- La marque, posée directement sur l'aplat : logo blanc, nom blanc.
+   COMPACT : tout (marque + formulaire) tient sur UN écran, sans défilement. */
+.auth-brand-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--s2);
+  margin-bottom: var(--s4);
+}
+.auth-logo-large {
+  width: 68px;
+  height: 68px;
+  object-fit: contain;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.auth-logo-large:hover {
+  transform: scale(1.06);
+}
+.auth-brand-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.auth-brand-name {
+  font-size: 17px;
+  font-weight: 850;
+  color: #ffffff;
+  letter-spacing: .1em;
+  line-height: 1.2;
+}
+.auth-brand-subtitle {
+  font-size: 13px;
+  font-weight: 600;
+  font-style: italic;
+  color: rgba(255, 255, 255, .82);
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+/* --- Carte du formulaire --- */
+.auth-card {
+  background: var(--surface);
+  border-radius: var(--r-lg);
+  box-shadow: 0 12px 40px rgba(0, 15, 87, .40);
+  padding: var(--s5) var(--s6);
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+.auth-form {
+  width: 100%;
+}
+.auth-form h1 {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--navy);
+  letter-spacing: -.02em;
+}
+.auth-form .lead {
+  color: var(--slate);
+  font-size: 16.5px;
+  margin: 6px 0 var(--s4);
+}
+.auth-form .field {
+  margin-bottom: var(--s3);
+}
+.auth-form .field label {
+  font-size: 15.5px;
+}
+.auth-form .field input {
+  padding: 11px 13px;
+  font-size: 17px;
+}
+.auth-form .btn {
+  width: 100%;
+  padding: 12px 16px;
+  font-size: 17.5px;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+.auth-form .btn:active {
+  transform: scale(0.985);
+}
+
+/* Champ mot de passe avec bouton « afficher » */
+.pw-wrap { position: relative; }
+.pw-wrap input { padding-right: 44px !important; }
+.pw-toggle {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  border: none; background: none; cursor: pointer; color: var(--slate);
+  padding: 6px 8px; border-radius: var(--r-sm); display: flex;
+}
+.pw-toggle:hover { color: var(--navy); background: var(--line-soft); }
+
+.auth-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--s3); margin-bottom: var(--s4); flex-wrap: wrap; font-size: 15.5px;
+}
+.auth-check { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; color: var(--ink); }
+.auth-check input { width: 15px; height: 15px; accent-color: var(--navy); }
+.auth-sep {
+  display: flex; align-items: center; gap: var(--s3);
+  margin: var(--s4) 0 var(--s3); color: var(--slate-soft); font-size: 13.5px;
+  text-transform: uppercase; letter-spacing: .08em;
+}
+.auth-sep::before, .auth-sep::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+.auth-note {
+  display: flex; gap: 9px; align-items: flex-start;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r);
+  padding: var(--s3) var(--s4); font-size: 15px; color: var(--slate); line-height: 1.5;
+}
+/* TOUT tient sur un écran : sur les écrans bas, la note d'accès (facultative)
+   s'efface et le logo se resserre — jamais de défilement pour se connecter. */
+@media (max-height: 760px) {
+  .auth-sep, .auth-note { display: none; }
+  .auth-logo-large { width: 54px; height: 54px; }
+  .auth-brand-center { margin-bottom: var(--s3); }
+}
+.auth-note .ico { color: var(--blue-600); flex-shrink: 0; margin-top: 1px; }
+.auth-links { margin-top: var(--s5); text-align: center; font-size: 14.5px; color: var(--slate); }
+.caps-warn {
+  display: none; align-items: center; gap: 6px; margin-top: 6px;
+  font-size: 13.5px; color: var(--warn); font-weight: 600;
+}
+.caps-warn.on { display: flex; }
+
+/* Force du mot de passe (réinitialisation) */
+.pw-meter { display: flex; gap: 4px; margin-top: 7px; }
+.pw-meter span { flex: 1; height: 4px; border-radius: 2px; background: var(--line); transition: background .15s ease; }
+.pw-meter.n1 span:nth-child(1) { background: var(--danger); }
+.pw-meter.n2 span:nth-child(-n+2) { background: var(--warn); }
+.pw-meter.n3 span:nth-child(-n+3) { background: var(--blue); }
+.pw-meter.n4 span { background: var(--ok); }
+.pw-rules { margin-top: 7px; display: grid; gap: 3px; font-size: 13.5px; color: var(--slate); }
+.pw-rules li { list-style: none; display: flex; gap: 6px; align-items: center; }
+.pw-rules li.ok { color: var(--ok); font-weight: 600; }
+
+/* ============================================================
+   CARTES DE CATÉGORIE / SOUS-CATÉGORIE
+   ============================================================ */
+.cat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(244px, 1fr)); gap: var(--s4); }
+.cat-card {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--r); box-shadow: var(--sh-1); overflow: hidden;
+  transition: border-color .12s ease, box-shadow .12s ease;
+}
+.cat-card:hover { border-color: var(--blue-tint-2); box-shadow: var(--sh-2); }
+.cat-visual { display: block; height: 132px; background: var(--blue-tint); }
+.cat-visual img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cat-placeholder {
+  width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, var(--navy) 0%, var(--blue-600) 100%);
+}
+.cat-body { padding: var(--s3) var(--s4) var(--s4); }
+.cat-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); }
+.cat-name {
+  font-weight: 650; color: var(--navy); font-size: 17px; letter-spacing: -.005em;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.cat-name:hover { color: var(--blue); text-decoration: none; }
+.cat-manage { display: flex; gap: 5px; flex-shrink: 0; }
+.cat-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: var(--s3); }
+
+/* Bandeau d'action principale, en tête de page */
+.page-lead {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--s4);
+  flex-wrap: wrap; margin-bottom: var(--s4);
+}
+.page-lead-title { font-size: 17px; font-weight: 650; color: var(--navy); }
+.btn-lead { padding: 11px 18px; font-size: 16px; box-shadow: var(--sh-1); }
+
+/* ============================================================
+   LIGNE DE CATÉGORIES (catalogue à forage sur place)
+   ============================================================ */
+.rail-wrap {
+  display: flex; align-items: center; gap: var(--s2);
+  margin-bottom: var(--s4);
+}
+.rail {
+  flex: 1; display: flex; gap: var(--s3); overflow-x: auto; scroll-behavior: smooth;
+  padding: 2px; scrollbar-width: thin;
+}
+.rail::-webkit-scrollbar { height: 6px; }
+.rail::-webkit-scrollbar-thumb { background: var(--line); border-radius: var(--r-full); }
+.rail-arrow {
+  flex-shrink: 0; width: 32px; height: 32px; border-radius: var(--r-full);
+  background: var(--surface); border: 1px solid var(--line); color: var(--navy);
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+  transition: border-color .12s ease, color .12s ease, opacity .12s ease;
+}
+.rail-arrow:hover:not(:disabled) { border-color: var(--blue); color: var(--blue); }
+.rail-arrow:disabled { opacity: .3; cursor: default; }
+
+
+/* Une carte et son crayon : le lien principal ouvre, le crayon modifie.
+   .rail est en flex row avec align-items: stretch (valeur par défaut) :
+   chaque .rail-item prend donc déjà la hauteur de la plus grande carte
+   de la ligne. .rail-card doit juste remplir cette hauteur à son tour,
+   et .rail-name absorbe l'écart — toutes les cartes ont ainsi la même
+   taille, même si les noms ont des longueurs différentes. */
+/* Les cartes sont LARGES et toutes IDENTIQUES : le nom tient sur UNE
+   seule ligne (sinon il s'abrège en « … », le survol dit tout) — aucune
+   carte plus haute qu'une autre. */
+.rail-item { position: relative; flex: 0 0 208px; }
+.rail-item > .rail-card {
+  display: flex; flex-direction: column; width: 100%; height: 100%;
+  flex: none; box-sizing: border-box;
+}
+/* Le crayon et la corbeille vivent À CÔTÉ DU NUMÉRO, juste sous l'image —
+   cette ligne a une hauteur fixe (comme l'image), donc leur position ne
+   bouge jamais, quelle que soit la longueur du nom affiché en dessous. */
+.rail-actions {
+  position: absolute; top: 96px; right: 6px; height: 28px; z-index: 5;
+  display: flex; gap: 4px; align-items: center;
+}
+.rail-edit {
+  width: 24px; height: 24px; border-radius: var(--r-full); cursor: pointer;
+  background: var(--surface); border: 1px solid var(--line); padding: 0;
+  color: var(--navy); display: flex; align-items: center; justify-content: center;
+  box-shadow: var(--sh-1);
+  transition: border-color .12s ease, color .12s ease, transform .12s ease;
+}
+.rail-edit:hover { border-color: var(--blue); color: var(--blue); transform: scale(1.1); text-decoration: none; }
+.rail-del { color: var(--danger); }
+.rail-del:hover { border-color: var(--danger); color: var(--danger); }
+
+.rail-card {
+  flex: 0 0 208px; background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--r-lg); box-shadow: var(--sh-1); overflow: hidden;
+  text-decoration: none; color: var(--ink);
+  transition: border-color .12s ease, box-shadow .12s ease, transform .12s ease;
+}
+.rail-card:hover {
+  border-color: var(--blue); box-shadow: var(--sh-2);
+  transform: translateY(-1px); text-decoration: none;
+}
+.rail-visual { height: 110px; flex-shrink: 0; position: relative; background: var(--blue-tint); }
+.rail-visual img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.rail-ph, .rail-visual.back, .rail-visual.new {
+  width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+}
+/* Vignette sans image : un aplat clair de la famille — jamais de dégradé */
+.rail-ph { background: var(--blue-tint); color: var(--blue-600); }
+.rail-visual.back { background: #EEF1F6; color: var(--slate); }
+.rail-visual.new { background: var(--blue-tint); color: var(--blue-600); }
+.rail-card.rail-new { border-style: dashed; box-shadow: none; }
+/* Ligne du numéro, juste sous l'image — hauteur fixe (le crayon et la
+   corbeille se superposent à sa droite, hors du lien). */
+.rail-meta { height: 28px; flex-shrink: 0; padding: 0 10px; display: flex; align-items: center; }
+.rail-name {
+  flex: 1; padding: 0 12px 12px; font-size: 15px; font-weight: 600; color: var(--navy);
+  line-height: 1.3;
+  /* UNE seule ligne, toujours : le nom trop long s'abrège, le survol
+     (title) donne le nom complet — toutes les cartes restent égales */
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+/* Le numéro du référentiel (catégorie 01, sous-catégorie 807…) */
+.rail-num {
+  font-family: var(--mono); font-size: 12.5px; font-weight: 600;
+  color: var(--blue-600); background: var(--blue-tint);
+  padding: 1px 5px; border-radius: var(--r-sm);
+  font-variant-numeric: tabular-nums;
+}
+.rail-back .rail-name { color: var(--slate); font-weight: 550; }
+.rail-alert {
+  position: absolute; top: 6px; right: 6px; min-width: 20px; height: 20px;
+  border-radius: var(--r-full); background: var(--danger); color: #fff;
+  font-size: 13px; font-weight: 700; display: flex; align-items: center;
+  justify-content: center; padding: 0 6px; font-variant-numeric: tabular-nums;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .25);
+}
+
+/* Fil d'Ariane */
+.crumb {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  font-size: 14.5px; color: var(--slate); margin-bottom: var(--s3);
+}
+.crumb a { color: var(--slate); display: inline-flex; align-items: center; gap: 4px; }
+.crumb a:hover { color: var(--blue); }
+.crumb strong { color: var(--navy); font-weight: 650; }
+
+/* En-tête d'une catégorie */
+.entity-head {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r);
+  box-shadow: var(--sh-1); padding: var(--s4) var(--s5);
+  display: flex; gap: var(--s4); align-items: center; flex-wrap: wrap;
+  margin-bottom: var(--s4);
+}
+.entity-visual {
+  width: 88px; height: 66px; border-radius: var(--r-sm); object-fit: cover;
+  flex-shrink: 0; border: 1px solid var(--line-soft);
+}
+.entity-visual.ph {
+  display: flex; align-items: center; justify-content: center; color: #fff;
+  background: linear-gradient(135deg, var(--navy) 0%, var(--blue-600) 100%); border: none;
+}
+.entity-title { font-size: 18px; font-weight: 700; color: var(--navy); letter-spacing: -.015em; }
+
+/* ============================================================
+   SÉLECTEUR AVEC RECHERCHE INTELLIGENTE
+   ============================================================ */
+.fs-wrap { position: relative; display: inline-block; min-width: 190px; max-width: 100%; }
+.field .fs-wrap { display: block; width: 100%; }
+.fs-display {
+  width: 100%; text-align: left; background: var(--surface); cursor: pointer;
+  padding: 10px 30px 10px 12px; border: 1px solid var(--line); border-radius: var(--r-sm);
+  font-family: inherit; font-size: 15.5px; color: var(--ink); position: relative;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  transition: border-color .12s ease, box-shadow .12s ease;
+}
+.fs-display::after {
+  content: ''; position: absolute; right: 12px; top: 50%;
+  width: 6px; height: 6px; border-right: 1.5px solid var(--slate);
+  border-bottom: 1.5px solid var(--slate); transform: translateY(-70%) rotate(45deg);
+}
+.fs-wrap.open .fs-display { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(41, 87, 174, .14); }
+.fs-panel {
+  display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 60;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r);
+  box-shadow: var(--sh-3); overflow: hidden; min-width: 200px;
+}
+.fs-wrap.open .fs-panel { display: block; }
+.fs-search {
+  width: 100%; padding: 10px 12px; border: none; border-bottom: 1px solid var(--line-soft);
+  font-family: inherit; font-size: 15.5px; outline: none; color: var(--ink);
+}
+.fs-list { max-height: 224px; overflow-y: auto; }
+.fs-item { padding: 9px 12px; cursor: pointer; font-size: 15.5px; display: flex; align-items: center; }
+.fs-item:hover { background: var(--blue-tint); }
+.fs-item.sel { font-weight: 650; color: var(--navy); background: var(--blue-tint); }
+.fs-empty { padding: var(--s3); color: var(--slate); font-size: 14.5px; text-align: center; }
+/* Pastille de couleur exacte (couleur de la pièce) : case teintée avant le libellé */
+.fs-swatch {
+  display: inline-block; width: 13px; height: 13px; margin-right: 8px; flex-shrink: 0;
+  border-radius: 3px; border: 1px solid rgba(0,0,0,.18); box-shadow: inset 0 0 0 1px rgba(255,255,255,.5);
+}
+.fs-display { display: flex; align-items: center; }
+.fs-display .fs-swatch { margin-right: 8px; }
+
+/* ============================================================
+   DIVERS
+   ============================================================ */
+.color-dot {
+  display: inline-block; width: 12px; height: 12px; border-radius: 3px;
+  vertical-align: -1px; border: 1px solid rgba(15, 32, 64, .12);
+}
+/* --- Pied de tableau : ce qui est affiché · les pages · le nombre de lignes --- */
+.tablebar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--s3); flex-wrap: wrap;
+  margin-top: var(--s3); padding-top: var(--s3);
+  border-top: 1px solid var(--line-soft);
+  font-size: 14.5px; color: var(--slate);
+}
+.tablebar-count strong { color: var(--ink); font-weight: 650; font-variant-numeric: tabular-nums; }
+.tablebar.top {
+  margin-top: 0; padding-top: 0; border-top: none;
+  margin-bottom: var(--s3); padding-bottom: var(--s3);
+  border-bottom: 1px solid var(--line-soft);
+}
+.tablebar-per {
+  display: inline-flex; align-items: center; gap: 7px;
+  color: var(--slate); font-size: 14.5px; white-space: nowrap;
+}
+.tablebar-per label { display: inline-flex; align-items: center; gap: 7px; }
+.tablebar-per .per-input {
+  width: 64px; padding: 5px 8px; border: 1px solid var(--line); border-radius: var(--r-sm);
+  font-family: inherit; font-size: 14.5px; font-weight: 600; color: var(--navy);
+  background: var(--surface); text-align: center; font-variant-numeric: tabular-nums;
+}
+.tablebar-per .per-input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(41, 87, 174, .14); }
+
+.pager { display: flex; gap: 3px; align-items: center; flex-wrap: wrap; }
+.pager-btn {
+  min-width: 30px; height: 30px; padding: 0 8px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--line); border-radius: var(--r-sm);
+  font-size: 14.5px; font-weight: 600; color: var(--navy); background: var(--surface);
+  font-variant-numeric: tabular-nums;
+  transition: border-color .12s ease, color .12s ease, background .12s ease;
+}
+a.pager-btn:hover { border-color: var(--blue); color: var(--blue); text-decoration: none; }
+.pager-btn.current { background: var(--navy); color: #fff; border-color: var(--navy); }
+.pager-btn.disabled { opacity: .35; }
+.pager-gap { color: var(--slate-soft); padding: 0 2px; }
+
+/* Compat : anciennes paginations */
+.pagination { display: flex; gap: 6px; margin-top: var(--s4); flex-wrap: wrap; align-items: center; }
+.pagination a, .pagination span {
+  padding: 6px 12px; border-radius: var(--r-sm); font-size: 14.5px; font-weight: 550;
+  border: 1px solid var(--line); color: var(--navy); background: var(--surface);
+}
+.pagination a:hover { border-color: var(--blue); color: var(--blue); text-decoration: none; }
+.pagination .active { background: var(--navy); color: #fff; border-color: var(--navy); }
+
+/* ============================================================
+   AGRANDISSEMENT DES IMAGES
+   ============================================================ */
+img.lb-ready { cursor: zoom-in; }
+body.lb-locked { overflow: hidden; }
+.lb {
+  position: fixed; inset: 0; z-index: 200; display: none;
+  align-items: center; justify-content: center; gap: var(--s3);
+  background: rgba(9, 18, 36, .88); padding: var(--s6);
+  backdrop-filter: blur(2px);
+}
+.lb.open { display: flex; }
+.lb-stage {
+  max-width: min(1100px, 92vw); max-height: 88vh;
+  display: flex; flex-direction: column; align-items: center; gap: var(--s3);
+}
+.lb-stage img {
+  max-width: 100%; max-height: 80vh; object-fit: contain;
+  border-radius: var(--r); background: #fff; box-shadow: 0 24px 64px rgba(0, 0, 0, .5);
+}
+.lb-stage figcaption {
+  color: #D9DFF8; font-size: 15px; text-align: center; max-width: 70ch;
+}
+.lb-close {
+  position: absolute; top: 16px; right: 20px;
+  width: 38px; height: 38px; border-radius: var(--r-full); border: none;
+  background: rgba(255, 255, 255, .12); color: #fff;
+  font-size: 24px; line-height: 1; cursor: pointer;
+}
+.lb-close:hover { background: rgba(255, 255, 255, .24); }
+.lb-nav {
+  width: 44px; height: 44px; border-radius: var(--r-full); border: none; flex-shrink: 0;
+  background: rgba(255, 255, 255, .12); color: #fff; font-size: 26px; line-height: 1;
+  cursor: pointer; display: none;
+}
+.lb.multi .lb-nav { display: block; }
+.lb-nav:hover { background: rgba(255, 255, 255, .24); }
+.lb-count {
+  position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%);
+  color: #939CC7; font-size: 14px; font-variant-numeric: tabular-nums;
+}
+@media (max-width: 700px) {
+  .lb { padding: var(--s3); }
+  .lb-nav { position: absolute; bottom: 16px; }
+  .lb-prev { left: 16px; } .lb-next { right: 16px; }
+}
+.mt { margin-top: var(--s4); }
+.empty { text-align: center; color: var(--slate); padding: var(--s8) var(--s5); }
+.empty .big { display: block; margin-bottom: var(--s3); color: var(--slate-soft); }
+
+/* Barre de recherche / filtres */
+.toolbar { display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap; }
+.search-input {
+  flex: 1; min-width: 220px; padding: 10px 12px;
+  border: 1px solid var(--line); border-radius: var(--r-sm);
+  font-family: inherit; font-size: 15.5px; color: var(--ink); background: var(--surface);
+  transition: border-color .12s ease, box-shadow .12s ease;
+}
+.search-input::placeholder { color: var(--slate-soft); }
+.search-input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(41, 87, 174, .14); }
+
+/* Champ scan (interface terrain) */
+.scan-bar {
+  display: flex; gap: 10px; align-items: center;
+  background: var(--surface); border: 1.5px solid var(--blue); border-radius: var(--r-lg);
+  padding: var(--s3) var(--s4); box-shadow: var(--sh-1);
+}
+.scan-bar input {
+  flex: 1; border: none; outline: none; font-family: inherit;
+  font-size: 17px; color: var(--ink); background: transparent;
+}
+
+/* Bandeau brouillon */
+.draft-banner {
+  background: var(--warn-bg); border: 1px solid #E7D3AC; border-radius: var(--r);
+  padding: var(--s3) var(--s4); display: flex; align-items: center;
+  justify-content: space-between; gap: var(--s3); font-size: 15px; color: var(--warn);
+  max-width: 860px; margin-inline: auto;
+}
+
+/* ===== Sélection MULTI-MODÈLES : un déroulant à cases à cocher =====
+   Une pièce se monte souvent sur plusieurs modèles d'une marque — le
+   champ affiche le résumé, le panneau coche les compatibilités. */
+.multi-modeles { position: relative; }
+.mm-btn {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  width: 100%; padding: 11px 13px; border: 1.5px solid var(--line);
+  border-radius: var(--r-sm); background: #fff; color: var(--ink);
+  font-family: inherit; font-size: 15px; text-align: left; cursor: pointer;
+  transition: border-color .15s;
+}
+.mm-btn:disabled { background: var(--surface); color: var(--slate); cursor: default; }
+.mm-btn:focus { outline: none; border-color: var(--blue-600); }
+.mm-btn .mm-chevron { flex: 0 0 auto; transition: transform .15s; color: var(--slate); }
+.multi-modeles.open .mm-chevron { transform: rotate(180deg); }
+.mm-resume { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mm-panel {
+  position: absolute; z-index: 30; top: calc(100% + 4px); left: 0; right: 0;
+  background: #fff; border: 1.5px solid var(--line); border-radius: var(--r-sm);
+  box-shadow: 0 10px 24px rgba(16, 49, 111, .14);
+  max-height: 264px; overflow-y: auto; padding: 6px;
+}
+.mm-opt {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 10px; border-radius: 6px; cursor: pointer;
+}
+.mm-opt:hover { background: var(--blue-tint); }
+.mm-opt input { width: 16px; height: 16px; accent-color: var(--navy); flex: 0 0 auto; }
+.mm-vide { padding: 9px 10px; color: var(--slate-soft); }
+
+/* Pastille discrète « Brouillon sauvegardé » */
+.draft-status {
+  position: fixed; bottom: 18px; right: 18px; z-index: 90;
+  background: var(--navy); color: #fff; font-size: 14px; font-weight: 600;
+  padding: 7px 13px; border-radius: var(--r-full); box-shadow: var(--sh-2);
+  opacity: 0; transform: translateY(6px); pointer-events: none;
+  transition: opacity .18s ease, transform .18s ease;
+}
+.draft-status.on { opacity: 1; transform: none; }
+
+/* ===== LE COMPTOIR : recherche à prix, panier, totaux =====
+   La vente se joue en trois gestes : chercher, lire le prix, encaisser. */
+.vente-recherche { position: relative; }
+.vr-resultats {
+  position: absolute; z-index: 40; top: calc(100% + 6px); left: 0; right: 0;
+  background: #fff; border: 1.5px solid var(--line); border-radius: var(--r);
+  box-shadow: 0 14px 30px rgba(16, 49, 111, .16);
+  max-height: 420px; overflow-y: auto;
+}
+.vr-item {
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  padding: 11px 14px; border: none; border-bottom: 1px solid var(--line-soft);
+  background: #fff; cursor: pointer; text-align: left; font-family: inherit;
+}
+.vr-item:last-child { border-bottom: none; }
+.vr-item:hover, .vr-item:focus { background: var(--blue-tint); outline: none; }
+.vr-item img, .vr-item .vr-sans-photo {
+  width: 46px; height: 46px; border-radius: var(--r-sm); object-fit: cover;
+  background: var(--blue-tint); flex: 0 0 auto;
+  display: flex; align-items: center; justify-content: center; color: var(--blue-600);
+}
+.vr-infos { flex: 1; min-width: 0; }
+.vr-infos .n { font-weight: 650; font-size: 15px; color: var(--ink); }
+.vr-infos .d { font-size: 13px; color: var(--slate); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vr-prix { text-align: right; flex: 0 0 auto; }
+.vr-prix .p { font-weight: 750; font-size: 16px; color: var(--navy); font-variant-numeric: tabular-nums; }
+.vr-prix .p.sans { color: var(--slate); font-weight: 600; font-size: 13.5px; }
+.vr-prix .barre { font-size: 12.5px; color: var(--slate); text-decoration: line-through; }
+.vr-prix .s { font-size: 12.5px; color: var(--slate); }
+.vr-prix .s.vide { color: var(--danger); font-weight: 650; }
+
+/* Le panier de vente */
+.panier-table input[type="number"] {
+  width: 110px; padding: 8px 10px; border: 1.5px solid var(--line);
+  border-radius: var(--r-sm); font-family: var(--mono); font-size: 15px; text-align: center;
+}
+.panier-table input[type="number"]:focus { outline: none; border-color: var(--blue-600); }
+.panier-photo {
+  width: 44px; height: 44px; border-radius: var(--r-sm); object-fit: cover;
+  background: var(--blue-tint); display: inline-flex; align-items: center;
+  justify-content: center; color: var(--blue-600); vertical-align: middle;
+}
+.panier-vide td { padding: 26px; color: var(--slate); font-size: 15px; }
+
+/* Les totaux — lisibles de loin */
+.vente-totaux { display: flex; flex-direction: column; gap: 8px; }
+.vt-ligne {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 15px; color: var(--slate);
+}
+.vt-ligne .v { font-variant-numeric: tabular-nums; color: var(--ink); font-weight: 600; }
+.vt-total {
+  display: flex; justify-content: space-between; align-items: center;
+  border-top: 2px solid var(--navy); margin-top: 4px; padding-top: 10px;
+}
+.vt-total .l { font-weight: 750; font-size: 16px; color: var(--navy); }
+.vt-total .v { font-weight: 800; font-size: 22px; color: var(--navy); font-variant-numeric: tabular-nums; }
+
+/* Journal d'activité */
+.feed { list-style: none; }
+.feed li {
+  display: flex; gap: 10px; padding: 10px 0;
+  border-bottom: 1px solid var(--line-soft); align-items: flex-start; font-size: 15px;
+}
+.feed li:last-child { border-bottom: none; }
+.feed .t {
+  color: var(--slate); font-size: 13.5px; white-space: nowrap;
+  padding-top: 1px; min-width: 44px; font-variant-numeric: tabular-nums;
+}
+.feed .dot { width: 8px; height: 8px; border-radius: var(--r-full); margin-top: 6px; flex-shrink: 0; }
+.dot.ok { background: var(--ok); } .dot.warn { background: var(--warn); }
+.dot.danger { background: var(--danger); } .dot.blue { background: var(--blue); }
+
+/* Erreurs de saisie hors bloc .field (barres de création : fournisseurs,
+   devises) — même langage visuel que « .field .error ». */
+.field-error { font-size: 13.5px; color: var(--danger); margin-top: 4px; font-weight: 600; }
+input.input-error, select.input-error, textarea.input-error {
+  border-color: var(--danger) !important;
+  background: #FEF2F2;
+}

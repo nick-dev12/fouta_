@@ -159,7 +159,7 @@ $statuts_labels = get_statuts_commande_personnalisee();
     <title>Mes Commandes - FOUTA POIDS LOURDS</title>
     <link rel="stylesheet" href="/css/variables.css<?php echo asset_version_query(); ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="/css/user-dashboard.css<?php echo asset_version_query(); ?>">
+<?php require_once __DIR__ . '/../includes/fpl_assets.php'; fpl_user_styles(); ?>
 </head>
 
 <body>

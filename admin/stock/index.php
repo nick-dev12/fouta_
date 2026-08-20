@@ -28,11 +28,23 @@ if (isset($_SESSION['success_message'])) {
 require_once __DIR__ . '/../../models/model_categories.php';
 require_once __DIR__ . '/../../models/model_produits.php';
 require_once __DIR__ . '/../../models/model_sous_categories.php';
-$categories = get_all_categories();
+require_once __DIR__ . '/../../includes/site_url.php';
+require_once __DIR__ . '/../../includes/fpl_ui.php';
+
+$categories = get_all_categories_with_count();
 $nb_cat = count($categories);
 $stock_sous_cat_ok = produits_has_column('sous_categorie_id')
     && function_exists('sous_categories_table_ok')
     && sous_categories_table_ok();
+$sous_categories = $stock_sous_cat_ok ? get_all_sous_categories_with_categorie_nom() : [];
+$sous_cat_count_by_categorie = [];
+foreach ($sous_categories as $sc_row) {
+    $cid_sc = (int) ($sc_row['categorie_id'] ?? 0);
+    if ($cid_sc > 0) {
+        $sous_cat_count_by_categorie[$cid_sc] = ($sous_cat_count_by_categorie[$cid_sc] ?? 0) + 1;
+    }
+}
+$stock_upload_base = rtrim(get_public_root_uri_path(), '/') . '/upload/';
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -43,8 +55,7 @@ $stock_sous_cat_ok = produits_has_column('sous_categorie_id')
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestion du stock — Administration</title>
     <?php require_once __DIR__ . '/../../includes/asset_version.php'; ?>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="/css/admin-dashboard.css<?php echo asset_version_query(); ?>">
+<?php include __DIR__ . '/..//includes/fpl_head.php'; ?>
     <style>
         /* Page stock — cohérent avec variables.css (importé via admin-dashboard) */
         .stock-page {
@@ -476,6 +487,262 @@ $stock_sous_cat_ok = produits_has_column('sous_categorie_id')
                 flex-wrap: wrap;
             }
         }
+
+        /* Bandeau sous-catégories (horizontal) */
+        .stock-sous-categories {
+            margin: 0 0 1.25rem;
+            padding: 1rem 1.1rem;
+            background: var(--fond-principal);
+            border: 1px solid var(--border-input);
+            border-radius: var(--stock-radius-sm);
+        }
+
+        .stock-sous-categories__head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            margin-bottom: 0.85rem;
+        }
+
+        .stock-sous-categories__title {
+            margin: 0;
+            font-size: 1rem;
+            font-weight: 650;
+            color: var(--titres);
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+        }
+
+        .stock-sous-categories__title i {
+            color: var(--couleur-dominante);
+        }
+
+        .stock-sous-categories__all {
+            font-size: 0.8125rem;
+            font-weight: 600;
+            color: var(--couleur-dominante);
+            text-decoration: none;
+            padding: 0.35rem 0.65rem;
+            border-radius: 8px;
+        }
+
+        .stock-sous-categories__all:hover {
+            background: var(--bleu-pale);
+        }
+
+        .stock-sous-categories__track {
+            display: flex;
+            gap: 0.75rem;
+            overflow-x: auto;
+            padding: 0.2rem 0.1rem 0.5rem;
+            scroll-snap-type: x proximity;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .stock-sous-cat-card {
+            flex: 0 0 auto;
+            width: 118px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.65rem 0.5rem;
+            border-radius: 12px;
+            border: 1px solid var(--border-input);
+            background: var(--fond-secondaire);
+            text-decoration: none;
+            color: var(--titres);
+            scroll-snap-align: start;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+        }
+
+        .stock-sous-cat-card:hover {
+            border-color: var(--couleur-dominante);
+            box-shadow: var(--ombre-douce);
+            transform: translateY(-2px);
+        }
+
+        .stock-sous-cat-card.is-active {
+            border-color: var(--couleur-dominante);
+            background: var(--bleu-pale);
+            box-shadow: 0 0 0 2px rgba(16, 49, 111, 0.1);
+        }
+
+        .stock-sous-cat-card__img {
+            width: 52px;
+            height: 52px;
+            border-radius: 10px;
+            background: var(--fond-principal);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--couleur-dominante);
+            font-size: 1.2rem;
+        }
+
+        .stock-sous-cat-card__name {
+            font-size: 0.72rem;
+            font-weight: 650;
+            text-align: center;
+            line-height: 1.25;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }
+
+        .stock-sous-cat-card__meta {
+            font-size: 0.62rem;
+            color: var(--texte-mute);
+            text-align: center;
+            line-height: 1.2;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* Tableau catégories */
+        .stock-cat-table-wrap {
+            overflow-x: auto;
+            border: 1px solid var(--border-input);
+            border-radius: var(--stock-radius-sm);
+            background: var(--fond-principal);
+        }
+
+        .stock-cat-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        .stock-cat-table thead th {
+            text-align: left;
+            padding: 0.75rem 1rem;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: var(--texte-mute);
+            background: var(--fond-secondaire);
+            border-bottom: 1px solid var(--border-input);
+            white-space: nowrap;
+        }
+
+        .stock-cat-table tbody td {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border-input);
+            color: var(--titres);
+            vertical-align: middle;
+        }
+
+        .stock-cat-table tbody tr:nth-child(even) td {
+            background: #fafbfd;
+        }
+
+        .stock-cat-table tbody tr:hover td {
+            background: var(--bleu-pale);
+        }
+
+        .stock-cat-table__row--linkable {
+            cursor: pointer;
+        }
+
+        .stock-cat-table .col-num {
+            font-variant-numeric: tabular-nums;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .stock-cat-table .col-thumb {
+            width: 56px;
+        }
+
+        .stock-cat-table .col-actions {
+            width: 110px;
+            white-space: nowrap;
+        }
+
+        .stock-cat-table__thumb {
+            width: 44px;
+            height: 44px;
+            border-radius: 8px;
+            object-fit: cover;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--fond-secondaire);
+            border: 1px solid var(--border-input);
+        }
+
+        .stock-cat-table__thumb--ph {
+            color: var(--couleur-dominante);
+            font-size: 1rem;
+        }
+
+        .stock-cat-table__nom {
+            font-weight: 650;
+            color: var(--couleur-dominante);
+        }
+
+        .stock-cat-table__action {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            color: var(--couleur-dominante);
+            text-decoration: none;
+            transition: background 0.15s ease;
+        }
+
+        .stock-cat-table__action:hover {
+            background: var(--bleu-pale);
+        }
+
+        .stock-cat-table__action--danger {
+            color: #c0392b;
+        }
+
+        .stock-cat-table__action--danger:hover {
+            background: rgba(192, 57, 43, 0.1);
+        }
+
+        @media (max-width: 768px) {
+            .stock-cat-table thead {
+                display: none;
+            }
+
+            .stock-cat-table tbody tr {
+                display: block;
+                border-bottom: 1px solid var(--border-input);
+                padding: 0.75rem 0.85rem;
+            }
+
+            .stock-cat-table tbody td {
+                display: flex;
+                justify-content: space-between;
+                gap: 0.75rem;
+                padding: 0.45rem 0;
+                border-bottom: none;
+            }
+
+            .stock-cat-table tbody td::before {
+                content: attr(data-label);
+                font-weight: 650;
+                font-size: 11px;
+                color: var(--texte-mute);
+            }
+
+            .stock-cat-table .col-thumb::before {
+                display: none;
+            }
+        }
     </style>
 </head>
 
@@ -528,6 +795,10 @@ $stock_sous_cat_ok = produits_has_column('sous_categorie_id')
                 <h2 id="stock-cat-heading"><i class="fas fa-layer-group" aria-hidden="true"></i> Catalogue par catégorie</h2>
             </div>
 
+            <?php if ($stock_sous_cat_ok && !empty($sous_categories)): ?>
+                <?php include __DIR__ . '/includes/sous_categories_carousel.php'; ?>
+            <?php endif; ?>
+
             <?php if (empty($categories)): ?>
             <div class="stock-empty">
                 <i class="fas fa-tags" aria-hidden="true"></i>
@@ -542,43 +813,29 @@ $stock_sous_cat_ok = produits_has_column('sous_categorie_id')
                 <?php endif; ?>
             </div>
             <?php else: ?>
-            <div class="stock-cat-grid">
-                <?php foreach ($categories as $categorie): ?>
-                <article class="stock-cat-card">
-                    <div class="stock-cat-card__media">
-                        <?php if (!empty($categorie['image'])): ?>
-                        <img src="/upload/<?php echo htmlspecialchars($categorie['image']); ?>"
-                            alt=""
-                            onerror="this.onerror=null;this.src='/image/produit1.jpg'">
-                        <?php else: ?>
-                        <div class="stock-cat-card__placeholder" aria-hidden="true">
-                            <i class="fas fa-tag"></i>
-                        </div>
-                        <?php endif; ?>
-                    </div>
-                    <div class="stock-cat-card__body">
-                        <h3><?php echo htmlspecialchars($categorie['nom']); ?></h3>
-                        <p class="stock-cat-card__desc">
-                            <?php echo htmlspecialchars($categorie['description'] ?? 'Aucune description'); ?>
-                        </p>
-                        <div class="stock-cat-card__actions">
-                            <a href="../categories/produits.php?id=<?php echo (int) $categorie['id']; ?>"
-                                class="stock-act-view">
-                                <i class="fas fa-box" aria-hidden="true"></i> Produits
-                            </a>
-                            <a href="../categories/modifier.php?id=<?php echo (int) $categorie['id']; ?>"
-                                class="stock-act-edit">
-                                <i class="fas fa-edit" aria-hidden="true"></i> Modifier
-                            </a>
-                            <a href="../categories/supprimer.php?id=<?php echo (int) $categorie['id']; ?>"
-                                class="stock-act-del"
-                                onclick="return confirm('Supprimer cette catégorie ?');">
-                                <i class="fas fa-trash" aria-hidden="true"></i> Supprimer
-                            </a>
-                        </div>
-                    </div>
-                </article>
-                <?php endforeach; ?>
+            <div class="stock-cat-table-wrap">
+                <table class="stock-cat-table">
+                    <thead>
+                        <tr>
+                            <th class="col-thumb">Visuel</th>
+                            <th>Catégorie</th>
+                            <th class="col-num">Produits</th>
+                            <?php if ($stock_sous_cat_ok): ?>
+                            <th class="col-num">Sous-cat.</th>
+                            <?php endif; ?>
+                            <th class="col-actions">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php
+                        $upload_base = $stock_upload_base;
+                        foreach ($categories as $categorie):
+                            $nb_sous_cat = $sous_cat_count_by_categorie[(int) ($categorie['id'] ?? 0)] ?? 0;
+                            include __DIR__ . '/includes/ligne_categorie_table.php';
+                        endforeach;
+                        ?>
+                    </tbody>
+                </table>
             </div>
             <?php endif; ?>
         </section>
@@ -587,6 +844,39 @@ $stock_sous_cat_ok = produits_has_column('sous_categorie_id')
     <?php include __DIR__ . '/../../includes/admin_stock_alerte_popup.php'; ?>
 
     <?php include '../includes/footer.php'; ?>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            document.addEventListener('click', function (event) {
+                var row = event.target.closest('.stock-cat-table__row--linkable');
+                if (!row) {
+                    return;
+                }
+                if (event.target.closest('.stock-cat-table__action')) {
+                    return;
+                }
+                var href = row.getAttribute('data-href');
+                if (href) {
+                    window.location.href = href;
+                }
+            });
+
+            document.addEventListener('keydown', function (event) {
+                if (event.key !== 'Enter' && event.key !== ' ') {
+                    return;
+                }
+                var row = event.target.closest('.stock-cat-table__row--linkable');
+                if (!row || event.target.closest('.stock-cat-table__action')) {
+                    return;
+                }
+                event.preventDefault();
+                var href = row.getAttribute('data-href');
+                if (href) {
+                    window.location.href = href;
+                }
+            });
+        });
+    </script>
 </body>
 
 </html>

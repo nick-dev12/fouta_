@@ -106,8 +106,7 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Synchronisation - Administration</title>
     <?php require_once __DIR__ . '/../../includes/asset_version.php'; ?>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="/css/admin-dashboard.css<?php echo asset_version_query(); ?>">
+<?php include __DIR__ . '/..//includes/fpl_head.php'; ?>
     <style>
         .sync-card { background: #fff; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 4px 20px rgba(53,100,166,.12); }
         .sync-actions { display: flex; flex-wrap: wrap; gap: .75rem; margin: 1rem 0; }

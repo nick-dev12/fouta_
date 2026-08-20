@@ -1,0 +1,269 @@
+/**
+ * Frontend public — extension design FPL pour l'e-commerce Fouta
+ */
+
+@import "fpl-tokens.css";
+
+body {
+  font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  background: var(--ground);
+  color: var(--ink);
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+body::before {
+  display: none !important;
+}
+
+/* Bandeau info */
+.info {
+  background: var(--blue-tint);
+  color: var(--navy);
+  padding: var(--s2) var(--s5);
+  font-size: 14px;
+  text-align: center;
+  border-bottom: 1px solid var(--blue-tint-2);
+}
+
+/* Barre actions (MENU / NOUVEAUTÉS / PROMO) */
+.section1 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding: var(--s2) var(--s5);
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+
+.toggle-categories-btn,
+.nav-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: var(--r-sm);
+  font-size: 13px;
+  font-weight: 650;
+  text-decoration: none;
+  letter-spacing: .04em;
+  transition: background .12s ease, color .12s ease;
+}
+
+.toggle-categories-btn {
+  background: var(--navy);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.toggle-categories-btn:hover {
+  background: var(--navy-deep);
+}
+
+.nav-action-btn {
+  background: var(--surface);
+  color: var(--navy);
+  border: 1px solid var(--line);
+}
+
+.nav-action-btn:hover {
+  border-color: var(--blue);
+  color: var(--blue);
+  text-decoration: none;
+}
+
+.nav-btn-promo {
+  background: rgba(255, 107, 53, 0.12);
+  color: #c2410c;
+  border-color: rgba(255, 107, 53, 0.35);
+}
+
+/* Titres de section — signature FPL */
+.box1 h1,
+.section-title,
+.produit_vedete > .box1 h1 {
+  font-size: 14px;
+  font-weight: 650;
+  color: var(--slate);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  border-left: 3px solid var(--navy);
+  padding-left: 10px;
+  margin-bottom: var(--s4);
+}
+
+/* Cartes produit */
+.carousel .product-card-link,
+.product-card-link {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  box-shadow: var(--sh-1);
+  overflow: hidden;
+  transition: border-color .12s ease, box-shadow .12s ease, transform .12s ease;
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
+.carousel .product-card-link:hover,
+.product-card-link:hover {
+  border-color: var(--blue-tint-2);
+  box-shadow: var(--sh-2);
+  transform: translateY(-2px);
+  text-decoration: none;
+}
+
+.btn-add-cart,
+.carousel .btn-add-cart {
+  background: var(--navy);
+  color: #fff;
+  border: none;
+  border-radius: var(--r-sm);
+  padding: 9px 15px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background .12s ease;
+}
+
+.btn-add-cart:hover {
+  background: var(--navy-deep);
+}
+
+.produit-card-badge--nouveau,
+.badge-promo {
+  background: var(--orange);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: var(--r-full);
+}
+
+.prix,
+.produit-content .prix {
+  color: var(--navy);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.prix-promo {
+  color: var(--orange);
+}
+
+/* Hero vitrine */
+.vitrine-hero {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-1);
+}
+
+.vitrine-hero__title,
+.vitrine-service-block__title {
+  color: var(--navy);
+  font-weight: 650;
+}
+
+/* Footer */
+.footer {
+  background: var(--navy);
+  color: var(--side-text);
+}
+
+.footer h3,
+.footer h4 {
+  color: #fff;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+
+.footer a {
+  color: var(--side-text);
+}
+
+.footer a:hover {
+  color: #fff;
+}
+
+/* Sidebar mobile */
+.nav-sidebar {
+  background: var(--navy);
+  color: var(--side-text);
+}
+
+.nav-sidebar-item,
+.nav-sidebar-category {
+  color: var(--side-text);
+}
+
+.nav-sidebar-item:hover,
+.nav-sidebar-category:hover {
+  background: rgba(255, 255, 255, .07);
+  color: #fff;
+}
+
+.nav-sidebar-overlay.show {
+  background: rgba(9, 18, 36, .45);
+}
+
+/* Pages légales / formulaires publics */
+.legal-page h1,
+.auth-page h1 {
+  color: var(--navy);
+  border-left: 3px solid var(--navy);
+  padding-left: 10px;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="tel"],
+input[type="number"],
+select,
+textarea {
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 10px 12px;
+  font-family: inherit;
+  font-size: 15px;
+  color: var(--ink);
+  background: var(--surface);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(41, 87, 174, .14);
+}
+
+button[type="submit"],
+.btn-primary-public {
+  background: var(--navy);
+  color: #fff;
+  border: none;
+  border-radius: var(--r-sm);
+  padding: 11px 18px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+button[type="submit"]:hover,
+.btn-primary-public:hover {
+  background: var(--navy-deep);
+}
+
+@media (max-width: 768px) {
+  .section1 {
+    flex-wrap: wrap;
+    padding: var(--s2) var(--s3);
+  }
+}

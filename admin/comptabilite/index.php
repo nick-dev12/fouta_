@@ -523,14 +523,13 @@ $h_benefice = $h_gains_total - $h_depenses_ttc;
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Comptabilité — Administration</title>
     <?php require_once __DIR__ . '/../../includes/asset_version.php'; ?>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="/css/admin-dashboard.css<?php echo asset_version_query(); ?>">
-    <link rel="stylesheet" href="/css/compta-depenses.css<?php echo asset_version_query(); ?>">
-    <link rel="stylesheet" href="/css/compta-bl.css<?php echo asset_version_query(); ?>">
-    <link rel="stylesheet" href="/css/compta-caisse.css<?php echo asset_version_query(); ?>">
-    <link rel="stylesheet" href="/css/compta-bilan.css<?php echo asset_version_query(); ?>">
-    <link rel="stylesheet" href="/css/admin-devis-compta-pages.css<?php echo asset_version_query(); ?>">
-    <link rel="stylesheet" href="/css/admin-comptabilite-index.css<?php echo asset_version_query(); ?>">
+<?php include __DIR__ . '/..//includes/fpl_head.php'; ?>
+    <?php fpl_css_link('compta-depenses.css'); ?>
+    <?php fpl_css_link('compta-bl.css'); ?>
+    <?php fpl_css_link('compta-caisse.css'); ?>
+    <?php fpl_css_link('compta-bilan.css'); ?>
+    <?php fpl_css_link('admin-devis-compta-pages.css'); ?>
+    <?php fpl_css_link('admin-comptabilite-index.css'); ?>
 </head>
 <body>
     <?php include '../includes/nav.php'; ?>

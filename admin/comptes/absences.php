@@ -252,10 +252,9 @@ $page_title = 'Gestion des absences';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($page_title); ?> — Administration</title>
     <?php require_once __DIR__ . '/../../includes/asset_version.php'; ?>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="/css/admin-dashboard.css<?php echo asset_version_query(); ?>">
-    <link rel="stylesheet" href="/css/admin-comptes-page.css<?php echo asset_version_query(); ?>">
-    <link rel="stylesheet" href="/css/admin-absences.css<?php echo asset_version_query(); ?>">
+<?php include __DIR__ . '/..//includes/fpl_head.php'; ?>
+    <?php fpl_css_link('admin-comptes-page.css'); ?>
+    <?php fpl_css_link('admin-absences.css'); ?>
 </head>
 <body class="page-comptes page-absences">
     <?php include '../includes/nav.php'; ?>

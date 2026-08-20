@@ -1,0 +1,817 @@
+/**
+ * FPL Admin — overrides finaux (charge EN DERNIER)
+ * Neutralise le layout legacy de admin-dashboard.css et force la charte FPL navy.
+ */
+
+/* --- Base admin --- */
+body:has(.app.admin-container),
+body:has(.admin-container.app) {
+  font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif !important;
+  background: var(--ground) !important;
+  color: var(--ink) !important;
+  font-size: 16px !important;
+}
+
+body:has(.app)::before {
+  display: none !important;
+}
+
+/* --- Layout FPL : annule le legacy margin-left 280px / sidebar fixe blanche --- */
+.app.admin-container,
+.admin-container.app {
+  display: flex !important;
+  min-height: 100vh !important;
+  margin-left: 0 !important;
+  width: 100% !important;
+  max-width: none !important;
+}
+
+.app .admin-sidebar,
+.app .sidebar.admin-sidebar {
+  position: relative !important;
+  left: auto !important;
+  top: auto !important;
+  width: 256px !important;
+  min-height: 100vh !important;
+  max-height: none !important;
+  background: var(--navy) !important;
+  border-right: none !important;
+  box-shadow: none !important;
+  transform: none !important;
+  flex-shrink: 0 !important;
+  z-index: 50 !important;
+}
+
+.app .admin-sidebar .sidebar-header,
+.app .admin-sidebar .brand {
+  background: transparent !important;
+  border-bottom: 1px solid rgba(255, 255, 255, .12) !important;
+  padding: var(--s5) 26px var(--s4) var(--s3) !important;
+}
+
+.app .admin-sidebar .sidebar-header-logo {
+  max-height: none !important;
+  width: auto !important;
+  height: 100% !important;
+  max-width: 100% !important;
+}
+
+.app .admin-sidebar .sidebar-header-brand {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+}
+
+.app .admin-sidebar .sidebar-header-logo-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  padding: 8px;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+  flex-shrink: 0;
+}
+
+.app .admin-sidebar .brand {
+  align-items: center !important;
+  gap: 12px !important;
+}
+
+.app .admin-main,
+.app .main.admin-main {
+  flex: 1 !important;
+  min-width: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  background: var(--ground) !important;
+}
+
+.app .content.admin-content,
+.app .admin-content.content {
+  flex: 1 !important;
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  box-sizing: border-box !important;
+}
+
+.app .contents-container,
+.app .main .contents-container {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: var(--s5) var(--s6) var(--s8) !important;
+  background: transparent !important;
+  box-sizing: border-box !important;
+}
+
+.app .mobile-menu-toggle:not(.burger) {
+  display: none !important;
+}
+
+/* Masquer le doublon compte en bas du menu (déjà dans .sidebar-user) */
+.app .sidebar-menu__footer {
+  display: none !important;
+}
+
+.app .admin-sidebar .sidebar-header,
+.app .admin-sidebar .brand {
+  background: transparent !important;
+  border-bottom: 1px solid rgba(255, 255, 255, .12) !important;
+}
+
+.app .admin-sidebar .menu-item {
+  color: var(--side-text) !important;
+  background: transparent !important;
+  border-left: none !important;
+}
+
+.app .admin-sidebar .menu-item:hover {
+  background: rgba(255, 255, 255, .07) !important;
+  color: #fff !important;
+}
+
+.app .admin-sidebar .menu-item.active {
+  background: rgba(255, 255, 255, .1) !important;
+  color: #fff !important;
+}
+
+.app .admin-sidebar .menu-item-icon {
+  width: 38px !important;
+  min-width: 38px !important;
+  height: 38px !important;
+  border-radius: 11px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 15px !important;
+  opacity: 1 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease !important;
+}
+
+.app .admin-sidebar .menu-item-icon i {
+  color: inherit !important;
+}
+
+.app .admin-sidebar .menu-item:hover .menu-item-icon {
+  transform: scale(1.06);
+}
+
+.app .admin-sidebar .menu-item.active .menu-item-icon {
+  filter: saturate(1.15) brightness(1.06) !important;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.2), 0 4px 14px rgba(0, 0, 0, 0.28) !important;
+}
+
+.app .admin-sidebar .mi-dashboard .menu-item-icon {
+  background: rgba(37, 99, 235, 0.32) !important;
+  color: #93c5fd !important;
+}
+
+.app .admin-sidebar .mi-devis .menu-item-icon {
+  background: rgba(13, 148, 136, 0.32) !important;
+  color: #5eead4 !important;
+}
+
+.app .admin-sidebar .mi-bl-hub .menu-item-icon {
+  background: rgba(217, 119, 6, 0.34) !important;
+  color: #fcd34d !important;
+}
+
+.app .admin-sidebar .mi-compta .menu-item-icon {
+  background: rgba(5, 150, 105, 0.32) !important;
+  color: #6ee7b7 !important;
+}
+
+.app .admin-sidebar .mi-stock .menu-item-icon {
+  background: rgba(124, 58, 237, 0.32) !important;
+  color: #d8b4fe !important;
+}
+
+.app .admin-sidebar .mi-produits .menu-item-icon {
+  background: rgba(234, 88, 12, 0.34) !important;
+  color: #fdba74 !important;
+}
+
+.app .admin-sidebar .mi-categories .menu-item-icon {
+  background: rgba(202, 138, 4, 0.34) !important;
+  color: #fde047 !important;
+}
+
+.app .admin-sidebar .mi-commandes .menu-item-icon {
+  background: rgba(219, 39, 119, 0.3) !important;
+  color: #f9a8d4 !important;
+}
+
+.app .admin-sidebar .mi-contacts .menu-item-icon {
+  background: rgba(2, 132, 199, 0.32) !important;
+  color: #7dd3fc !important;
+}
+
+.app .admin-sidebar .mi-clients .menu-item-icon {
+  background: rgba(109, 40, 217, 0.32) !important;
+  color: #c4b5fd !important;
+}
+
+.app .admin-sidebar .mi-comptes .menu-item-icon {
+  background: rgba(67, 56, 202, 0.32) !important;
+  color: #a5b4fc !important;
+}
+
+.app .admin-sidebar .mi-params .menu-item-icon {
+  background: rgba(71, 85, 105, 0.42) !important;
+  color: #cbd5e1 !important;
+}
+
+.app .admin-sidebar .mi-caisse .menu-item-icon {
+  background: rgba(16, 185, 129, 0.32) !important;
+  color: #6ee7b7 !important;
+}
+
+.app .admin-sidebar .mi-encaisse .menu-item-icon {
+  background: rgba(101, 163, 13, 0.34) !important;
+  color: #bef264 !important;
+}
+
+.app .admin-sidebar .mi-hist-enc .menu-item-icon {
+  background: rgba(120, 113, 108, 0.38) !important;
+  color: #e7e5e4 !important;
+}
+
+.app .admin-sidebar .mi-depenses-caisse .menu-item-icon {
+  background: rgba(220, 38, 38, 0.28) !important;
+  color: #fca5a5 !important;
+}
+
+.app .admin-sidebar .mi-zones .menu-item-icon {
+  background: rgba(234, 88, 12, 0.28) !important;
+  color: #fdba74 !important;
+}
+
+.app .admin-sidebar .mi-hist-ventes .menu-item-icon {
+  background: rgba(37, 99, 235, 0.28) !important;
+  color: #93c5fd !important;
+}
+
+.app .admin-sidebar .menu-item.active .menu-item-text {
+  color: #fff !important;
+}
+
+.app .admin-sidebar .brand-name {
+  color: #fff !important;
+}
+
+.app .admin-sidebar .brand-name small {
+  color: var(--side-text) !important;
+}
+
+.app .admin-sidebar .sidebar-drawer-close {
+  display: none !important;
+}
+
+/* --- Topbar --- */
+.app .topbar.admin-topbar {
+  background: var(--surface) !important;
+  border-bottom: 1px solid var(--line) !important;
+}
+
+/* --- Titres & en-têtes --- */
+.dashboard-eyebrow,
+.page-eyebrow {
+  color: var(--navy) !important;
+  letter-spacing: .08em !important;
+}
+
+.content-header h1,
+.dashboard-hero-text h1,
+.dashboard-page h1 {
+  color: var(--navy) !important;
+  font-weight: 650 !important;
+}
+
+.dashboard-subtitle {
+  color: var(--slate) !important;
+}
+
+.content-header.dashboard-hero {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  margin-bottom: var(--s5) !important;
+  padding: 0 !important;
+}
+
+/* --- Cartes stats dashboard --- */
+.dashboard-page .stat-card {
+  border: 1px solid var(--line) !important;
+  border-radius: var(--r) !important;
+  background: var(--surface) !important;
+  box-shadow: var(--sh-1) !important;
+}
+
+.dashboard-page .stat-card:hover {
+  box-shadow: var(--sh-2) !important;
+  transform: translateY(-2px) !important;
+}
+
+.dashboard-page .stat-card-value,
+.dashboard-page .stat-card .stat-value {
+  color: var(--navy) !important;
+}
+
+.dashboard-page .stat-card-icon {
+  background: var(--blue-tint) !important;
+  color: var(--blue-600) !important;
+}
+
+/* --- Actions hero dashboard --- */
+.dashboard-page > .content-header.dashboard-hero .header-actions--with-pwa .dashboard-hero-action {
+  border: 1px solid var(--line) !important;
+  background: var(--surface) !important;
+  color: var(--ink) !important;
+  border-radius: var(--r) !important;
+  box-shadow: var(--sh-1) !important;
+}
+
+.dashboard-page > .content-header.dashboard-hero .header-actions--with-pwa .dashboard-hero-action:hover {
+  border-color: var(--blue) !important;
+  box-shadow: var(--sh-2) !important;
+}
+
+.dashboard-page > .content-header.dashboard-hero .header-actions--with-pwa .dashboard-hero-action__ic {
+  background: var(--blue-tint) !important;
+  color: var(--navy) !important;
+  border-radius: var(--r-sm) !important;
+}
+
+/* --- Filtres --- */
+.admin-filters-bar,
+.page-produits-filters,
+.page-dashboard-filters {
+  background: var(--surface) !important;
+  border: 1px solid var(--line) !important;
+  border-radius: var(--r) !important;
+  box-shadow: var(--sh-1) !important;
+}
+
+.admin-filters-bar input,
+.admin-filters-bar select,
+.filter-group input,
+.filter-group select {
+  border: 1px solid var(--line) !important;
+  border-radius: var(--r-sm) !important;
+}
+
+.admin-filters-bar input:focus,
+.admin-filters-bar select:focus {
+  border-color: var(--blue) !important;
+  box-shadow: 0 0 0 3px rgba(41, 87, 174, .14) !important;
+}
+
+/* --- Cartes produit admin --- */
+.produit-card,
+.produit-card--dashboard,
+.admin-produits-grid .produit-card {
+  border: 1px solid var(--line) !important;
+  border-radius: var(--r) !important;
+  background: var(--surface) !important;
+  box-shadow: var(--sh-1) !important;
+}
+
+.produit-card:hover {
+  border-color: var(--blue-tint-2) !important;
+  box-shadow: var(--sh-2) !important;
+}
+
+.produit-card-title,
+.produit-card .produit-nom {
+  color: var(--navy) !important;
+}
+
+.produit-card-prix,
+.produit-card .prix {
+  color: var(--navy) !important;
+  font-weight: 700 !important;
+}
+
+/* --- Boutons --- */
+.btn-primary,
+button.btn-primary,
+a.btn-primary {
+  background: var(--navy) !important;
+  background-image: none !important;
+  color: #fff !important;
+  border-color: transparent !important;
+  border-radius: var(--r-sm) !important;
+}
+
+.btn-primary:hover,
+button.btn-primary:hover,
+a.btn-primary:hover {
+  background: var(--navy-deep) !important;
+  color: #fff !important;
+}
+
+.btn-secondary,
+.btn-secondary-style,
+a.btn-secondary {
+  background: var(--surface) !important;
+  color: var(--navy) !important;
+  border: 1px solid var(--line) !important;
+  background-image: none !important;
+}
+
+.btn-secondary:hover,
+.btn-secondary-style:hover {
+  border-color: var(--blue) !important;
+  color: var(--blue) !important;
+}
+
+.btn-filter-reset {
+  background: var(--surface) !important;
+  color: var(--slate) !important;
+  border: 1px solid var(--line) !important;
+}
+
+/* --- Tableaux --- */
+.table-container,
+.admin-table-wrap,
+.table-responsive,
+.data-table-wrapper {
+  border: 1px solid var(--line) !important;
+  border-radius: var(--r) !important;
+  background: var(--surface) !important;
+  box-shadow: var(--sh-1) !important;
+}
+
+table th {
+  background: #F7F9FC !important;
+  color: var(--slate) !important;
+  border-bottom: 2px solid var(--line) !important;
+}
+
+table td {
+  border-bottom: 1px solid var(--line-soft) !important;
+}
+
+table tbody tr:hover td {
+  background: #FAFBFD !important;
+}
+
+/* --- Panneaux / sections --- */
+.admin-card,
+.panel-card,
+.dashboard-section,
+.form-section-card {
+  border: 1px solid var(--line) !important;
+  border-radius: var(--r) !important;
+  background: var(--surface) !important;
+  box-shadow: var(--sh-1) !important;
+}
+
+.section-title,
+.card-title,
+.admin-section-title {
+  color: var(--slate) !important;
+  text-transform: uppercase !important;
+  letter-spacing: .06em !important;
+  border-left: 3px solid var(--navy) !important;
+  padding-left: 10px !important;
+}
+
+/* --- Alertes --- */
+.success-message,
+.alert-success,
+.message-success {
+  background: var(--ok-bg) !important;
+  color: var(--ok) !important;
+  border: 1px solid rgba(18, 105, 74, .25) !important;
+  border-left: none !important;
+}
+
+.error-message,
+.alert-error,
+.message-error {
+  background: var(--danger-bg) !important;
+  color: var(--danger) !important;
+  border: 1px solid rgba(163, 45, 36, .25) !important;
+  border-left: none !important;
+}
+
+/* --- Modales --- */
+.modal-overlay {
+  background: rgba(9, 18, 36, .45) !important;
+}
+
+.modal-content,
+.modal-box {
+  border: 1px solid var(--line) !important;
+  border-radius: var(--r-lg) !important;
+  box-shadow: var(--sh-3) !important;
+}
+
+.modal-header {
+  border-bottom: 1px solid var(--line-soft) !important;
+  color: var(--navy) !important;
+}
+
+/* --- Formulaires --- */
+.form-group input,
+.form-group select,
+.form-group textarea,
+.admin-form-group input,
+.admin-form-group select,
+.admin-form-group textarea {
+  border: 1px solid var(--line) !important;
+  border-radius: var(--r-sm) !important;
+  background: var(--surface) !important;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  border-color: var(--blue) !important;
+  box-shadow: 0 0 0 3px rgba(41, 87, 174, .14) !important;
+  outline: none !important;
+}
+
+/* --- Badges statut --- */
+.status-badge,
+.badge-statut,
+.order-status {
+  border-radius: var(--r-full) !important;
+  font-weight: 600 !important;
+}
+
+/* --- Pagination --- */
+.pagination a:hover {
+  border-color: var(--blue) !important;
+  color: var(--blue) !important;
+}
+
+.pagination .active,
+.pagination .current {
+  background: var(--navy) !important;
+  border-color: var(--navy) !important;
+  color: #fff !important;
+}
+
+/* --- Auth inline dans admin (si reste) --- */
+.login-container,
+.admin-login-page {
+  background: var(--navy) !important;
+}
+
+/* --- Legacy admin-content (sans .app) --- */
+.admin-main .admin-content,
+.main.admin-main > .admin-content:not(.content) {
+  padding: 0 !important;
+  max-width: none !important;
+  margin: 0 !important;
+  background: transparent !important;
+}
+
+.admin-container:not(.app) .admin-sidebar {
+  margin-left: 0 !important;
+}
+
+/* --- Responsive --- */
+@media (max-width: 1024px) {
+  .app.admin-container,
+  .admin-container.app {
+    margin-left: 0 !important;
+  }
+
+  .app .admin-sidebar,
+  .app .sidebar.admin-sidebar {
+    transform: none !important;
+    width: 232px !important;
+  }
+
+  .app .admin-content,
+  .app .content.admin-content {
+    padding-top: 0 !important;
+  }
+
+  .app .mobile-menu-toggle.burger,
+  .app .burger.admin-burger {
+    display: inline-flex !important;
+    position: static !important;
+    top: auto !important;
+    left: auto !important;
+    width: auto !important;
+    height: auto !important;
+    background: var(--surface) !important;
+    box-shadow: none !important;
+  }
+}
+
+@media (max-width: 1000px) {
+  .app .admin-sidebar,
+  .app .sidebar.admin-sidebar {
+    position: fixed !important;
+    left: -240px !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    width: 232px !important;
+    z-index: 50 !important;
+    transition: left .2s ease !important;
+  }
+
+  .app .admin-sidebar.show,
+  .app .admin-sidebar.open,
+  .app .sidebar.admin-sidebar.show,
+  .app .sidebar.admin-sidebar.open {
+    left: 0 !important;
+  }
+
+  .app .sidebar-overlay {
+    display: none !important;
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 49 !important;
+    background: rgba(9, 18, 36, 0.45) !important;
+    cursor: pointer !important;
+    border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .app .sidebar-overlay.show {
+    display: block !important;
+    pointer-events: auto !important;
+  }
+
+  .app .admin-sidebar .sidebar-header,
+  .app .admin-sidebar .brand {
+    position: relative !important;
+  }
+
+  .app .admin-sidebar .sidebar-drawer-close {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    top: 14px;
+    right: 10px;
+    width: 34px;
+    height: 34px;
+    border: none;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.14);
+    color: #fff;
+    cursor: pointer;
+    z-index: 2;
+    transition: background 0.15s ease, transform 0.15s ease;
+  }
+
+  .app .admin-sidebar .sidebar-drawer-close:hover {
+    background: rgba(255, 255, 255, 0.24);
+    transform: scale(1.05);
+  }
+
+  body.drawer-open::after {
+    display: none !important;
+  }
+
+  .app .content.admin-content {
+    padding: var(--s4) !important;
+  }
+}
+
+@media (min-width: 1001px) {
+  .app .admin-sidebar .sidebar-drawer-close {
+    display: none !important;
+  }
+
+  .app.nav-hidden .admin-sidebar,
+  .app.nav-hidden .sidebar {
+    width: 0 !important;
+    overflow: hidden !important;
+  }
+}
+
+/* --- Topbar maquette (toutes pages admin) --- */
+.admin-topbar--maquette {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s4);
+  padding: 10px var(--s5) !important;
+  min-height: 56px;
+}
+
+.admin-topbar__left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.admin-topbar__home {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r-sm);
+  color: var(--navy);
+  background: var(--blue-tint);
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.admin-topbar__search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  max-width: 420px;
+  min-width: 0;
+  background: var(--ground);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 0 12px;
+  height: 38px;
+}
+
+.admin-topbar__search input {
+  border: none;
+  background: transparent;
+  flex: 1;
+  min-width: 0;
+  font-family: inherit;
+  font-size: 14.5px;
+  color: var(--ink);
+  outline: none;
+}
+
+.admin-topbar__right {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+}
+
+.admin-topbar__tool {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--slate);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.admin-topbar__tool:hover {
+  background: var(--blue-tint);
+  color: var(--navy);
+}
+
+.admin-topbar__user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px 4px 4px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.admin-topbar__avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--r-full);
+  background: var(--navy);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.admin-topbar__name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  max-width: 140px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.app .admin-sidebar .brand.sidebar-header {
+  background: linear-gradient(135deg, var(--navy-deep) 0%, var(--navy) 45%, var(--blue) 100%) !important;
+  border-bottom: none !important;
+}

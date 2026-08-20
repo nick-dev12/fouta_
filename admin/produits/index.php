@@ -88,9 +88,8 @@ if (!empty($fournisseurs_filtre)) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Liste des Produits - Administration</title>
     <?php require_once __DIR__ . '/../../includes/asset_version.php'; ?>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="/css/admin-dashboard.css<?php echo asset_version_query(); ?>">
-    <link rel="stylesheet" href="/css/admin-produits-index.css<?php echo asset_version_query(); ?>">
+<?php include __DIR__ . '/..//includes/fpl_head.php'; ?>
+    <?php fpl_css_link('admin-produits-index.css'); ?>
 </head>
 
 <body>
@@ -120,15 +119,22 @@ if (!empty($fournisseurs_filtre)) {
             </div>
         <?php endif; ?>
 
+        <?php
+        require_once __DIR__ . '/../../includes/site_url.php';
+        $produits_upload_base = rtrim(get_public_root_uri_path(), '/') . '/upload/';
+        $upload_base = $produits_upload_base;
+        include __DIR__ . '/includes/categories_carousel.php';
+        ?>
+
         <section class="produits-section page-produits-section" aria-labelledby="produits-section-heading"
             data-produits-index-page
             data-ajax-url="ajax_live_search.php"
             data-ajax-context="index"
             data-total-catalog="<?php echo (int) $total_produits; ?>"
             data-id-main-wrap="page-produits-main-wrap"
-            data-id-main-grid="page-produits-grid"
+            data-id-main-grid="page-produits-table-body"
             data-id-live-wrap="page-produits-live-wrap"
-            data-id-live-grid="page-produits-live-grid"
+            data-id-live-grid="page-produits-live-body"
             data-id-live-empty="page-produits-live-empty"
             data-id-live-meta="page-produits-live-meta"
             data-id-pagination="page-produits-pagination"
@@ -213,11 +219,29 @@ if (!empty($fournisseurs_filtre)) {
 
             <div id="page-produits-main-wrap" <?php echo $total_produits === 0 ? 'hidden' : ''; ?>>
                 <?php if ($total_produits > 0): ?>
-                <ul class="produits-grid page-produits-grid" id="page-produits-grid" role="list">
-                    <?php foreach ($produits as $produit): ?>
-                        <?php include __DIR__ . '/includes/carte_produit_liste.php'; ?>
-                    <?php endforeach; ?>
-                </ul>
+                <div class="page-produits-table-wrap">
+                    <table class="page-produits-table">
+                        <thead>
+                            <tr>
+                                <th class="col-thumb">Visuel</th>
+                                <th>Produit</th>
+                                <th>Catégorie</th>
+                                <th class="col-num">Prix</th>
+                                <th class="col-num">Stock</th>
+                                <th>Statut</th>
+                                <th class="col-actions">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="page-produits-table-body">
+                            <?php
+                            $upload_base = $produits_upload_base;
+                            foreach ($produits as $produit):
+                                include __DIR__ . '/includes/ligne_produit_table.php';
+                            endforeach;
+                            ?>
+                        </tbody>
+                    </table>
+                </div>
 
                 <?php if ($total_pages > 1): ?>
                 <nav class="page-produits-pagination" id="page-produits-pagination" aria-label="Pagination du catalogue">
@@ -242,13 +266,32 @@ if (!empty($fournisseurs_filtre)) {
                 </nav>
                 <?php endif; ?>
                 <?php else: ?>
-                <ul class="produits-grid page-produits-grid" id="page-produits-grid" role="list" hidden></ul>
+                <div class="page-produits-table-wrap" hidden>
+                    <table class="page-produits-table">
+                        <tbody id="page-produits-table-body"></tbody>
+                    </table>
+                </div>
                 <?php endif; ?>
             </div>
 
             <div id="page-produits-live-wrap" class="page-produits-live-wrap" hidden>
                 <p class="page-produits-live-meta" id="page-produits-live-meta" aria-live="polite" hidden></p>
-                <ul class="produits-grid page-produits-grid page-produits-live-grid" id="page-produits-live-grid" role="list"></ul>
+                <div class="page-produits-table-wrap">
+                    <table class="page-produits-table">
+                        <thead>
+                            <tr>
+                                <th class="col-thumb">Visuel</th>
+                                <th>Produit</th>
+                                <th>Catégorie</th>
+                                <th class="col-num">Prix</th>
+                                <th class="col-num">Stock</th>
+                                <th>Statut</th>
+                                <th class="col-actions">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="page-produits-live-body"></tbody>
+                    </table>
+                </div>
                 <div class="empty-state page-produits-empty page-produits-empty--live" id="page-produits-live-empty" hidden>
                     <div class="page-produits-empty__icon" aria-hidden="true"><i class="fas fa-search"></i></div>
                     <p class="page-produits-empty__title">Aucun produit ne correspond</p>
@@ -261,7 +304,8 @@ if (!empty($fournisseurs_filtre)) {
 
     <?php include '../includes/footer.php'; ?>
 
-    <script src="/js/admin-produits-index-search.js<?php echo asset_version_query(); ?>"></script>
+    <script src="<?php echo htmlspecialchars(fpl_script_src('admin-produits-index-search.js'), ENT_QUOTES, 'UTF-8'); ?><?php echo asset_version_query(); ?>"></script>
+    <script src="<?php echo htmlspecialchars(fpl_script_src('admin-produits-gallery-lightbox.js'), ENT_QUOTES, 'UTF-8'); ?><?php echo asset_version_query(); ?>"></script>
 
     <!-- Modal de confirmation de suppression -->
     <div class="delete-confirm-overlay" id="deleteConfirmOverlay"></div>
@@ -290,16 +334,31 @@ if (!empty($fournisseurs_filtre)) {
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            // Navigation par clic sur les cards (délégation — grille paginée + résultats live)
+            // Clic sur une ligne → fiche produit (ajuster stock / détails)
             document.addEventListener('click', function (event) {
-                var card = event.target.closest('.page-produits-section .produit-card-linkable');
-                if (!card) {
+                var row = event.target.closest('.page-produits-table__row--linkable');
+                if (!row) {
                     return;
                 }
-                if (event.target.closest('a, button, input, select, textarea, form')) {
+                if (event.target.closest('.page-produits-table__action, .page-produits-table__thumb-btn, a[data-delete-confirm="true"]')) {
                     return;
                 }
-                var href = card.getAttribute('data-href');
+                var href = row.getAttribute('data-href');
+                if (href) {
+                    window.location.href = href;
+                }
+            });
+
+            document.addEventListener('keydown', function (event) {
+                if (event.key !== 'Enter' && event.key !== ' ') {
+                    return;
+                }
+                var row = event.target.closest('.page-produits-table__row--linkable');
+                if (!row || event.target.closest('.page-produits-table__thumb-btn, .page-produits-table__action')) {
+                    return;
+                }
+                event.preventDefault();
+                var href = row.getAttribute('data-href');
                 if (href) {
                     window.location.href = href;
                 }

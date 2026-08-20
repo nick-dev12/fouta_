@@ -203,10 +203,9 @@ $can_pdf_qrcode = ($stock_info_url !== '');
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ajuster le stock - <?php echo htmlspecialchars($produit['nom']); ?> - Administration</title>
     <?php require_once __DIR__ . '/../../includes/asset_version.php'; ?>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="/css/admin-dashboard.css<?php echo asset_version_query(); ?>">
-    <link rel="stylesheet" href="/css/admin-ajuster-stock.css<?php echo asset_version_query(); ?>">
-    <link rel="stylesheet" href="/css/fpl-etiquette.css<?php echo asset_version_query(); ?>">
+<?php include __DIR__ . '/..//includes/fpl_head.php'; ?>
+    <?php fpl_css_link('admin-ajuster-stock.css'); ?>
+    <?php fpl_css_link('fpl-etiquette.css'); ?>
     <?php echo fpl_etiquette_dims_style_block($fpl_dims); ?>
 </head>
 

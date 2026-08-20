@@ -58,9 +58,8 @@ $page_title = $titre_liste . ' — ' . htmlspecialchars($admin_cible['prenom'] .
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($page_title); ?> — Administration</title>
     <?php require_once __DIR__ . '/../../includes/asset_version.php'; ?>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="/css/admin-dashboard.css<?php echo asset_version_query(); ?>">
-    <link rel="stylesheet" href="/css/admin-users-cards.css<?php echo asset_version_query(); ?>">
+<?php include __DIR__ . '/..//includes/fpl_head.php'; ?>
+    <?php fpl_css_link('admin-users-cards.css'); ?>
     <style>
         .liste-activite-wrap { max-width: 1100px; margin: 0 auto 40px; }
         .liste-activite-table-wrap { overflow-x: auto; border-radius: 14px; border: 1px solid var(--glass-border, rgba(0,0,0,.08)); background: var(--glass-bg, #fff); box-shadow: var(--glass-shadow); }

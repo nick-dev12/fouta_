@@ -29,7 +29,7 @@ $produits_visites = get_produits_visites_by_user($_SESSION['user_id'], 50);
     <link rel="stylesheet" href="/css/style.css<?php echo asset_version_query(); ?>">
     <link rel="stylesheet" href="/css/a_style.css<?php echo asset_version_query(); ?>">
     <link rel="stylesheet" href="/css/product-cards.css<?php echo asset_version_query(); ?>">
-    <link rel="stylesheet" href="/css/user-dashboard.css<?php echo asset_version_query(); ?>">
+<?php require_once __DIR__ . '/../includes/fpl_assets.php'; fpl_user_styles(); ?>
     <style>
         .produits-visites-page {
             max-width: 1400px;
