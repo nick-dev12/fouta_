@@ -176,7 +176,9 @@ if (!empty($fournisseurs_filtre)) {
     <?php fpl_css_link('admin-produits-index.css'); ?>
 </head>
 
-<body>
+<?php // La barre du haut cherche déjà les pièces ; ici la barre de filtres le
+      // fait mieux. On marque le corps pour la masquer sur cet écran seulement. ?>
+<body class="fpl-catalogue">
     <?php include '../includes/nav.php'; ?>
 
     <div class="page-produits-admin">

@@ -463,3 +463,14 @@
 .page-produits-table.page-produits-table tbody td:nth-child(2) {
   text-align: left;
 }
+
+/* --- La recherche de la barre du haut, masquée sur le catalogue ------------
+ * nav.php:313 pose un champ « Rechercher un produit… » dans la barre
+ * supérieure, présent sur tous les écrans. Sur le catalogue, la barre de
+ * filtres cherche déjà — et mieux, puisqu'elle croise la catégorie, la
+ * période et les références. Deux champs de recherche côte à côte n'aident
+ * personne. On la masque ICI SEULEMENT : partout ailleurs elle reste.
+ */
+body.fpl-catalogue .admin-topbar__search {
+  display: none;
+}
