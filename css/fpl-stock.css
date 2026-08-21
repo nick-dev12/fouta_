@@ -11,6 +11,10 @@
  * sur la colonne #10316F. Avec la version blanche du logo, le cadre n'a plus
  * lieu d'être : la marque se pose directement sur l'aplat, comme prévu.
  */
+/* Le cadre est posé par fpl-admin-overrides.css sous « .app .admin-sidebar … ».
+ * On reprend exactement la même spécificité : à égalité, la feuille chargée en
+ * dernier l'emporte — la nôtre. Pas de !important, la cascade suffit. */
+.app .admin-sidebar .sidebar-header-logo-badge,
 .admin-sidebar .sidebar-header-logo-badge {
   background: transparent;
   border-radius: 0;
@@ -20,9 +24,17 @@
   height: auto;
 }
 
+/* Sans le cadre, le logo n'a plus de boîte qui le contienne : la règle
+ * d'origine le forçait à height:100% en !important, ce qui l'étirait à toute
+ * la hauteur de l'en-tête. On lui rend une taille propre — d'où le !important,
+ * seul moyen de reprendre la main sur une déclaration déjà forcée. */
+.app .admin-sidebar .sidebar-header-logo,
+.app .admin-sidebar .brand-logo,
 .admin-sidebar .sidebar-header-logo,
 .admin-sidebar .brand-logo {
-  max-height: 52px;
-  width: auto;
-  height: auto;
+  height: 48px !important;
+  width: auto !important;
+  max-height: 48px !important;
+  max-width: 100% !important;
+  object-fit: contain;
 }
