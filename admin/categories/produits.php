@@ -95,7 +95,7 @@ $produits_path_prefix = '../produits/';
     <?php include __DIR__ . '/../../includes/favicon.php'; ?>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Produits de <?php echo htmlspecialchars((string) ($categorie['nom'] ?? ''), ENT_QUOTES, 'UTF-8'); ?> - Administration</title>
+    <title>Pièces de <?php echo htmlspecialchars((string) ($categorie['nom'] ?? ''), ENT_QUOTES, 'UTF-8'); ?> - Administration</title>
     <?php require_once __DIR__ . '/../../includes/asset_version.php'; ?>
 <?php include __DIR__ . '/..//includes/fpl_head.php'; ?>
     <?php fpl_css_link('admin-produits-index.css'); ?>

@@ -84,7 +84,7 @@ $meta = (string) $dims['meta'];
     <?php include __DIR__ . '/../../includes/favicon.php'; ?>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Étiquettes produit FPL — Paramètres</title>
+    <title>Étiquettes de pièce FPL — Paramètres</title>
 <?php include __DIR__ . '/..//includes/fpl_head.php'; ?>
     <?php fpl_css_link('admin-parametres-page.css'); ?>
     <?php fpl_css_link('admin-etiquettes-entrepot.css'); ?>
@@ -159,7 +159,7 @@ $meta = (string) $dims['meta'];
                 <div class="ee-etiq-params__hero-main">
                     <div class="ee-etiq-params__icon" aria-hidden="true"><i class="fas fa-tag"></i></div>
                     <div>
-                        <h1 class="ee-etiq-params__title">Dimensions étiquettes produit</h1>
+                        <h1 class="ee-etiq-params__title">Dimensions des étiquettes de pièce</h1>
                         <p class="ee-etiq-params__lead">
                             Taille d’impression des étiquettes FPL (page ajuster stock). Défaut&nbsp;:
                             <?php echo (int) $def['largeur_mm']; ?>×<?php echo (int) $def['hauteur_mm']; ?>&nbsp;mm (Zebra ZD420).

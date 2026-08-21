@@ -105,7 +105,7 @@ $pf_custom_vals = [];
     <?php include __DIR__ . '/../../includes/favicon.php'; ?>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ajouter un produit - Administration</title>
+    <title>Ajouter une pièce — Administration</title>
     <?php require_once __DIR__ . '/../../includes/asset_version.php'; ?>
 <?php include __DIR__ . '/..//includes/fpl_head.php'; ?>
     <link rel="stylesheet" href="../../css/admin-produit-modifier.css<?php echo asset_version_query(); ?>">
@@ -119,7 +119,7 @@ $pf_custom_vals = [];
             <div class="pm-hero__text">
                 <p class="pm-eyebrow">Nouveau catalogue</p>
                 <h1 class="pm-title">
-                    <i class="fas fa-plus" aria-hidden="true"></i> Ajouter un produit
+                    <i class="fas fa-plus" aria-hidden="true"></i> Ajouter une pièce
                 </h1>
                 <p class="pm-subtitle">Même présentation que la fiche modification : informations, tarifs, emplacement puis galerie. La référence <strong>FPL</strong> est attribuée automatiquement à l’enregistrement.</p>
             </div>

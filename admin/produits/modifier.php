@@ -147,7 +147,7 @@ $emplacement_form_vals = produit_emplacement_form_values_for_form(
     <?php include __DIR__ . '/../../includes/favicon.php'; ?>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Modifier un Produit - Administration</title>
+    <title>Modifier une pièce — Administration</title>
     <?php require_once __DIR__ . '/../../includes/asset_version.php'; ?>
 <?php include __DIR__ . '/..//includes/fpl_head.php'; ?>
     <link rel="stylesheet" href="../../css/admin-produit-modifier.css<?php echo asset_version_query(); ?>">

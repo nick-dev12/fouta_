@@ -143,7 +143,7 @@ foreach ($champs as $ch) {
     <?php include __DIR__ . '/../../includes/favicon.php'; ?>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Champs formulaire produit — Paramètres</title>
+    <title>Champs du formulaire pièce — Paramètres</title>
     <?php require_once __DIR__ . '/../../includes/asset_version.php'; ?>
 <?php include __DIR__ . '/..//includes/fpl_head.php'; ?>
     <?php fpl_css_link('admin-champs-produit-page.css'); ?>
@@ -159,7 +159,7 @@ foreach ($champs as $ch) {
                 <div class="cp-hero__icon" aria-hidden="true"><i class="fas fa-list-check"></i></div>
                 <div>
                     <p class="cp-hero__eyebrow">Catalogue produits</p>
-                    <h1 class="cp-hero__title">Champs du formulaire produit</h1>
+                    <h1 class="cp-hero__title">Champs du formulaire pièce</h1>
                     <p class="cp-hero__lead">Activez, désactivez ou créez des champs affichés lors de l’ajout et de la modification des produits. Définissez quels types de compte admin peuvent voir chaque champ et ses données dans tout l’espace admin, y compris les colonnes du <strong>suivi catalogue</strong>. Les champs verrouillés (nom, stock, catégorie) restent obligatoires.</p>
                 </div>
             </div>
