@@ -119,13 +119,41 @@ $pf_custom_vals = [];
             <form method="POST" action="" enctype="multipart/form-data" class="pm-form" id="form-produit-ajouter">
                 <input type="hidden" name="MAX_FILE_SIZE" value="<?php echo (int) FOUTA_UPLOAD_IMAGE_MAX_BYTES; ?>">
                 <div class="pm-sections">
+                    <?php // --- Véhicule compatible : le camion avant la pièce (ordre FPL) --- ?>
+                    <?php if (pf_champ_visible('marque_id') && $has_marque_col): ?>
+                    <section class="pm-card" aria-labelledby="pm-sec-vehicule-add">
+                        <div class="pm-card__head">
+                            <span class="pm-card__icon" aria-hidden="true"><i class="fas fa-truck"></i></span>
+                            <div>
+                                <h2 id="pm-sec-vehicule-add" class="pm-card__title">Véhicule compatible</h2>
+                                <p class="pm-card__hint">Le camion sur lequel la pièce se monte</p>
+                            </div>
+                        </div>
+                        <div class="pm-card__body">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="marque_id">Marque</label>
+                                    <select id="marque_id" name="marque_id">
+                                        <option value="">— Aucune —</option>
+                                        <?php foreach ($marques_catalogue as $mq): ?>
+                                        <option value="<?php echo (int) $mq['id']; ?>" <?php echo (isset($_POST['marque_id']) && (string) $_POST['marque_id'] === (string) $mq['id']) ? 'selected' : ''; ?>>
+                                            <?php echo htmlspecialchars($mq['nom']); ?>
+                                        </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <small class="form-hint">Les modèles et générations compatibles viendront s'ajouter ici.</small>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                    <?php endif; ?>
                     <?php if (pf_section_visible('info')): ?>
                     <section class="pm-card" aria-labelledby="pm-sec-info-add">
                         <div class="pm-card__head">
                             <span class="pm-card__icon" aria-hidden="true"><i class="fas fa-align-left"></i></span>
                             <div>
-                                <h2 id="pm-sec-info-add" class="pm-card__title">Informations générales</h2>
-                                <p class="pm-card__hint">Nom et texte présentés sur la boutique</p>
+                                <h2 id="pm-sec-info-add" class="pm-card__title">Identité de la pièce</h2>
+                                <p class="pm-card__hint">Nom, références et fournisseur</p>
                             </div>
                         </div>
                         <div class="pm-card__body">
@@ -163,21 +191,9 @@ $pf_custom_vals = [];
                                 <?php endif; ?>
                             </div>
                             <?php endif; ?>
-                            <?php if (pf_champ_visible('marque_id') || pf_champ_visible('reference_fournisseur')): ?>
+                            <?php // La marque a rejoint la section « Véhicule compatible », en tête. ?>
+                            <?php if (pf_champ_visible('reference_fournisseur')): ?>
                             <div class="form-row">
-                                <?php if (pf_champ_visible('marque_id') && $has_marque_col): ?>
-                                <div class="form-group">
-                                    <label for="marque_id">Marque</label>
-                                    <select id="marque_id" name="marque_id">
-                                        <option value="">— Aucune —</option>
-                                        <?php foreach ($marques_catalogue as $mq): ?>
-                                        <option value="<?php echo (int) $mq['id']; ?>" <?php echo (isset($_POST['marque_id']) && (string) $_POST['marque_id'] === (string) $mq['id']) ? 'selected' : ''; ?>>
-                                            <?php echo htmlspecialchars($mq['nom']); ?>
-                                        </option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </div>
-                                <?php endif; ?>
                                 <?php if (pf_champ_visible('reference_fournisseur') && $has_ref_fourn_col): ?>
                                 <div class="form-group">
                                     <label for="reference_fournisseur">Référence fournisseur</label>
@@ -247,7 +263,7 @@ $pf_custom_vals = [];
                         <div class="pm-card__head">
                             <span class="pm-card__icon" aria-hidden="true"><i class="fas fa-coins"></i></span>
                             <div>
-                                <h2 id="pm-sec-prix-add" class="pm-card__title">Prix, stock &amp; catégorie</h2>
+                                <h2 id="pm-sec-prix-add" class="pm-card__title">Prix &amp; rangement</h2>
                                 <p class="pm-card__hint">Tarif, inventaire et classement</p>
                             </div>
                         </div>
@@ -346,7 +362,7 @@ $pf_custom_vals = [];
                         <div class="pm-card__head">
                             <span class="pm-card__icon" aria-hidden="true"><i class="fas fa-warehouse"></i></span>
                             <div>
-                                <h2 id="pm-sec-ref-add" class="pm-card__title">Référence &amp; emplacement entrepôt</h2>
+                                <h2 id="pm-sec-ref-add" class="pm-card__title">Stock &amp; emplacement</h2>
                                 <p class="pm-card__hint">Référence FPL automatique · position : <?php echo htmlspecialchars(function_exists('entrepot_hierarchie_chemin_libelle') ? entrepot_hierarchie_chemin_libelle() : 'Niveau → …', ENT_QUOTES, 'UTF-8'); ?></p>
                             </div>
                         </div>
@@ -455,7 +471,7 @@ $pf_custom_vals = [];
                         <div class="pm-card__head">
                             <span class="pm-card__icon" aria-hidden="true"><i class="fas fa-images"></i></span>
                             <div>
-                                <h2 id="pm-sec-media-add" class="pm-card__title">Galerie photos</h2>
+                                <h2 id="pm-sec-media-add" class="pm-card__title">Photos de la pièce</h2>
                                 <p class="pm-card__hint">La première image devient la photo principale</p>
                             </div>
                         </div>
