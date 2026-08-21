@@ -165,3 +165,11 @@
     flex-wrap: nowrap;
   }
 }
+
+/* La référence d'origine se lit caractère par caractère : une graisse fixe
+   évite de confondre 0 et O, 1 et l. */
+.fpl-ref-oem {
+  font-family: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  font-size: 13px;
+  color: var(--slate, #5C6A85);
+}

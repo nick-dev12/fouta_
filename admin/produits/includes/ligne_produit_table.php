@@ -34,7 +34,17 @@ $pcm_four = function_exists('produits_fournisseur_nom_affichage')
     ? produits_fournisseur_nom_affichage($produit) : '';
 $pid = (int) ($produit['id'] ?? 0);
 $produits_path_prefix = isset($produits_path_prefix) ? (string) $produits_path_prefix : '';
-$hide_categorie_col = !empty($hide_categorie_col);
+/* Colonnes de la fiche pièce (reprise de FPL natif) : Marque, Modèle et
+ * Réf. OEM à la place de Catégorie, Prix, Stock et Statut. Interrupteur posé
+ * par la page appelante ; vaut faux par défaut, donc les écrans qui ne le
+ * connaissent pas gardent exactement leurs colonnes d'aujourd'hui. */
+$fpl_colonnes_piece = !empty($fpl_colonnes_piece);
+
+/* La catégorie n'apparaît pas dans les colonnes de FPL natif — et quand on
+ * parcourt déjà une catégorie, la répéter à chaque ligne n'apprend rien. */
+$hide_categorie_col = !empty($hide_categorie_col) || $fpl_colonnes_piece;
+$fpl_modeles_noms = isset($fpl_modeles_noms) && is_array($fpl_modeles_noms) ? $fpl_modeles_noms : [];
+require_once __DIR__ . '/../../../includes/fpl_texte.php';
 $detail_href = $produits_path_prefix . 'ajuster-stock.php?id=' . $pid;
 
 $galerie_urls = [];
@@ -91,9 +101,23 @@ $nom_produit = (string) ($produit['nom'] ?? '');
         <span class="page-produits-table__meta"><?php echo e($pcm_four); ?></span>
         <?php endif; ?>
     </td>
-    <?php if (!$hide_categorie_col): ?>
-    <td data-label="Catégorie"><?php echo e($produit['categorie_nom'] ?? '—'); ?></td>
+    <?php if ($fpl_colonnes_piece): ?>
+    <?php // Les colonnes de la fiche pièce : ce qui identifie une pièce de
+          // camion — la marque du véhicule, son modèle, la référence d'origine. ?>
+    <td data-label="Marque"><?php echo fpl_e($produit['marque_libelle_catalogue'] ?? '') ?: '—'; ?></td>
+    <td data-label="Modèle"><?php
+        $mid = (int) ($produit['modele_id'] ?? 0);
+        echo ($mid > 0 && isset($fpl_modeles_noms[$mid])) ? fpl_e($fpl_modeles_noms[$mid]) : '—';
+    ?></td>
+    <td data-label="Réf. OEM"><?php
+        $roem = trim((string) ($produit['reference_oem'] ?? ''));
+        echo $roem !== '' ? '<span class="fpl-ref-oem">' . fpl_e($roem) . '</span>' : '—';
+    ?></td>
     <?php endif; ?>
+    <?php if (!$hide_categorie_col): ?>
+    <td data-label="Catégorie"><?php echo fpl_e($produit['categorie_nom'] ?? '—'); ?></td>
+    <?php endif; ?>
+    <?php if (!$fpl_colonnes_piece): ?>
     <td class="col-num" data-label="Prix">
         <?php echo e(function_exists('fpl_montant') ? fpl_montant($prix_aff) : number_format($prix_aff, 0, ',', ' ')); ?> FCFA
         <?php if (!empty($produit['prix_promotion'])): ?>
@@ -104,6 +128,7 @@ $nom_produit = (string) ($produit['nom'] ?? '');
     <td data-label="Statut">
         <span class="page-produits-badge <?php echo $badge_class; ?>"><?php echo e($statut_label); ?></span>
     </td>
+    <?php endif; ?>
     <td class="col-actions" data-label="Actions">
         <a href="<?php echo e($produits_path_prefix); ?>modifier.php?id=<?php echo $pid; ?>" class="page-produits-table__action" title="Modifier"><i class="fas fa-edit" aria-hidden="true"></i></a>
         <a href="<?php echo e($produits_path_prefix); ?>supprimer.php?id=<?php echo $pid; ?>" class="page-produits-table__action page-produits-table__action--danger"

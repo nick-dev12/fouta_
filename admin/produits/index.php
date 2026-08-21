@@ -57,6 +57,19 @@ $categories = get_all_categories();
  */
 require_once __DIR__ . '/../../models/model_sous_categories.php';
 require_once __DIR__ . '/../../includes/fpl_texte.php';
+
+/* Les colonnes de la fiche pièce affichent le MODÈLE du véhicule ; la requête
+ * de liste n'en ramène que l'identifiant. On résout les noms une seule fois,
+ * en une requête, plutôt que d'alourdir la leur. */
+$fpl_colonnes_piece = true;
+$fpl_modeles_noms = [];
+try {
+    foreach ($db->query('SELECT id, nom FROM vehicule_modeles') as $vm) {
+        $fpl_modeles_noms[(int) $vm['id']] = (string) $vm['nom'];
+    }
+} catch (PDOException $e) {
+    $fpl_modeles_noms = [];   // table absente : la colonne affichera un tiret
+}
 $sous_categorie_id = isset($_GET['sous_categorie_id']) ? (int) $_GET['sous_categorie_id'] : 0;
 $sous_categories_bandeau = [];
 $categorie_courante_nom = '';
@@ -264,11 +277,10 @@ if (!empty($fournisseurs_filtre)) {
                         <thead>
                             <tr>
                                 <th class="col-thumb">Visuel</th>
-                                <th>Produit</th>
-                                <th>Catégorie</th>
-                                <th class="col-num">Prix</th>
-                                <th class="col-num">Stock</th>
-                                <th>Statut</th>
+                                <th>Pièce</th>
+                                <th>Marque</th>
+                                <th>Modèle</th>
+                                <th>Réf. OEM</th>
                                 <th class="col-actions">Actions</th>
                             </tr>
                         </thead>
@@ -321,11 +333,10 @@ if (!empty($fournisseurs_filtre)) {
                         <thead>
                             <tr>
                                 <th class="col-thumb">Visuel</th>
-                                <th>Produit</th>
-                                <th>Catégorie</th>
-                                <th class="col-num">Prix</th>
-                                <th class="col-num">Stock</th>
-                                <th>Statut</th>
+                                <th>Pièce</th>
+                                <th>Marque</th>
+                                <th>Modèle</th>
+                                <th>Réf. OEM</th>
                                 <th class="col-actions">Actions</th>
                             </tr>
                         </thead>
