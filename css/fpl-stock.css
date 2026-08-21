@@ -38,3 +38,36 @@
   max-width: 100% !important;
   object-fit: contain;
 }
+
+/* --- Le rangement venu de la navigation ----------------------------------
+ * Quand on ouvre le formulaire depuis une catégorie, l'écran sait déjà où la
+ * pièce se range : on montre le chemin au lieu de le redemander.
+ */
+.fpl-rangement {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 0;
+  padding: 10px 14px;
+  background: var(--blue-tint, #EDF1F8);
+  border: 1px solid var(--blue-tint-2, #D8E0EE);
+  border-radius: 8px;
+  color: var(--ink, #16203A);
+  font-size: 15px;
+}
+
+.fpl-rangement i {
+  color: var(--navy, #10316F);
+}
+
+.fpl-rangement__fleche {
+  color: var(--slate-soft, #8894A8);
+}
+
+.fpl-rangement__changer {
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--blue, #2957AE);
+  text-decoration: underline;
+}

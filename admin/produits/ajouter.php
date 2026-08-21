@@ -58,6 +58,39 @@ $has_nom_fourn_col = produits_has_column('nom_fournisseur');
 $has_position_col = produits_has_column('position_montage');
 $has_taille_col = produits_has_column('taille');
 $has_ref_fourn_col = produits_has_column('reference_fournisseur');
+
+/* --- Le rangement vient-il de la navigation ? (parcours FPL natif) ----------
+ * Quand on arrive depuis une catégorie ou une sous-catégorie, l'écran SAIT déjà
+ * où la pièce se range : inutile de le redemander. On affiche alors le chemin,
+ * et les valeurs partent en champs cachés. Sans ce contexte — accès direct par
+ * le menu — les listes déroulantes restent, sinon plus aucune création possible.
+ */
+$ctx_sous_categorie_id = $sous_cat_preselect;
+$ctx_categorie_id = $categorie_id_prefill;
+$ctx_categorie_nom = '';
+$ctx_sous_categorie_nom = '';
+
+if ($ctx_sous_categorie_id > 0) {
+    foreach ($sous_categories_all as $sc) {
+        if ((int) $sc['id'] === $ctx_sous_categorie_id) {
+            $ctx_sous_categorie_nom = (string) $sc['nom'];
+            if ($ctx_categorie_id <= 0) {
+                $ctx_categorie_id = (int) $sc['categorie_id'];
+            }
+            break;
+        }
+    }
+}
+if ($ctx_categorie_id > 0) {
+    foreach ($categories as $c) {
+        if ((int) $c['id'] === $ctx_categorie_id) {
+            $ctx_categorie_nom = (string) $c['nom'];
+            break;
+        }
+    }
+}
+// Le contexte ne vaut que si la catégorie a bien été retrouvée.
+$rangement_par_navigation = ($ctx_categorie_nom !== '');
 require_once __DIR__ . '/../../models/model_marques.php';
 $marques_catalogue = ($has_marque_col && marques_table_ok()) ? get_all_marques_ordered_by_nom() : [];
 require_once __DIR__ . '/../../includes/produit_emplacement_entrepot.php';
@@ -306,7 +339,23 @@ $pf_custom_vals = [];
                                         value="<?php echo isset($_POST['stock']) ? htmlspecialchars($_POST['stock']) : '0'; ?>">
                                 </div>
                                 <?php endif; ?>
-                                <?php if (pf_champ_visible('categorie_id')): ?>
+                                <?php if (pf_champ_visible('categorie_id') && $rangement_par_navigation): ?>
+                                <?php // Le rangement est connu : on le montre au lieu de le demander. ?>
+                                <div class="form-group">
+                                    <label>Rangement</label>
+                                    <p class="fpl-rangement">
+                                        <i class="fas fa-folder-open" aria-hidden="true"></i>
+                                        <strong><?php echo htmlspecialchars($ctx_categorie_nom, ENT_QUOTES, 'UTF-8'); ?></strong>
+                                        <?php if ($ctx_sous_categorie_nom !== ''): ?>
+                                        <span class="fpl-rangement__fleche">›</span>
+                                        <strong><?php echo htmlspecialchars($ctx_sous_categorie_nom, ENT_QUOTES, 'UTF-8'); ?></strong>
+                                        <?php endif; ?>
+                                        <a href="ajouter.php" class="fpl-rangement__changer">changer</a>
+                                    </p>
+                                    <input type="hidden" name="categorie_id" value="<?php echo (int) $ctx_categorie_id; ?>">
+                                    <small class="form-hint">La pièce sera rangée ici. « Changer » rouvre le choix complet.</small>
+                                </div>
+                                <?php elseif (pf_champ_visible('categorie_id')): ?>
                                 <div class="form-group">
                                     <label for="categorie_id">Catégorie<?php echo pf_champ_obligatoire('categorie_id') ? ' *' : ''; ?></label>
                                     <select id="categorie_id" name="categorie_id"<?php echo pf_champ_obligatoire('categorie_id') ? ' required' : ''; ?>>
@@ -331,7 +380,10 @@ $pf_custom_vals = [];
                                 <?php endif; ?>
                             </div>
                             <?php endif; ?>
-                            <?php if (pf_champ_visible('sous_categorie_id') && $has_sous_cat_col): ?>
+                            <?php if (pf_champ_visible('sous_categorie_id') && $has_sous_cat_col && $rangement_par_navigation): ?>
+                            <?php // Le rayon vient de la navigation : il part caché, avec le reste. ?>
+                            <input type="hidden" name="sous_categorie_id" value="<?php echo (int) $ctx_sous_categorie_id; ?>">
+                            <?php elseif (pf_champ_visible('sous_categorie_id') && $has_sous_cat_col): ?>
                             <div class="form-row" id="sous-categorie-field-row">
                                 <div class="form-group">
                                     <label for="sous_categorie_id">Sous-catégorie</label>
