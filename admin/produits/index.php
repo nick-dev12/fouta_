@@ -127,6 +127,16 @@ if ($fournisseur_id > 0) {
     $pagination_query_base['fournisseur_id'] = $fournisseur_id;
 }
 
+/* La barre de tableau et le pied de page de FPL natif attendent ce tableau.
+ * Les deux fonctions vivent déjà dans includes/fpl_ui.php, portées le 20/08
+ * et jamais branchées jusqu'ici. */
+$fpl_pagination = [
+    'total' => (int) $total_produits,
+    'page' => (int) $page,
+    'par' => (int) $per_page,
+    'derniere' => (int) $total_pages,
+];
+
 $filtres_form_classes = 'admin-filters-bar page-produits-filters';
 if (!empty($marques_filtre)) {
     $filtres_form_classes .= ' page-produits-filters--has-marque';
@@ -198,12 +208,11 @@ if (!empty($fournisseurs_filtre)) {
             data-id-pagination="page-produits-pagination"
             data-id-count="page-produits-count"
             data-id-catalog-empty="page-produits-catalog-empty">
+            <?php // FPL natif titre le tableau par un simple compte de pièces. ?>
             <div class="section-title page-produits-section__head">
-                <h2 id="produits-section-heading"><i class="fas fa-th-large" aria-hidden="true"></i> Toutes les pièces
-                    <span class="page-produits-count" id="page-produits-count" aria-live="polite">(<?php echo (int) $total_produits; ?>)</span>
+                <h2 id="produits-section-heading"><?php echo (int) $total_produits; ?> pièce(s)
+                    <span class="page-produits-count" id="page-produits-count" hidden>(<?php echo (int) $total_produits; ?>)</span>
                 </h2>
-                <?php // Le nombre de lignes se choisit, et le choix est retenu. ?>
-                <?php echo fpl_choix_par_page($per_page, $pagination_query_base); ?>
             </div>
 
             <form method="GET" action="" class="<?php echo htmlspecialchars($filtres_form_classes, ENT_QUOTES, 'UTF-8'); ?>"
@@ -279,6 +288,9 @@ if (!empty($fournisseurs_filtre)) {
 
             <div id="page-produits-main-wrap" <?php echo $total_produits === 0 ? 'hidden' : ''; ?>>
                 <?php if ($total_produits > 0): ?>
+                <?php // La barre de FPL natif : « Affichage de 1 à 5 sur 3 271 pièces »
+                      // à gauche, et le champ « Lignes par page » à droite. ?>
+                <?php echo fpl_tablebar_haut($fpl_pagination, 'pièces'); ?>
                 <div class="page-produits-table-wrap">
                     <table class="page-produits-table">
                         <thead>
@@ -302,28 +314,10 @@ if (!empty($fournisseurs_filtre)) {
                     </table>
                 </div>
 
-                <?php if ($total_pages > 1): ?>
-                <nav class="page-produits-pagination" id="page-produits-pagination" aria-label="Pagination du catalogue">
-                    <?php if ($page > 1): ?>
-                        <?php $prev_q = array_merge($pagination_query_base, ['page' => $page - 1]); ?>
-                        <a href="index.php?<?php echo htmlspecialchars(http_build_query($prev_q), ENT_QUOTES, 'UTF-8'); ?>" class="page-produits-pagination__link">
-                            <i class="fas fa-chevron-left" aria-hidden="true"></i> Précédent
-                        </a>
-                    <?php endif; ?>
-
-                    <span class="page-produits-pagination__info">
-                        Page <?php echo (int) $page; ?> / <?php echo (int) $total_pages; ?>
-                        <span class="page-produits-pagination__detail">(<?php echo (int) $per_page; ?> par page · <?php echo (int) $total_produits; ?> au total)</span>
-                    </span>
-
-                    <?php if ($page < $total_pages): ?>
-                        <?php $next_q = array_merge($pagination_query_base, ['page' => $page + 1]); ?>
-                        <a href="index.php?<?php echo htmlspecialchars(http_build_query($next_q), ENT_QUOTES, 'UTF-8'); ?>" class="page-produits-pagination__link">
-                            Suivant <i class="fas fa-chevron-right" aria-hidden="true"></i>
-                        </a>
-                    <?php endif; ?>
-                </nav>
-                <?php endif; ?>
+                <?php // Le pied de page de FPL natif : une fenêtre de pages
+                      // autour de la courante, avec les extrémités. ?>
+                <?php echo fpl_pager($fpl_pagination); ?>
+                <nav id="page-produits-pagination" hidden></nav>
                 <?php else: ?>
                 <div class="page-produits-table-wrap" hidden>
                     <table class="page-produits-table">
