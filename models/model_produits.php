@@ -2747,7 +2747,7 @@ function get_admin_produits_export_catalogue($date_debut, $date_fin, $mode = 'to
             $joinx
             WHERE 1=1
         ";
-        $sql .= admin_produits_liste_filtres_sql($categorie_id, $marque_id, $fournisseur_id, $params, $sous_categorie_id, $du, $au);
+        $sql .= admin_produits_liste_filtres_sql($categorie_id, $marque_id, $fournisseur_id, $params);
         $sql .= admin_produits_export_periode_sql($mode, $date_debut, $date_fin, $params);
         $sql .= admin_produits_liste_recherche_sql($recherche, $params);
         $sql .= ' ORDER BY COALESCE(p.date_modification, p.date_creation) DESC, p.id DESC LIMIT :exp_offset, :exp_limit';
@@ -2847,7 +2847,7 @@ function count_admin_produits_export_catalogue($date_debut, $date_fin, $mode = '
             $joinx
             WHERE 1=1
         ";
-        $sql .= admin_produits_liste_filtres_sql($categorie_id, $marque_id, $fournisseur_id, $params, $sous_categorie_id, $du, $au);
+        $sql .= admin_produits_liste_filtres_sql($categorie_id, $marque_id, $fournisseur_id, $params);
         $sql .= admin_produits_export_periode_sql($mode, $date_debut, $date_fin, $params);
         $sql .= admin_produits_liste_recherche_sql($recherche, $params);
 
