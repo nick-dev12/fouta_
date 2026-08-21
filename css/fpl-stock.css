@@ -263,3 +263,81 @@
   gap: 12px;
   flex-wrap: wrap;
 }
+
+/* --- La géométrie des cartes, reprise de FPL natif -------------------------
+ * Leur carte fait 108 px de large, avec une vignette carrée de 64 px centrée.
+ * Celle de FPL natif fait 208 px, avec une image PLEINE LARGEUR de 110 px de
+ * haut et le nom aligné à gauche dessous. C'est ce doublement de taille qui
+ * change tout l'aspect de la page — les cartes se regardent, elles ne se
+ * survolent pas.
+ * Références : css/fpl.css:1069 (.rail-card), :1079 (.rail-visual),
+ * :1092 (.rail-name).
+ */
+.page-produits-categories__track .page-produits-cat-card {
+  width: 208px;
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+  background: var(--surface, #fff);
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(15, 32, 64, .05), 0 1px 3px rgba(15, 32, 64, .04);
+  transition: border-color .12s ease, box-shadow .12s ease, transform .12s ease;
+}
+
+.page-produits-categories__track .page-produits-cat-card:hover {
+  border-color: var(--blue, #2957AE);
+  box-shadow: 0 2px 4px rgba(15, 32, 64, .06), 0 4px 12px rgba(15, 32, 64, .05);
+  transform: translateY(-1px);
+}
+
+/* La vignette occupe toute la largeur de la carte, sur 110 px de haut. */
+.page-produits-categories__track .page-produits-cat-card__img {
+  width: 100%;
+  height: 110px;
+  border-radius: 0;
+  flex-shrink: 0;
+  background: var(--blue-tint, #EDF1F8);
+}
+
+.page-produits-categories__track .page-produits-cat-card__img img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.page-produits-categories__track .page-produits-cat-card__img--ph {
+  background: var(--blue-tint, #EDF1F8);
+  color: var(--blue-600, #1D4590);
+  font-size: 22px;
+}
+
+/* Le nom : à gauche, sur UNE seule ligne — le titre au survol dit le reste,
+   et toutes les cartes gardent ainsi la même taille. */
+.page-produits-categories__track .page-produits-cat-card__name {
+  flex: 1;
+  padding: 10px 12px 12px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--navy, #10316F);
+  line-height: 1.3;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+
+/* La carte « + » et le retour : bordure en pointillés, sans ombre. */
+.page-produits-categories__track .fpl-cat-card--neuve,
+.page-produits-categories__track .fpl-cat-card--retour {
+  border-style: dashed;
+  box-shadow: none;
+}
+
+/* Le bandeau respire comme celui de FPL natif. */
+.page-produits-categories__track {
+  gap: 12px;
+  padding: 2px;
+}
