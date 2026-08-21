@@ -29,6 +29,8 @@ if ($upload_base !== '' && substr($upload_base, -1) !== '/') {
 if (!function_exists('e')) {
     require_once __DIR__ . '/../../../includes/fpl_ui.php';
 }
+// Répare à l'affichage les noms doublement encodés (2 catégories du siège).
+require_once __DIR__ . '/../../../includes/fpl_texte.php';
 
 // Au premier niveau on montre les catégories, au second les rayons.
 $dans_une_categorie = ($categorie_id > 0);
@@ -45,11 +47,11 @@ $peut_gerer = !function_exists('admin_is_restricted_admin_account')
             <a href="index.php">Pièces</a>
             <span class="fpl-fil__sep" aria-hidden="true">›</span>
             <?php if ($sous_categorie_id > 0): ?>
-            <a href="index.php?categorie_id=<?php echo $categorie_id; ?>"><?php echo e($categorie_courante_nom); ?></a>
+            <a href="index.php?categorie_id=<?php echo $categorie_id; ?>"><?php echo fpl_e($categorie_courante_nom); ?></a>
             <span class="fpl-fil__sep" aria-hidden="true">›</span>
-            <strong><?php echo e($sous_categorie_courante_nom ?? ''); ?></strong>
+            <strong><?php echo fpl_e($sous_categorie_courante_nom ?? ''); ?></strong>
             <?php else: ?>
-            <strong><?php echo e($categorie_courante_nom); ?></strong>
+            <strong><?php echo fpl_e($categorie_courante_nom); ?></strong>
             <?php endif; ?>
         </nav>
     </div>
@@ -66,7 +68,7 @@ $peut_gerer = !function_exists('admin_is_restricted_admin_account')
         </a>
         <a href="index.php?categorie_id=<?php echo $categorie_id; ?>"
             class="page-produits-cat-card <?php echo $sous_categorie_id === 0 ? 'is-active' : ''; ?>"
-            title="Toutes les pièces de <?php echo e($categorie_courante_nom); ?>">
+            title="Toutes les pièces de <?php echo fpl_e($categorie_courante_nom); ?>">
             <span class="page-produits-cat-card__img page-produits-cat-card__img--all" aria-hidden="true">
                 <i class="fas fa-th"></i>
             </span>
@@ -95,7 +97,7 @@ $peut_gerer = !function_exists('admin_is_restricted_admin_account')
             ?>
         <a href="<?php echo $lien; ?>"
             class="page-produits-cat-card <?php echo $actif ? 'is-active' : ''; ?>"
-            title="<?php echo e($nom); ?>">
+            title="<?php echo fpl_e($nom); ?>">
             <?php if ($img !== ''): ?>
             <span class="page-produits-cat-card__img">
                 <img src="<?php echo e($upload_base . $img); ?>" alt="" loading="lazy" decoding="async"
@@ -106,7 +108,7 @@ $peut_gerer = !function_exists('admin_is_restricted_admin_account')
                 <i class="fas <?php echo $dans_une_categorie ? 'fa-boxes-stacked' : 'fa-tag'; ?>"></i>
             </span>
             <?php endif; ?>
-            <span class="page-produits-cat-card__name"><?php echo e($nom); ?></span>
+            <span class="page-produits-cat-card__name"><?php echo fpl_e($nom); ?></span>
         </a>
         <?php endforeach; ?>
 

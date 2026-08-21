@@ -56,6 +56,7 @@ $categories = get_all_categories();
  * catégorie. Sans rayon, tout se comporte exactement comme avant.
  */
 require_once __DIR__ . '/../../models/model_sous_categories.php';
+require_once __DIR__ . '/../../includes/fpl_texte.php';
 $sous_categorie_id = isset($_GET['sous_categorie_id']) ? (int) $_GET['sous_categorie_id'] : 0;
 $sous_categories_bandeau = [];
 $categorie_courante_nom = '';
@@ -137,7 +138,7 @@ if (!empty($fournisseurs_filtre)) {
             <?php // Disposition de FPL natif : le titre et sa phrase à gauche,
                   // les boutons repoussés à droite sur la même ligne. ?>
             <div class="dashboard-hero-text">
-                <h1 id="page-produits-title"><i class="fas fa-box" aria-hidden="true"></i> Catalogue des pièces</h1>
+                <h1 id="page-produits-title">Catalogue des pièces</h1>
                 <p class="dashboard-eyebrow fpl-sous-titre">Ajoutez directement par le nom de la pièce, ou parcourez les catégories ci-dessous.</p>
             </div>
             <div class="page-produits-hero__actions">
@@ -200,7 +201,7 @@ if (!empty($fournisseurs_filtre)) {
                         <option value="0">Toutes les catégories</option>
                         <?php foreach ($categories as $categorie): ?>
                             <option value="<?php echo (int) $categorie['id']; ?>" <?php echo $categorie_id === (int) $categorie['id'] ? 'selected' : ''; ?>>
-                                <?php echo htmlspecialchars($categorie['nom']); ?>
+                                <?php echo fpl_e($categorie['nom']); ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
