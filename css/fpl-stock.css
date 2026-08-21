@@ -1,0 +1,28 @@
+/*
+ * fpl-stock.css — la couche visuelle FPL pour les écrans de stock.
+ *
+ * Chargée EN DERNIER par fpl_admin_styles(), donc elle prime sur les
+ * feuilles existantes sans qu'aucune de leurs lignes ne soit modifiée.
+ * Tout retirer = supprimer ce fichier et sa ligne de chargement.
+ */
+
+/* --- La marque : le logo blanc posé à même l'aplat outremer ---------------
+ * Le badge blanc arrondi venait de ce que le logo bleu foncé disparaissait
+ * sur la colonne #10316F. Avec la version blanche du logo, le cadre n'a plus
+ * lieu d'être : la marque se pose directement sur l'aplat, comme prévu.
+ */
+.admin-sidebar .sidebar-header-logo-badge {
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
+  width: auto;
+  height: auto;
+}
+
+.admin-sidebar .sidebar-header-logo,
+.admin-sidebar .brand-logo {
+  max-height: 52px;
+  width: auto;
+  height: auto;
+}

@@ -86,7 +86,7 @@ include __DIR__ . '/../../includes/pwa_admin_boot.php';
             </button>
             <a href="<?php echo htmlspecialchars($admin_nav_home); ?>" class="sidebar-header-brand" title="Administration — FOUTA POIDS LOURDS">
                 <span class="sidebar-header-logo-badge">
-                    <img src="<?php echo htmlspecialchars($admin_image_base . 'logo-fpl.png', ENT_QUOTES, 'UTF-8'); ?>" alt="FOUTA POIDS LOURDS" class="brand-logo sidebar-header-logo" loading="eager" decoding="async" width="48" height="48">
+                    <img src="<?php echo htmlspecialchars($admin_image_base . 'logo-fpl-blanc.png', ENT_QUOTES, 'UTF-8'); ?>" alt="FOUTA POIDS LOURDS" class="brand-logo sidebar-header-logo" loading="eager" decoding="async" width="48" height="48" onerror="this.onerror=null;this.src='<?php echo htmlspecialchars($admin_image_base . 'logo-fpl.png', ENT_QUOTES, 'UTF-8'); ?>'">
                 </span>
             </a>
             <div class="brand-name">FOUTA POIDS LOURDS<small>The Solution</small></div>
