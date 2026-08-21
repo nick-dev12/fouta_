@@ -127,7 +127,7 @@ include __DIR__ . '/../../includes/pwa_admin_boot.php';
             <a href="<?php echo $admin_nav_base; ?>produits/index.php"
                 class="menu-item mi-produits<?php echo ($is_produits) ? ' active' : ''; ?>">
                 <span class="menu-item-icon ico" aria-hidden="true"><i class="fas fa-box"></i></span>
-                <span class="menu-item-text">Produits</span>
+                <span class="menu-item-text">Pièces</span>
             </a>
             <?php if ($admin_nav_is_tech_full): ?>
             <a href="<?php echo $admin_nav_base; ?>commandes/index.php"
@@ -265,7 +265,7 @@ include __DIR__ . '/../../includes/pwa_admin_boot.php';
             <a href="<?php echo $admin_nav_base; ?>produits/index.php"
                 class="menu-item mi-produits<?php echo ($is_produits && $current_page == 'index.php') ? ' active' : ''; ?>">
                 <span class="menu-item-icon ico" aria-hidden="true"><i class="fas fa-box"></i></span>
-                <span class="menu-item-text">Produits</span>
+                <span class="menu-item-text">Pièces</span>
             </a>
             <a href="<?php echo $admin_nav_base; ?>categories/index.php"
                 class="menu-item mi-categories<?php echo ($is_categories) ? ' active' : ''; ?>">
@@ -286,7 +286,7 @@ include __DIR__ . '/../../includes/pwa_admin_boot.php';
             <a href="<?php echo $admin_nav_base; ?>produits/index.php"
                 class="menu-item mi-produits<?php echo ($is_produits && $current_page == 'index.php') ? ' active' : ''; ?>">
                 <span class="menu-item-icon ico" aria-hidden="true"><i class="fas fa-box"></i></span>
-                <span class="menu-item-text">Produits</span>
+                <span class="menu-item-text">Pièces</span>
             </a>
             <?php endif; ?>
             </div>
@@ -312,7 +312,7 @@ include __DIR__ . '/../../includes/pwa_admin_boot.php';
                 </button>
                 <form class="admin-topbar__search" action="<?php echo $admin_nav_base; ?>produits/index.php" method="get" role="search">
                     <i class="fas fa-search" aria-hidden="true"></i>
-                    <input type="search" name="recherche" placeholder="Rechercher un produit…" autocomplete="off">
+                    <input type="search" name="recherche" placeholder="Rechercher une pièce…" autocomplete="off">
                 </form>
             </div>
             <div class="admin-topbar__right">

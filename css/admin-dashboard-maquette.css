@@ -669,7 +669,7 @@
 /* --- Graphiques Chart.js --- */
 .dash-charts-row {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--s4);
   margin-bottom: var(--s5);
 }
@@ -684,8 +684,12 @@
   min-height: 320px;
 }
 
+.dash-chart-card--wide {
+  grid-column: 1 / -1;
+}
+
 .dash-chart-card__head {
-  padding: var(--s4) var(--s4) var(--s2);
+  padding: var(--s4) var(--s4) var(--s3);
   border-bottom: 1px solid var(--line-soft);
 }
 
@@ -701,6 +705,15 @@
   margin-top: 2px;
   font-size: 12px;
   color: var(--slate);
+  font-weight: 600;
+}
+
+.dash-chart-card__desc {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--slate);
+  font-weight: 400;
 }
 
 .dash-chart-card__body {
@@ -719,48 +732,108 @@
 .dash-today-row {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: var(--s3);
+  gap: var(--s4);
   margin-bottom: var(--s5);
 }
 
 .dash-today-card {
-  background: var(--surface);
-  border: 1px solid var(--line);
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  background: rgba(255, 255, 255, 0.52);
+  backdrop-filter: blur(16px) saturate(1.15);
+  -webkit-backdrop-filter: blur(16px) saturate(1.15);
+  border: 1px solid rgba(255, 255, 255, 0.55);
   border-radius: var(--r);
-  box-shadow: var(--sh-1);
-  padding: var(--s4);
+  box-shadow:
+    0 10px 28px rgba(16, 49, 111, 0.07),
+    inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  padding: var(--s4) var(--s4) var(--s3);
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  min-height: 108px;
-  border-top: 3px solid var(--navy);
+  gap: 8px;
+  min-height: 118px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
-.dash-today-card--navy { border-top-color: var(--navy); }
-.dash-today-card--blue { border-top-color: var(--blue); }
-.dash-today-card--orange { border-top-color: var(--orange); }
-.dash-today-card--green { border-top-color: var(--ok); }
-.dash-today-card--paid { border-top-color: #0E7A55; }
-.dash-today-card--unpaid { border-top-color: #C44A1A; }
+.dash-today-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.dash-today-card:hover {
+  transform: translateY(-3px);
+  box-shadow:
+    0 16px 36px rgba(16, 49, 111, 0.11),
+    inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+.dash-today-card--navy::before {
+  background: linear-gradient(145deg, rgba(16, 49, 111, 0.16), rgba(237, 241, 248, 0.35));
+}
+
+.dash-today-card--blue::before {
+  background: linear-gradient(145deg, rgba(41, 87, 174, 0.14), rgba(237, 241, 248, 0.4));
+}
+
+.dash-today-card--orange::before {
+  background: linear-gradient(145deg, rgba(255, 107, 53, 0.13), rgba(255, 248, 245, 0.45));
+}
+
+.dash-today-card--green::before {
+  background: linear-gradient(145deg, rgba(18, 105, 74, 0.12), rgba(232, 248, 242, 0.5));
+}
+
+.dash-today-card--paid::before {
+  background: linear-gradient(145deg, rgba(14, 122, 85, 0.14), rgba(240, 252, 247, 0.55));
+}
+
+.dash-today-card--unpaid::before {
+  background: linear-gradient(145deg, rgba(196, 74, 26, 0.12), rgba(255, 245, 240, 0.5));
+}
 
 .dash-today-card__icon {
-  color: var(--slate);
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-size: 15px;
+  color: var(--navy);
+  background: rgba(255, 255, 255, 0.42);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 2px 8px rgba(16, 49, 111, 0.06);
+  flex-shrink: 0;
 }
 
+.dash-today-card--blue .dash-today-card__icon { color: var(--blue); }
+.dash-today-card--orange .dash-today-card__icon { color: var(--orange); }
+.dash-today-card--green .dash-today-card__icon { color: var(--ok); }
+.dash-today-card--paid .dash-today-card__icon { color: #0E7A55; }
+.dash-today-card--unpaid .dash-today-card__icon { color: #C44A1A; }
+
 .dash-today-card__value {
-  font-size: clamp(1.25rem, 2.5vw, 1.65rem);
+  font-size: clamp(1.28rem, 2.6vw, 1.72rem);
   font-weight: 800;
   color: var(--navy);
-  line-height: 1.1;
+  line-height: 1.08;
   font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
 }
 
 .dash-today-card__label {
-  font-size: 12px;
+  font-size: 12.5px;
   color: var(--slate);
-  font-weight: 600;
-  line-height: 1.35;
+  font-weight: 650;
+  line-height: 1.4;
+  margin-top: auto;
 }
 
 /* --- Tableau produits top vendus --- */
@@ -804,11 +877,17 @@
   padding: 32px 16px !important;
 }
 
-@media (max-width: 1200px) {
+@media (max-width: 1024px) {
   .dash-charts-row {
     grid-template-columns: 1fr;
   }
 
+  .dash-chart-card--wide {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 1200px) {
   .dash-today-row {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
