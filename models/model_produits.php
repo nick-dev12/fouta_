@@ -377,13 +377,20 @@ if (!defined('ADMIN_PRODUITS_LIVE_SEARCH_LIMIT')) {
  * @param array<string, int> $params
  * @return string
  */
-function admin_produits_liste_filtres_sql($categorie_id = 0, $marque_id = 0, $fournisseur_id = 0, array &$params = [])
+function admin_produits_liste_filtres_sql($categorie_id = 0, $marque_id = 0, $fournisseur_id = 0, array &$params = [], $sous_categorie_id = 0)
 {
     $parts = [];
 
     if ($categorie_id > 0) {
         $parts[] = 'p.categorie_id = :adm_cat_id';
         $params['adm_cat_id'] = $categorie_id;
+    }
+
+    // Descendre dans un rayon : le paramètre est optionnel et vaut 0 par
+    // défaut, donc tous les appels existants gardent leur comportement.
+    if ($sous_categorie_id > 0 && produits_has_column('sous_categorie_id')) {
+        $parts[] = 'p.sous_categorie_id = :adm_sous_cat_id';
+        $params['adm_sous_cat_id'] = $sous_categorie_id;
     }
 
     if ($marque_id > 0 && produits_has_column('marque_id')) {
@@ -467,7 +474,7 @@ function admin_produits_liste_recherche_sql($recherche, array &$params = [])
  * @param int $fournisseur_id
  * @return int
  */
-function count_admin_produits_liste($categorie_id = 0, $marque_id = 0, $fournisseur_id = 0)
+function count_admin_produits_liste($categorie_id = 0, $marque_id = 0, $fournisseur_id = 0, $sous_categorie_id = 0)
 {
     global $db;
 
@@ -482,7 +489,7 @@ function count_admin_produits_liste($categorie_id = 0, $marque_id = 0, $fourniss
             $joinx
             WHERE 1=1
         ";
-        $sql .= admin_produits_liste_filtres_sql($categorie_id, $marque_id, $fournisseur_id, $params);
+        $sql .= admin_produits_liste_filtres_sql($categorie_id, $marque_id, $fournisseur_id, $params, $sous_categorie_id);
 
         $stmt = $db->prepare($sql);
         foreach ($params as $k => $v) {
@@ -507,7 +514,7 @@ function count_admin_produits_liste($categorie_id = 0, $marque_id = 0, $fourniss
  * @param int $limit
  * @return array<int, array<string, mixed>>
  */
-function get_admin_produits_liste_paginated($categorie_id = 0, $marque_id = 0, $fournisseur_id = 0, $offset = 0, $limit = 30)
+function get_admin_produits_liste_paginated($categorie_id = 0, $marque_id = 0, $fournisseur_id = 0, $offset = 0, $limit = 30, $sous_categorie_id = 0)
 {
     global $db;
 
@@ -526,7 +533,7 @@ function get_admin_produits_liste_paginated($categorie_id = 0, $marque_id = 0, $
             $joinx
             WHERE 1=1
         ";
-        $sql .= admin_produits_liste_filtres_sql($categorie_id, $marque_id, $fournisseur_id, $params);
+        $sql .= admin_produits_liste_filtres_sql($categorie_id, $marque_id, $fournisseur_id, $params, $sous_categorie_id);
         $sql .= ' ORDER BY p.date_creation DESC LIMIT :adm_limit OFFSET :adm_offset';
 
         $stmt = $db->prepare($sql);
@@ -2729,7 +2736,7 @@ function get_admin_produits_export_catalogue($date_debut, $date_fin, $mode = 'to
             $joinx
             WHERE 1=1
         ";
-        $sql .= admin_produits_liste_filtres_sql($categorie_id, $marque_id, $fournisseur_id, $params);
+        $sql .= admin_produits_liste_filtres_sql($categorie_id, $marque_id, $fournisseur_id, $params, $sous_categorie_id);
         $sql .= admin_produits_export_periode_sql($mode, $date_debut, $date_fin, $params);
         $sql .= admin_produits_liste_recherche_sql($recherche, $params);
         $sql .= ' ORDER BY COALESCE(p.date_modification, p.date_creation) DESC, p.id DESC LIMIT :exp_offset, :exp_limit';
@@ -2829,7 +2836,7 @@ function count_admin_produits_export_catalogue($date_debut, $date_fin, $mode = '
             $joinx
             WHERE 1=1
         ";
-        $sql .= admin_produits_liste_filtres_sql($categorie_id, $marque_id, $fournisseur_id, $params);
+        $sql .= admin_produits_liste_filtres_sql($categorie_id, $marque_id, $fournisseur_id, $params, $sous_categorie_id);
         $sql .= admin_produits_export_periode_sql($mode, $date_debut, $date_fin, $params);
         $sql .= admin_produits_liste_recherche_sql($recherche, $params);
 

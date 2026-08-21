@@ -50,19 +50,56 @@ $fournisseur_id = isset($_GET['fournisseur_id']) ? (int) $_GET['fournisseur_id']
 
 $categories = get_all_categories();
 
+/* --- Descendre dans un rayon (parcours FPL natif) --------------------------
+ * Le bandeau ouvre d'abord les catégories ; une fois l'une d'elles choisie, il
+ * montre ses rayons. Le rayon retenu filtre la liste au même titre que la
+ * catégorie. Sans rayon, tout se comporte exactement comme avant.
+ */
+require_once __DIR__ . '/../../models/model_sous_categories.php';
+$sous_categorie_id = isset($_GET['sous_categorie_id']) ? (int) $_GET['sous_categorie_id'] : 0;
+$sous_categories_bandeau = [];
+$categorie_courante_nom = '';
+$sous_categorie_courante_nom = '';
+
+if ($categorie_id > 0) {
+    foreach ($categories as $c) {
+        if ((int) $c['id'] === $categorie_id) {
+            $categorie_courante_nom = (string) $c['nom'];
+            break;
+        }
+    }
+    if (function_exists('sous_categories_table_ok') && sous_categories_table_ok()) {
+        foreach (get_all_sous_categories_with_categorie_nom() as $sc) {
+            if ((int) $sc['categorie_id'] === $categorie_id) {
+                $sous_categories_bandeau[] = $sc;
+                if ((int) $sc['id'] === $sous_categorie_id) {
+                    $sous_categorie_courante_nom = (string) $sc['nom'];
+                }
+            }
+        }
+    }
+}
+// Un rayon sans sa catégorie n'a pas de sens : on l'ignore.
+if ($categorie_id <= 0) {
+    $sous_categorie_id = 0;
+}
+
 $per_page = ADMIN_PRODUITS_LISTE_PER_PAGE;
 $page = max(1, (int) ($_GET['page'] ?? 1));
-$total_produits = count_admin_produits_liste($categorie_id, $marque_id, $fournisseur_id);
+$total_produits = count_admin_produits_liste($categorie_id, $marque_id, $fournisseur_id, $sous_categorie_id);
 $total_pages = max(1, (int) ceil($total_produits / $per_page));
 if ($page > $total_pages) {
     $page = $total_pages;
 }
 $offset = ($page - 1) * $per_page;
-$produits = get_admin_produits_liste_paginated($categorie_id, $marque_id, $fournisseur_id, $offset, $per_page);
+$produits = get_admin_produits_liste_paginated($categorie_id, $marque_id, $fournisseur_id, $offset, $per_page, $sous_categorie_id);
 
 $pagination_query_base = [];
 if ($categorie_id > 0) {
     $pagination_query_base['categorie_id'] = $categorie_id;
+}
+if ($sous_categorie_id > 0) {
+    $pagination_query_base['sous_categorie_id'] = $sous_categorie_id;
 }
 if ($marque_id > 0) {
     $pagination_query_base['marque_id'] = $marque_id;
@@ -86,7 +123,7 @@ if (!empty($fournisseurs_filtre)) {
     <?php include __DIR__ . '/../../includes/favicon.php'; ?>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Liste des Produits - Administration</title>
+    <title>Catalogue des pièces — Administration</title>
     <?php require_once __DIR__ . '/../../includes/asset_version.php'; ?>
 <?php include __DIR__ . '/..//includes/fpl_head.php'; ?>
     <?php fpl_css_link('admin-produits-index.css'); ?>
@@ -98,12 +135,12 @@ if (!empty($fournisseurs_filtre)) {
     <div class="page-produits-admin">
         <div class="content-header dashboard-hero page-produits-hero">
             <div class="dashboard-hero-text">
-                <p class="dashboard-eyebrow">Catalogue boutique</p>
-                <h1 id="page-produits-title"><i class="fas fa-box" aria-hidden="true"></i> Liste des produits</h1>
+                <p class="dashboard-eyebrow">Magasin de pièces</p>
+                <h1 id="page-produits-title"><i class="fas fa-box" aria-hidden="true"></i> Catalogue des pièces</h1>
                 <div class="page-produits-hero__actions">
                     <?php if (!admin_is_restricted_admin_account()): ?>
                         <a href="ajouter.php" class="btn-primary page-produits-hero__btn">
-                            <i class="fas fa-plus" aria-hidden="true"></i> Nouveau produits
+                            <i class="fas fa-plus" aria-hidden="true"></i> Ajouter une pièce
                         </a>
                         <a href="export-catalogue.php" class="btn-secondary page-produits-hero__btn">
                             <i class="fas fa-clipboard-list" aria-hidden="true"></i> Suivi du catalogue
@@ -141,7 +178,7 @@ if (!empty($fournisseurs_filtre)) {
             data-id-count="page-produits-count"
             data-id-catalog-empty="page-produits-catalog-empty">
             <div class="section-title page-produits-section__head">
-                <h2 id="produits-section-heading"><i class="fas fa-th-large" aria-hidden="true"></i> Tous les produits
+                <h2 id="produits-section-heading"><i class="fas fa-th-large" aria-hidden="true"></i> Toutes les pièces
                     <span class="page-produits-count" id="page-produits-count" aria-live="polite">(<?php echo (int) $total_produits; ?>)</span>
                 </h2>
             </div>
@@ -211,7 +248,7 @@ if (!empty($fournisseurs_filtre)) {
                     </p>
                     <?php if (!admin_is_restricted_admin_account()): ?>
                         <a href="ajouter.php" class="btn-primary page-produits-empty__cta">
-                            <i class="fas fa-plus" aria-hidden="true"></i> Nouveau produits
+                            <i class="fas fa-plus" aria-hidden="true"></i> Ajouter une pièce
                         </a>
                     <?php endif; ?>
                 </div>

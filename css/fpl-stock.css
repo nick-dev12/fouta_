@@ -71,3 +71,41 @@
   color: var(--blue, #2957AE);
   text-decoration: underline;
 }
+
+/* --- Le bandeau à deux niveaux et son fil d'Ariane ------------------------ */
+.fpl-fil {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--slate, #5C6A85);
+  flex-wrap: wrap;
+}
+
+.fpl-fil a {
+  color: var(--blue, #2957AE);
+  text-decoration: none;
+}
+
+.fpl-fil a:hover {
+  text-decoration: underline;
+}
+
+.fpl-fil strong {
+  color: var(--ink, #16203A);
+}
+
+.fpl-fil__sep {
+  color: var(--slate-soft, #8894A8);
+}
+
+.page-produits-cat-card.fpl-cat-card--neuve .page-produits-cat-card__img,
+.page-produits-cat-card.fpl-cat-card--retour .page-produits-cat-card__img {
+  border: 1px dashed var(--line, #DFE4EC);
+  background: var(--line-soft, #EDF0F5);
+  color: var(--navy, #10316F);
+}
+
+.page-produits-cat-card.fpl-cat-card--neuve .page-produits-cat-card__name {
+  color: var(--blue, #2957AE);
+}
