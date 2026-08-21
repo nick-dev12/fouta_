@@ -425,3 +425,41 @@
   font-size: 13px;
   text-decoration: underline;
 }
+
+/* --- La barre décorative de l'en-tête ------------------------------------
+ * admin-dashboard.css:1564 pose un liseré vertical de 4 px en dégradé
+ * bleu → orange à gauche du titre. FPL natif n'en a pas : son en-tête est nu.
+ * On ne la retire QUE sur le catalogue — les autres écrans la gardent.
+ */
+.page-produits-hero.page-produits-hero.page-produits-hero::before {
+  display: none;
+  content: none;
+}
+
+/* --- L'alignement du tableau, repris de FPL natif -------------------------
+ * Ici l'en-tête est à gauche et le contenu au centre : les deux ne tombent
+ * jamais l'un sous l'autre. FPL natif (css/fpl.css:428 et :434) CENTRE les
+ * deux — l'intitulé se pose alors au milieu de sa colonne, au-dessus de ce
+ * qu'il annonce.
+ */
+.page-produits-table.page-produits-table thead th {
+  text-align: center;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  padding: 11px 12px;
+  border-bottom: 2px solid var(--line, #DFE4EC);
+  vertical-align: middle;
+}
+
+.page-produits-table.page-produits-table tbody td {
+  padding: 13px 12px;
+  vertical-align: middle;
+}
+
+/* La colonne du nom se lit mieux alignée à gauche, en-tête compris : c'est
+   du texte long, pas une valeur. Les autres restent centrées. */
+.page-produits-table.page-produits-table thead th:nth-child(2),
+.page-produits-table.page-produits-table tbody td:nth-child(2) {
+  text-align: left;
+}
