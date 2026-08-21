@@ -63,3 +63,24 @@ if (!function_exists('fpl_e')) {
         return htmlspecialchars(fpl_texte($valeur), ENT_QUOTES, 'UTF-8');
     }
 }
+
+// fpl_par_page() existe déjà dans includes/fpl_ui.php, portée depuis FPL
+// natif lors de la refonte du 20/08. On l'utilise, on ne la redéfinit pas :
+// leur déclaration n'est pas protégée par function_exists.
+
+if (!function_exists('fpl_choix_par_page')) {
+
+    /** Les boutons « 5 · 10 · 25 · 50 » qui changent le nombre de lignes. */
+    function fpl_choix_par_page($courant, array $base = [], $choix = [5, 10, 25, 50])
+    {
+        $html = '<div class="fpl-par-page"><span class="fpl-par-page__label">Lignes&nbsp;:</span>';
+        foreach ($choix as $n) {
+            $q = array_merge($base, ['par' => $n, 'page' => 1]);
+            $actif = ((int) $courant === (int) $n) ? ' is-active' : '';
+            $html .= '<a class="fpl-par-page__lien' . $actif . '" href="index.php?'
+                . htmlspecialchars(http_build_query($q), ENT_QUOTES, 'UTF-8') . '">' . (int) $n . '</a>';
+        }
+
+        return $html . '</div>';
+    }
+}

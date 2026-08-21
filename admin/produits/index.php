@@ -57,6 +57,9 @@ $categories = get_all_categories();
  */
 require_once __DIR__ . '/../../models/model_sous_categories.php';
 require_once __DIR__ . '/../../includes/fpl_texte.php';
+// fpl_par_page() vit dans fpl_ui.php, chargé plus bas par nav.php : on l'amène
+// ici puisqu'on en a besoin avant, pour calculer la pagination.
+require_once __DIR__ . '/../../includes/fpl_ui.php';
 
 /* Les colonnes de la fiche pièce affichent le MODÈLE du véhicule ; la requête
  * de liste n'en ramène que l'identifiant. On résout les noms une seule fois,
@@ -98,7 +101,9 @@ if ($categorie_id <= 0) {
     $sous_categorie_id = 0;
 }
 
-$per_page = ADMIN_PRODUITS_LISTE_PER_PAGE;
+// Le nombre de lignes est un CHOIX de l'utilisateur, retenu en session —
+// défaut 5, comme dans FPL natif (la constante du dépôt vaut 30).
+$per_page = fpl_par_page('catalogue_pieces', 5);
 $page = max(1, (int) ($_GET['page'] ?? 1));
 $total_produits = count_admin_produits_liste($categorie_id, $marque_id, $fournisseur_id, $sous_categorie_id);
 $total_pages = max(1, (int) ceil($total_produits / $per_page));
@@ -157,7 +162,7 @@ if (!empty($fournisseurs_filtre)) {
             <div class="page-produits-hero__actions">
                 <?php if (!admin_is_restricted_admin_account()): ?>
                     <a href="ajouter.php" class="btn-primary page-produits-hero__btn">
-                        <i class="fas fa-plus" aria-hidden="true"></i> Ajouter une pièce
+                        <i class="fas fa-search" aria-hidden="true"></i> Ajouter une pièce par son nom
                     </a>
                     <a href="export-catalogue.php" class="btn-secondary page-produits-hero__btn">
                         <i class="fas fa-clipboard-list" aria-hidden="true"></i> Suivi du catalogue
@@ -197,6 +202,8 @@ if (!empty($fournisseurs_filtre)) {
                 <h2 id="produits-section-heading"><i class="fas fa-th-large" aria-hidden="true"></i> Toutes les pièces
                     <span class="page-produits-count" id="page-produits-count" aria-live="polite">(<?php echo (int) $total_produits; ?>)</span>
                 </h2>
+                <?php // Le nombre de lignes se choisit, et le choix est retenu. ?>
+                <?php echo fpl_choix_par_page($per_page, $pagination_query_base); ?>
             </div>
 
             <form method="GET" action="" class="<?php echo htmlspecialchars($filtres_form_classes, ENT_QUOTES, 'UTF-8'); ?>"
@@ -264,7 +271,7 @@ if (!empty($fournisseurs_filtre)) {
                     </p>
                     <?php if (!admin_is_restricted_admin_account()): ?>
                         <a href="ajouter.php" class="btn-primary page-produits-empty__cta">
-                            <i class="fas fa-plus" aria-hidden="true"></i> Ajouter une pièce
+                            <i class="fas fa-search" aria-hidden="true"></i> Ajouter une pièce par son nom
                         </a>
                     <?php endif; ?>
                 </div>

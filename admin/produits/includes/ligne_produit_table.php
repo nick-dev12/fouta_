@@ -130,7 +130,12 @@ $nom_produit = (string) ($produit['nom'] ?? '');
     </td>
     <?php endif; ?>
     <td class="col-actions" data-label="Actions">
+        <?php if ($fpl_colonnes_piece): ?>
+        <?php // FPL natif ouvre la fiche par un bouton « Détail » en toutes lettres. ?>
+        <a href="<?php echo e($produits_path_prefix); ?>modifier.php?id=<?php echo $pid; ?>" class="fpl-btn-detail">Détail</a>
+        <?php else: ?>
         <a href="<?php echo e($produits_path_prefix); ?>modifier.php?id=<?php echo $pid; ?>" class="page-produits-table__action" title="Modifier"><i class="fas fa-edit" aria-hidden="true"></i></a>
+        <?php endif; ?>
         <a href="<?php echo e($produits_path_prefix); ?>supprimer.php?id=<?php echo $pid; ?>" class="page-produits-table__action page-produits-table__action--danger"
             data-delete-confirm="true"
             data-delete-name="<?php echo e($produit['nom'] ?? ''); ?>"

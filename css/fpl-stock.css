@@ -213,3 +213,53 @@
   opacity: .3;
   cursor: default;
 }
+
+/* --- Le bouton « Détail » et le choix du nombre de lignes ------------------ */
+.fpl-btn-detail {
+  display: inline-block;
+  padding: 5px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line, #DFE4EC);
+  background: var(--surface, #fff);
+  color: var(--navy, #10316F);
+  font-size: 13px;
+  text-decoration: none;
+  transition: border-color .12s ease, color .12s ease;
+}
+
+.fpl-btn-detail:hover {
+  border-color: var(--blue, #2957AE);
+  color: var(--blue, #2957AE);
+}
+
+.fpl-par-page {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--slate, #5C6A85);
+}
+
+.fpl-par-page__lien {
+  min-width: 30px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line, #DFE4EC);
+  color: var(--slate, #5C6A85);
+  text-align: center;
+  text-decoration: none;
+}
+
+.fpl-par-page__lien.is-active {
+  background: var(--navy, #10316F);
+  border-color: var(--navy, #10316F);
+  color: #fff;
+}
+
+.page-produits-section__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
