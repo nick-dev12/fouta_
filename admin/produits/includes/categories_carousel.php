@@ -37,13 +37,10 @@ $peut_gerer = !function_exists('admin_is_restricted_admin_account')
     || !admin_is_restricted_admin_account();
 ?>
 <section class="page-produits-categories" aria-label="Parcourir par catégorie">
+    <?php if ($dans_une_categorie): ?>
+    <?php // Comme dans FPL natif : pas de titre au-dessus du bandeau, seulement
+          // le fil d'Ariane qui dit où l'on se trouve. ?>
     <div class="page-produits-categories__head">
-        <h2 class="page-produits-categories__title">
-            <i class="fas fa-layer-group" aria-hidden="true"></i>
-            <?php echo $dans_une_categorie ? 'Rayons' : 'Catégories'; ?>
-        </h2>
-
-        <?php if ($dans_une_categorie): ?>
         <nav class="fpl-fil" aria-label="Fil d’Ariane">
             <a href="index.php">Pièces</a>
             <span class="fpl-fil__sep" aria-hidden="true">›</span>
@@ -55,10 +52,8 @@ $peut_gerer = !function_exists('admin_is_restricted_admin_account')
             <strong><?php echo e($categorie_courante_nom); ?></strong>
             <?php endif; ?>
         </nav>
-        <?php else: ?>
-        <a href="index.php" class="page-produits-categories__all is-active">Toutes</a>
-        <?php endif; ?>
     </div>
+    <?php endif; ?>
 
     <div class="page-produits-categories__track" tabindex="0">
         <?php if ($dans_une_categorie): ?>
@@ -121,11 +116,11 @@ $peut_gerer = !function_exists('admin_is_restricted_admin_account')
                 ? '../stock/index.php'
                 : '../categories/ajouter.php'; ?>"
             class="page-produits-cat-card fpl-cat-card--neuve"
-            title="<?php echo $dans_une_categorie ? 'Créer un rayon' : 'Créer une catégorie'; ?>">
+            title="<?php echo $dans_une_categorie ? 'Créer une sous-catégorie' : 'Créer une catégorie'; ?>">
             <span class="page-produits-cat-card__img page-produits-cat-card__img--ph" aria-hidden="true">
                 <i class="fas fa-plus"></i>
             </span>
-            <span class="page-produits-cat-card__name"><?php echo $dans_une_categorie ? 'Nouveau rayon' : 'Nouvelle catégorie'; ?></span>
+            <span class="page-produits-cat-card__name"><?php echo $dans_une_categorie ? 'Nouvelle sous-catégorie' : 'Nouvelle catégorie'; ?></span>
         </a>
         <?php endif; ?>
     </div>

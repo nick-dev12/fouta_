@@ -109,3 +109,13 @@
 .page-produits-cat-card.fpl-cat-card--neuve .page-produits-cat-card__name {
   color: var(--blue, #2957AE);
 }
+
+/* Le sous-titre du catalogue, comme dans FPL natif : une phrase qui dit quoi
+   faire, sous le titre et non au-dessus. */
+.fpl-sous-titre {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 15px;
+  color: var(--side-text, #C4D1E9);
+  margin: 6px 0 0;
+}

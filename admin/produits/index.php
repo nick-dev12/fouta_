@@ -135,8 +135,8 @@ if (!empty($fournisseurs_filtre)) {
     <div class="page-produits-admin">
         <div class="content-header dashboard-hero page-produits-hero">
             <div class="dashboard-hero-text">
-                <p class="dashboard-eyebrow">Magasin de pièces</p>
                 <h1 id="page-produits-title"><i class="fas fa-box" aria-hidden="true"></i> Catalogue des pièces</h1>
+                <p class="dashboard-eyebrow fpl-sous-titre">Ajoutez directement par le nom de la pièce, ou parcourez les catégories ci-dessous.</p>
                 <div class="page-produits-hero__actions">
                     <?php if (!admin_is_restricted_admin_account()): ?>
                         <a href="ajouter.php" class="btn-primary page-produits-hero__btn">
