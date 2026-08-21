@@ -97,6 +97,16 @@ $nom_produit = (string) ($produit['nom'] ?? '');
     </td>
     <td data-label="Produit">
         <span class="page-produits-table__nom"><?php echo e($nom_produit); ?></span>
+        <?php if ($fpl_colonnes_piece): ?>
+        <?php // FPL natif place le code de la pièce sous son nom, dans une
+              // pastille : c'est par lui qu'on la retrouve en rayon. ?>
+        <?php $fpl_code = trim((string) ($produit['identifiant_interne'] ?? '')); ?>
+        <?php if ($fpl_code !== ''): ?>
+        <div class="fpl-cell-sub"><span class="fpl-chip-code"><?php
+            echo e(function_exists('fpl_code_afficher') ? fpl_code_afficher($fpl_code) : $fpl_code);
+        ?></span></div>
+        <?php endif; ?>
+        <?php endif; ?>
         <?php if ($pcm_four !== ''): ?>
         <span class="page-produits-table__meta"><?php echo e($pcm_four); ?></span>
         <?php endif; ?>
@@ -131,11 +141,11 @@ $nom_produit = (string) ($produit['nom'] ?? '');
     <?php endif; ?>
     <td class="col-actions" data-label="Actions">
         <?php if ($fpl_colonnes_piece): ?>
-        <?php // FPL natif ouvre la fiche par un bouton « Détail » en toutes lettres. ?>
-        <a href="<?php echo e($produits_path_prefix); ?>modifier.php?id=<?php echo $pid; ?>" class="fpl-btn-detail">Détail</a>
-        <?php else: ?>
-        <a href="<?php echo e($produits_path_prefix); ?>modifier.php?id=<?php echo $pid; ?>" class="page-produits-table__action" title="Modifier"><i class="fas fa-edit" aria-hidden="true"></i></a>
+        <?php // FPL natif ouvre la fiche par un bouton « Détail » en toutes lettres.
+              // Il s'AJOUTE au crayon de ce dépôt, il ne le remplace pas. ?>
+        <a href="<?php echo e($produits_path_prefix); ?>modifier.php?id=<?php echo $pid; ?>" class="fpl-btn-detail"><i class="fas fa-eye" aria-hidden="true"></i> Détail</a>
         <?php endif; ?>
+        <a href="<?php echo e($produits_path_prefix); ?>modifier.php?id=<?php echo $pid; ?>" class="page-produits-table__action" title="Modifier"><i class="fas fa-edit" aria-hidden="true"></i></a>
         <a href="<?php echo e($produits_path_prefix); ?>supprimer.php?id=<?php echo $pid; ?>" class="page-produits-table__action page-produits-table__action--danger"
             data-delete-confirm="true"
             data-delete-name="<?php echo e($produit['nom'] ?? ''); ?>"

@@ -341,3 +341,56 @@
   gap: 12px;
   padding: 2px;
 }
+
+/* --- Le design des lignes du tableau, repris de FPL natif ------------------
+ * Références css/fpl.css : :409 (.chip-code), :444 (.cell-title/.cell-sub),
+ * :449 (.thumb), :458 (.row-actions), :489 (.btn-detail).
+ */
+
+/* Le code de la pièce, en pastille sous son nom. */
+.fpl-cell-sub {
+  margin-top: 2px;
+  font-size: 14px;
+  color: var(--slate, #5C6A85);
+}
+
+.fpl-chip-code {
+  display: inline-block;
+  font-family: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  font-size: 13.5px;
+  font-weight: 600;
+  background: var(--blue-tint, #EDF1F8);
+  color: var(--blue-600, #1D4590);
+  padding: 2px 7px;
+  border-radius: 6px;
+  letter-spacing: .02em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* La vignette : assez grande pour reconnaître la pièce, et en ENTIER —
+   une pièce rognée est une pièce méconnaissable. */
+.page-produits-table .page-produits-table__thumb,
+.page-produits-table .page-produits-table__thumb-btn {
+  width: 56px;
+  height: 56px;
+  border-radius: 6px;
+  object-fit: contain;
+  background: #fff;
+  border: 1px solid var(--line-soft, #EDF0F5);
+  padding: 2px;
+  color: var(--slate-soft, #8894A8);
+}
+
+/* Les boutons d'une ligne se centrent sous leur en-tête « Actions ». */
+.page-produits-table td.col-actions {
+  text-align: center;
+  white-space: nowrap;
+}
+
+.page-produits-table td.col-actions > * {
+  vertical-align: middle;
+}
+
+.fpl-btn-detail {
+  font-weight: 650;
+}
