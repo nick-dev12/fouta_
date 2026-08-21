@@ -52,6 +52,11 @@ $sous_cat_preselect = isset($_GET['sous_categorie_id']) ? (int) $_GET['sous_cate
 $has_ident_col = produits_has_column('identifiant_interne');
 $has_img_etiq_col = produits_has_column('image_etiquette_fpl');
 $has_marque_col = produits_has_column('marque_id');
+// Identité technique des pièces poids lourds (reprise de FPL natif)
+$has_ref_oem_col = produits_has_column('reference_oem');
+$has_nom_fourn_col = produits_has_column('nom_fournisseur');
+$has_position_col = produits_has_column('position_montage');
+$has_taille_col = produits_has_column('taille');
 $has_ref_fourn_col = produits_has_column('reference_fournisseur');
 require_once __DIR__ . '/../../models/model_marques.php';
 $marques_catalogue = ($has_marque_col && marques_table_ok()) ? get_all_marques_ordered_by_nom() : [];
@@ -179,6 +184,55 @@ $pf_custom_vals = [];
                                     <input type="text" id="reference_fournisseur" name="reference_fournisseur" maxlength="120"
                                         placeholder="Code ou réf. chez le fournisseur"
                                         value="<?php echo isset($_POST['reference_fournisseur']) ? htmlspecialchars((string) $_POST['reference_fournisseur'], ENT_QUOTES, 'UTF-8') : ''; ?>">
+                                </div>
+                                <?php endif; ?>
+                            </div>
+                            <?php endif; ?>
+                            <?php // --- Pièces poids lourds : identité technique (FPL) --- ?>
+                            <?php if ($has_ref_oem_col || $has_nom_fourn_col): ?>
+                            <div class="form-row">
+                                <?php if ($has_ref_oem_col): ?>
+                                <div class="form-group">
+                                    <label for="reference_oem">Référence OEM</label>
+                                    <input type="text" id="reference_oem" name="reference_oem" maxlength="120"
+                                        placeholder="Référence du constructeur"
+                                        value="<?php echo isset($_POST['reference_oem']) ? htmlspecialchars((string) $_POST['reference_oem'], ENT_QUOTES, 'UTF-8') : ''; ?>">
+                                    <small class="form-hint">La référence d'origine du camion, gravée sur la pièce.</small>
+                                </div>
+                                <?php endif; ?>
+                                <?php if ($has_nom_fourn_col): ?>
+                                <div class="form-group">
+                                    <label for="nom_fournisseur">Nom du fournisseur</label>
+                                    <input type="text" id="nom_fournisseur" name="nom_fournisseur" maxlength="150"
+                                        placeholder="Si absent de la liste ci-dessus"
+                                        value="<?php echo isset($_POST['nom_fournisseur']) ? htmlspecialchars((string) $_POST['nom_fournisseur'], ENT_QUOTES, 'UTF-8') : ''; ?>">
+                                    <small class="form-hint">À remplir seulement quand le fournisseur n'est pas au référentiel.</small>
+                                </div>
+                                <?php endif; ?>
+                            </div>
+                            <?php endif; ?>
+                            <?php if ($has_position_col || $has_taille_col): ?>
+                            <div class="form-row">
+                                <?php if ($has_position_col): ?>
+                                <div class="form-group">
+                                    <label for="position_montage">Côté de montage</label>
+                                    <select id="position_montage" name="position_montage">
+                                        <option value="">— Indifférent —</option>
+                                        <?php foreach (['gauche' => 'Gauche', 'droite' => 'Droite'] as $pv => $pl): ?>
+                                        <option value="<?php echo $pv; ?>" <?php echo (isset($_POST['position_montage']) && (string) $_POST['position_montage'] === $pv) ? 'selected' : ''; ?>>
+                                            <?php echo $pl; ?>
+                                        </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <small class="form-hint">Pour les pièces qui existent en paire (rétroviseurs, phares…).</small>
+                                </div>
+                                <?php endif; ?>
+                                <?php if ($has_taille_col): ?>
+                                <div class="form-group">
+                                    <label for="taille">Taille</label>
+                                    <input type="text" id="taille" name="taille" maxlength="120"
+                                        placeholder="Ex. 4PK1250, 24V, 80 mm"
+                                        value="<?php echo isset($_POST['taille']) ? htmlspecialchars((string) $_POST['taille'], ENT_QUOTES, 'UTF-8') : ''; ?>">
                                 </div>
                                 <?php endif; ?>
                             </div>

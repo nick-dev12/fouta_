@@ -479,6 +479,15 @@ function process_add_produit()
         if (produits_has_column('prix_achat')) {
             $data['prix_achat'] = $prix_achat;
         }
+        // Identité technique des pièces poids lourds (reprise de FPL natif)
+        if (produits_has_column('reference_oem')) {
+            $ref_oem = isset($_POST['reference_oem']) ? trim((string) $_POST['reference_oem']) : '';
+            $data['reference_oem'] = $ref_oem !== '' ? $ref_oem : null;
+        }
+        if (produits_has_column('position_montage')) {
+            $pos = isset($_POST['position_montage']) ? (string) $_POST['position_montage'] : '';
+            $data['position_montage'] = in_array($pos, ['gauche', 'droite'], true) ? $pos : null;
+        }
         if (produits_has_column('sous_categorie_id')) {
             $data['sous_categorie_id'] = $sous_categorie_id;
         }

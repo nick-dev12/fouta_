@@ -1861,6 +1861,19 @@ function create_produit($data)
             $nf = $data['nom_fournisseur'] ?? null;
             $params['nom_fournisseur'] = ($nf !== null && $nf !== '' && trim((string) $nf) !== '') ? trim((string) $nf) : null;
         }
+        // Identité technique des pièces poids lourds (reprise de FPL natif)
+        if (produits_has_column('reference_oem')) {
+            $cols .= ", reference_oem";
+            $vals .= ", :reference_oem";
+            $ro = $data['reference_oem'] ?? null;
+            $params['reference_oem'] = ($ro !== null && trim((string) $ro) !== '') ? trim((string) $ro) : null;
+        }
+        if (produits_has_column('position_montage')) {
+            $cols .= ", position_montage";
+            $vals .= ", :position_montage";
+            $pm = $data['position_montage'] ?? null;
+            $params['position_montage'] = in_array($pm, ['gauche', 'droite'], true) ? $pm : null;
+        }
         if (produits_has_column('admin_createur_id') && !empty($data['admin_createur_id'])) {
             $cols .= ", admin_createur_id";
             $vals .= ", :admin_createur_id";
