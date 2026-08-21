@@ -3,8 +3,8 @@
  * Bandeau horizontal des catégories — page liste des pièces
  *
  * Deux niveaux, comme dans FPL natif : tant qu'aucune catégorie n'est choisie,
- * on voit les catégories ; dès qu'on en ouvre une, le bandeau montre SES rayons
- * et un fil d'Ariane dit où l'on se trouve. Une carte « + » ferme la marche pour
+ * on voit les catégories ; dès qu'on en ouvre une, le bandeau montre SES
+ * sous-catégories, et un fil d'Ariane dit où l'on se trouve. Une carte « + » ferme la marche pour
  * créer sans quitter la page.
  *
  * Variables : $categories (array), $categorie_id (int), $upload_base (string),
@@ -32,7 +32,7 @@ if (!function_exists('e')) {
 // Répare à l'affichage les noms doublement encodés (2 catégories du siège).
 require_once __DIR__ . '/../../../includes/fpl_texte.php';
 
-// Au premier niveau on montre les catégories, au second les rayons.
+// Au premier niveau les catégories, au second les sous-catégories.
 $dans_une_categorie = ($categorie_id > 0);
 $cartes = $dans_une_categorie ? $sous_categories_bandeau : $categories;
 $peut_gerer = !function_exists('admin_is_restricted_admin_account')
@@ -57,7 +57,13 @@ $peut_gerer = !function_exists('admin_is_restricted_admin_account')
     </div>
     <?php endif; ?>
 
-    <div class="page-produits-categories__track" tabindex="0">
+    <?php // Les deux flèches encadrent le bandeau, comme dans FPL natif :
+          // celle de gauche avant les cartes, celle de droite après. ?>
+    <div class="fpl-rail-wrap">
+    <button type="button" class="fpl-rail-arrow" data-fpl-rail-dir="-1" title="Précédent" aria-label="Faire défiler vers la gauche">
+        <i class="fas fa-chevron-left" aria-hidden="true"></i>
+    </button>
+    <div class="page-produits-categories__track" id="fpl-rail" tabindex="0">
         <?php if ($dans_une_categorie): ?>
         <?php // Remonter d'un niveau : la première carte, toujours au même endroit. ?>
         <a href="index.php" class="page-produits-cat-card fpl-cat-card--retour" title="Revenir aux catégories">
@@ -126,4 +132,36 @@ $peut_gerer = !function_exists('admin_is_restricted_admin_account')
         </a>
         <?php endif; ?>
     </div>
+    <button type="button" class="fpl-rail-arrow" data-fpl-rail-dir="1" title="Suivant" aria-label="Faire défiler vers la droite">
+        <i class="fas fa-chevron-right" aria-hidden="true"></i>
+    </button>
+    </div>
 </section>
+<script>
+/* Défilement horizontal du bandeau — repris de FPL natif. Les flèches
+   s'éteignent quand on atteint l'un des deux bouts. */
+(function () {
+    var rail = document.getElementById('fpl-rail');
+    if (!rail) { return; }
+    var fleches = document.querySelectorAll('.fpl-rail-arrow');
+    fleches.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            rail.scrollBy({ left: parseInt(btn.dataset.fplRailDir, 10) * 340, behavior: 'smooth' });
+        });
+    });
+    function majFleches() {
+        var max = rail.scrollWidth - rail.clientWidth - 2;
+        var g = document.querySelector('.fpl-rail-arrow[data-fpl-rail-dir="-1"]');
+        var d = document.querySelector('.fpl-rail-arrow[data-fpl-rail-dir="1"]');
+        // Tolérance de quelques pixels : le bandeau a une marge interne, donc
+        // scrollLeft ne retombe jamais exactement à zéro.
+        if (g) { g.disabled = rail.scrollLeft <= 4; }
+        if (d) { d.disabled = rail.scrollLeft >= max - 4; }
+    }
+    rail.addEventListener('scroll', majFleches);
+    window.addEventListener('resize', majFleches);
+    majFleches();
+    // Une seconde passe une fois la mise en page stabilisée (polices, images).
+    window.addEventListener('load', majFleches);
+})();
+</script>

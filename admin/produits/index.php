@@ -276,7 +276,7 @@ if (!empty($fournisseurs_filtre)) {
                     <table class="page-produits-table">
                         <thead>
                             <tr>
-                                <th class="col-thumb">Visuel</th>
+                                <th class="col-thumb"></th>
                                 <th>Pièce</th>
                                 <th>Marque</th>
                                 <th>Modèle</th>
@@ -332,7 +332,7 @@ if (!empty($fournisseurs_filtre)) {
                     <table class="page-produits-table">
                         <thead>
                             <tr>
-                                <th class="col-thumb">Visuel</th>
+                                <th class="col-thumb"></th>
                                 <th>Pièce</th>
                                 <th>Marque</th>
                                 <th>Modèle</th>

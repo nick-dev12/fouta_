@@ -173,3 +173,43 @@
   font-size: 13px;
   color: var(--slate, #5C6A85);
 }
+
+/* --- Le bandeau et ses deux flèches, comme dans FPL natif ------------------
+ * La flèche de gauche avant les cartes, celle de droite après, toutes deux
+ * sur la même ligne. Elles s'éteignent quand on atteint un bout.
+ */
+.fpl-rail-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fpl-rail-wrap .page-produits-categories__track {
+  flex: 1;
+  min-width: 0;
+}
+
+.fpl-rail-arrow {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: var(--surface, #fff);
+  border: 1px solid var(--line, #DFE4EC);
+  color: var(--navy, #10316F);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: border-color .12s ease, color .12s ease, opacity .12s ease;
+}
+
+.fpl-rail-arrow:hover:not(:disabled) {
+  border-color: var(--blue, #2957AE);
+  color: var(--blue, #2957AE);
+}
+
+.fpl-rail-arrow:disabled {
+  opacity: .3;
+  cursor: default;
+}
