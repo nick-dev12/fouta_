@@ -878,4 +878,5 @@ $pf_custom_vals = [];
     <?php endif; ?>
     <?php require_once __DIR__ . '/../../includes/asset_version.php'; ?>
     <script src="/js/admin-emplacement-produit.js<?php echo asset_version_query(); ?>"></script>
+    <script src="/js/fpl-description-auto.js<?php echo asset_version_query(); ?>"></script>
     <?php include '../includes/footer.php'; ?>
