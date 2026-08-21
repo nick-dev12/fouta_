@@ -377,7 +377,7 @@ if (!defined('ADMIN_PRODUITS_LIVE_SEARCH_LIMIT')) {
  * @param array<string, int> $params
  * @return string
  */
-function admin_produits_liste_filtres_sql($categorie_id = 0, $marque_id = 0, $fournisseur_id = 0, array &$params = [], $sous_categorie_id = 0)
+function admin_produits_liste_filtres_sql($categorie_id = 0, $marque_id = 0, $fournisseur_id = 0, array &$params = [], $sous_categorie_id = 0, $du = '', $au = '')
 {
     $parts = [];
 
@@ -391,6 +391,17 @@ function admin_produits_liste_filtres_sql($categorie_id = 0, $marque_id = 0, $fo
     if ($sous_categorie_id > 0 && produits_has_column('sous_categorie_id')) {
         $parts[] = 'p.sous_categorie_id = :adm_sous_cat_id';
         $params['adm_sous_cat_id'] = $sous_categorie_id;
+    }
+
+    // Période d'ajout au catalogue (« Ajoutées du … au … »), reprise de FPL
+    // natif. Vides par défaut : les appels existants ne changent pas.
+    if ($du !== '' && $du !== null && produits_has_column('date_creation')) {
+        $parts[] = 'DATE(p.date_creation) >= :adm_du';
+        $params['adm_du'] = $du;
+    }
+    if ($au !== '' && $au !== null && produits_has_column('date_creation')) {
+        $parts[] = 'DATE(p.date_creation) <= :adm_au';
+        $params['adm_au'] = $au;
     }
 
     if ($marque_id > 0 && produits_has_column('marque_id')) {
@@ -474,7 +485,7 @@ function admin_produits_liste_recherche_sql($recherche, array &$params = [])
  * @param int $fournisseur_id
  * @return int
  */
-function count_admin_produits_liste($categorie_id = 0, $marque_id = 0, $fournisseur_id = 0, $sous_categorie_id = 0)
+function count_admin_produits_liste($categorie_id = 0, $marque_id = 0, $fournisseur_id = 0, $sous_categorie_id = 0, $du = '', $au = '')
 {
     global $db;
 
@@ -489,7 +500,7 @@ function count_admin_produits_liste($categorie_id = 0, $marque_id = 0, $fourniss
             $joinx
             WHERE 1=1
         ";
-        $sql .= admin_produits_liste_filtres_sql($categorie_id, $marque_id, $fournisseur_id, $params, $sous_categorie_id);
+        $sql .= admin_produits_liste_filtres_sql($categorie_id, $marque_id, $fournisseur_id, $params, $sous_categorie_id, $du, $au);
 
         $stmt = $db->prepare($sql);
         foreach ($params as $k => $v) {
@@ -514,7 +525,7 @@ function count_admin_produits_liste($categorie_id = 0, $marque_id = 0, $fourniss
  * @param int $limit
  * @return array<int, array<string, mixed>>
  */
-function get_admin_produits_liste_paginated($categorie_id = 0, $marque_id = 0, $fournisseur_id = 0, $offset = 0, $limit = 30, $sous_categorie_id = 0)
+function get_admin_produits_liste_paginated($categorie_id = 0, $marque_id = 0, $fournisseur_id = 0, $offset = 0, $limit = 30, $sous_categorie_id = 0, $du = '', $au = '')
 {
     global $db;
 
@@ -533,7 +544,7 @@ function get_admin_produits_liste_paginated($categorie_id = 0, $marque_id = 0, $
             $joinx
             WHERE 1=1
         ";
-        $sql .= admin_produits_liste_filtres_sql($categorie_id, $marque_id, $fournisseur_id, $params, $sous_categorie_id);
+        $sql .= admin_produits_liste_filtres_sql($categorie_id, $marque_id, $fournisseur_id, $params, $sous_categorie_id, $du, $au);
         $sql .= ' ORDER BY p.date_creation DESC LIMIT :adm_limit OFFSET :adm_offset';
 
         $stmt = $db->prepare($sql);
@@ -2736,7 +2747,7 @@ function get_admin_produits_export_catalogue($date_debut, $date_fin, $mode = 'to
             $joinx
             WHERE 1=1
         ";
-        $sql .= admin_produits_liste_filtres_sql($categorie_id, $marque_id, $fournisseur_id, $params, $sous_categorie_id);
+        $sql .= admin_produits_liste_filtres_sql($categorie_id, $marque_id, $fournisseur_id, $params, $sous_categorie_id, $du, $au);
         $sql .= admin_produits_export_periode_sql($mode, $date_debut, $date_fin, $params);
         $sql .= admin_produits_liste_recherche_sql($recherche, $params);
         $sql .= ' ORDER BY COALESCE(p.date_modification, p.date_creation) DESC, p.id DESC LIMIT :exp_offset, :exp_limit';
@@ -2836,7 +2847,7 @@ function count_admin_produits_export_catalogue($date_debut, $date_fin, $mode = '
             $joinx
             WHERE 1=1
         ";
-        $sql .= admin_produits_liste_filtres_sql($categorie_id, $marque_id, $fournisseur_id, $params, $sous_categorie_id);
+        $sql .= admin_produits_liste_filtres_sql($categorie_id, $marque_id, $fournisseur_id, $params, $sous_categorie_id, $du, $au);
         $sql .= admin_produits_export_periode_sql($mode, $date_debut, $date_fin, $params);
         $sql .= admin_produits_liste_recherche_sql($recherche, $params);
 

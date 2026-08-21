@@ -48,6 +48,18 @@ $categorie_id = isset($_GET['categorie_id']) ? (int) $_GET['categorie_id'] : 0;
 $marque_id = isset($_GET['marque_id']) ? (int) $_GET['marque_id'] : 0;
 $fournisseur_id = isset($_GET['fournisseur_id']) ? (int) $_GET['fournisseur_id'] : 0;
 
+/* Période d'ajout (« Ajoutées du … au … »), reprise de FPL natif. Une date qui
+ * n'a pas la forme attendue est ignorée plutôt que passée à la requête. */
+$fpl_date_valide = function ($v) {
+    $v = trim((string) $v);
+    if ($v === '' || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $v)) {
+        return '';
+    }
+    return checkdate((int) substr($v, 5, 2), (int) substr($v, 8, 2), (int) substr($v, 0, 4)) ? $v : '';
+};
+$du = $fpl_date_valide($_GET['du'] ?? '');
+$au = $fpl_date_valide($_GET['au'] ?? '');
+
 $categories = get_all_categories();
 
 /* --- Descendre dans un rayon (parcours FPL natif) --------------------------
@@ -105,13 +117,13 @@ if ($categorie_id <= 0) {
 // défaut 5, comme dans FPL natif (la constante du dépôt vaut 30).
 $per_page = fpl_par_page('catalogue_pieces', 5);
 $page = max(1, (int) ($_GET['page'] ?? 1));
-$total_produits = count_admin_produits_liste($categorie_id, $marque_id, $fournisseur_id, $sous_categorie_id);
+$total_produits = count_admin_produits_liste($categorie_id, $marque_id, $fournisseur_id, $sous_categorie_id, $du, $au);
 $total_pages = max(1, (int) ceil($total_produits / $per_page));
 if ($page > $total_pages) {
     $page = $total_pages;
 }
 $offset = ($page - 1) * $per_page;
-$produits = get_admin_produits_liste_paginated($categorie_id, $marque_id, $fournisseur_id, $offset, $per_page, $sous_categorie_id);
+$produits = get_admin_produits_liste_paginated($categorie_id, $marque_id, $fournisseur_id, $offset, $per_page, $sous_categorie_id, $du, $au);
 
 $pagination_query_base = [];
 if ($categorie_id > 0) {
@@ -119,6 +131,12 @@ if ($categorie_id > 0) {
 }
 if ($sous_categorie_id > 0) {
     $pagination_query_base['sous_categorie_id'] = $sous_categorie_id;
+}
+if ($du !== '') {
+    $pagination_query_base['du'] = $du;
+}
+if ($au !== '') {
+    $pagination_query_base['au'] = $au;
 }
 if ($marque_id > 0) {
     $pagination_query_base['marque_id'] = $marque_id;
@@ -220,7 +238,7 @@ if (!empty($fournisseurs_filtre)) {
                 <div class="admin-filter-field page-produits-filters__search">
                     <label for="recherche">Recherche</label>
                     <input type="text" id="recherche" name="recherche"
-                        placeholder="Nom, description… — filtre en direct"
+                        placeholder="Nom, référence FPL, réf. OEM, marque…"
                         value="<?php echo htmlspecialchars($recherche); ?>" autocomplete="off" inputmode="search"
                         data-produits-index-search>
                 </div>
@@ -261,15 +279,55 @@ if (!empty($fournisseurs_filtre)) {
                     </select>
                 </div>
                 <?php endif; ?>
+                <?php // La sous-catégorie et la période d'ajout, reprises de FPL natif.
+                      // Le rayon n'a de sens qu'une fois la catégorie choisie. ?>
+                <?php if (!empty($sous_categories_bandeau)): ?>
+                <div class="admin-filter-field">
+                    <label for="sous_categorie_id">Sous-catégorie</label>
+                    <select id="sous_categorie_id" name="sous_categorie_id">
+                        <option value="">Toutes</option>
+                        <?php foreach ($sous_categories_bandeau as $sc): ?>
+                        <option value="<?php echo (int) $sc['id']; ?>" <?php echo $sous_categorie_id === (int) $sc['id'] ? 'selected' : ''; ?>>
+                            <?php echo fpl_e($sc['nom']); ?>
+                        </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <?php endif; ?>
+                <div class="admin-filter-field fpl-champ-date">
+                    <label for="fpl-du">Ajoutées du</label>
+                    <input type="date" id="fpl-du" name="du" value="<?php echo htmlspecialchars($du, ENT_QUOTES, 'UTF-8'); ?>">
+                </div>
+                <div class="admin-filter-field fpl-champ-date">
+                    <label for="fpl-au">au</label>
+                    <input type="date" id="fpl-au" name="au" value="<?php echo htmlspecialchars($au, ENT_QUOTES, 'UTF-8'); ?>">
+                </div>
                 <div class="admin-filter-actions page-produits-filters__actions">
                     <button type="submit" class="btn-primary">
                         <i class="fas fa-search"></i> Filtrer
                     </button>
+                    <?php // L'export emporte les filtres en cours, comme dans FPL natif. ?>
+                    <a href="export-catalogue.php?<?php echo htmlspecialchars(http_build_query($pagination_query_base), ENT_QUOTES, 'UTF-8'); ?>" class="btn-secondary">
+                        <i class="fas fa-download"></i>&nbsp;Exporter
+                    </a>
                     <a href="index.php" class="btn-filter-reset">
                         <i class="fas fa-rotate-left"></i>&nbsp;Réinitialiser
                     </a>
                 </div>
             </form>
+
+            <?php // Les filtres actifs, rappelés en étiquettes — FPL natif les
+                  // affiche sous la barre avec un « Tout effacer ». ?>
+            <?php if ($recherche !== '' || $du !== '' || $au !== '' || $sous_categorie_id > 0): ?>
+            <div class="fpl-filtres-actifs">
+                <span class="fpl-filtres-actifs__label">Filtres :</span>
+                <?php if ($recherche !== ''): ?><span class="fpl-tag">« <?php echo htmlspecialchars($recherche, ENT_QUOTES, 'UTF-8'); ?> »</span><?php endif; ?>
+                <?php if ($sous_categorie_courante_nom !== ''): ?><span class="fpl-tag"><?php echo fpl_e($sous_categorie_courante_nom); ?></span><?php endif; ?>
+                <?php if ($du !== ''): ?><span class="fpl-tag">du <?php echo date('d/m/Y', strtotime($du)); ?></span><?php endif; ?>
+                <?php if ($au !== ''): ?><span class="fpl-tag">au <?php echo date('d/m/Y', strtotime($au)); ?></span><?php endif; ?>
+                <a href="index.php<?php echo $categorie_id > 0 ? '?categorie_id=' . (int) $categorie_id : ''; ?>" class="fpl-effacer">Tout effacer</a>
+            </div>
+            <?php endif; ?>
 
             <?php if ($total_produits === 0): ?>
                 <div class="empty-state page-produits-empty" id="page-produits-catalog-empty">
