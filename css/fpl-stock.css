@@ -119,3 +119,49 @@
   color: var(--side-text, #C4D1E9);
   margin: 6px 0 0;
 }
+
+/* --- Le catalogue prend toute la largeur, comme dans FPL natif -------------
+ * admin-produits-index.css borne la page à 1280 px et la centre, ce qui laisse
+ * le tableau flotter au milieu d'un grand vide sur un écran large. FPL natif
+ * n'a pas cette contrainte : le contenu suit la largeur disponible.
+ *
+ * Cette feuille-là se charge APRÈS la nôtre (fpl_css_link dans la page) : à
+ * spécificité égale elle gagnerait. On double donc la classe — deux fois le
+ * même sélecteur vaut deux points de spécificité, sans recourir à !important.
+ */
+.page-produits-admin.page-produits-admin {
+  max-width: none;
+  margin: 0;
+  padding: 0 24px 40px;
+}
+
+/* En-tête : le titre et sa phrase à gauche, les boutons repoussés à droite. */
+.page-produits-hero.page-produits-hero {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.page-produits-hero.page-produits-hero .dashboard-hero-text {
+  flex: 1 1 320px;
+  min-width: 0;
+}
+
+.page-produits-hero.page-produits-hero .page-produits-hero__actions {
+  margin-left: auto;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* admin-dashboard.css impose « flex: 1 1 auto » au bloc de titre avec quatre
+ * classes de spécificité. Plutôt que de surenchérir, on interdit simplement le
+ * retour à la ligne au-dessus de 900 px : le titre se rétrécit alors de
+ * lui-même (son flex-shrink vaut 1) et les boutons trouvent leur place à
+ * droite, sans qu'aucune règle existante n'ait à être battue. */
+@media (min-width: 900px) {
+  .page-produits-hero.page-produits-hero {
+    flex-wrap: nowrap;
+  }
+}
