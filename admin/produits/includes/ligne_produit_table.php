@@ -142,8 +142,10 @@ $nom_produit = (string) ($produit['nom'] ?? '');
     <td class="col-actions" data-label="Actions">
         <?php if ($fpl_colonnes_piece): ?>
         <?php // FPL natif ouvre la fiche par un bouton « Détail » en toutes lettres.
-              // Il s'AJOUTE au crayon de ce dépôt, il ne le remplace pas. ?>
-        <a href="<?php echo e($produits_path_prefix); ?>modifier.php?id=<?php echo $pid; ?>" class="fpl-btn-detail"><i class="fas fa-eye" aria-hidden="true"></i> Détail</a>
+              // Il s'AJOUTE au crayon de ce dépôt, il ne le remplace pas.
+              // Il mène à LA FICHE — la même adresse que le clic sur la ligne —
+              // et non plus au formulaire de modification, qui reste au crayon. ?>
+        <a href="<?php echo e($detail_href); ?>" class="fpl-btn-detail"><i class="fas fa-eye" aria-hidden="true"></i> Détail</a>
         <?php endif; ?>
         <a href="<?php echo e($produits_path_prefix); ?>modifier.php?id=<?php echo $pid; ?>" class="page-produits-table__action" title="Modifier"><i class="fas fa-edit" aria-hidden="true"></i></a>
         <a href="<?php echo e($produits_path_prefix); ?>supprimer.php?id=<?php echo $pid; ?>" class="page-produits-table__action page-produits-table__action--danger"

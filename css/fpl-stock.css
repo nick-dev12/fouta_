@@ -614,3 +614,26 @@ body.fpl-catalogue .admin-topbar__search {
   white-space: nowrap;
   color: var(--slate, #5C6A85);
 }
+
+/* --- LES ACTIONS DE LA FICHE PIÈCE ---------------------------------------
+ * Elles se rangent en haut à droite de l'en-tête, comme les actions du
+ * catalogue. Sur téléphone la colonne se déplie et les deux boutons prennent
+ * toute la largeur, l'un sous l'autre.
+ */
+.fpl-fiche-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 720px) {
+  .fpl-fiche-actions {
+    width: 100%;
+  }
+
+  .fpl-fiche-actions > a {
+    flex: 1 1 100%;
+    justify-content: center;
+  }
+}

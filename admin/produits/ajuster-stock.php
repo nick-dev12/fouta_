@@ -257,9 +257,19 @@ $fiche_statut = pf_champ_visible('statut') ? trim((string) ($produit['statut'] ?
                             <?php endif; ?>
                         </p>
                     </div>
-                    <a href="index.php" class="btn-back page-ajuster-stock-back page-ajuster-stock-hero__back">
-                        <i class="fas fa-arrow-left" aria-hidden="true"></i> Retour à la liste
-                    </a>
+                    <?php // LES ACTIONS DE LA FICHE. Chez FPL natif elles ferment la colonne
+                          // d'identité ; ici la maison range les actions de page en haut à
+                          // droite, comme au catalogue — on suit la maison.
+                          // « Modifier » n'était atteignable que par le lien « Définir la
+                          // position », et seulement quand la position manquait. ?>
+                    <div class="fpl-fiche-actions">
+                        <a href="modifier.php?id=<?php echo $produit_id; ?>" class="btn-primary page-ajuster-stock-hero__btn">
+                            <i class="fas fa-edit" aria-hidden="true"></i> Modifier la pièce
+                        </a>
+                        <a href="index.php" class="btn-back page-ajuster-stock-back page-ajuster-stock-hero__back">
+                            <i class="fas fa-arrow-left" aria-hidden="true"></i> Retour à la liste
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
