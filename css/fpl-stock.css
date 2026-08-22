@@ -513,7 +513,7 @@ body.fpl-catalogue .admin-topbar__search {
 
 /* Une référence se lit chiffre à chiffre : chasse fixe, jamais de ligature. */
 .fpl-fait__mono {
-  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-family: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
   font-size: 14px;
   letter-spacing: 0.02em;
 }
@@ -549,4 +549,43 @@ body.fpl-catalogue .admin-topbar__search {
   padding-top: var(--s4);
   border-top: 1px solid var(--line-soft);
   max-width: 68ch;
+}
+
+/* --- LE TITRE DE LA FICHE PIÈCE ------------------------------------------
+ * Chez FPL natif (.fiche-title), le titre de la fiche est le NOM de la pièce :
+ * 26 px, outremer, resserré. La référence et le statut se posent dessous,
+ * sur la ligne de sous-titre.
+ */
+/* La spécificité de la maison est .content-header.dashboard-hero h1 (0,2,1) :
+ * on la reprend et on y ajoute la classe, sans aucun !important.
+ * La taille reste fluide comme partout ailleurs, mais son plancher monte à
+ * 20 px et son plafond est le 26 px de FPL natif : le titre d’une fiche ne
+ * doit jamais rétrécir au point de se confondre avec un sous-titre.
+ * La graisse et la couleur ne sont PAS redéclarées : fpl-admin-overrides.css
+ * impose 650 et l’outremer à TOUS les titres de page depuis la refonte du
+ * 20/08. On ne rouvre pas ce débat pour une fiche — 650 est la graisse de la
+ * maison, et 50 unités de plus ne se voient pas à 26 px. */
+.content-header.dashboard-hero h1.fpl-fiche-titre,
+.fpl-fiche-titre {
+  font-size: clamp(20px, 2.2vw, 26px);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.page-ajuster-stock-hero__intro .fpl-chip-code {
+  vertical-align: middle;
+}
+
+/* Une pièce retirée de la vente le dit ici, en ambre : c'est un état, pas une
+ * alerte — le rouge reste réservé à la rupture de stock. */
+.fpl-fiche-statut {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 600;
+  background: var(--warn-bg, #F8EFDC);
+  color: var(--warn, #8F6212);
+  vertical-align: middle;
 }

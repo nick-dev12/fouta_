@@ -193,6 +193,20 @@ $pdf_barcode_href = 'telecharger-code-pdf.php?id=' . $produit_id . '&type=barcod
 $pdf_qrcode_href = 'telecharger-code-pdf.php?id=' . $produit_id . '&type=qrcode';
 $can_pdf_barcode = ($barcode_url !== '' && !empty($produit['identifiant_interne']));
 $can_pdf_qrcode = ($stock_info_url !== '');
+
+// LA FICHE PORTE LE NOM DE LA PIÈCE — comme chez FPL natif, où le titre de
+// admin/piece.php est le nom de la pièce et non celui du module. De quoi
+// titrer la page : le rayon d'où l'on vient, le code, le statut.
+require_once __DIR__ . '/../../models/model_produit_fiche.php';
+$fiche_nom = trim((string) ($produit['nom'] ?? ''));
+$fiche_categorie_id = (int) ($produit['categorie_id'] ?? 0);
+$fiche_categorie_nom = trim((string) ($produit['categorie_nom'] ?? ''));
+$fiche_sous_categorie_id = (int) ($produit['sous_categorie_id'] ?? 0);
+$fiche_sous_categorie_nom = pf_champ_visible('sous_categorie_id')
+    ? produit_fiche_sous_categorie_nom($fiche_sous_categorie_id) : '';
+$fiche_code = pf_champ_visible('identifiant_interne')
+    ? trim((string) ($produit['identifiant_interne'] ?? '')) : '';
+$fiche_statut = pf_champ_visible('statut') ? trim((string) ($produit['statut'] ?? '')) : '';
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -201,7 +215,7 @@ $can_pdf_qrcode = ($stock_info_url !== '');
     <?php include __DIR__ . '/../../includes/favicon.php'; ?>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ajuster le stock - <?php echo htmlspecialchars($produit['nom']); ?> - Administration</title>
+    <title><?php echo fpl_e($fiche_nom); ?> - Fiche pièce - Administration</title>
     <?php require_once __DIR__ . '/../../includes/asset_version.php'; ?>
 <?php include __DIR__ . '/..//includes/fpl_head.php'; ?>
     <?php fpl_css_link('admin-ajuster-stock.css'); ?>
@@ -216,12 +230,31 @@ $can_pdf_qrcode = ($stock_info_url !== '');
     <div class="page-ajuster-stock">
         <div class="content-header dashboard-hero page-ajuster-stock-hero page-ajuster-stock-hero--compact">
             <div class="dashboard-hero-text page-ajuster-stock-hero__inner">
-                <p class="dashboard-eyebrow">Stock &amp; inventaire</p>
+                <?php // LE FIL D'ARIANE — le même qu'au catalogue : il dit de quel rayon
+                      // la pièce vient, et il y ramène d'un clic. ?>
+                <nav class="dashboard-eyebrow fpl-fil" aria-label="Fil d’Ariane">
+                    <a href="index.php">Pièces</a>
+                    <?php if ($fiche_categorie_nom !== ''): ?>
+                    <span class="fpl-fil__sep" aria-hidden="true">›</span>
+                    <a href="index.php?categorie_id=<?php echo $fiche_categorie_id; ?>"><?php echo fpl_e($fiche_categorie_nom); ?></a>
+                    <?php endif; ?>
+                    <?php if ($fiche_sous_categorie_nom !== ''): ?>
+                    <span class="fpl-fil__sep" aria-hidden="true">›</span>
+                    <a href="index.php?categorie_id=<?php echo $fiche_categorie_id; ?>&amp;sous_categorie_id=<?php echo $fiche_sous_categorie_id; ?>"><?php echo fpl_e($fiche_sous_categorie_nom); ?></a>
+                    <?php endif; ?>
+                </nav>
                 <div class="page-ajuster-stock-hero__row">
                     <div class="page-ajuster-stock-hero__titles">
-                        <h1 id="page-ajuster-stock-title"><i class="fas fa-boxes-stacked" aria-hidden="true"></i> Ajuster le stock</h1>
+                        <?php // Le titre de la fiche, c'est LA PIÈCE. « Ajuster le stock » était
+                              // le nom du module : il ne disait pas de quoi la page parle. ?>
+                        <h1 id="page-ajuster-stock-title" class="fpl-fiche-titre"><?php echo fpl_e($fiche_nom); ?></h1>
                         <p class="dashboard-subtitle page-ajuster-stock-hero__intro">
-                            Produit <strong class="page-ajuster-stock-hero__nom"><?php echo htmlspecialchars($produit['nom']); ?></strong>
+                            <?php if ($fiche_code !== ''): ?>
+                            <span class="fpl-chip-code"><?php echo fpl_e(fpl_code_afficher($fiche_code)); ?></span>
+                            <?php endif; ?>
+                            <?php if ($fiche_statut !== '' && $fiche_statut !== 'actif'): ?>
+                            <span class="fpl-fiche-statut"><?php echo $fiche_statut === 'inactif' ? 'Inactive' : fpl_e(ucfirst($fiche_statut)); ?></span>
+                            <?php endif; ?>
                         </p>
                     </div>
                     <a href="index.php" class="btn-back page-ajuster-stock-back page-ajuster-stock-hero__back">
@@ -290,7 +323,6 @@ $can_pdf_qrcode = ($stock_info_url !== '');
         $galerie_urls = ['/image/produit1.jpg'];
     }
     // Tout ce que l'on sait de la pièce, rassemblé une fois pour toutes.
-    require_once __DIR__ . '/../../models/model_produit_fiche.php';
     $fpl_faits = produit_fiche_faits($produit);
     ?>
 
@@ -332,18 +364,9 @@ $can_pdf_qrcode = ($stock_info_url !== '');
         </div>
 
         <div class="pas-showcase__panel">
-            <div class="pas-showcase__head">
-                <h2 class="pas-showcase__title">
-                    <span class="pas-preview-nom"><?php echo htmlspecialchars($produit['nom']); ?></span>
-                    <?php if ($prod_marque !== ''): ?>
-                    <span class="pas-preview-sep">·</span>
-                    <span class="pas-preview-marque"><?php echo htmlspecialchars($prod_marque); ?></span>
-                    <?php endif; ?>
-                </h2>
-                <?php if ($meta_ref !== ''): ?>
-                <p class="pas-showcase__ref"><i class="fas fa-barcode" aria-hidden="true"></i> <?php echo htmlspecialchars($meta_ref); ?></p>
-                <?php endif; ?>
-            </div>
+<?php // Le nom de la pièce et sa référence titrent désormais la page, juste
+      // au-dessus : les répéter ici en ferait un doublon. La marque, elle,
+      // n'est pas perdue — elle est devenue le fait « Véhicule » de la grille. ?>
 
             <?php if ($show_prix_vente): ?>
             <div class="pas-price-card">
