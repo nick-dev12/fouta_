@@ -474,3 +474,79 @@
 body.fpl-catalogue .admin-topbar__search {
   display: none;
 }
+
+/* --- LA GRILLE DES FAITS DE LA FICHE PIÈCE -------------------------------
+ * Reprise de « .fiche-facts » de FPL natif (admin/piece.php). Chaque fait est
+ * une colonne : intitulé en petites capitales grises, valeur dessous en
+ * corps de lecture. La grille se remplit toute seule — deux ou trois colonnes
+ * selon la largeur, une seule sur téléphone.
+ */
+.fpl-fiche-faits {
+  display: grid;
+  gap: var(--s3) var(--s6);
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  margin: 0;
+}
+
+.fpl-fait {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.fpl-fait__k {
+  color: var(--slate);
+  font-size: 12.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.fpl-fait__v {
+  color: var(--ink);
+  font-weight: 550;
+  font-size: 15px;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+/* Une référence se lit chiffre à chiffre : chasse fixe, jamais de ligature. */
+.fpl-fait__mono {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 14px;
+  letter-spacing: 0.02em;
+}
+
+.fpl-fait__sep {
+  color: var(--slate);
+  opacity: 0.55;
+  font-weight: 400;
+}
+
+.fpl-fait__couleurs {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* La pastille dit la couleur avant que le mot ne soit lu. */
+.fpl-fait__pastille {
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  border-radius: 3px;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  margin-right: 5px;
+  vertical-align: -1px;
+}
+
+/* La description descend SOUS les faits, séparée par un filet : elle raconte,
+ * elle n'identifie pas. */
+.fpl-fiche-infos .fpl-fiche-desc {
+  margin-top: var(--s4);
+  padding-top: var(--s4);
+  border-top: 1px solid var(--line-soft);
+  max-width: 68ch;
+}

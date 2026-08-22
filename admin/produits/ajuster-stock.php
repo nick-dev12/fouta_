@@ -289,6 +289,9 @@ $can_pdf_qrcode = ($stock_info_url !== '');
     if (empty($galerie_urls)) {
         $galerie_urls = ['/image/produit1.jpg'];
     }
+    // Tout ce que l'on sait de la pièce, rassemblé une fois pour toutes.
+    require_once __DIR__ . '/../../models/model_produit_fiche.php';
+    $fpl_faits = produit_fiche_faits($produit);
     ?>
 
     <div class="pas-showcase">
@@ -357,27 +360,29 @@ $can_pdf_qrcode = ($stock_info_url !== '');
             </div>
             <?php endif; ?>
 
-            <?php if ($prod_description !== '' || $prod_fournisseur !== '' || $prod_ref_fournisseur !== ''): ?>
-            <div class="pas-info-card">
+            <?php // LA GRILLE DES FAITS, reprise de la fiche pièce de FPL natif : tout ce
+                  // que l'on sait de la pièce, en colonnes, chaque fait sous son intitulé.
+                  // La carte « Informations » n'en montrait que deux ; la liste est
+                  // construite par produit_fiche_faits() et n'affiche que ce qui existe. ?>
+            <?php if ($fpl_faits !== [] || $prod_description !== ''): ?>
+            <div class="pas-info-card fpl-fiche-infos">
                 <h3 class="pas-info-card__title"><i class="fas fa-circle-info" aria-hidden="true"></i> Informations</h3>
-                <?php if ($prod_description !== ''): ?>
-                <p class="pas-preview-desc"><?php echo htmlspecialchars($prod_description); ?></p>
+                <?php if ($fpl_faits !== []): ?>
+                <div class="fpl-fiche-faits">
+                    <?php foreach ($fpl_faits as $fpl_fait): ?>
+                    <div class="fpl-fait">
+                        <span class="fpl-fait__k"><?php echo htmlspecialchars($fpl_fait['k'], ENT_QUOTES, 'UTF-8'); ?></span>
+                        <span class="fpl-fait__v"><?php echo $fpl_fait['v']; ?></span>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
                 <?php endif; ?>
-                <?php if ($prod_fournisseur !== '' || $prod_ref_fournisseur !== ''): ?>
-                <dl class="pas-info-card__list">
-                    <?php if ($prod_fournisseur !== ''): ?>
-                    <div class="pas-info-card__row">
-                        <dt>Fournisseur</dt>
-                        <dd><?php echo htmlspecialchars($prod_fournisseur); ?></dd>
-                    </div>
-                    <?php endif; ?>
-                    <?php if ($prod_ref_fournisseur !== ''): ?>
-                    <div class="pas-info-card__row">
-                        <dt>Réf. fournisseur</dt>
-                        <dd><?php echo htmlspecialchars($prod_ref_fournisseur); ?></dd>
-                    </div>
-                    <?php endif; ?>
-                </dl>
+                <?php if ($prod_description !== ''): ?>
+                <?php // La description auto tient sur plusieurs lignes (« Référence OEM… »
+                      // puis « Modèle… ») : on les respecte au lieu de tout coller. ?>
+                <p class="pas-preview-desc fpl-fiche-desc"><?php
+                    echo nl2br(htmlspecialchars($prod_description, ENT_QUOTES, 'UTF-8'));
+                ?></p>
                 <?php endif; ?>
             </div>
             <?php endif; ?>
