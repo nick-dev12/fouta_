@@ -589,3 +589,28 @@ body.fpl-catalogue .admin-topbar__search {
   color: var(--warn, #8F6212);
   vertical-align: middle;
 }
+
+/* --- LE BADGE « TRANSFERT » DE L'HISTORIQUE ------------------------------
+ * La table stock_mouvements connaît quatre types ; la fiche n'en habillait
+ * que trois, et le transfert sortait sans badge. Le bleu lui revient : chez
+ * FPL natif, un transfert d'emplacement s'écrit en --blue-600, le rouge
+ * restant à la sortie et le vert à l'entrée.
+ */
+.page-ajuster-stock .badge-transfert {
+  display: inline-block;
+  padding: 5px 11px;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  background: var(--blue-tint, #EDF1F8);
+  color: var(--blue-600, #1D4590);
+}
+
+/* La colonne « Par » ne doit pas voler la place aux chiffres. */
+.mouvements-produit-table td:last-child,
+.mouvements-produit-table th:last-child {
+  white-space: nowrap;
+  color: var(--slate, #5C6A85);
+}

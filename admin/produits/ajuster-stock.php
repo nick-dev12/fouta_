@@ -696,6 +696,9 @@ $fiche_statut = pf_champ_visible('statut') ? trim((string) ($produit['statut'] ?
                             <th scope="col">Après</th>
                             <th scope="col">Référence</th>
                             <th scope="col">Notes</th>
+                            <?php // « Par » : la colonne de FPL natif. Un mouvement de stock sans
+                                  // son auteur n'est pas une trace, c'est une rumeur. ?>
+                            <th scope="col">Par</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -705,16 +708,28 @@ $fiche_statut = pf_champ_visible('statut') ? trim((string) ($produit['statut'] ?
                                 <td>
                                     <?php
                                     $badge = 'badge-' . $m['type'];
-                                    $label = $m['type'] === 'entree' ? 'Entrée' : ($m['type'] === 'sortie' ? 'Sortie' : 'Inventaire');
+                                    // Les QUATRE types de la table, chacun sous son nom : un
+                                    // transfert s'affichait « Inventaire », faute d'un cas à lui.
+                                    $labels = [
+                                        'entree' => 'Entrée',
+                                        'sortie' => 'Sortie',
+                                        'inventaire' => 'Inventaire',
+                                        'transfert' => 'Transfert',
+                                    ];
+                                    $label = $labels[$m['type']] ?? ucfirst((string) $m['type']);
                                     ?>
                                     <span class="<?php echo $badge; ?>"><?php echo $label; ?></span>
                                 </td>
                                 <td><?php echo (int) $m['quantite']; ?></td>
                                 <td><?php echo $m['quantite_avant'] !== null ? (int) $m['quantite_avant'] : '-'; ?></td>
                                 <td><?php echo $m['quantite_apres'] !== null ? (int) $m['quantite_apres'] : '-'; ?></td>
-                                <td><?php echo htmlspecialchars($m['reference_numero'] ?? ($m['reference_type'] ?? '-')); ?>
+                                <td><?php echo fpl_e($m['reference_numero'] ?? ($m['reference_type'] ?? '-')); ?>
                                 </td>
-                                <td><?php echo htmlspecialchars($m['notes'] ?? ''); ?></td>
+                                <td><?php echo fpl_e($m['notes'] ?? ''); ?></td>
+                                <td><?php
+                                    $auteur = produit_fiche_admin_nom($m['admin_id'] ?? 0);
+                                    echo $auteur !== '' ? fpl_e($auteur) : '—';
+                                ?></td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
@@ -722,9 +737,18 @@ $fiche_statut = pf_champ_visible('statut') ? trim((string) ($produit['statut'] ?
             </div>
             <div class="mouvements-produit-cards">
                 <?php foreach ($mouvements as $m):
+                    // La version téléphone de l'historique : mêmes libellés, même
+                    // réparation d'affichage et même auteur que le tableau.
                     $badge = 'badge-' . $m['type'];
-                    $label = $m['type'] === 'entree' ? 'Entrée' : ($m['type'] === 'sortie' ? 'Sortie' : 'Inventaire');
-                    $ref = htmlspecialchars($m['reference_numero'] ?? ($m['reference_type'] ?? '-'));
+                    $labels = [
+                        'entree' => 'Entrée',
+                        'sortie' => 'Sortie',
+                        'inventaire' => 'Inventaire',
+                        'transfert' => 'Transfert',
+                    ];
+                    $label = $labels[$m['type']] ?? ucfirst((string) $m['type']);
+                    $ref = fpl_e($m['reference_numero'] ?? ($m['reference_type'] ?? '-'));
+                    $auteur_carte = produit_fiche_admin_nom($m['admin_id'] ?? 0);
                 ?>
                 <div class="mouvement-produit-card">
                     <div class="mouvement-produit-card-header">
@@ -748,9 +772,15 @@ $fiche_statut = pf_champ_visible('statut') ? trim((string) ($produit['statut'] ?
                             <span class="label">Référence</span>
                             <span class="value"><?php echo $ref; ?></span>
                         </div>
+                        <?php if ($auteur_carte !== ''): ?>
+                        <div class="mouvement-produit-card-row">
+                            <span class="label">Par</span>
+                            <span class="value"><?php echo fpl_e($auteur_carte); ?></span>
+                        </div>
+                        <?php endif; ?>
                     </div>
                     <?php if (!empty($m['notes'])): ?>
-                    <div class="mouvement-produit-card-notes"><?php echo htmlspecialchars($m['notes']); ?></div>
+                    <div class="mouvement-produit-card-notes"><?php echo fpl_e($m['notes']); ?></div>
                     <?php endif; ?>
                 </div>
                 <?php endforeach; ?>

@@ -27,8 +27,17 @@ if (!function_exists('fpl_texte')) {
             return $s;
         }
 
-        // « Ã » en octets : la signature d'un texte encodé deux fois.
-        if (strpos($s, "\xC3\x83") === false && strpos($s, "\xC3\x82") === false) {
+        // Les signatures d'un texte encodé deux fois, en octets :
+        //   « Ã » et « Â »  — une lettre accentuée relue en latin ;
+        //   « â » SUIVI d'un caractère de la plage E2 (« â€ », « â† ») — une
+        //   apostrophe typographique ou une flèche relues de la même façon.
+        //
+        // Le « â » SEUL ne compte pas : c'est une lettre française (câble,
+        // âge, bâche). C'est sa SUITE qui trahit le double encodage — aucun
+        // mot ne fait suivre un â d'un € ou d'un †.
+        if (strpos($s, "\xC3\x83") === false
+            && strpos($s, "\xC3\x82") === false
+            && strpos($s, "\xC3\xA2\xE2") === false) {
             return $s;
         }
 
@@ -44,7 +53,7 @@ if (!function_exists('fpl_texte')) {
         if (!mb_check_encoding($repare, 'UTF-8')) {
             return $s;
         }
-        if (strpos($repare, "\xC3\x83") !== false) {
+        if (strpos($repare, "\xC3\x83") !== false || strpos($repare, "\xC3\xA2\xE2") !== false) {
             return $s;
         }
 
