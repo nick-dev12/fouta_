@@ -12,7 +12,9 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
 require_once __DIR__ . '/../includes/require_access.php';
 require_once __DIR__ . '/../../includes/admin_permissions.php';
 
-if (!admin_can_gestion_stock_etendue()) {
+/* Le rayonniste batit et corrige la structure (24/08) - comme le
+ * stock.entrepot_configurer que le meme role porte chez FPL natif. */
+if (!admin_can_gestion_stock()) {
     header('Location: ../dashboard.php');
     exit;
 }

@@ -189,13 +189,30 @@ function entrepot_hierarchie_def_slug_depuis_label($label)
     if ($label === '') {
         return '';
     }
+    /* MINUSCULE D'ABORD. Sinon le [^a-z0-9] plus bas prend chaque MAJUSCULE
+     * pour un séparateur et l'ampute : « Position » devenait « osition »
+     * (le « P » remplacé par « _ » puis rogné). Passer en minuscule avant
+     * iconv évite en prime le tic Windows où « É » ressort en « 'E ». */
+    $label = function_exists('mb_strtolower') ? mb_strtolower($label, 'UTF-8') : strtolower($label);
+    /* Table d'accents DÉTERMINISTE — l'iconv TRANSLIT de Windows glisse des
+     * caractères parasites (« è » ressort « e` »), d'où des slugs à trous
+     * (« étagère » → « etag_ere »). On mappe à la main, iconv en dernier
+     * recours pour l'exotique restant. */
+    $label = strtr($label, [
+        'à' => 'a', 'â' => 'a', 'ä' => 'a', 'á' => 'a', 'ã' => 'a', 'å' => 'a',
+        'ç' => 'c', 'é' => 'e', 'è' => 'e', 'ê' => 'e', 'ë' => 'e',
+        'î' => 'i', 'ï' => 'i', 'í' => 'i', 'ì' => 'i',
+        'ô' => 'o', 'ö' => 'o', 'ó' => 'o', 'ò' => 'o', 'õ' => 'o',
+        'ù' => 'u', 'û' => 'u', 'ü' => 'u', 'ú' => 'u',
+        'ñ' => 'n', 'ý' => 'y', 'ÿ' => 'y', 'œ' => 'oe', 'æ' => 'ae',
+    ]);
     if (function_exists('iconv')) {
         $ascii = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $label);
-        if ($ascii !== false) {
+        if ($ascii !== false && $ascii !== '') {
             $label = $ascii;
         }
     }
-    $slug = strtolower(preg_replace('/[^a-z0-9]+/', '_', $label));
+    $slug = preg_replace('/[^a-z0-9]+/', '_', $label);
     $slug = trim($slug, '_');
     if ($slug === '') {
         $slug = 'niveau';
@@ -710,27 +727,42 @@ function entrepot_noeud_etiquette_libelle($noeud_id)
 
     $num_etiq = max(1, (int) ($noeud_etiq['numero'] ?? 1));
     $segment_lie = '';
+    $lie_trouve = false;
 
-    // Nom du champ / nœud lié sur le chemin (pas le numéro seul).
+    // Nom du champ / nœud lié sur le chemin (pas le numéro seul) — PUIS les
+    // niveaux INTERMÉDIAIRES entre le lié et l'étiquette. Sans eux, deux
+    // barres de deux étagères d'un même rayon sortaient le même libellé
+    // (mesuré le 25/08 : 71 collisions sur 272 barres, ex. B15B-02 ×3).
+    // Avec eux, le libellé encode tout le chemin : B15BE2-02 est unique.
     if ($lie_type === 'niveau' && $lie_niveau_id > 0) {
         foreach ($chemin as $n) {
             $nid = (int) ($n['niveau_id'] ?? 0);
             if ($nid === $etiq_niveau_id) {
                 break;
             }
-            if ($nid === $lie_niveau_id) {
+            if (!$lie_trouve && $nid === $lie_niveau_id) {
+                $lie_trouve = true;
                 $segment_lie = entrepot_noeud_etiquette_segment_lie(
                     (string) ($n['nom'] ?? ''),
                     (int) ($n['numero'] ?? 1)
                 );
-                break;
+                continue;
             }
+            if ($lie_trouve) {
+                $segment_lie .= entrepot_noeud_etiquette_segment_lie(
+                    (string) ($n['nom'] ?? ''),
+                    (int) ($n['numero'] ?? 1)
+                );
+            }
+        }
+        if (strlen($segment_lie) > 20) {
+            $segment_lie = substr($segment_lie, 0, 20);
         }
     }
 
-    // Format : {code_abrégé}[{nom_lie}]-{n°_étiquette}
+    // Format : {code_abrégé}[{nom_lie}{intermédiaires}]-{n°_étiquette}
     // — lié à Niveau (étage) : C-01
-    // — lié à un autre niveau : CA1-01 (nom du nœud lié)
+    // — lié à un autre niveau : AR1E1-01 (rayon PUIS étagère, jusqu'à la barre)
     if ($lie_type === 'niveau' && $segment_lie !== '') {
         return sprintf('%s%s-%02d', $code, $segment_lie, $num_etiq);
     }
@@ -1380,6 +1412,14 @@ function entrepot_noeud_chemin_libelle($noeud_id)
     if ($noeud_id <= 0 || !entrepot_hierarchie_libre_schema_ok()) {
         return '';
     }
+    /* Le chemin d'un nœud est déterministe le temps d'une requête HTTP : on le
+     * mémorise. Sans ça, les listes qui l'affichent (rapport du jour, transferts,
+     * structure, étiquettes…) ré-remontaient l'arbre — ~profondeur+2 requêtes —
+     * une fois PAR LIGNE. Un même nœud et ses ancêtres reviennent partout. */
+    static $cache = [];
+    if (isset($cache[$noeud_id])) {
+        return $cache[$noeud_id];
+    }
     $parts = [];
     $current = $noeud_id;
     $guard = 0;
@@ -1431,7 +1471,7 @@ function entrepot_noeud_chemin_libelle($noeud_id)
         return '';
     }
 
-    return implode(' · ', array_filter($parts));
+    return $cache[$noeud_id] = implode(' · ', array_filter($parts));
 }
 
 /**

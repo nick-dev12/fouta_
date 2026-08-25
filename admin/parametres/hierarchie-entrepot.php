@@ -13,7 +13,9 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
 require_once __DIR__ . '/../includes/require_access.php';
 require_once __DIR__ . '/../../includes/admin_permissions.php';
 
-if (!admin_can_gestion_stock_etendue()) {
+/* Le rayonniste batit et corrige la structure (24/08) - comme le
+ * stock.entrepot_configurer que le meme role porte chez FPL natif. */
+if (!admin_can_gestion_stock()) {
     header('Location: ../dashboard.php');
     exit;
 }
@@ -210,7 +212,10 @@ function hc_options_lie_etiquette(array $defs, $exclude_id = 0) {
 
     <section class="produits-section parametres-page hc-wrap">
         <header class="hc-hero">
-            <a class="hc-hero__back" href="emplacement-entrepot.php"><i class="fas fa-arrow-left" aria-hidden="true"></i> Emplacement entrepôt</a>
+            <?php /* Retour vers la Structure de l'entrepôt — le point d'entrée
+                     vivant de cette page (« Gérer les niveaux »). L'ancienne
+                     cartographie d'emplacement n'est plus dans le menu. */ ?>
+            <a class="hc-hero__back" href="../produits/structure-entrepot.php"><i class="fas fa-arrow-left" aria-hidden="true"></i> Structure de l’entrepôt</a>
             <div class="hc-hero__row">
                 <div class="hc-hero__icon" aria-hidden="true"><i class="fas fa-sitemap"></i></div>
                 <div class="hc-hero__text">
