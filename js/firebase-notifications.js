@@ -17,6 +17,10 @@
 
     window.FirebaseNotifications = {
         init: function(type) {
+            if (!window.FIREBASE_CONFIG) {
+                alert('Notifications non configurées sur ce serveur (config/firebase_config.php manquant).');
+                return Promise.resolve(false);
+            }
             if (!('Notification' in window)) {
                 alert('Votre navigateur ne supporte pas les notifications.');
                 return Promise.resolve(false);
