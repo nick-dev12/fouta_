@@ -325,6 +325,15 @@ function produit_fiche_faits(array $produit)
         }
     }
 
+    /* LE STATUT, et sa conséquence — fait de la fiche de FPL natif. On ne le
+     * montre que s'il sort de l'ordinaire : dire « Active » sur les 3 186
+     * pièces actives n'apprendrait rien, alors que « retirée de la vente »
+     * change ce qu'on répond au client. */
+    $statut = trim((string) ($produit['statut'] ?? ''));
+    if ($statut !== '' && $statut !== 'actif' && function_exists('fpl_statut_piece_libelle')) {
+        $faits[] = ['k' => 'Statut', 'v' => fpl_e(fpl_statut_piece_libelle($statut))];
+    }
+
     // --- Les champs que la maison s'est ajoutés ---
     $valeurs_custom = null;
     foreach (produit_formulaire_champs_custom_actifs() as $champ) {

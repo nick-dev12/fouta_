@@ -129,7 +129,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
     <?php include '../includes/nav.php'; ?>
     
     <div class="content-header">
-        <h1><i class="fas fa-trash"></i> Supprimer un Produit</h1>
+        <h1><i class="fas fa-trash"></i> Supprimer une pièce</h1>
         <a href="index.php" class="btn-back">
             <i class="fas fa-arrow-left"></i> Retour
         </a>
@@ -144,7 +144,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
 
         <div class="delete-warning">
             <i class="fas fa-exclamation-triangle"></i>
-            <strong>Attention !</strong> Cette action est irréversible. Le produit sera définitivement supprimé.
+            <strong>Attention !</strong> Cette action est irréversible. La pièce sera définitivement supprimée.
         </div>
 
         <div class="produit-info">
@@ -153,12 +153,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
                      alt="<?php echo htmlspecialchars($produit['nom']); ?>">
             <?php endif; ?>
             <h3><?php echo htmlspecialchars($produit['nom'], ENT_QUOTES, 'UTF-8'); ?></h3>
-            <p><strong>Prix:</strong> <?php echo number_format($produit['prix'], 0, ',', ' '); ?> FCFA</p>
+            <?php if (isset($produit['prix']) && $produit['prix'] !== '' && $produit['prix'] !== null) : ?>
+            <p><strong>Prix :</strong> <?php echo number_format((float) $produit['prix'], 0, ',', ' '); ?> FCFA</p>
+            <?php endif; ?>
             <p><strong>Stock:</strong> <?php echo (int) $produit['stock']; ?> unités</p>
             <p><strong>Catégorie:</strong> <?php echo htmlspecialchars($produit['categorie_nom'] ?? 'Sans catégorie', ENT_QUOTES, 'UTF-8'); ?></p>
         </div>
 
-        <form method="POST" action="" onsubmit="return confirm('Êtes-vous absolument sûr de vouloir supprimer ce produit ? Cette action est irréversible.');">
+        <form method="POST" action="" onsubmit="return confirm('Êtes-vous absolument sûr de vouloir supprimer cette pièce ? Cette action est irréversible.');">
             <input type="hidden" name="confirm_delete" value="1">
             <button type="submit" class="btn-danger">
                 <i class="fas fa-trash"></i> Confirmer la suppression

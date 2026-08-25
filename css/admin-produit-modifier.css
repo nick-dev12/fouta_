@@ -1230,3 +1230,49 @@ body.pm-modal-open {
     flex-direction: column;
   }
 }
+
+/* ==========================================================================
+   LE WIZARD « NOUVELLE PIÈCE » — 4 étapes, repris de FPL natif.
+   Les sections du formulaire ne bougent pas : elles sont groupées dans
+   quatre panneaux dont un seul est visible à la fois. La bande d'étapes en
+   haut dit où l'on est et laisse revenir en arrière d'un clic.
+   SANS JAVASCRIPT tous les panneaux restent affichés : la page fonctionne
+   comme avant, en une seule longue colonne.
+   ========================================================================== */
+.wiz-steps { display: flex; gap: 8px; margin: 0 0 20px; flex-wrap: wrap; }
+
+.wiz-step {
+  flex: 1 1 0; min-width: 120px; display: flex; align-items: center; gap: 9px;
+  padding: 10px 14px; border: 1px solid var(--line, #dfe4ec); border-radius: 10px;
+  background: var(--surface, #fff); color: var(--slate, #6b7688);
+  font: inherit; font-size: 14px; cursor: default; text-align: left;
+  transition: border-color .12s ease, color .12s ease, background .12s ease;
+}
+
+.wiz-step__num {
+  width: 24px; height: 24px; flex-shrink: 0; border-radius: 999px;
+  background: var(--ground, #f4f6fa); border: 1px solid var(--line, #dfe4ec);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12.5px; font-weight: 700;
+}
+
+.wiz-step.active { border-color: var(--navy, #10316f); color: var(--navy, #10316f); font-weight: 600; }
+.wiz-step.active .wiz-step__num { background: var(--navy, #10316f); border-color: var(--navy, #10316f); color: #fff; }
+
+/* Une étape déjà franchie redevient cliquable — on peut se relire. */
+.wiz-step.done { cursor: pointer; border-color: var(--blue, #2957ae); color: var(--blue, #2957ae); }
+.wiz-step.done .wiz-step__num { background: var(--blue-tint, #eef3fd); border-color: var(--blue, #2957ae); color: var(--blue, #2957ae); }
+.wiz-step.done:hover { background: var(--blue-tint, #eef3fd); }
+
+/* Le découpage n'existe QUE si le JavaScript a pris la main. */
+.wiz-actif .wiz-panel { display: none; }
+.wiz-actif .wiz-panel.active { display: block; }
+
+.wiz-counter { color: var(--slate, #6b7688); font-size: 13px; margin-right: auto; padding-left: 4px; }
+
+.wiz-input-error { border-color: var(--danger, #c0392b) !important; box-shadow: 0 0 0 3px rgba(192, 57, 43, .12); }
+
+@media (max-width: 700px) {
+  .wiz-step__nom { display: none; }
+  .wiz-step { flex: 0 0 auto; min-width: 0; justify-content: center; }
+}

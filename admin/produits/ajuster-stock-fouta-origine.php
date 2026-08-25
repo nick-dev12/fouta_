@@ -13,9 +13,6 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
 
 require_once __DIR__ . '/../includes/require_access.php';
 
-if (empty($_SESSION['admin_csrf'])) {
-    $_SESSION['admin_csrf'] = bin2hex(random_bytes(32));
-}
 $produit_id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 if ($produit_id <= 0) {
     header('Location: index.php');
@@ -122,19 +119,6 @@ require_once __DIR__ . '/../../includes/etiquette_fpl.php';
 require_once __DIR__ . '/../../models/model_produit_etiquette_parametres.php';
 fpl_etiquette_parametres_ensure_schema();
 $fpl_dims = fpl_etiquette_dims();
-/* LE CHOIX DES TAILLES (24/08, comme FPL natif) : ?etiquette_format=N rend
- * la même étiquette à la taille demandée — les formats viennent de la table
- * etiquette_formats (migrations/run_etiquette_formats.php). Sans paramètre,
- * la taille du réglage reste la règle. */
-$fpl_format_courant = null;
-if (!empty($_GET['etiquette_format']) && function_exists('fpl_etiquette_format_get')) {
-    $fpl_f = fpl_etiquette_format_get((int) $_GET['etiquette_format'], 'piece');
-    if ($fpl_f) {
-        $fpl_format_courant = $fpl_f;
-        $fpl_dims = fpl_etiquette_dims_pour_mm($fpl_f['largeur_mm'], $fpl_f['hauteur_mm']);
-    }
-}
-$fpl_formats_pieces = function_exists('fpl_etiquette_formats_pieces') ? fpl_etiquette_formats_pieces() : [];
 $fpl_dims_data = fpl_etiquette_dims_data_attrs($fpl_dims);
 
 $categorie_etiq = [];
@@ -269,10 +253,7 @@ $fiche_statut = pf_champ_visible('statut') ? trim((string) ($produit['statut'] ?
                             <span class="fpl-chip-code"><?php echo fpl_e(fpl_code_afficher($fiche_code)); ?></span>
                             <?php endif; ?>
                             <?php if ($fiche_statut !== '' && $fiche_statut !== 'actif'): ?>
-                            <?php // Le mot court sur la pastille ; la phrase entière est
-                                  // dans la grille des faits, comme chez FPL natif.
-                                  // « Rupture_stock » s'affichait tel quel, tiret bas compris. ?>
-                            <span class="fpl-fiche-statut"><?php echo fpl_e(fpl_statut_piece_libelle($fiche_statut, false)); ?></span>
+                            <span class="fpl-fiche-statut"><?php echo $fiche_statut === 'inactif' ? 'Inactive' : fpl_e(ucfirst($fiche_statut)); ?></span>
                             <?php endif; ?>
                         </p>
                     </div>
@@ -348,49 +329,11 @@ $fiche_statut = pf_champ_visible('statut') ? trim((string) ($produit['statut'] ?
         $a_emplacement = false;
     }
     $galerie_urls = produits_galerie_web_urls($produit);
-    /* Le nombre de VRAIES photos, compté AVANT l'image de remplacement :
-     * sinon une pièce sans photo passerait pour illustrée. */
-    $fpl_nb_photos = count($galerie_urls);
     if (empty($galerie_urls)) {
         $galerie_urls = ['/image/produit1.jpg'];
     }
     // Tout ce que l'on sait de la pièce, rassemblé une fois pour toutes.
     $fpl_faits = produit_fiche_faits($produit);
-
-    /* OÙ LA PIÈCE EST RANGÉE — repris de la fiche de FPL natif. Une pièce peut
-     * être à plusieurs endroits, avec une quantité par endroit ; la fiche ne
-     * montrait jusqu'ici qu'une position unique. Les données existaient déjà
-     * (stock_emplacement + la hiérarchie d'entrepôt), personne ne les lisait. */
-    $fpl_emplacements = produit_emplacements($produit_id);
-    $fpl_stock_nature = produit_stock_par_nature($produit_id);
-
-    /* CE QUI MANQUE À LA FICHE — le bandeau « Compléter maintenant » de FPL
-     * natif. Il dit tout de suite ce qui empêche la pièce d'être trouvée au
-     * catalogue, au lieu de laisser la découverte à l'usage. */
-    $fpl_manquantes = produit_infos_manquantes($produit, 0, $fpl_nb_photos);
-
-    /* LE SEUIL D'ALERTE. FPL natif en pose un par pièce ; ici les seuils sont
-     * des RÈGLES par catégorie et sous-catégorie, réglées dans Paramètres →
-     * Alertes stock. On montre celle qui s'applique à CETTE pièce, plutôt que
-     * d'inventer une colonne que la base n'a pas. */
-    $fpl_regles_alerte = [];
-    $fpl_seuil_franchi = null;
-    $fichier_alertes = dirname(__DIR__, 2) . '/models/model_stock_alertes.php';
-    if (is_file($fichier_alertes)) {
-        require_once $fichier_alertes;
-        if (function_exists('stock_alertes_get_regles_pour_produit')) {
-            $fpl_regles_alerte = stock_alertes_get_regles_pour_produit($produit_id);
-            foreach ($fpl_regles_alerte as $regle) {
-                $seuil = (float) ($regle['seuil'] ?? 0);
-                if ($seuil > 0 && $stock_actuel <= $seuil) {
-                    // Le seuil le plus BAS franchi est le plus grave.
-                    if ($fpl_seuil_franchi === null || $seuil < $fpl_seuil_franchi['seuil']) {
-                        $fpl_seuil_franchi = ['seuil' => $seuil, 'niveau' => (string) ($regle['niveau'] ?? '')];
-                    }
-                }
-            }
-        }
-    }
     ?>
 
     <div class="pas-showcase">
@@ -434,20 +377,6 @@ $fiche_statut = pf_champ_visible('statut') ? trim((string) ($produit['statut'] ?
 <?php // Le nom de la pièce et sa référence titrent désormais la page, juste
       // au-dessus : les répéter ici en ferait un doublon. La marque, elle,
       // n'est pas perdue — elle est devenue le fait « Véhicule » de la grille. ?>
-
-            <?php /* CE QUI MANQUE À CETTE FICHE — bandeau de FPL natif. Il se
-                     place en tête de l'identité parce que c'est une chose à
-                     faire, pas une information à lire. */ ?>
-            <?php if (!empty($fpl_manquantes)): ?>
-            <div class="note-bleue" style="margin-bottom:var(--s4)">
-                <i class="fas fa-circle-info" aria-hidden="true"></i>
-                <span>
-                    <strong>Fiche à compléter pour le catalogue</strong> —
-                    il manque <?php echo fpl_e(implode(', ', $fpl_manquantes)); ?>.
-                    <a href="modifier.php?id=<?php echo $produit_id; ?>">Compléter maintenant</a>
-                </span>
-            </div>
-            <?php endif; ?>
 
             <?php if ($show_prix_vente): ?>
             <div class="pas-price-card">
@@ -531,121 +460,13 @@ $fiche_statut = pf_champ_visible('statut') ? trim((string) ($produit['statut'] ?
                 <i class="fas fa-map-pin" aria-hidden="true"></i>
                 <div>
                     <strong>Aucune position en entrepôt</strong>
-                    <p>Cette pièce n’a pas encore d’emplacement assigné.</p>
+                    <p>Ce produit n’a pas encore d’emplacement assigné.</p>
                 </div>
                 <a href="modifier.php?id=<?php echo $produit_id; ?>" class="pas-location-empty__link">Définir la position</a>
             </div>
             <?php endif; ?>
         </div>
-
-        <?php /* LA TROISIÈME COLONNE — la disposition de la fiche de FPL natif :
-                 la photo IDENTIFIE à gauche, l'identité DÉCRIT au centre, le
-                 stock CHIFFRE à droite. C'est ce panneau qui manquait pour que
-                 l'œil trouve la quantité sans descendre dans la page. */ ?>
-        <div class="fiche-stock">
-            <div class="stock-libelle">En stock vendable</div>
-            <div class="hero-num<?php echo $stock_actuel <= 0 ? ' zero' : ''; ?>"<?php echo $stock_actuel <= 0 ? ' style="color:var(--danger)"' : ''; ?>>
-                <?php echo (int) $stock_actuel; ?>
-            </div>
-
-            <?php if (!empty($fpl_stock_nature['defectueux']) && $fpl_stock_nature['defectueux'] > 0): ?>
-            <div class="badge warn" style="margin-top:6px">
-                <?php echo (string) (0 + $fpl_stock_nature['defectueux']); ?> en zone défectueux
-            </div>
-            <?php endif; ?>
-
-            <?php /* SOUS LE SEUIL — l'alerte de FPL natif, servie par les règles
-                     de ce dépôt (Paramètres → Alertes stock). On montre le seuil
-                     franchi le plus bas : c'est le plus grave. */ ?>
-            <?php if ($fpl_seuil_franchi !== null): ?>
-            <div class="badge danger" style="margin-top:6px">
-                <i class="fas fa-triangle-exclamation" aria-hidden="true"></i>
-                Sous le seuil (<?php echo (string) (0 + $fpl_seuil_franchi['seuil']); ?>)
-            </div>
-            <?php elseif (!empty($fpl_regles_alerte)): ?>
-            <?php $fpl_seuils = []; foreach ($fpl_regles_alerte as $r) { $s = (float) ($r['seuil'] ?? 0); if ($s > 0) { $fpl_seuils[] = (string) (0 + $s); } } ?>
-            <?php if ($fpl_seuils !== []): ?>
-            <div class="muted" style="font-size:12.5px; margin-top:6px">
-                seuil d'alerte : <?php echo fpl_e(implode(' · ', $fpl_seuils)); ?>
-            </div>
-            <?php endif; ?>
-            <?php endif; ?>
-
-            <?php if (!empty($fpl_stock_nature['emplacements'])): ?>
-            <?php /* CE QUI EST RÉELLEMENT RANGÉ, et l'écart s'il y en a un. Le
-                     stock de la pièce et la somme des emplacements ne coïncident
-                     pas tant que le rangement n'est pas saisi partout : le taire
-                     ferait croire que tout est localisé. */ ?>
-            <?php $fpl_range = 0 + $fpl_stock_nature['vendable'] + $fpl_stock_nature['defectueux']; ?>
-            <div class="muted" style="font-size:12.5px; margin-top:6px">
-                dont <strong><?php echo (string) $fpl_range; ?></strong> rangé<?php echo $fpl_range > 1 ? 's' : ''; ?>
-                sur <?php echo (int) $fpl_stock_nature['emplacements']; ?> emplacement<?php echo $fpl_stock_nature['emplacements'] > 1 ? 's' : ''; ?>
-            </div>
-            <?php if ($fpl_range < $stock_actuel): ?>
-            <div class="badge warn" style="margin-top:4px">
-                <?php echo (string) ($stock_actuel - $fpl_range); ?> sans emplacement connu
-            </div>
-            <?php endif; ?>
-            <?php endif; ?>
-
-            <?php if ($quantite_vendue > 0): ?>
-            <div class="muted" style="font-size:12.5px; margin-top:2px">
-                <?php echo (int) $quantite_vendue; ?> vendu<?php echo $quantite_vendue > 1 ? 's' : ''; ?> à ce jour
-            </div>
-            <?php endif; ?>
-        </div>
     </div>
-
-    <?php /* OÙ ELLE EST RANGÉE — le bloc de la fiche de FPL natif. Il répond à
-             la question que « Position en entrepôt » ne pouvait pas poser : la
-             pièce est-elle à plusieurs endroits, et combien à chacun ?
-             Lecture seule pour l'instant : corriger le stock emplacement par
-             emplacement demande un chemin d'écriture que ce dépôt n'a pas
-             encore (ici l'ajout est cumulatif et global). */ ?>
-    <?php if (!empty($fpl_emplacements)): ?>
-    <div class="ajuster-stock-card page-ajuster-stock-card" style="margin-bottom:var(--s4)">
-        <h2 class="page-ajuster-stock-card__title"><i class="fas fa-map-marker-alt" aria-hidden="true"></i> Où elle est rangée</h2>
-        <div class="table-wrap">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Emplacement</th>
-                        <th>Chemin complet</th>
-                        <th>Type</th>
-                        <th class="num">Quantité</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($fpl_emplacements as $fpl_empl): ?>
-                    <tr>
-                        <td><span class="chip-code"><?php echo fpl_e($fpl_empl['noeud_code'] !== '' ? $fpl_empl['noeud_code'] : $fpl_empl['noeud_nom']); ?></span></td>
-                        <td class="muted"><?php echo $fpl_empl['chemin'] !== '' ? fpl_e($fpl_empl['chemin']) : '—'; ?></td>
-                        <td>
-                            <?php if (!empty($fpl_empl['est_defectueux'])): ?>
-                                <span class="page-produits-badge page-produits-badge--warn">Hors vente</span>
-                            <?php else: ?>
-                                <span class="page-produits-badge page-produits-badge--ok">Vendable</span>
-                            <?php endif; ?>
-                        </td>
-                        <td class="num">
-                            <span class="qty <?php echo $fpl_empl['quantite'] <= 0 ? 'zero' : ''; ?>"><?php
-                                echo (string) (0 + $fpl_empl['quantite']);
-                            ?></span>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-        </div>
-        <p class="help" style="margin-top:var(--s2)">
-            <?php echo (int) $fpl_stock_nature['emplacements']; ?> emplacement(s) ·
-            <strong><?php echo (string) (0 + $fpl_stock_nature['vendable']); ?></strong> vendable(s)
-            <?php if ($fpl_stock_nature['defectueux'] > 0): ?>
-                · <strong><?php echo (string) (0 + $fpl_stock_nature['defectueux']); ?></strong> en zone défectueux
-            <?php endif; ?>
-        </p>
-    </div>
-    <?php endif; ?>
 
     <div class="ajuster-stock-layout page-ajuster-stock-layout pas-dashboard">
         <div class="ajuster-stock-card page-ajuster-stock-card page-ajuster-stock-card--etat pas-dashboard__stats">
@@ -715,7 +536,7 @@ $fiche_statut = pf_champ_visible('statut') ? trim((string) ($produit['statut'] ?
                     data-code="<?php echo htmlspecialchars($produit['identifiant_interne']); ?>"
                     data-nom="<?php echo htmlspecialchars($produit['nom']); ?>">
                     <h3 class="page-ajuster-stock-aux__title"><i class="fas fa-barcode" aria-hidden="true"></i> Code-barres (réf. FPL)</h3>
-                    <p class="barcode-fpl-desc page-ajuster-stock-aux__desc">Code <strong>Code 128</strong> : même référence que sur l’étiquette de la pièce. Utilisable avec un scanner ou l’API <code>/api/produit_par_code_fpl.php</code>.</p>
+                    <p class="barcode-fpl-desc page-ajuster-stock-aux__desc">Code <strong>Code 128</strong> : même référence que sur l’étiquette produit. Utilisable avec un scanner ou l’API <code>/api/produit_par_code_fpl.php</code>.</p>
                     <div class="barcode-fpl-wrap page-ajuster-stock-barcode-wrap">
                         <?php
                         $barcode_fs = __DIR__ . '/../../upload/barcodes/produit_' . $produit_id . '.png';
@@ -741,7 +562,7 @@ $fiche_statut = pf_champ_visible('statut') ? trim((string) ($produit['statut'] ?
                 <?php endif; ?>
                 <?php if (!empty($qr_code_data_uri)): ?>
                 <div class="stock-form-block qr-code-block page-ajuster-stock-aux" id="qr-code-print-area" data-qr="<?php echo htmlspecialchars($qr_code_data_uri); ?>" data-nom="<?php echo htmlspecialchars($produit['nom']); ?>">
-                    <h3 class="page-ajuster-stock-aux__title"><i class="fas fa-qrcode" aria-hidden="true"></i> QR code de la pièce</h3>
+                    <h3 class="page-ajuster-stock-aux__title"><i class="fas fa-qrcode" aria-hidden="true"></i> QR code du produit</h3>
                     <p class="qr-code-desc page-ajuster-stock-aux__desc">Scannez ce QR code pour afficher les détails du stock et l’emplacement en entrepôt sur mobile.</p>
                     <div class="qr-code-wrap page-ajuster-stock-qr-wrap">
                         <img src="<?php echo htmlspecialchars($qr_code_data_uri); ?>" alt="QR Code - <?php echo htmlspecialchars($produit['nom']); ?>" class="qr-code-img" width="180" height="180">
@@ -775,36 +596,6 @@ $fiche_statut = pf_champ_visible('statut') ? trim((string) ($produit['statut'] ?
             <p class="fpl-etiq-preview-meta"><?php echo htmlspecialchars((string) $fpl_dims['meta'], ENT_QUOTES, 'UTF-8'); ?>
                 · <a href="../parametres/etiquettes-produit.php?produit_id=<?php echo (int) $produit_id; ?>">Modifier les dimensions</a>
             </p>
-            <?php if ($fpl_formats_pieces !== []) : ?>
-            <?php /* LES TAILLES AU CHOIX — un clic re-rend l'étiquette à la
-                     taille voulue, comme chez FPL natif. */ ?>
-            <div class="fpl-etiq-formats" role="group" aria-label="Taille de l'étiquette">
-                <span class="fpl-etiq-formats__label">Taille :</span>
-                <a class="fpl-etiq-format<?php echo $fpl_format_courant === null ? ' fpl-etiq-format--on' : ''; ?>"
-                   href="ajuster-stock.php?id=<?php echo (int) $produit_id; ?>#fpl-etiquette-print-root">Réglage (<?php echo htmlspecialchars(fpl_etiquette_dims_label_short(fpl_etiquette_dims()), ENT_QUOTES, 'UTF-8'); ?>)</a>
-                <?php foreach ($fpl_formats_pieces as $fmt) : ?>
-                <a class="fpl-etiq-format<?php echo $fpl_format_courant !== null && (int) $fpl_format_courant['id'] === (int) $fmt['id'] ? ' fpl-etiq-format--on' : ''; ?>"
-                   href="ajuster-stock.php?id=<?php echo (int) $produit_id; ?>&amp;etiquette_format=<?php echo (int) $fmt['id']; ?>#fpl-etiquette-print-root"><?php echo htmlspecialchars((string) $fmt['nom'], ENT_QUOTES, 'UTF-8'); ?></a>
-                <?php endforeach; ?>
-                <?php /* Le PDF sort à la taille EXACTE : à archiver, à envoyer,
-                         ou à confier à un imprimeur (dessin de la maquette 14/08). */ ?>
-                <a class="fpl-etiq-format fpl-etiq-format--pdf"
-                   href="etiquette-piece-pdf.php?id=<?php echo (int) $produit_id; ?><?php echo $fpl_format_courant !== null ? '&amp;format=' . (int) $fpl_format_courant['id'] : ''; ?>">
-                    <i class="fas fa-file-pdf" aria-hidden="true"></i>&nbsp;Télécharger en PDF
-                </a>
-            </div>
-            <style>
-                .fpl-etiq-formats { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 6px 0 12px; }
-                .fpl-etiq-formats__label { font-size: 12.5px; font-weight: 600; color: var(--slate, #5A6A85); }
-                .fpl-etiq-format {
-                    display: inline-flex; align-items: center; padding: 4px 12px; border-radius: 999px;
-                    border: 1.5px solid var(--line, #DFE4EC); background: #fff; color: var(--ink, #1c2733);
-                    font-size: 12.5px; font-weight: 600; text-decoration: none;
-                }
-                .fpl-etiq-format:hover { border-color: var(--blue, #2957ae); text-decoration: none; }
-                .fpl-etiq-format--on { border-color: var(--navy, #10316f); background: var(--blue-tint, #eef3fd); color: var(--navy, #10316f); }
-            </style>
-            <?php endif; ?>
 
             <div class="fpl-etiq-preview-scale">
             <article class="fpl-etiq fpl-etiq--fixed"
@@ -902,7 +693,7 @@ $fiche_statut = pf_champ_visible('statut') ? trim((string) ($produit['statut'] ?
     <section class="mouvements-section page-ajuster-stock-mouvements" aria-labelledby="page-ajuster-stock-mouv-heading">
         <h2 id="page-ajuster-stock-mouv-heading" class="page-ajuster-stock-mouv__head"><i class="fas fa-history" aria-hidden="true"></i> Historique des mouvements <span class="page-ajuster-stock-mouv__count">(<?php echo count($mouvements); ?>)</span></h2>
         <?php if (empty($mouvements)): ?>
-            <p class="page-ajuster-stock-mouv__empty">Aucun mouvement enregistré pour cette pièce.</p>
+            <p class="page-ajuster-stock-mouv__empty">Aucun mouvement enregistré pour ce produit.</p>
         <?php else: ?>
             <div class="mouvements-produit-table-wrap page-ajuster-stock-mouv-table-wrap" tabindex="0" role="region" aria-label="Tableau des mouvements de stock">
                 <table class="mouvements-produit-table">
@@ -910,9 +701,6 @@ $fiche_statut = pf_champ_visible('statut') ? trim((string) ($produit['statut'] ?
                         <tr>
                             <th scope="col">Date</th>
                             <th scope="col">Type</th>
-                            <?php // OÙ le mouvement a eu lieu — colonne de la fiche de FPL natif.
-                                  // Un transfert dit son trajet, les autres leur lieu. ?>
-                            <th scope="col">Emplacement</th>
                             <th scope="col">Quantité</th>
                             <th scope="col">Avant</th>
                             <th scope="col">Après</th>
@@ -942,21 +730,6 @@ $fiche_statut = pf_champ_visible('statut') ? trim((string) ($produit['statut'] ?
                                     ?>
                                     <span class="<?php echo $badge; ?>"><?php echo $label; ?></span>
                                 </td>
-                                <td class="muted"><?php
-                                    /* Un transfert montre son TRAJET (d'où → vers où) ; les
-                                     * autres mouvements montrent le lieu concerné. Les deux
-                                     * colonnes existaient déjà en base, rien n'allait les lire. */
-                                    $src = trim((string) ($m['source_code'] ?? '')) !== ''
-                                        ? (string) $m['source_code'] : (string) ($m['source_nom'] ?? '');
-                                    $dst = trim((string) ($m['destination_code'] ?? '')) !== ''
-                                        ? (string) $m['destination_code'] : (string) ($m['destination_nom'] ?? '');
-                                    if ($m['type'] === 'transfert' && ($src !== '' || $dst !== '')) {
-                                        echo fpl_e(($src !== '' ? $src : '?') . ' → ' . ($dst !== '' ? $dst : '?'));
-                                    } else {
-                                        $lieu = $dst !== '' ? $dst : $src;
-                                        echo $lieu !== '' ? fpl_e($lieu) : '—';
-                                    }
-                                ?></td>
                                 <td><?php echo (int) $m['quantite']; ?></td>
                                 <td><?php echo $m['quantite_avant'] !== null ? (int) $m['quantite_avant'] : '-'; ?></td>
                                 <td><?php echo $m['quantite_apres'] !== null ? (int) $m['quantite_apres'] : '-'; ?></td>
@@ -993,23 +766,6 @@ $fiche_statut = pf_champ_visible('statut') ? trim((string) ($produit['statut'] ?
                         <span class="<?php echo $badge; ?>"><?php echo $label; ?></span>
                     </div>
                     <div class="mouvement-produit-card-body">
-                        <?php // La version téléphone dit l'emplacement elle aussi : ne pas
-                              // le montrer sur petit écran reviendrait à deux histoires. ?>
-                        <?php
-                        $src = trim((string) ($m['source_code'] ?? '')) !== ''
-                            ? (string) $m['source_code'] : (string) ($m['source_nom'] ?? '');
-                        $dst = trim((string) ($m['destination_code'] ?? '')) !== ''
-                            ? (string) $m['destination_code'] : (string) ($m['destination_nom'] ?? '');
-                        $lieu_carte = ($m['type'] === 'transfert' && ($src !== '' || $dst !== ''))
-                            ? (($src !== '' ? $src : '?') . ' → ' . ($dst !== '' ? $dst : '?'))
-                            : ($dst !== '' ? $dst : $src);
-                        ?>
-                        <?php if ($lieu_carte !== ''): ?>
-                        <div class="mouvement-produit-card-row">
-                            <span class="label">Emplacement</span>
-                            <span class="value"><?php echo fpl_e($lieu_carte); ?></span>
-                        </div>
-                        <?php endif; ?>
                         <div class="mouvement-produit-card-row">
                             <span class="label">Quantité</span>
                             <span class="value"><?php echo (int) $m['quantite']; ?></span>
@@ -1052,7 +808,7 @@ $fiche_statut = pf_champ_visible('statut') ? trim((string) ($produit['statut'] ?
         if (!block) return;
         var src = block.getAttribute('data-barcode-src');
         var code = block.getAttribute('data-code') || '';
-        var nom = block.getAttribute('data-nom') || 'Pièce';
+        var nom = block.getAttribute('data-nom') || 'Produit';
         if (!src) return;
         var w = window.open('', '_blank', 'width=420,height=360');
         w.document.write('<!DOCTYPE html><html><head><title>Code-barres ' + code + '</title><style>body{font-family:sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:20px;} img{max-width:100%;height:auto;} .code{font-size:18px;font-weight:700;margin-top:12px;letter-spacing:0.08em;font-family:monospace;} h2{font-size:15px;margin:0 0 8px;text-align:center;color:#333;}</style></head><body><h2>' + nom.replace(/</g,'&lt;') + '</h2><img src="' + src + '" alt="Code-barres"><div class="code">' + code.replace(/</g,'&lt;') + '</div><p style="font-size:12px;color:#666;">Référence FPL</p></body></html>');
@@ -1064,7 +820,7 @@ $fiche_statut = pf_champ_visible('statut') ? trim((string) ($produit['statut'] ?
         var block = document.getElementById('qr-code-print-area');
         if (!block) return;
         var qr = block.getAttribute('data-qr');
-        var nom = block.getAttribute('data-nom') || 'Pièce';
+        var nom = block.getAttribute('data-nom') || 'Produit';
         var w = window.open('', '_blank', 'width=400,height=500');
         w.document.write('<!DOCTYPE html><html><head><title>QR Code - ' + nom + '</title><style>body{font-family:sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:20px;} img{max-width:280px;height:auto;} h2{font-size:16px;margin-top:16px;text-align:center;}</style></head><body><img src="' + qr + '" alt="QR Code"><h2>' + nom + '</h2><p style="font-size:12px;color:#666;">Scannez pour voir le stock</p></body></html>');
         w.document.close();
@@ -1074,16 +830,6 @@ $fiche_statut = pf_champ_visible('statut') ? trim((string) ($produit['statut'] ?
     window.imprimerEtiquetteFPLStock = function() {
         var root = document.getElementById('fpl-etiquette-print-root');
         if (!root) return;
-        /* La trace part en tâche de fond : la page « Toutes les étiquettes »
-           saura que celle-ci est imprimée, par qui et quand (24/08). */
-        try {
-            fetch('ajax_etiquette_imprimee.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'same-origin',
-                body: JSON.stringify({ type: 'piece', id: <?php echo (int) $produit_id; ?>, format_id: <?php echo $fpl_format_courant !== null ? (int) $fpl_format_courant['id'] : 'null'; ?>, _jeton: <?php echo json_encode((string) $_SESSION['admin_csrf']); ?> })
-            });
-        } catch (e) { /* la trace ne bloque jamais l'impression */ }
         var cssHref = <?php echo json_encode($fpl_etiq_css_abs, JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP); ?>;
         var baseHref = <?php echo json_encode(rtrim($origin_et, '/') . '/', JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP); ?>;
         var node = root.querySelector('.fpl-etiq');

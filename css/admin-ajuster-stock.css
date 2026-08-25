@@ -1750,3 +1750,59 @@
     border: 1px solid #ccc !important;
   }
 }
+
+/* ==========================================================================
+   LA DISPOSITION DE LA FICHE DE FPL NATIF — trois colonnes.
+   La photo IDENTIFIE (gauche), l'identité DÉCRIT (centre), le stock CHIFFRE
+   (panneau de droite).
+
+   On passe de la grille au FLEX, comme fpl_natif/admin/piece.php : une grille
+   à trois colonnes fixes lâche d'un coup dès qu'il manque quelques pixels,
+   là où le flex laisse les colonnes se serrer puis passer à la ligne l'une
+   après l'autre. La fiche reste lisible sur un demi-écran.
+   ========================================================================== */
+.pas-showcase {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px;
+  align-items: flex-start;
+}
+
+.pas-showcase__gallery { flex: 0 0 264px; max-width: 100%; }
+.pas-showcase__panel   { flex: 1 1 280px; min-width: 0; }
+
+.fiche-stock {
+  flex: 0 0 240px;
+  background: #F7F9FC;
+  border: 1px solid var(--line-soft, #e6ebf3);
+  border-radius: var(--r-lg, 14px);
+  padding: var(--s4, 16px) var(--s5, 20px);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+  gap: 4px;
+  position: sticky;
+  top: 88px;
+}
+
+.fiche-stock .stock-libelle {
+  color: var(--slate, #6b7688);
+  font-size: 12.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+
+/* Au téléphone et sur les fenêtres étroites, tout s'empile et le panneau
+   reprend le fil de lecture à gauche — le seuil de FPL natif. */
+@media (max-width: 860px) {
+  .pas-showcase__gallery,
+  .pas-showcase__panel,
+  .fiche-stock { flex: 1 1 100%; }
+  .fiche-stock {
+    position: static;
+    align-items: flex-start;
+    text-align: left;
+  }
+}
