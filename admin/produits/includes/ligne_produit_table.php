@@ -95,8 +95,15 @@ $nom_produit = (string) ($produit['nom'] ?? '');
         <span class="page-produits-table__thumb page-produits-table__thumb--ph" aria-hidden="true"><i class="fas fa-box"></i></span>
         <?php endif; ?>
     </td>
-    <td data-label="Produit">
+    <td data-label="Pièce">
+        <?php if ($fpl_colonnes_piece): ?>
+        <?php // Dans FPL natif, LE NOM EST LE LIEN vers la fiche. La ligne
+              // entière reste cliquable comme avant : on ajoute une porte,
+              // on n'en ferme aucune. ?>
+        <a class="page-produits-table__nom fpl-cell-title" href="<?php echo e($detail_href); ?>"><?php echo e($nom_produit); ?></a>
+        <?php else: ?>
         <span class="page-produits-table__nom"><?php echo e($nom_produit); ?></span>
+        <?php endif; ?>
         <?php if ($fpl_colonnes_piece): ?>
         <?php // FPL natif place le code de la pièce sous son nom, dans une
               // pastille : c'est par lui qu'on la retrouve en rayon. ?>

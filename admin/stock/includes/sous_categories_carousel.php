@@ -26,7 +26,8 @@ if (!function_exists('e')) {
             $is_active = $sous_categorie_active === $sid;
             $cat_nom = trim((string) ($sc['categorie_nom'] ?? ''));
             ?>
-        <a href="sous-categories/produits.php?id=<?php echo $sid; ?>"
+        <?php // Vers le catalogue, au rayon : le même écran que « Pièces » (portage FPL natif). ?>
+        <a href="../produits/index.php?categorie_id=<?php echo (int) ($sc['categorie_id'] ?? 0); ?>&amp;sous_categorie_id=<?php echo $sid; ?>"
             class="stock-sous-cat-card <?php echo $is_active ? 'is-active' : ''; ?>"
             title="<?php echo e($sc['nom'] ?? ''); ?>">
             <span class="stock-sous-cat-card__img" aria-hidden="true">

@@ -19,7 +19,7 @@ require_once __DIR__ . '/../../includes/fouta_upload_limits.php';
 $categorie_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
 
 if ($categorie_id <= 0) {
-    header('Location: index.php');
+    header('Location: ../produits/index.php');
     exit;
 }
 
@@ -28,7 +28,7 @@ require_once __DIR__ . '/../../models/model_categories.php';
 $categorie = get_categorie_by_id($categorie_id);
 
 if (!$categorie) {
-    header('Location: index.php');
+    header('Location: ../produits/index.php');
     exit;
 }
 
@@ -39,7 +39,8 @@ $result = process_update_categorie($categorie_id);
 // Si la modification est réussie, rediriger vers la liste
 if (isset($result['success']) && $result['success']) {
     $_SESSION['success_message'] = $result['message'];
-    header('Location: index.php');
+    // Retour au catalogue, la carte corrigée sous les yeux.
+    header('Location: ../produits/index.php');
     exit;
 }
 ?>
@@ -146,7 +147,7 @@ if (isset($result['success']) && $result['success']) {
     
     <div class="content-header">
         <h1><i class="fas fa-edit"></i> Modifier une Catégorie</h1>
-        <a href="index.php" class="btn-back">
+        <a href="../produits/index.php" class="btn-back">
             <i class="fas fa-arrow-left"></i> Retour
         </a>
     </div>

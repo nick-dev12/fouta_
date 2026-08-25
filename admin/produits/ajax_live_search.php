@@ -36,11 +36,29 @@ $result = search_admin_produits_liste_live(
 $html = '';
 $items = $result['items'] ?? [];
 if (!empty($items)) {
+    /* Les noms de modèles de véhicule, résolus une fois pour toutes les lignes :
+     * la ligne au balisage FPL en a besoin pour sa colonne « Modèle ». */
+    $fpl_modeles_noms = [];
+    if ($context === 'fpl') {
+        try {
+            foreach ($db->query('SELECT id, nom FROM vehicule_modeles') as $vm) {
+                $fpl_modeles_noms[(int) $vm['id']] = (string) $vm['nom'];
+            }
+        } catch (PDOException $e) {
+            $fpl_modeles_noms = [];
+        }
+    }
     ob_start();
     foreach ($items as $produit) {
         if ($context === 'dashboard') {
             $pcm_paths = ['base' => 'produits/', 'upload' => '/upload/'];
             include __DIR__ . '/../includes/carte_produit_dashboard.php';
+        } elseif ($context === 'fpl') {
+            /* LE CATALOGUE AU BALISAGE DE FPL NATIF. La recherche en direct doit
+             * rendre EXACTEMENT les mêmes lignes que le tableau qu'elle remplace,
+             * sinon les résultats changent de forme en cours de frappe. */
+            $upload_base = rtrim(get_public_root_uri_path(), '/') . '/upload/';
+            include __DIR__ . '/includes/ligne_piece_fpl.php';
         } elseif ($context === 'categorie') {
             $upload_base = rtrim(get_public_root_uri_path(), '/') . '/upload/';
             $produits_path_prefix = '../produits/';

@@ -18,7 +18,7 @@ require_once __DIR__ . '/../includes/require_access.php';
 $categorie_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
 
 if ($categorie_id <= 0) {
-    header('Location: index.php');
+    header('Location: ../produits/index.php');
     exit;
 }
 
@@ -27,7 +27,7 @@ require_once __DIR__ . '/../../models/model_categories.php';
 $categorie = get_categorie_by_id($categorie_id);
 
 if (!$categorie) {
-    header('Location: index.php');
+    header('Location: ../produits/index.php');
     exit;
 }
 
@@ -38,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
     
     if ($result['success']) {
         $_SESSION['success_message'] = $result['message'];
-        header('Location: index.php');
+        header('Location: ../produits/index.php');
         exit;
     } else {
         $error_message = $result['message'];
@@ -130,7 +130,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
     
     <div class="content-header">
         <h1><i class="fas fa-trash"></i> Supprimer une Catégorie</h1>
-        <a href="index.php" class="btn-back">
+        <a href="../produits/index.php" class="btn-back">
             <i class="fas fa-arrow-left"></i> Retour
         </a>
     </div>
@@ -161,7 +161,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
             <button type="submit" class="btn-danger">
                 <i class="fas fa-trash"></i> Confirmer la suppression
             </button>
-            <a href="index.php" class="btn-cancel">
+            <a href="../produits/index.php" class="btn-cancel">
                 <i class="fas fa-times"></i> Annuler
             </a>
         </form>

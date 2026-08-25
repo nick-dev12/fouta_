@@ -39,23 +39,9 @@ $peut_gerer = !function_exists('admin_is_restricted_admin_account')
     || !admin_is_restricted_admin_account();
 ?>
 <section class="page-produits-categories" aria-label="Parcourir par catégorie">
-    <?php if ($dans_une_categorie): ?>
-    <?php // Comme dans FPL natif : pas de titre au-dessus du bandeau, seulement
-          // le fil d'Ariane qui dit où l'on se trouve. ?>
-    <div class="page-produits-categories__head">
-        <nav class="fpl-fil" aria-label="Fil d’Ariane">
-            <a href="index.php">Pièces</a>
-            <span class="fpl-fil__sep" aria-hidden="true">›</span>
-            <?php if ($sous_categorie_id > 0): ?>
-            <a href="index.php?categorie_id=<?php echo $categorie_id; ?>"><?php echo fpl_e($categorie_courante_nom); ?></a>
-            <span class="fpl-fil__sep" aria-hidden="true">›</span>
-            <strong><?php echo fpl_e($sous_categorie_courante_nom ?? ''); ?></strong>
-            <?php else: ?>
-            <strong><?php echo fpl_e($categorie_courante_nom); ?></strong>
-            <?php endif; ?>
-        </nav>
-    </div>
-    <?php endif; ?>
+    <?php // Le fil d'Ariane a REMONTÉ dans l'en-tête de la page, à la place du
+          // titre, comme dans FPL natif. Il n'est plus ici : le répéter deux
+          // fois sur le même écran n'apprenait rien. ?>
 
     <?php // Les deux flèches encadrent le bandeau, comme dans FPL natif :
           // celle de gauche avant les cartes, celle de droite après. ?>
@@ -101,6 +87,7 @@ $peut_gerer = !function_exists('admin_is_restricted_admin_account')
                 $actif = ($categorie_id === $cid);
             }
             ?>
+        <div class="fpl-cat-item">
         <a href="<?php echo $lien; ?>"
             class="page-produits-cat-card <?php echo $actif ? 'is-active' : ''; ?>"
             title="<?php echo fpl_e($nom); ?>">
@@ -116,6 +103,24 @@ $peut_gerer = !function_exists('admin_is_restricted_admin_account')
             <?php endif; ?>
             <span class="page-produits-cat-card__name"><?php echo fpl_e($nom); ?></span>
         </a>
+        <?php /* LE CRAYON ET LA POUBELLE SUR LA CARTE — geste de FPL natif :
+                 corriger ou retirer une catégorie sans quitter le catalogue.
+                 Seulement au premier niveau : ce dépôt n'a pas d'écran pour
+                 modifier ou supprimer une SOUS-catégorie, et je n'accroche pas
+                 un bouton à une page qui n'existe pas. */ ?>
+        <?php if ($peut_gerer && !$dans_une_categorie): ?>
+        <div class="fpl-cat-actions">
+            <a class="fpl-cat-edit" href="../categories/modifier.php?id=<?php echo $cid; ?>"
+                title="Modifier « <?php echo fpl_e($nom); ?> »" aria-label="Modifier <?php echo fpl_e($nom); ?>">
+                <i class="fas fa-pen" aria-hidden="true"></i>
+            </a>
+            <a class="fpl-cat-edit fpl-cat-del" href="../categories/supprimer.php?id=<?php echo $cid; ?>"
+                title="Supprimer « <?php echo fpl_e($nom); ?> »" aria-label="Supprimer <?php echo fpl_e($nom); ?>">
+                <i class="fas fa-trash" aria-hidden="true"></i>
+            </a>
+        </div>
+        <?php endif; ?>
+        </div>
         <?php endforeach; ?>
 
         <?php if ($peut_gerer): ?>

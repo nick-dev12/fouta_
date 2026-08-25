@@ -22,7 +22,7 @@ $result = process_add_categorie();
 // Si l'ajout est réussi, rediriger vers la liste
 if (isset($result['success']) && $result['success']) {
     $_SESSION['success_message'] = $result['message'];
-    header('Location: index.php');
+    header('Location: ../produits/index.php');
     exit;
 }
 ?>
@@ -116,7 +116,7 @@ if (isset($result['success']) && $result['success']) {
     
     <div class="content-header">
         <h1><i class="fas fa-plus-circle"></i> Ajouter une Catégorie</h1>
-        <a href="index.php" class="btn-back">
+        <a href="../produits/index.php" class="btn-back">
             <i class="fas fa-arrow-left"></i> Retour
         </a>
     </div>

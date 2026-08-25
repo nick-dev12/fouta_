@@ -271,7 +271,8 @@ function export_catalogue_filters_handle_reset()
         return;
     }
     unset($_SESSION[export_catalogue_filters_session_key()]);
-    header('Location: export-catalogue.php');
+    // Vers la page courante, jamais un nom en dur (voir la note plus bas).
+    header('Location: ' . basename((string) ($_SERVER['SCRIPT_NAME'] ?? 'export-catalogue-fouta-origine.php')));
     exit;
 }
 
@@ -287,7 +288,13 @@ function export_catalogue_filters_restore_redirect_if_needed()
     if (!is_array($saved) || $saved === []) {
         return;
     }
-    header('Location: export-catalogue.php?' . http_build_query($saved));
+    /* Vers LA PAGE COURANTE, jamais un nom en dur : depuis le 23/08,
+     * export-catalogue.php est la page « Exporter les pièces » et le Suivi vit
+     * dans export-catalogue-fouta-origine.php — le nom figé faisait rebondir
+     * le Suivi vers l'autre écran dès qu'une session avait des filtres
+     * mémorisés. */
+    $script = basename((string) ($_SERVER['SCRIPT_NAME'] ?? 'export-catalogue-fouta-origine.php'));
+    header('Location: ' . $script . '?' . http_build_query($saved));
     exit;
 }
 

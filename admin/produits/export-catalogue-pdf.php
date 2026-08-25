@@ -33,9 +33,12 @@ $redirect_query = [
 ];
 $pdf_cols_redirect = isset($meta['pdf_cols']) && is_array($meta['pdf_cols']) ? $meta['pdf_cols'] : [];
 
+/* Les retours vont au SUIVI (export-catalogue-fouta-origine.php) : c'est lui
+ * qui porte la barre de progression du PDF asynchrone. Depuis le 23/08,
+ * export-catalogue.php est la page « Exporter les pièces ». */
 if ($total >= EXPORT_CATALOGUE_ASYNC_MIN) {
     $redirect_query['async_pdf'] = '1';
-    $redirect_url = 'export-catalogue.php?' . http_build_query($redirect_query);
+    $redirect_url = 'export-catalogue-fouta-origine.php?' . http_build_query($redirect_query);
     foreach ($pdf_cols_redirect as $col) {
         $redirect_url .= '&pdf_cols[]=' . rawurlencode((string) $col);
     }
@@ -54,7 +57,7 @@ $meta['total'] = count($produits);
 
 $back_query = $redirect_query;
 unset($back_query['async_pdf']);
-$back_url = 'export-catalogue.php?' . http_build_query($back_query);
+$back_url = 'export-catalogue-fouta-origine.php?' . http_build_query($back_query);
 foreach ($pdf_cols_redirect as $col) {
     $back_url .= '&pdf_cols[]=' . rawurlencode((string) $col);
 }

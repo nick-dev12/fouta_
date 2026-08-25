@@ -20,7 +20,11 @@ $cid = (int) ($categorie['id'] ?? 0);
 $img = trim((string) ($categorie['image'] ?? ''));
 $nb_produits = (int) ($categorie['nb_produits'] ?? 0);
 $nb_sous = isset($nb_sous_cat) ? (int) $nb_sous_cat : 0;
-$detail_href = '../categories/produits.php?id=' . $cid;
+/* Le clic sur une catégorie ouvre désormais LE CATALOGUE (admin/produits/index.php,
+ * le portage de la page Pièces de FPL natif) : le bandeau de ses rayons, puis
+ * les pièces. L'ancienne page ../categories/produits.php reste en place, elle
+ * n'est simplement plus la destination de ce tableau. */
+$detail_href = '../produits/index.php?categorie_id=' . $cid;
 $can_edit = !function_exists('admin_is_restricted_admin_account') || !admin_is_restricted_admin_account();
 ?>
 <tr class="stock-cat-table__row stock-cat-table__row--linkable"

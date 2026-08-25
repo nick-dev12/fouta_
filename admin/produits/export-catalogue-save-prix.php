@@ -14,13 +14,17 @@ require_once __DIR__ . '/../../models/model_produits.php';
 require_once __DIR__ . '/../../includes/export_produits_catalogue_pdf.php';
 require_once __DIR__ . '/../../includes/export_catalogue_suivi.php';
 
+/* Le retour se fait vers le SUIVI (export-catalogue-fouta-origine.php) : ce
+ * point d'enregistrement n'est appelé que par lui. Depuis le 23/08,
+ * export-catalogue.php est la page « Exporter les pièces » — l'ancien nom en
+ * dur y faisait atterrir après chaque enregistrement de prix. */
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: export-catalogue.php');
+    header('Location: export-catalogue-fouta-origine.php');
     exit;
 }
 
 $redirect_query = isset($_POST['redirect_query']) ? (string) $_POST['redirect_query'] : '';
-$target = 'export-catalogue.php';
+$target = 'export-catalogue-fouta-origine.php';
 if ($redirect_query !== '') {
     $target .= '?' . ltrim($redirect_query, '?');
 }

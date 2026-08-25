@@ -1598,3 +1598,240 @@
     justify-content: flex-end;
   }
 }
+
+/* ==========================================================================
+   LE CRAYON ET LA POUBELLE SUR LA CARTE DE CATÉGORIE — geste de FPL natif.
+   Les deux boutons se posent dans le coin haut-droit de la carte et ne
+   sortent qu'au survol, pour ne pas encombrer un bandeau qu'on parcourt.
+   Au doigt (pas de survol possible), ils restent visibles.
+   ========================================================================== */
+.fpl-cat-item {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.fpl-cat-actions {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: flex;
+  gap: 4px;
+  z-index: 5;
+  opacity: 0;
+  transition: opacity .12s ease;
+}
+
+.fpl-cat-item:hover .fpl-cat-actions,
+.fpl-cat-item:focus-within .fpl-cat-actions {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .fpl-cat-actions { opacity: 1; }
+}
+
+.fpl-cat-edit {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--surface, #fff);
+  border: 1px solid var(--line, #dfe4ec);
+  color: var(--navy, #10316f);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  box-shadow: 0 1px 3px rgba(16, 49, 111, .12);
+  transition: border-color .12s ease, color .12s ease, transform .12s ease;
+}
+
+.fpl-cat-edit:hover {
+  border-color: var(--blue, #2957ae);
+  color: var(--blue, #2957ae);
+  transform: scale(1.1);
+  text-decoration: none;
+}
+
+.fpl-cat-del { color: var(--danger, #c0392b); }
+.fpl-cat-del:hover { border-color: var(--danger, #c0392b); color: var(--danger, #c0392b); }
+
+/* Le fil d'Ariane a remonté dans l'en-tête, à la place du titre : il en prend
+   le poids visuel sans en prendre la taille. */
+.fpl-fil--hero {
+  font-size: 17px;
+  margin: 0;
+}
+
+.fpl-fil--hero strong { color: var(--navy, #10316f); }
+
+/* ==========================================================================
+   ALLER DROIT À UNE CATÉGORIE — le champ à suggestions de FPL natif, à la
+   place de la liste déroulante. Le panneau se pose sous le champ et flotte
+   au-dessus du reste de la barre de filtres.
+   ========================================================================== */
+.fpl-catfind { position: relative; }
+
+.fpl-catfind > input[type="text"] {
+  width: 100%;
+}
+
+.fpl-catfind-panel {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  min-width: 260px;
+  z-index: 70;
+  background: var(--surface, #fff);
+  border: 1px solid var(--line, #dfe4ec);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(16, 49, 111, .16);
+  overflow: hidden;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.fpl-catfind-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 12px;
+  font-size: 15px;
+  color: var(--ink, #1c2430);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.fpl-catfind-item:hover,
+.fpl-catfind-item.act {
+  background: var(--blue-tint, #eef3fd);
+  text-decoration: none;
+}
+
+.fpl-catfind-ico {
+  color: var(--blue, #2957ae);
+  display: flex;
+  flex-shrink: 0;
+  font-size: 13px;
+}
+
+.fpl-catfind-item strong { color: var(--navy, #10316f); font-weight: 600; }
+.fpl-catfind-parent { color: var(--slate, #6b7688); font-size: 14px; }
+
+.fpl-catfind-vide {
+  padding: 14px;
+  color: var(--slate, #6b7688);
+  font-size: 14.5px;
+  text-align: center;
+}
+
+/* Le bouton d'ajout, à droite du compte de pièces (FPL natif le pose dans
+   l'en-tête du tableau, pas dans celui de la page). */
+.page-produits-section__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.page-produits-section__add { flex: 0 0 auto; }
+
+/* ==========================================================================
+   LES APPORTS DE CE DÉPÔT REMIS DANS LA PAGE AU BALISAGE DE FPL NATIF :
+   la ligne cliquable et la vignette qui ouvre la galerie photos.
+   ========================================================================== */
+.fpl-ligne-cliquable { cursor: pointer; }
+.fpl-ligne-cliquable:hover { background: var(--blue-tint, #eef3fd); }
+.fpl-ligne-cliquable:focus-visible {
+  outline: 2px solid var(--blue, #2957ae);
+  outline-offset: -2px;
+}
+
+/* La vignette redevient un bouton sans ressembler à un bouton : c'est la
+   photo qu'on clique, pas un cadre. */
+.fpl-thumb-btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: zoom-in;
+  display: block;
+  line-height: 0;
+  border-radius: var(--r-sm, 8px);
+}
+
+.fpl-thumb-btn:focus-visible {
+  outline: 2px solid var(--blue, #2957ae);
+  outline-offset: 2px;
+}
+
+.fpl-thumb-btn:hover .thumb { border-color: var(--blue, #2957ae); }
+
+/* ==========================================================================
+   LA BARRE DE FILTRES SUR UNE SEULE LIGNE.
+   Six champs — Recherche, Catégorie, Marque, Fournisseur, Ajoutées du, au —
+   qui se répartissaient sur quatre lignes en flex. En grille, ils tiennent
+   sur une seule et se serrent ensemble au lieu de passer à la ligne un par un.
+   La recherche est plus large que les autres : c'est le champ qu'on emploie
+   le plus. Les DEUX BOUTONS descendent sur leur propre ligne, à droite : ce
+   sont des actions, pas des champs.
+   ========================================================================== */
+.fpl-catalogue .fc-ligne {
+  display: grid;
+  /* Six champs sur la ligne : ils RESPIRENT — écart plus franc (16 px)
+   * et colonnes souples qui s'élargissent avec l'écran. Sous 1240 px,
+   * trois par rangée plutôt que six écrasés (retour du 24/08 : « les
+   * champs sont collés »). */
+  grid-template-columns: minmax(190px, 1.6fr) repeat(5, minmax(126px, 1fr));
+  gap: 12px 16px;
+  align-items: end;
+}
+
+@media (max-width: 1240px) {
+  .fpl-catalogue .fc-ligne { grid-template-columns: repeat(3, minmax(150px, 1fr)); }
+  .fpl-catalogue .fc-ligne .fc-champ:first-child { grid-column: 1 / -1; }
+}
+
+.fpl-catalogue .fc-ligne .fc-champ {
+  min-width: 0;   /* sans cela une grille refuse de serrer ses colonnes */
+}
+
+.fpl-catalogue .fc-ligne .fc-champ input,
+.fpl-catalogue .fc-ligne .fc-champ select {
+  width: 100%;
+  min-width: 0;
+}
+
+/* Les boutons prennent toute la largeur de la grille et se rangent à droite. */
+.fpl-catalogue .fc-ligne > .btn,
+.fpl-catalogue .fc-ligne > a.btn {
+  grid-column: auto;
+}
+
+.fpl-catalogue .fc-ligne .fc-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+@media (max-width: 1000px) {
+  .fpl-catalogue .fc-ligne { grid-template-columns: minmax(180px, 1.6fr) repeat(2, minmax(130px, 1fr)); }
+}
+
+@media (max-width: 640px) {
+  .fpl-catalogue .fc-ligne { grid-template-columns: 1fr 1fr; }
+}
+
+/* ---------------------------------------------------------------------
+ * LES SÉLECTEURS HABILLÉS DE LA BARRE DE FILTRES (24/08, 2e retour
+ * « les cadres sont collés ») : fpl.css donne à .fs-wrap un minimum de
+ * 190 px — plus large que les colonnes de cette barre à six champs. Le
+ * bouton débordait de sa colonne et mangeait l'écart (mesuré : 1 px entre
+ * Marque et Fournisseur). Ici, il remplit sa colonne, exactement.
+ * ------------------------------------------------------------------- */
+.fc-champ .fs-wrap {
+  display: block;
+  width: 100%;
+  min-width: 0;
+}

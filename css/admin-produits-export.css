@@ -103,7 +103,12 @@
 
 .page-produits-export-options-btn {
   margin-left: auto;
+  /* Demande du 24/08 : l'écriture du bouton, plus grande et plus lisible. */
+  font-size: 15.5px;
+  font-weight: 600;
+  padding: 9px 16px;
 }
+.page-produits-export-options-btn i { font-size: 15px; }
 
 .page-produits-export-toast {
   margin: 10px 0 0;

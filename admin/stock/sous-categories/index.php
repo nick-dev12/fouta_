@@ -214,7 +214,7 @@ $return_url_form = '../stock/sous-categories/index.php';
                         <p class="sc-card__desc"><?php echo htmlspecialchars((string) ($sc['description'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></p>
                         <p class="sc-card__meta"><i class="fas fa-box" aria-hidden="true"></i> <?php echo (int) $nbp; ?> produit<?php echo $nbp > 1 ? 's' : ''; ?></p>
                         <div class="sc-card__actions">
-                            <a class="sc-a-prod" href="produits.php?id=<?php echo $sid; ?>"><i class="fas fa-box-open" aria-hidden="true"></i> Voir les produits</a>
+                            <a class="sc-a-prod" href="../../produits/index.php?categorie_id=<?php echo (int) ($sc['categorie_id'] ?? 0); ?>&amp;sous_categorie_id=<?php echo $sid; ?>"><i class="fas fa-box-open" aria-hidden="true"></i> Voir les produits</a>
                             <a class="sc-a-edit" href="modifier.php?id=<?php echo $sid; ?>"><i class="fas fa-edit" aria-hidden="true"></i> Modifier</a>
                             <form method="post" action="index.php" style="margin:0;"
                                 onsubmit='return confirm(<?php echo json_encode(
