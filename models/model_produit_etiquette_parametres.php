@@ -111,24 +111,7 @@ function fpl_etiquette_dims() {
         }
     }
 
-    $w = (float) $d['largeur_mm'];
-    $h = (float) $d['hauteur_mm'];
-    $sx = round($w / 70.0, 5);
-    $sy = round($h / 70.0, 5);
-    $s = min($sx, $sy);
-    $dots_w = (int) round($w * 8);
-    $dots_h = (int) round($h * 8);
-
-    $d['sx'] = $sx;
-    $d['sy'] = $sy;
-    $d['s'] = $s;
-    $d['dots_w'] = $dots_w;
-    $d['dots_h'] = $dots_h;
-    $d['label'] = fpl_etiquette_dims_label($d);
-    $d['meta'] = 'Format d’impression ' . fpl_etiquette_dims_label_short($d)
-        . ' · Zebra ZD420 (203 dpi ≈ 8 dots/mm · ' . $dots_w . '×' . $dots_h . ' dots) · Aperçu agrandi à l’écran';
-
-    return $d;
+    return fpl_etiquette_dims_finalize($d);
 }
 
 /**
@@ -238,4 +221,154 @@ function fpl_etiquette_dims_data_attrs($dims = null) {
     $sy = htmlspecialchars((string) (float) ($dims['sy'] ?? 1), ENT_QUOTES, 'UTF-8');
 
     return 'data-fpl-w="' . $w . '" data-fpl-h="' . $h . '" data-fpl-sx="' . $sx . '" data-fpl-sy="' . $sy . '"';
+}
+
+/* =====================================================================
+ *  LES FORMATS D'ÉTIQUETTE (24/08) — les tailles proposées à l'impression,
+ *  comme chez FPL natif. La table `etiquette_formats` vient de
+ *  migrations/run_etiquette_formats.php ; sans elle, tout continue de
+ *  marcher à la taille unique des réglages.
+ * ===================================================================== */
+
+/** La table des formats est-elle là ? (une vérification par requête) */
+function fpl_etiquette_formats_table_ok() {
+    static $ok = null;
+    global $db;
+    if ($ok === null) {
+        $ok = false;
+        try {
+            $s = $db->query("SELECT COUNT(*) FROM information_schema.TABLES
+                             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'etiquette_formats'");
+            $ok = (int) $s->fetchColumn() > 0;
+        } catch (PDOException $e) {
+            $ok = false;
+        }
+    }
+    return $ok;
+}
+
+/** Les formats d'étiquette de PIÈCE, dans l'ordre. */
+function fpl_etiquette_formats_pieces() {
+    global $db;
+    if (!fpl_etiquette_formats_table_ok()) {
+        return [];
+    }
+    try {
+        return $db->query("SELECT * FROM etiquette_formats
+                           WHERE type = 'piece' AND sync_deleted_at IS NULL
+                           ORDER BY ordre, id")->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (PDOException $e) {
+        return [];
+    }
+}
+
+/** Un format par id, borné à un type. */
+function fpl_etiquette_format_get($id, $type = 'piece') {
+    global $db;
+    if (!fpl_etiquette_formats_table_ok()) {
+        return false;
+    }
+    try {
+        $st = $db->prepare("SELECT * FROM etiquette_formats
+                            WHERE id = :id AND type = :type AND sync_deleted_at IS NULL");
+        $st->execute(['id' => (int) $id, 'type' => (string) $type]);
+        $f = $st->fetch(PDO::FETCH_ASSOC);
+        return $f ?: false;
+    } catch (PDOException $e) {
+        return false;
+    }
+}
+
+/**
+ * Le calcul commun d'échelle + méta d'une étiquette, à partir des mm déjà
+ * posés dans $d — partagé par fpl_etiquette_dims() (le réglage) et
+ * fpl_etiquette_dims_pour_mm() (un format choisi). Référence : 70 mm à
+ * l'échelle 1, 8 dots/mm (Zebra ZD420, 203 dpi).
+ *
+ * @param array<string, mixed> $d doit porter largeur_mm et hauteur_mm
+ * @return array<string, mixed>
+ */
+function fpl_etiquette_dims_finalize(array $d) {
+    $w = (float) $d['largeur_mm'];
+    $h = (float) $d['hauteur_mm'];
+    $sx = round($w / 70.0, 5);
+    $sy = round($h / 70.0, 5);
+    $dots_w = (int) round($w * 8);
+    $dots_h = (int) round($h * 8);
+
+    $d['sx'] = $sx;
+    $d['sy'] = $sy;
+    $d['s'] = min($sx, $sy);
+    $d['dots_w'] = $dots_w;
+    $d['dots_h'] = $dots_h;
+    $d['label'] = fpl_etiquette_dims_label($d);
+    $d['meta'] = 'Format d’impression ' . fpl_etiquette_dims_label_short($d)
+        . ' · Zebra ZD420 (203 dpi ≈ 8 dots/mm · ' . $dots_w . '×' . $dots_h . ' dots) · Aperçu agrandi à l’écran';
+
+    return $d;
+}
+
+/**
+ * Les dimensions d'étiquette pour DES MM DONNÉS — le même calcul que
+ * fpl_etiquette_dims(), mais depuis un format choisi plutôt que le réglage.
+ */
+function fpl_etiquette_dims_pour_mm($largeur_mm, $hauteur_mm) {
+    $d = fpl_etiquette_dims_defaut();
+    $d['largeur_mm'] = fpl_etiquette_mm_clamp($largeur_mm, 30, 200, $d['largeur_mm']);
+    $d['hauteur_mm'] = fpl_etiquette_mm_clamp($hauteur_mm, 30, 200, $d['hauteur_mm']);
+
+    return fpl_etiquette_dims_finalize($d);
+}
+
+/** Ajoute un format de pièce (nom auto « L × H mm »). */
+function fpl_etiquette_format_ajouter($largeur_mm, $hauteur_mm) {
+    global $db;
+    if (!fpl_etiquette_formats_table_ok()) {
+        return ['success' => false, 'message' => 'La table des formats n\'est pas installée.'];
+    }
+    $l = fpl_etiquette_mm_clamp($largeur_mm, 30, 200, 0);
+    $h = fpl_etiquette_mm_clamp($hauteur_mm, 30, 200, 0);
+    if ($l <= 0 || $h <= 0) {
+        return ['success' => false, 'message' => 'Largeur et hauteur : entre 30 et 200 mm.'];
+    }
+    $nom = fpl_etiquette_dims_fmt_mm($l) . ' × ' . fpl_etiquette_dims_fmt_mm($h) . ' mm';
+    try {
+        $doublon = $db->prepare("SELECT COUNT(*) FROM etiquette_formats
+                                 WHERE type = 'piece' AND sync_deleted_at IS NULL
+                                   AND ABS(largeur_mm - :l) < 0.01 AND ABS(hauteur_mm - :h) < 0.01");
+        $doublon->execute(['l' => $l, 'h' => $h]);
+        if ((int) $doublon->fetchColumn() > 0) {
+            return ['success' => false, 'message' => 'Cette taille existe déjà dans la liste.'];
+        }
+        $ordre = (int) $db->query("SELECT COALESCE(MAX(ordre), 0) + 1 FROM etiquette_formats WHERE type = 'piece'")->fetchColumn();
+        $st = $db->prepare("INSERT INTO etiquette_formats
+            (nom, type, largeur_mm, hauteur_mm, est_systeme, ordre, date_creation, date_modification, sync_uuid)
+            VALUES (:nom, 'piece', :l, :h, 0, :o, NOW(), NOW(), UUID())");
+        $st->execute(['nom' => $nom, 'l' => $l, 'h' => $h, 'o' => $ordre]);
+        return ['success' => true, 'message' => 'Taille « ' . $nom . ' » ajoutée.'];
+    } catch (PDOException $e) {
+        return ['success' => false, 'message' => 'L\'ajout a échoué — réessayez.'];
+    }
+}
+
+/** Retire un format (suppression DOUCE ; les tailles d'origine sont protégées). */
+function fpl_etiquette_format_retirer($id) {
+    global $db;
+    if (!fpl_etiquette_formats_table_ok()) {
+        return ['success' => false, 'message' => 'La table des formats n\'est pas installée.'];
+    }
+    $f = fpl_etiquette_format_get((int) $id, 'piece');
+    if ($f === false) {
+        return ['success' => false, 'message' => 'Ce format n\'existe pas.'];
+    }
+    if ((int) ($f['est_systeme'] ?? 0) === 1) {
+        return ['success' => false, 'message' => 'Les tailles d\'origine ne se retirent pas.'];
+    }
+    try {
+        $st = $db->prepare("UPDATE etiquette_formats SET sync_deleted_at = NOW(), date_modification = NOW() WHERE id = :id");
+        $st->execute(['id' => (int) $id]);
+        return ['success' => true, 'message' => 'Taille « ' . (string) $f['nom'] . ' » retirée.'];
+    } catch (PDOException $e) {
+        return ['success' => false, 'message' => 'Le retrait a échoué — réessayez.'];
+    }
 }

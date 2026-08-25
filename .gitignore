@@ -72,3 +72,12 @@ git/
 poid_lourd/
 fpl_natif-main/
 
+# Polices d'étiquette : Windows / Monotype, non redistribuables — chaque poste
+# dépose les siennes (voir fonts/LISEZ-MOI.md). Seul le mode d'emploi est versionné.
+/fonts/*.ttf
+# Cache de polices dompdf : régénéré par poste, et il embarque les polices ci-dessus.
+/vendor/dompdf/dompdf/lib/fonts/fpl_*
+/vendor/dompdf/dompdf/lib/fonts/installed-fonts.json
+/vendor/dompdf/dompdf/lib/fonts/*.ufm.json
+/vendor/dompdf/dompdf/lib/fonts/*.afm.json
+

@@ -35,7 +35,7 @@ $produit = get_produit_by_id($produit_id);
 if (!$produit) {
     http_response_code(404);
     header('Content-Type: text/plain; charset=utf-8');
-    echo 'Produit introuvable.';
+    echo 'Pièce introuvable.';
     exit;
 }
 
