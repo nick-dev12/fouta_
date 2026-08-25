@@ -1,7 +1,16 @@
 <?php
 /**
- * Page historique des mouvements de stock
- * Recherche live, filtres catégorie / type, pagination
+ * HISTORIQUE DES MOUVEMENTS — le registre GLOBAL : tous les mouvements de
+ * tout le monde, filtrés (recherche, catégorie, type), comptés et paginés
+ * avec le choix du nombre de lignes — le même tableau que le catalogue.
+ * Programmation procédurale uniquement
+ *
+ * Passage au squelette FPL le 24/08 (demande : « fais pareil que le
+ * tableau du catalogue, et agrandis les écritures ») : barre de filtres
+ * fc-ligne, fpl_tablebar_haut (compteur + « Lignes par page »), fpl_pager,
+ * motifs lisibles partagés (stock_mouvement_motif_libelle), transferts
+ * affichés départ → arrivée, et QUI a fait le geste.
+ * La page d'avant, avec sa recherche en direct : mouvements-fouta-origine.php.
  */
 
 session_start();
@@ -12,42 +21,67 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
 }
 
 require_once __DIR__ . '/../includes/require_access.php';
-
-require_once __DIR__ . '/../../models/model_mouvements_stock.php';
+require_once __DIR__ . '/../../includes/admin_permissions.php';
+require_once __DIR__ . '/../../includes/fpl_texte.php';
+require_once __DIR__ . '/../../includes/fpl_ui.php';
 require_once __DIR__ . '/../../models/model_categories.php';
-require_once __DIR__ . '/../../includes/stock_mouvements_render.php';
+require_once __DIR__ . '/../../models/model_mouvements_stock.php';
 
-$search = trim((string) ($_GET['q'] ?? $_GET['recherche'] ?? ''));
+$recherche = trim((string) ($_GET['q'] ?? $_GET['recherche'] ?? ''));
 $categorie_id = isset($_GET['categorie_id']) ? (int) $_GET['categorie_id'] : 0;
-$type_filter = isset($_GET['type']) && in_array($_GET['type'], ['entree', 'sortie', 'inventaire'], true)
-    ? (string) $_GET['type']
-    : null;
+$type_filtre = isset($_GET['type']) && in_array($_GET['type'], ['entree', 'sortie', 'transfert', 'inventaire'], true)
+    ? (string) $_GET['type'] : null;
+$du = isset($_GET['du']) && preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $_GET['du']) ? (string) $_GET['du'] : null;
+$au = isset($_GET['au']) && preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $_GET['au']) ? (string) $_GET['au'] : null;
 
-$per_page = 25;
+$par = fpl_par_page('mouvements_historique', 25);
 $page = max(1, (int) ($_GET['page'] ?? 1));
-$total_mouvements = count_stock_mouvements(
-    $categorie_id > 0 ? $categorie_id : null,
-    $type_filter,
-    $search !== '' ? $search : null
-);
-$total_pages = max(1, (int) ceil($total_mouvements / $per_page));
-if ($page > $total_pages) {
-    $page = $total_pages;
-}
-$offset = ($page - 1) * $per_page;
 
-$mouvements = get_stock_mouvements_paginated(
+$total = count_stock_mouvements($categorie_id > 0 ? $categorie_id : null, $type_filtre, $recherche !== '' ? $recherche : null, null, $du, $au);
+$derniere = max(1, (int) ceil($total / $par));
+$page = min($page, $derniere);
+$lignes = get_stock_mouvements_paginated(
     $categorie_id > 0 ? $categorie_id : null,
-    $type_filter,
-    $search !== '' ? $search : null,
-    $offset,
-    $per_page
+    $type_filtre,
+    $recherche !== '' ? $recherche : null,
+    ($page - 1) * $par,
+    $par,
+    null,
+    $du,
+    $au
 );
+$pagine = ['lignes' => $lignes, 'total' => $total, 'page' => $page, 'par' => $par, 'derniere' => $derniere];
+
+// QUI a fait chaque geste — un seul aller-retour pour toutes les lignes.
+$admins_noms = [];
+$admin_ids = array_values(array_unique(array_filter(array_map(function ($m) {
+    return (int) ($m['admin_id'] ?? 0);
+}, $lignes))));
+if ($admin_ids !== []) {
+    try {
+        $ph = implode(',', array_fill(0, count($admin_ids), '?'));
+        $st = $db->prepare("SELECT id, TRIM(CONCAT(COALESCE(prenom, ''), ' ', COALESCE(nom, ''))) AS qui FROM admin WHERE id IN ($ph)");
+        $st->execute($admin_ids);
+        foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $a) {
+            $admins_noms[(int) $a['id']] = (string) $a['qui'];
+        }
+    } catch (PDOException $e) {
+        $admins_noms = [];
+    }
+}
 
 $categories = get_all_categories();
-$has_filters = ($search !== '' || $categorie_id > 0 || $type_filter !== null);
-$from_row = $total_mouvements === 0 ? 0 : $offset + 1;
-$to_row = min($page * $per_page, $total_mouvements);
+
+$types_libelles = [
+    '' => 'Tous les types',
+    'entree' => 'Entrées',
+    'sortie' => 'Sorties',
+    'transfert' => 'Transferts',
+    'inventaire' => 'Inventaires',
+];
+
+$fpl_titre_page = 'Historique des mouvements';
+$fpl_retour_page = '../produits/mon-travail.php';
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -56,150 +90,176 @@ $to_row = min($page * $per_page, $total_mouvements);
     <?php include __DIR__ . '/../../includes/favicon.php'; ?>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mouvements de stock — Administration</title>
+    <title>Historique des mouvements — Administration</title>
     <?php require_once __DIR__ . '/../../includes/asset_version.php'; ?>
-<?php include __DIR__ . '/..//includes/fpl_head.php'; ?>
-    <?php fpl_css_link('admin-stock-mouvements.css'); ?>
+<?php include __DIR__ . '/../includes/fpl_head.php'; ?>
+    <?php fpl_css_link('admin-produits-index.css'); ?>
 </head>
 
-<body>
+<body class="fpl-catalogue">
     <?php include '../includes/nav.php'; ?>
 
-    <div class="mv-page"
-        data-mv-page
-        data-ajax-url="ajax_mouvements_live.php"
-        data-per-page="<?php echo (int) $per_page; ?>"
-        data-initial-page="<?php echo (int) $page; ?>">
+    <div class="page-produits-admin page-mouvements-historique">
 
-        <header class="mv-hero">
-            <div>
-                <p class="mv-hero__eyebrow">Inventaire &amp; traçabilité</p>
-                <h1 class="mv-hero__title">
-                    <i class="fas fa-history" aria-hidden="true"></i>
-                    Historique des mouvements
-                </h1>
-            </div>
-            <a href="index.php" class="mv-hero__back">
-                <i class="fas fa-arrow-left" aria-hidden="true"></i> Retour au stock
-            </a>
-        </header>
-
-        <section class="mv-toolbar" data-mv-filters aria-label="Filtres des mouvements">
-            <div class="mv-toolbar__head">
-                <i class="fas fa-sliders-h" aria-hidden="true"></i>
-                Recherche et filtres en direct
-            </div>
-
-            <div class="mv-search-wrap">
-                <i class="fas fa-search" aria-hidden="true"></i>
-                <input type="search"
-                    class="mv-search"
-                    id="mv-search"
-                    data-mv-search
-                    value="<?php echo htmlspecialchars($search, ENT_QUOTES, 'UTF-8'); ?>"
-                    placeholder="Produit, référence, notes, n° commande…"
-                    autocomplete="off"
-                    inputmode="search"
-                    aria-label="Rechercher un mouvement">
-            </div>
-
-            <div class="mv-filters-row">
-                <div class="mv-filters-grid">
-                    <div class="mv-filter-group">
-                        <label for="mv-categorie"><i class="fas fa-tags" aria-hidden="true"></i> Catégorie</label>
-                        <div class="mv-select-wrap">
-                            <select id="mv-categorie" data-mv-categorie class="mv-select">
-                                <option value="0">Toutes les catégories</option>
-                                <?php foreach ($categories as $c): ?>
-                                <option value="<?php echo (int) $c['id']; ?>" <?php echo $categorie_id === (int) $c['id'] ? 'selected' : ''; ?>>
-                                    <?php echo htmlspecialchars($c['nom'], ENT_QUOTES, 'UTF-8'); ?>
-                                </option>
-                                <?php endforeach; ?>
-                            </select>
-                            <i class="fas fa-chevron-down mv-select-wrap__icon" aria-hidden="true"></i>
-                        </div>
-                    </div>
-
-                    <div class="mv-filter-group">
-                        <label for="mv-type"><i class="fas fa-exchange-alt" aria-hidden="true"></i> Type de mouvement</label>
-                        <div class="mv-select-wrap">
-                            <select id="mv-type" data-mv-type class="mv-select">
-                                <option value="" <?php echo $type_filter === null ? 'selected' : ''; ?>>Tous les types</option>
-                                <option value="entree" <?php echo $type_filter === 'entree' ? 'selected' : ''; ?>>Entrées</option>
-                                <option value="sortie" <?php echo $type_filter === 'sortie' ? 'selected' : ''; ?>>Sorties</option>
-                                <option value="inventaire" <?php echo $type_filter === 'inventaire' ? 'selected' : ''; ?>>Inventaires</option>
-                            </select>
-                            <i class="fas fa-chevron-down mv-select-wrap__icon" aria-hidden="true"></i>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="mv-filters-actions">
-                    <button type="button" class="mv-reset-btn" data-mv-reset>
-                        <i class="fas fa-rotate-left" aria-hidden="true"></i>
-                        <span>Réinitialiser</span>
-                    </button>
-                </div>
-            </div>
-        </section>
-
-        <div class="mv-summary">
-            <p class="mv-summary__count">
-                <strong data-mv-count><?php echo (int) $total_mouvements; ?></strong>
-                mouvement<?php echo $total_mouvements > 1 ? 's' : ''; ?>
-            </p>
-            <p class="mv-summary__hint" data-mv-count-hint>
-                <?php if ($total_mouvements === 0): ?>
-                    Aucun résultat
-                <?php else: ?>
-                    <?php echo (int) $from_row; ?>–<?php echo (int) $to_row; ?> sur <?php echo (int) $total_mouvements; ?> mouvement<?php echo $total_mouvements > 1 ? 's' : ''; ?>
-                <?php endif; ?>
-            </p>
+    <div class="card filtre-complet" style="margin-bottom:var(--s4)">
+      <form method="GET" action="mouvements.php" class="fc-ligne fc-ligne-mouvements">
+        <div class="fc-champ fc-recherche">
+          <label for="fc-q">Recherche</label>
+          <input type="text" id="fc-q" name="q" value="<?php echo e($recherche); ?>"
+                 placeholder="Pièce, référence, note, motif…">
         </div>
-
-        <section class="mv-panel" data-mv-table-section<?php echo empty($mouvements) ? ' hidden' : ''; ?>>
-            <div class="mv-loading" data-mv-loading hidden>
-                <i class="fas fa-circle-notch fa-spin" aria-hidden="true"></i> Chargement…
-            </div>
-
-            <div class="mv-table-wrap">
-                <table class="mv-table">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Type</th>
-                            <th>Produit</th>
-                            <th>Qté</th>
-                            <th>Avant</th>
-                            <th>Après</th>
-                            <th>Référence</th>
-                            <th>Notes</th>
-                        </tr>
-                    </thead>
-                    <tbody data-mv-tbody>
-                        <?php echo stock_mouvements_render_table_rows($mouvements); ?>
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="mv-cards" data-mv-cards>
-                <?php echo stock_mouvements_render_cards($mouvements); ?>
-            </div>
-
-            <div data-mv-pagination-wrap>
-                <?php echo stock_mouvements_render_pagination($page, $total_pages, $per_page, $total_mouvements); ?>
-            </div>
-        </section>
-
-        <div class="mv-empty" data-mv-empty<?php echo empty($mouvements) ? '' : ' hidden'; ?>>
-            <i class="fas fa-inbox" aria-hidden="true"></i>
-            <p class="mv-empty__title">Aucun mouvement trouvé</p>
-            <p><?php echo $has_filters ? 'Essayez d’autres critères de recherche ou réinitialisez les filtres.' : 'Les mouvements apparaîtront ici dès qu’un stock sera modifié.'; ?></p>
+        <div class="fc-champ">
+          <label for="fc-cat">Catégorie</label>
+          <select id="fc-cat" name="categorie_id" onchange="this.form.submit()">
+            <option value="0">Toutes les catégories</option>
+            <?php foreach ($categories as $c) : ?>
+              <option value="<?php echo (int) $c['id']; ?>" <?php echo $categorie_id === (int) $c['id'] ? 'selected' : ''; ?>>
+                <?php echo fpl_e($c['nom']); ?>
+              </option>
+            <?php endforeach; ?>
+          </select>
         </div>
+        <div class="fc-champ">
+          <label for="fc-type">Type</label>
+          <select id="fc-type" name="type" onchange="this.form.submit()">
+            <?php foreach ($types_libelles as $val => $lib) : ?>
+              <option value="<?php echo e($val); ?>" <?php echo (string) $type_filtre === $val && !($val === '' && $type_filtre !== null) ? 'selected' : ''; ?>>
+                <?php echo e($lib); ?>
+              </option>
+            <?php endforeach; ?>
+          </select>
+        </div>
+        <div class="fc-champ">
+          <label for="fc-du">Du</label>
+          <input type="date" id="fc-du" name="du" value="<?php echo e((string) $du); ?>" onchange="this.form.submit()">
+        </div>
+        <div class="fc-champ">
+          <label for="fc-au">au</label>
+          <input type="date" id="fc-au" name="au" value="<?php echo e((string) $au); ?>" onchange="this.form.submit()">
+        </div>
+        <button type="submit" class="btn btn-primary"><?php echo fpl_icone('search', 14); ?> Filtrer</button>
+      </form>
+
+      <?php if ($recherche !== '' || $categorie_id > 0 || $type_filtre !== null || $du !== null || $au !== null) : ?>
+        <div class="fc-actifs" style="margin-top:var(--s3)">
+          <span class="muted">Filtres :</span>
+          <?php if ($recherche !== '') : ?><span class="cat-tag">« <?php echo e($recherche); ?> »</span><?php endif; ?>
+          <?php if ($categorie_id > 0) : ?>
+            <?php foreach ($categories as $c) : if ((int) $c['id'] === $categorie_id) : ?>
+              <span class="cat-tag"><?php echo fpl_e($c['nom']); ?></span>
+            <?php endif; endforeach; ?>
+          <?php endif; ?>
+          <?php if ($type_filtre !== null) : ?><span class="cat-tag"><?php echo e($types_libelles[$type_filtre] ?? $type_filtre); ?></span><?php endif; ?>
+          <?php if ($du !== null) : ?><span class="cat-tag">du <?php echo date('d/m/Y', strtotime($du)); ?></span><?php endif; ?>
+          <?php if ($au !== null) : ?><span class="cat-tag">au <?php echo date('d/m/Y', strtotime($au)); ?></span><?php endif; ?>
+          <a href="mouvements.php" class="fc-effacer">Tout effacer</a>
+        </div>
+      <?php endif; ?>
     </div>
 
-    <?php include '../includes/footer.php'; ?>
-    <script src="/js/admin-stock-mouvements.js<?php echo asset_version_query(); ?>"></script>
-</body>
+    <div class="card">
+      <?php if ($pagine['lignes'] === []) : ?>
+        <div class="empty">
+          <span class="big"><?php echo fpl_icone('package', 32); ?></span>
+          Aucun mouvement<?php echo $recherche !== '' ? ' ne correspond à « ' . e($recherche) . ' »' : ' enregistré'; ?>.
+        </div>
+      <?php else : ?>
+        <?php echo fpl_tablebar_haut($pagine, 'mouvements'); ?>
 
-</html>
+        <div class="table-wrap">
+          <table class="mv-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Pièce</th>
+                <th>Motif</th>
+                <th class="num">Qté</th>
+                <th class="num">Avant</th>
+                <th class="num">Après</th>
+                <th>Emplacement</th>
+                <th>Par</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php foreach ($pagine['lignes'] as $m) : ?>
+                <tr>
+                  <td class="muted" style="white-space:nowrap">
+                    <?php echo date('d/m/Y', strtotime($m['date_mouvement'])); ?>
+                    <span style="display:block; font-size:12.5px"><?php echo date('H:i', strtotime($m['date_mouvement'])); ?></span>
+                  </td>
+                  <td>
+                    <?php if (!empty($m['produit_id'])) : ?>
+                      <a class="cell-title" href="../produits/ajuster-stock.php?id=<?php echo (int) $m['produit_id']; ?>" style="color:var(--ink)">
+                        <?php echo $m['produit_nom'] !== null ? fpl_e($m['produit_nom']) : 'Pièce supprimée'; ?>
+                      </a>
+                    <?php else : ?>
+                      <span class="muted">—</span>
+                    <?php endif; ?>
+                    <?php if (!empty($m['notes'])) : ?>
+                      <div class="cell-sub muted" style="font-size:12.5px"><?php echo fpl_e(mb_substr((string) $m['notes'], 0, 80)); ?></div>
+                    <?php endif; ?>
+                  </td>
+                  <td class="muted"><?php echo e(stock_mouvement_motif_libelle($m)); ?></td>
+                  <td class="num" style="font-weight:700; color:<?php echo $m['type'] === 'sortie' ? 'var(--danger, #B23A31)' : ($m['type'] === 'transfert' ? 'var(--blue-600)' : 'var(--ok, #2CB67D)'); ?>">
+                    <?php echo stock_mouvement_signe($m['type']); ?><?php echo (int) $m['quantite']; ?>
+                  </td>
+                  <td class="num muted"><?php echo $m['quantite_avant'] !== null ? (int) $m['quantite_avant'] : '—'; ?></td>
+                  <td class="num"><?php echo $m['quantite_apres'] !== null ? (int) $m['quantite_apres'] : '—'; ?></td>
+                  <td class="muted" style="font-size:13.5px">
+                    <?php if ($m['type'] === 'transfert') : ?>
+                      <?php echo fpl_e(((string) ($m['source_nom'] ?? '') !== '' ? $m['source_nom'] : '—') . ' → ' . ((string) ($m['destination_nom'] ?? '') !== '' ? $m['destination_nom'] : '—')); ?>
+                    <?php elseif (!empty($m['destination_nom'])) : ?>
+                      <?php echo fpl_e($m['destination_nom']); ?>
+                    <?php elseif (!empty($m['source_nom'])) : ?>
+                      <?php echo fpl_e($m['source_nom']); ?>
+                    <?php else : ?>
+                      —
+                    <?php endif; ?>
+                  </td>
+                  <td class="muted"><?php echo isset($admins_noms[(int) ($m['admin_id'] ?? 0)]) ? e($admins_noms[(int) $m['admin_id']]) : '—'; ?></td>
+                </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        </div>
+
+        <?php echo fpl_pager($pagine); ?>
+      <?php endif; ?>
+    </div>
+
+    </div><!-- .page-produits-admin -->
+
+<style>
+  /* La barre : quatre blocs, pas six. */
+  .fpl-catalogue .fc-ligne-mouvements { grid-template-columns: minmax(190px, 1.6fr) minmax(160px, 1fr) minmax(140px, 1fr) minmax(130px, 1fr) minmax(130px, 1fr) auto; }
+  @media (max-width: 1240px) { .fpl-catalogue .fc-ligne-mouvements { grid-template-columns: repeat(3, minmax(150px, 1fr)); } }
+  @media (max-width: 900px) { .fpl-catalogue .fc-ligne-mouvements { grid-template-columns: 1fr 1fr; } }
+
+  /* LES ÉCRITURES, PLUS GRANDES (demande du 24/08) : le registre se lit
+     debout, vite — la table passe à 15 px, les cellules respirent. */
+  .page-mouvements-historique .mv-table { font-size: 15px; }
+  .page-mouvements-historique .mv-table th { font-size: 12.5px; padding: 10px 12px; }
+  .page-mouvements-historique .mv-table td { padding: 11px 12px; }
+  .page-mouvements-historique .mv-table .cell-title { font-size: 15px; font-weight: 600; }
+  .page-mouvements-historique .tablebar-count { font-size: 14.5px; }
+</style>
+
+<script>
+  // La recherche filtre EN DIRECT : une pause de frappe suffit (600 ms) —
+  // l'esprit de l'ancienne page, sans point AJAX à entretenir.
+  (function () {
+    const champ = document.getElementById('fc-q');
+    if (!champ) return;
+    const valeurInitiale = champ.value;
+    let minuterie = null;
+    champ.addEventListener('input', function () {
+      clearTimeout(minuterie);
+      const v = champ.value.trim();
+      if (v === valeurInitiale.trim()) return;
+      if (v.length === 1) return; // une seule lettre : trop tôt
+      minuterie = setTimeout(function () { champ.form.submit(); }, 600);
+    });
+  })();
+</script>
+
+    <?php include '../includes/footer.php'; ?>
