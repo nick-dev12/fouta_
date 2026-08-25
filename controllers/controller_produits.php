@@ -13,6 +13,33 @@ require_once __DIR__ . '/../includes/image_optimizer.php';
 require_once __DIR__ . '/../includes/produit_emplacement_entrepot.php';
 
 /**
+ * Valide un prix entreprise saisi (tarif professionnel) : nombre >= 0 et sous
+ * le prix de vente. Règle UNIQUE pour la création et la modification. Pousse le
+ * message dans $errors et renvoie la valeur validée, ou null (vide ou refusée).
+ *
+ * @param string $pe_raw la saisie déjà trim
+ * @param mixed $prix le prix de vente (plafond), ou non défini
+ * @param array<int, string> $errors
+ * @return float|null
+ */
+function produits_valider_prix_entreprise($pe_raw, $prix, array &$errors)
+{
+    if ($pe_raw === '') {
+        return null;
+    }
+    if (!is_numeric($pe_raw) || (float) $pe_raw < 0) {
+        $errors[] = 'Le prix entreprise doit être un nombre valide (0 ou plus).';
+        return null;
+    }
+    if (isset($prix) && (float) $prix > 0 && (float) $pe_raw > (float) $prix) {
+        $errors[] = 'Le prix entreprise doit rester sous le prix de vente.';
+        return null;
+    }
+
+    return (float) $pe_raw;
+}
+
+/**
  * Génère et sauvegarde le QR code d'un produit (pointant vers stock-info.php)
  * @param int $produit_id ID du produit
  * @return bool True si succès
@@ -208,7 +235,14 @@ function produits_resolve_fournisseur_from_post(array $post)
     }
     require_once __DIR__ . '/../models/model_fournisseurs.php';
     if (!isset($post['fournisseur_id']) || $post['fournisseur_id'] === '' || (int) $post['fournisseur_id'] <= 0) {
-        return ['fournisseur_id' => null, 'nom_fournisseur' => null];
+        /* AUCUN FOURNISSEUR CHOISI DANS LA LISTE. Le formulaire propose alors un
+         * champ libre, « Si absent de la liste ci-dessus » — et ce nom était
+         * jeté sans rien dire : on le tapait, il disparaissait. On le garde.
+         * La liste reste prioritaire : ce champ ne sert que quand elle est vide. */
+        return [
+            'fournisseur_id' => null,
+            'nom_fournisseur' => produits_normalize_nom_fournisseur_from_post($post),
+        ];
     }
     $fid = (int) $post['fournisseur_id'];
     $f = get_fournisseur_by_id($fid);
@@ -298,7 +332,7 @@ function process_add_produit()
 
     // Validation
     if (produit_formulaire_champ_visible('nom') && empty($nom)) {
-        $errors[] = 'Le nom du produit est obligatoire.';
+        $errors[] = 'Le nom de la pièce est obligatoire.';
     }
 
     if (produit_formulaire_champ_visible('prix')) {
@@ -371,7 +405,7 @@ function process_add_produit()
         if ($sc_post > 0) {
             $row_sc = get_sous_categorie_by_id($sc_post);
             if (!$row_sc || (int) $row_sc['categorie_id'] !== $categorie_id) {
-                $errors[] = 'La sous-catégorie choisie ne correspond pas à la catégorie du produit.';
+                $errors[] = 'La sous-catégorie choisie ne correspond pas à la catégorie de la pièce.';
             } else {
                 $sous_categorie_id = $sc_post;
             }
@@ -398,6 +432,76 @@ function process_add_produit()
                 ? mb_substr($rf_raw, 0, 120, 'UTF-8')
                 : substr($rf_raw, 0, 120);
         }
+    }
+
+    /* LE VÉHICULE DU WIZARD FPL (23/08) — les modèles compatibles (plusieurs
+     * possibles, cases `modeles[]`) et la génération. Le modèle principal est
+     * le premier de la liste ALPHABÉTIQUE des cochés ; la génération n'a de
+     * sens qu'à modèle unique, et au sien. Sans marque, rien n'est retenu. */
+    $modeles_retenus = [];
+    $generation_retenue = null;
+    if ($marque_id_resolved !== null && function_exists('produit_modeles_retenus')) {
+        $modeles_post = isset($_POST['modeles']) && is_array($_POST['modeles'])
+            ? array_slice($_POST['modeles'], 0, 30) : [];
+        $modeles_retenus = produit_modeles_retenus($modeles_post, $marque_id_resolved);
+        $generation_retenue = produit_generation_retenue(
+            !empty($_POST['generation_id']) ? (int) $_POST['generation_id'] : null,
+            count($modeles_retenus) === 1 ? $modeles_retenus[0] : null
+        );
+    }
+
+    /* LA DESCRIPTION SORT AUTOMATIQUEMENT (règle FPL natif) : quand rien n'est
+     * saisi, elle est composée MARQUE — MODÈLE — RÉF. OEM. Le wizard la
+     * compose déjà à l'écran ; ici c'est le filet quand le JavaScript manque. */
+    if ($description === '') {
+        global $db;
+        $morceaux = [];
+        if ($marque_id_resolved !== null) {
+            $mq = get_marque_by_id($marque_id_resolved);
+            if ($mq && trim((string) $mq['nom']) !== '') {
+                $morceaux[] = trim((string) $mq['nom']);
+            }
+        }
+        if (isset($modeles_retenus[0])) {
+            try {
+                $st = $db->prepare("SELECT nom FROM vehicule_modeles WHERE id = :id");
+                $st->execute(['id' => (int) $modeles_retenus[0]]);
+                $mn = $st->fetchColumn();
+                if ($mn !== false && trim((string) $mn) !== '') {
+                    $morceaux[] = trim((string) $mn);
+                }
+            } catch (PDOException $e) {
+                // sans modèle nommé, la description se passe de lui
+            }
+        }
+        $oem_desc = isset($_POST['reference_oem']) ? trim((string) $_POST['reference_oem']) : '';
+        if ($oem_desc !== '') {
+            $morceaux[] = 'OEM ' . $oem_desc;
+        }
+        if ($morceaux !== []) {
+            $description = implode(' — ', $morceaux);
+        }
+    }
+
+    // Le nom en wolof — celui qu'on demande au comptoir ; il titre l'étiquette.
+    $nom_wolof_val = null;
+    if (produits_has_column('nom_wolof')) {
+        $nw_raw = isset($_POST['nom_wolof']) ? trim((string) $_POST['nom_wolof']) : '';
+        if ($nw_raw !== '') {
+            if (mb_strlen($nw_raw) > 190) {
+                $errors[] = 'Le nom en wolof est trop long (190 caractères au plus).';
+            } else {
+                $nom_wolof_val = $nw_raw;
+            }
+        }
+    }
+
+    // Le prix entreprise — le tarif des professionnels, sous le prix public.
+    // Même visibilité que le prix de vente : qui ne tarife pas ne le pose pas.
+    $prix_entreprise_val = null;
+    if (produits_has_column('prix_entreprise') && produit_formulaire_champ_visible('prix')) {
+        $pe_raw = isset($_POST['prix_entreprise']) ? trim((string) $_POST['prix_entreprise']) : '';
+        $prix_entreprise_val = produits_valider_prix_entreprise($pe_raw, $prix ?? null, $errors);
     }
 
     $identifiant_attribue = null;
@@ -503,6 +607,20 @@ function process_add_produit()
         if (produits_has_column('reference_fournisseur')) {
             $data['reference_fournisseur'] = $reference_fournisseur_val;
         }
+        // Le véhicule du wizard FPL : modèle principal + génération (colonnes
+        // déjà présentes), le nom wolof et le prix entreprise (migration 23/08)
+        if (produits_has_column('modele_id')) {
+            $data['modele_id'] = isset($modeles_retenus[0]) ? (int) $modeles_retenus[0] : null;
+        }
+        if (produits_has_column('generation_id')) {
+            $data['generation_id'] = $generation_retenue;
+        }
+        if (produits_has_column('nom_wolof')) {
+            $data['nom_wolof'] = $nom_wolof_val;
+        }
+        if (produits_has_column('prix_entreprise')) {
+            $data['prix_entreprise'] = $prix_entreprise_val;
+        }
         if ($admin_session_id > 0) {
             $data['admin_createur_id'] = $admin_session_id;
         }
@@ -511,9 +629,13 @@ function process_add_produit()
 
         if ($produit_id) {
             $success = true;
-            $message = 'Produit ajouté avec succès !';
+            $message = 'Pièce ajoutée avec succès !';
             if ($identifiant_attribue !== null && $identifiant_attribue !== '') {
                 $message .= ' Référence : ' . $identifiant_attribue . '.';
+            }
+            // Toutes les compatibilités véhicule — le modèle principal compris
+            if ($modeles_retenus !== [] && function_exists('produit_modeles_poser')) {
+                produit_modeles_poser((int) $produit_id, $modeles_retenus);
             }
             // Générer et sauvegarder le QR code du produit
             generer_qrcode_produit($produit_id);
@@ -561,7 +683,14 @@ function process_add_produit()
     }
 
     if ($success) {
-        return ['success' => true, 'message' => $message];
+        // L'identifiant de la pièce créée : la page d'ajout mène droit à sa
+        // fiche (parcours FPL natif), au lieu de renvoyer à une liste.
+        return [
+            'success' => true,
+            'message' => $message,
+            'produit_id' => isset($produit_id) ? (int) $produit_id : 0,
+            'identifiant' => $identifiant_attribue,
+        ];
     } else {
         $message = !empty($errors) ? implode('<br>', $errors) : 'Une erreur est survenue.';
         return ['success' => false, 'message' => $message];
@@ -586,12 +715,19 @@ function process_update_produit($produit_id)
     // Vérifier que le produit existe (sans filtre d’accès : conserver les champs masqués)
     $produit = get_produit_by_id_sans_filtre_acces($produit_id);
     if (!$produit) {
-        return ['success' => false, 'message' => 'Produit introuvable.'];
+        return ['success' => false, 'message' => 'Pièce introuvable.'];
     }
 
     // Récupération et validation des données (stock géré via produits.stock)
     $nom = isset($_POST['nom']) ? trim($_POST['nom']) : '';
     $description = isset($_POST['description']) ? trim($_POST['description']) : '';
+    /* LA DESCRIPTION EST GÉNÉRÉE, PLUS SAISIE (24/08) : l'écran Modifier
+     * envoie un champ caché recomposé par la page. Vide — JavaScript coupé,
+     * ancien formulaire — on GARDE la description déjà en base : une mise à
+     * jour ne doit jamais effacer en silence ce que la fiche portait. */
+    if ($description === '') {
+        $description = trim((string) ($produit['description'] ?? ''));
+    }
     $fournisseur_res = produit_formulaire_champ_visible('fournisseur_id')
         ? produits_resolve_fournisseur_from_post($_POST)
         : [
@@ -660,7 +796,7 @@ function process_update_produit($produit_id)
 
     // Validation (identique à l'ajout)
     if (produit_formulaire_champ_visible('nom') && empty($nom)) {
-        $errors[] = 'Le nom du produit est obligatoire.';
+        $errors[] = 'Le nom de la pièce est obligatoire.';
     }
 
     if (produit_formulaire_champ_visible('prix')) {
@@ -732,7 +868,7 @@ function process_update_produit($produit_id)
         if ($sc_post > 0) {
             $row_sc = get_sous_categorie_by_id($sc_post);
             if (!$row_sc || (int) $row_sc['categorie_id'] !== $categorie_id) {
-                $errors[] = 'La sous-catégorie choisie ne correspond pas à la catégorie du produit.';
+                $errors[] = 'La sous-catégorie choisie ne correspond pas à la catégorie de la pièce.';
             } else {
                 $sous_categorie_id = $sc_post;
             }
@@ -759,6 +895,43 @@ function process_update_produit($produit_id)
                 ? mb_substr($rf_raw, 0, 120, 'UTF-8')
                 : substr($rf_raw, 0, 120);
         }
+    }
+
+    /* LE VÉHICULE (fiche FPL, 23/08) : les modèles cochés et la génération ne
+     * se posent que si le formulaire les a envoyés — un écran qui ne les
+     * montre pas ne les efface pas. `modeles_envoyes` est le témoin. */
+    $modeles_maj = null;          // null = on ne touche à rien
+    $generation_maj = null;
+    if (array_key_exists('modeles_envoyes', $_POST) && function_exists('produit_modeles_retenus')) {
+        $marque_pour_modeles = $marque_id_resolved !== null
+            ? $marque_id_resolved
+            : (produit_formulaire_champ_visible('marque_id') ? null : (int) ($produit['marque_id'] ?? 0));
+        $modeles_post = isset($_POST['modeles']) && is_array($_POST['modeles'])
+            ? array_slice($_POST['modeles'], 0, 30) : [];
+        $modeles_maj = $marque_pour_modeles ? produit_modeles_retenus($modeles_post, $marque_pour_modeles) : [];
+        $generation_maj = produit_generation_retenue(
+            !empty($_POST['generation_id']) ? (int) $_POST['generation_id'] : null,
+            count($modeles_maj) === 1 ? $modeles_maj[0] : null
+        );
+    }
+
+    // Le nom en wolof : présent et vide = on efface ; absent = on ne touche à rien.
+    $nom_wolof_maj = null;
+    $nom_wolof_envoye = produits_has_column('nom_wolof') && array_key_exists('nom_wolof', $_POST);
+    if ($nom_wolof_envoye) {
+        $nom_wolof_maj = trim((string) $_POST['nom_wolof']);
+        if (mb_strlen($nom_wolof_maj) > 190) {
+            $errors[] = 'Le nom en wolof est trop long (190 caractères au plus).';
+        }
+    }
+
+    // Le prix entreprise : même visibilité que le prix de vente.
+    $prix_entreprise_maj = null;
+    $prix_entreprise_envoye = produits_has_column('prix_entreprise')
+        && produit_formulaire_champ_visible('prix') && array_key_exists('prix_entreprise', $_POST);
+    if ($prix_entreprise_envoye) {
+        $pe_raw = trim((string) $_POST['prix_entreprise']);
+        $prix_entreprise_maj = produits_valider_prix_entreprise($pe_raw, $prix ?? null, $errors);
     }
 
     $nouvel_identifiant = null;
@@ -909,6 +1082,18 @@ function process_update_produit($produit_id)
         if (produit_formulaire_champ_visible('prix_achat') && produits_has_column('prix_achat')) {
             $data['prix_achat'] = $prix_achat;
         }
+        /* LA RÉFÉRENCE D'ORIGINE ET LE CÔTÉ DE MONTAGE, corrigeables enfin.
+         * On ne pose la clé QUE si le formulaire a envoyé le champ : un écran
+         * qui ne l'affiche pas ne doit pas remettre la valeur à zéro — c'est
+         * exactement ce qui effaçait la taille à chaque enregistrement. */
+        if (produits_has_column('reference_oem') && array_key_exists('reference_oem', $_POST)) {
+            $ref_oem_maj = trim((string) $_POST['reference_oem']);
+            $data['reference_oem'] = $ref_oem_maj !== '' ? $ref_oem_maj : null;
+        }
+        if (produits_has_column('position_montage') && array_key_exists('position_montage', $_POST)) {
+            $pos_maj = (string) $_POST['position_montage'];
+            $data['position_montage'] = in_array($pos_maj, ['gauche', 'droite'], true) ? $pos_maj : null;
+        }
         if (produit_formulaire_champ_visible('sous_categorie_id') && produits_has_column('sous_categorie_id')) {
             $data['sous_categorie_id'] = $sous_categorie_id;
         }
@@ -927,13 +1112,28 @@ function process_update_produit($produit_id)
         if (!produit_formulaire_champ_visible('fournisseur_id')) {
             unset($data['fournisseur_id'], $data['nom_fournisseur']);
         }
+        // Le véhicule, le nom wolof et le prix entreprise — clés posées
+        // SEULEMENT si le formulaire les a envoyés (voir plus haut)
+        if ($modeles_maj !== null) {
+            $data['modele_id'] = isset($modeles_maj[0]) ? (int) $modeles_maj[0] : null;
+            $data['generation_id'] = $generation_maj;
+        }
+        if ($nom_wolof_envoye) {
+            $data['nom_wolof'] = $nom_wolof_maj;
+        }
+        if ($prix_entreprise_envoye) {
+            $data['prix_entreprise'] = $prix_entreprise_maj;
+        }
         if ($admin_session_id > 0) {
             $data['admin_dernier_modificateur_id'] = $admin_session_id;
         }
 
         if (update_produit($produit_id, $data)) {
             $success = true;
-            $message = 'Produit modifié avec succès !';
+            $message = 'Pièce modifiée avec succès !';
+            if ($modeles_maj !== null && function_exists('produit_modeles_poser')) {
+                produit_modeles_poser((int) $produit_id, $modeles_maj);
+            }
             produit_formulaire_enregistrer_valeurs_custom((int) $produit_id, $_POST);
             $stock_old = (int) ($produit['stock'] ?? 0);
             $stock_new = (int) $stock;
@@ -1040,7 +1240,7 @@ function process_update_produit($produit_id)
                 generer_qrcode_produit($produit_id);
             }
         } else {
-            $errors[] = 'Une erreur est survenue lors de la modification du produit.';
+            $errors[] = 'Une erreur est survenue lors de la modification de la pièce.';
         }
     }
 
@@ -1061,7 +1261,7 @@ function process_delete_produit($produit_id)
 {
     $produit = get_produit_by_id_sans_filtre_acces($produit_id);
     if (!$produit) {
-        return ['success' => false, 'message' => 'Produit introuvable.'];
+        return ['success' => false, 'message' => 'Pièce introuvable.'];
     }
 
     if (!delete_produit($produit_id)) {
@@ -1090,7 +1290,7 @@ function process_delete_produit($produit_id)
         @unlink($qr);
     }
 
-    return ['success' => true, 'message' => 'Produit supprimé avec succès !'];
+    return ['success' => true, 'message' => 'Pièce supprimée avec succès !'];
 }
 
 /**
@@ -1108,7 +1308,7 @@ function process_ajuster_stock_produit($produit_id)
 
     $produit = get_produit_by_id($produit_id);
     if (!$produit) {
-        return ['success' => false, 'message' => 'Produit introuvable.'];
+        return ['success' => false, 'message' => 'Pièce introuvable.'];
     }
 
     $quantite_avant = (int) ($produit['stock'] ?? 0);
