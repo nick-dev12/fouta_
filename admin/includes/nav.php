@@ -77,7 +77,7 @@ include __DIR__ . '/../../includes/pwa_admin_boot.php';
 
     <aside class="sidebar admin-sidebar" id="adminSidebar">
         <button type="button" class="side-toggle js-nav-toggle" title="Masquer le menu" aria-label="Masquer le menu">
-            <i class="fas fa-chevron-left" aria-hidden="true"></i>
+            <?php echo fpl_icone('chevron-left', 14); ?>
         </button>
 
         <div class="brand sidebar-header">
@@ -97,7 +97,7 @@ include __DIR__ . '/../../includes/pwa_admin_boot.php';
             <?php if ($admin_role === 'admin' || $admin_nav_is_tech_full): ?>
             <a href="<?php echo $admin_nav_base; ?>dashboard.php"
                 class="menu-item mi-dashboard<?php echo $current_page == 'dashboard.php' ? ' active' : ''; ?>">
-                <span class="menu-item-icon ico" aria-hidden="true"><i class="fas fa-home"></i></span>
+                <span class="menu-item-icon ico" aria-hidden="true"><?php echo fpl_icone('home', 16); ?></span>
                 <span class="menu-item-text">Tableau de bord</span>
             </a>
             <?php if ($nav_can_devis): ?>
@@ -119,15 +119,45 @@ include __DIR__ . '/../../includes/pwa_admin_boot.php';
                 <span class="menu-item-icon ico" aria-hidden="true"><i class="fas fa-calculator"></i></span>
                 <span class="menu-item-text">Comptabilité</span>
             </a>
-            <a href="<?php echo $admin_nav_base; ?>stock/index.php"
-                class="menu-item mi-stock<?php echo ($is_stock) ? ' active' : ''; ?>">
-                <span class="menu-item-icon ico" aria-hidden="true"><i class="fas fa-boxes-stacked"></i></span>
-                <span class="menu-item-text">Stock</span>
-            </a>
             <a href="<?php echo $admin_nav_base; ?>produits/index.php"
                 class="menu-item mi-produits<?php echo ($is_produits) ? ' active' : ''; ?>">
-                <span class="menu-item-icon ico" aria-hidden="true"><i class="fas fa-box"></i></span>
+                <span class="menu-item-icon ico" aria-hidden="true"><?php echo fpl_icone('tool', 16); ?></span>
                 <span class="menu-item-text">Pièces</span>
+            </a>
+            <a href="<?php echo $admin_nav_base; ?>produits/etiquettes.php"
+                class="menu-item mi-etiquettes<?php echo $current_page == 'etiquettes.php' ? ' active' : ''; ?>">
+                <span class="menu-item-icon ico" aria-hidden="true"><?php echo fpl_icone('printer', 16); ?></span>
+                <span class="menu-item-text">Toutes les étiquettes</span>
+            </a>
+            <a href="<?php echo $admin_nav_base; ?>produits/entree.php"
+                class="menu-item mi-entree<?php echo $current_page == 'entree.php' ? ' active' : ''; ?>">
+                <span class="menu-item-icon ico" aria-hidden="true"><?php echo fpl_icone('download', 16); ?></span>
+                <span class="menu-item-text">Entrée en stock</span>
+            </a>
+            <a href="<?php echo $admin_nav_base; ?>produits/transfert.php"
+                class="menu-item mi-transfert<?php echo $current_page == 'transfert.php' ? ' active' : ''; ?>">
+                <span class="menu-item-icon ico" aria-hidden="true"><?php echo fpl_icone('transfer', 16); ?></span>
+                <span class="menu-item-text">Transfert d'emplacement</span>
+            </a>
+            <a href="<?php echo $admin_nav_base; ?>produits/defectueux.php"
+                class="menu-item mi-defectueux<?php echo $current_page == 'defectueux.php' ? ' active' : ''; ?>">
+                <span class="menu-item-icon ico" aria-hidden="true"><?php echo fpl_icone('alert-triangle', 16); ?></span>
+                <span class="menu-item-text">Pièces défectueuses</span>
+            </a>
+            <a href="<?php echo $admin_nav_base; ?>stock/mouvements.php"
+                class="menu-item mi-mouvements<?php echo ($is_stock && $current_page == 'mouvements.php') ? ' active' : ''; ?>">
+                <span class="menu-item-icon ico" aria-hidden="true"><?php echo fpl_icone('clock', 16); ?></span>
+                <span class="menu-item-text">Historique des mouvements</span>
+            </a>
+            <a href="<?php echo $admin_nav_base; ?>produits/rapport-jour.php"
+                class="menu-item mi-rapport<?php echo $current_page == 'rapport-jour.php' ? ' active' : ''; ?>">
+                <span class="menu-item-icon ico" aria-hidden="true"><?php echo fpl_icone('printer', 16); ?></span>
+                <span class="menu-item-text">Rapport journalier</span>
+            </a>
+            <a href="<?php echo $admin_nav_base; ?>produits/structure-entrepot.php"
+                class="menu-item mi-structure<?php echo $current_page == 'structure-entrepot.php' ? ' active' : ''; ?>">
+                <span class="menu-item-icon ico" aria-hidden="true"><?php echo fpl_icone('layers', 16); ?></span>
+                <span class="menu-item-text">Structure de l'entrepôt</span>
             </a>
             <?php if ($admin_nav_is_tech_full): ?>
             <a href="<?php echo $admin_nav_base; ?>commandes/index.php"
@@ -154,7 +184,7 @@ include __DIR__ . '/../../includes/pwa_admin_boot.php';
             </a>
             <a href="<?php echo $admin_nav_base; ?>parametres.php"
                 class="menu-item mi-params<?php echo ($current_page == 'parametres.php' || strpos($current_dir, '/parametres') !== false) ? ' active' : ''; ?>">
-                <span class="menu-item-icon ico" aria-hidden="true"><i class="fas fa-cog"></i></span>
+                <span class="menu-item-icon ico" aria-hidden="true"><?php echo fpl_icone('settings', 16); ?></span>
                 <span class="menu-item-text">Paramètres</span>
             </a>
             <a href="<?php echo $admin_nav_base; ?>caisse/index.php"
@@ -254,39 +284,104 @@ include __DIR__ . '/../../includes/pwa_admin_boot.php';
             <?php elseif ($admin_role === 'gestion_stock_general'): ?>
             <a href="<?php echo $admin_nav_base; ?>dashboard.php"
                 class="menu-item mi-dashboard<?php echo $current_page == 'dashboard.php' ? ' active' : ''; ?>">
-                <span class="menu-item-icon ico" aria-hidden="true"><i class="fas fa-home"></i></span>
+                <span class="menu-item-icon ico" aria-hidden="true"><?php echo fpl_icone('home', 16); ?></span>
                 <span class="menu-item-text">Tableau de bord</span>
-            </a>
-            <a href="<?php echo $admin_nav_base; ?>stock/index.php"
-                class="menu-item mi-stock<?php echo ($is_stock) ? ' active' : ''; ?>">
-                <span class="menu-item-icon ico" aria-hidden="true"><i class="fas fa-boxes-stacked"></i></span>
-                <span class="menu-item-text">Stock</span>
             </a>
             <a href="<?php echo $admin_nav_base; ?>produits/index.php"
                 class="menu-item mi-produits<?php echo ($is_produits && $current_page == 'index.php') ? ' active' : ''; ?>">
-                <span class="menu-item-icon ico" aria-hidden="true"><i class="fas fa-box"></i></span>
+                <span class="menu-item-icon ico" aria-hidden="true"><?php echo fpl_icone('tool', 16); ?></span>
                 <span class="menu-item-text">Pièces</span>
+            </a>
+            <a href="<?php echo $admin_nav_base; ?>produits/etiquettes.php"
+                class="menu-item mi-etiquettes<?php echo $current_page == 'etiquettes.php' ? ' active' : ''; ?>">
+                <span class="menu-item-icon ico" aria-hidden="true"><?php echo fpl_icone('printer', 16); ?></span>
+                <span class="menu-item-text">Toutes les étiquettes</span>
+            </a>
+            <a href="<?php echo $admin_nav_base; ?>produits/entree.php"
+                class="menu-item mi-entree<?php echo $current_page == 'entree.php' ? ' active' : ''; ?>">
+                <span class="menu-item-icon ico" aria-hidden="true"><?php echo fpl_icone('download', 16); ?></span>
+                <span class="menu-item-text">Entrée en stock</span>
+            </a>
+            <a href="<?php echo $admin_nav_base; ?>produits/transfert.php"
+                class="menu-item mi-transfert<?php echo $current_page == 'transfert.php' ? ' active' : ''; ?>">
+                <span class="menu-item-icon ico" aria-hidden="true"><?php echo fpl_icone('transfer', 16); ?></span>
+                <span class="menu-item-text">Transfert d'emplacement</span>
+            </a>
+            <a href="<?php echo $admin_nav_base; ?>produits/defectueux.php"
+                class="menu-item mi-defectueux<?php echo $current_page == 'defectueux.php' ? ' active' : ''; ?>">
+                <span class="menu-item-icon ico" aria-hidden="true"><?php echo fpl_icone('alert-triangle', 16); ?></span>
+                <span class="menu-item-text">Pièces défectueuses</span>
+            </a>
+            <a href="<?php echo $admin_nav_base; ?>stock/mouvements.php"
+                class="menu-item mi-mouvements<?php echo ($is_stock && $current_page == 'mouvements.php') ? ' active' : ''; ?>">
+                <span class="menu-item-icon ico" aria-hidden="true"><?php echo fpl_icone('clock', 16); ?></span>
+                <span class="menu-item-text">Historique des mouvements</span>
+            </a>
+            <a href="<?php echo $admin_nav_base; ?>produits/rapport-jour.php"
+                class="menu-item mi-rapport<?php echo $current_page == 'rapport-jour.php' ? ' active' : ''; ?>">
+                <span class="menu-item-icon ico" aria-hidden="true"><?php echo fpl_icone('printer', 16); ?></span>
+                <span class="menu-item-text">Rapport journalier</span>
+            </a>
+            <a href="<?php echo $admin_nav_base; ?>produits/structure-entrepot.php"
+                class="menu-item mi-structure<?php echo $current_page == 'structure-entrepot.php' ? ' active' : ''; ?>">
+                <span class="menu-item-icon ico" aria-hidden="true"><?php echo fpl_icone('layers', 16); ?></span>
+                <span class="menu-item-text">Structure de l'entrepôt</span>
             </a>
             <a href="<?php echo $admin_nav_base; ?>categories/index.php"
                 class="menu-item mi-categories<?php echo ($is_categories) ? ' active' : ''; ?>">
-                <span class="menu-item-icon ico" aria-hidden="true"><i class="fas fa-folder"></i></span>
+                <span class="menu-item-icon ico" aria-hidden="true"><?php echo fpl_icone('folder', 16); ?></span>
                 <span class="menu-item-text">Catégories</span>
             </a>
             <a href="<?php echo $admin_nav_base; ?>parametres.php"
                 class="menu-item mi-params<?php echo ($current_page == 'parametres.php' || $is_parametres) ? ' active' : ''; ?>">
-                <span class="menu-item-icon ico" aria-hidden="true"><i class="fas fa-cog"></i></span>
+                <span class="menu-item-icon ico" aria-hidden="true"><?php echo fpl_icone('settings', 16); ?></span>
                 <span class="menu-item-text">Paramètres stock</span>
             </a>
             <?php elseif ($admin_role === 'gestion_stock'): ?>
-            <a href="<?php echo $admin_nav_base; ?>stock/index.php"
-                class="menu-item mi-stock<?php echo ($is_stock) ? ' active' : ''; ?>">
-                <span class="menu-item-icon ico" aria-hidden="true"><i class="fas fa-boxes-stacked"></i></span>
-                <span class="menu-item-text">Stock</span>
+            <a href="<?php echo $admin_nav_base; ?>produits/mon-travail.php"
+                class="menu-item mi-mon-travail<?php echo $current_page == 'mon-travail.php' ? ' active' : ''; ?>">
+                <span class="menu-item-icon ico" aria-hidden="true"><?php echo fpl_icone('home', 16); ?></span>
+                <span class="menu-item-text">Mon travail</span>
             </a>
             <a href="<?php echo $admin_nav_base; ?>produits/index.php"
                 class="menu-item mi-produits<?php echo ($is_produits && $current_page == 'index.php') ? ' active' : ''; ?>">
-                <span class="menu-item-icon ico" aria-hidden="true"><i class="fas fa-box"></i></span>
+                <span class="menu-item-icon ico" aria-hidden="true"><?php echo fpl_icone('tool', 16); ?></span>
                 <span class="menu-item-text">Pièces</span>
+            </a>
+            <a href="<?php echo $admin_nav_base; ?>produits/etiquettes.php"
+                class="menu-item mi-etiquettes<?php echo $current_page == 'etiquettes.php' ? ' active' : ''; ?>">
+                <span class="menu-item-icon ico" aria-hidden="true"><?php echo fpl_icone('printer', 16); ?></span>
+                <span class="menu-item-text">Toutes les étiquettes</span>
+            </a>
+            <a href="<?php echo $admin_nav_base; ?>produits/entree.php"
+                class="menu-item mi-entree<?php echo $current_page == 'entree.php' ? ' active' : ''; ?>">
+                <span class="menu-item-icon ico" aria-hidden="true"><?php echo fpl_icone('download', 16); ?></span>
+                <span class="menu-item-text">Entrée en stock</span>
+            </a>
+            <a href="<?php echo $admin_nav_base; ?>produits/transfert.php"
+                class="menu-item mi-transfert<?php echo $current_page == 'transfert.php' ? ' active' : ''; ?>">
+                <span class="menu-item-icon ico" aria-hidden="true"><?php echo fpl_icone('transfer', 16); ?></span>
+                <span class="menu-item-text">Transfert d'emplacement</span>
+            </a>
+            <a href="<?php echo $admin_nav_base; ?>produits/defectueux.php"
+                class="menu-item mi-defectueux<?php echo $current_page == 'defectueux.php' ? ' active' : ''; ?>">
+                <span class="menu-item-icon ico" aria-hidden="true"><?php echo fpl_icone('alert-triangle', 16); ?></span>
+                <span class="menu-item-text">Pièces défectueuses</span>
+            </a>
+            <a href="<?php echo $admin_nav_base; ?>stock/mouvements.php"
+                class="menu-item mi-mouvements<?php echo ($is_stock && $current_page == 'mouvements.php') ? ' active' : ''; ?>">
+                <span class="menu-item-icon ico" aria-hidden="true"><?php echo fpl_icone('clock', 16); ?></span>
+                <span class="menu-item-text">Historique des mouvements</span>
+            </a>
+            <a href="<?php echo $admin_nav_base; ?>produits/rapport-jour.php"
+                class="menu-item mi-rapport<?php echo $current_page == 'rapport-jour.php' ? ' active' : ''; ?>">
+                <span class="menu-item-icon ico" aria-hidden="true"><?php echo fpl_icone('printer', 16); ?></span>
+                <span class="menu-item-text">Rapport journalier</span>
+            </a>
+            <a href="<?php echo $admin_nav_base; ?>produits/structure-entrepot.php"
+                class="menu-item mi-structure<?php echo $current_page == 'structure-entrepot.php' ? ' active' : ''; ?>">
+                <span class="menu-item-icon ico" aria-hidden="true"><?php echo fpl_icone('layers', 16); ?></span>
+                <span class="menu-item-text">Structure de l'entrepôt</span>
             </a>
             <?php endif; ?>
             </div>
@@ -307,15 +402,36 @@ include __DIR__ . '/../../includes/pwa_admin_boot.php';
     <div class="main admin-main">
         <div class="topbar admin-topbar admin-topbar--maquette">
             <div class="admin-topbar__left">
-                <button type="button" class="burger admin-burger js-nav-toggle mobile-menu-toggle" id="menuToggle" aria-label="Ouvrir le menu">
-                    <i class="fas fa-bars" aria-hidden="true"></i>
+                <?php /* Le burger vit DANS la barre du haut, jamais en flottant :
+                         la classe mobile-menu-toggle (pavé fixe 50 px de
+                         admin-dashboard.css) lui est retirée. */ ?>
+                <button type="button" class="burger admin-burger js-nav-toggle" id="menuToggle" title="Afficher le menu" aria-label="Afficher le menu">
+                    <?php echo fpl_icone('menu', 16); ?>
                 </button>
+                <?php /* LE BOUTON RETOUR ET LE TITRE DE LA PAGE — barre du haut de
+                         FPL natif. La zone ne s'affiche QUE si la page a posé
+                         $fpl_titre_page avant d'inclure ce fichier : toutes les
+                         autres pages du dépôt restent exactement comme avant. */ ?>
+                <?php if (!empty($fpl_titre_page)): ?>
+                    <?php if (!empty($fpl_retour_page)): ?>
+                    <a href="<?php echo e($fpl_retour_page); ?>" class="btn-back" title="Revenir à la page précédente">
+                        <?php echo fpl_icone('arrow-left', 14); ?> Retour
+                    </a>
+                    <?php endif; ?>
+                    <h1><?php echo fpl_e($fpl_titre_page); ?></h1>
+                <?php endif; ?>
                 <form class="admin-topbar__search" action="<?php echo $admin_nav_base; ?>produits/index.php" method="get" role="search">
                     <i class="fas fa-search" aria-hidden="true"></i>
-                    <input type="search" name="recherche" placeholder="Rechercher un produit…" autocomplete="off">
+                    <input type="search" name="recherche" placeholder="Rechercher une pièce…" autocomplete="off">
                 </form>
             </div>
             <div class="admin-topbar__right">
+                <?php /* LA DATE DU JOUR, en toutes lettres, à droite de la barre —
+                         comme dans FPL natif. Même condition : rien ne change pour
+                         les pages qui ne demandent pas cette barre. */ ?>
+                <?php if (!empty($fpl_titre_page)): ?>
+                <span class="date"><?php echo fpl_date_longue(); ?></span>
+                <?php endif; ?>
                 <div class="admin-topbar__tools" aria-label="Raccourcis">
                     <button type="button" class="admin-topbar__tool" id="topbarNotifyBtn" title="Notifications">
                         <i class="fas fa-bell" aria-hidden="true"></i>
@@ -329,7 +445,12 @@ include __DIR__ . '/../../includes/pwa_admin_boot.php';
                 <div class="admin-topbar__user">
                     <span class="admin-topbar__avatar" aria-hidden="true"><?php echo e($admin_nav_initials); ?></span>
                     <span class="admin-topbar__name"><?php echo e($admin_nav_display); ?></span>
-                    <i class="fas fa-chevron-down admin-topbar__caret" aria-hidden="true"></i>
+                    <?php /* La flèche vers le bas a été retirée : elle promettait un
+                             menu déroulant qui n'existe nulle part — pas de gestionnaire
+                             de clic, aucun menu dans la page, le bloc n'est même pas un
+                             lien. Une flèche qui ne mène à rien invite à cliquer pour
+                             rien. Le profil et la déconnexion sont dans le menu de
+                             gauche, en bas. */ ?>
                 </div>
             </div>
         </div>
