@@ -1165,7 +1165,7 @@ function produit_formulaire_filtrer_produits_api_liste(array $items) {
 function produit_formulaire_export_colonnes_systeme_base() {
     return [
         'img' => ['slug' => 'images_produit', 'label' => 'Image', 'locked' => false, 'num' => false, 'pdf' => true, 'suivi' => true, 'css_col' => 'page-produits-export-table__col-img', 'css_cell' => 'page-produits-export-table__img'],
-        'nom' => ['slug' => 'nom', 'label' => 'Produit', 'locked' => true, 'num' => false, 'pdf' => true, 'suivi' => true, 'css_col' => 'page-produits-export-table__col-nom', 'css_cell' => 'page-produits-export-table__nom'],
+        'nom' => ['slug' => 'nom', 'label' => 'Pièce', 'locked' => true, 'num' => false, 'pdf' => true, 'suivi' => true, 'css_col' => 'page-produits-export-table__col-nom', 'css_cell' => 'page-produits-export-table__nom'],
         'cat' => ['slug' => 'categorie_id', 'label' => 'Catégorie', 'locked' => false, 'num' => false, 'pdf' => true, 'suivi' => true, 'css_col' => 'page-produits-export-table__col-cat', 'css_cell' => ''],
         'marque' => ['slug' => 'marque_id', 'label' => 'Marque', 'locked' => false, 'num' => false, 'pdf' => true, 'suivi' => true, 'css_col' => 'page-produits-export-table__col-marque', 'css_cell' => ''],
         'identifiant' => ['slug' => 'identifiant_interne', 'label' => 'Réf. FPL', 'locked' => false, 'num' => false, 'pdf' => true, 'suivi' => true, 'css_col' => 'page-produits-export-table__col-ident', 'css_cell' => ''],

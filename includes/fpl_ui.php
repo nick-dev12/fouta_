@@ -298,6 +298,10 @@ function fpl_icone($nom, $taille = 16, $classe = 'icon')
         'home' => '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>',
         'folder' => '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>',
         'tool' => '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>',
+        // Les deux dessins que la page des pièces de FPL natif emploie et qui
+        // manquaient ici : l'œil du bouton « Détail », la flèche de « Exporter ».
+        'eye' => '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>',
+        'download' => '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
         'tag' => '<path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/>',
         'clock' => '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
         'printer' => '<polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>',
@@ -358,4 +362,37 @@ function fpl_icone($nom, $taille = 16, $classe = 'icon')
     return '<svg xmlns="http://www.w3.org/2000/svg" width="' . (int) $taille . '" height="' . (int) $taille . '"'
         . ' viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"'
         . ' stroke-linejoin="round" class="' . e($classe) . '" aria-hidden="true">' . $trace . '</svg>';
+}
+
+/**
+ * LE STATUT D'UNE PIÈCE, écrit pour un humain.
+ * Programmation procédurale uniquement
+ *
+ * La base range les statuts en mots-machine (« rupture_stock ») ; les afficher
+ * tels quels donnait « Rupture_stock » sur 73 fiches, tiret bas compris.
+ *
+ * La phrase de l'inactive est celle de FPL natif : elle ne dit pas seulement
+ * l'état, elle dit la CONSÉQUENCE — la pièce ne se vend plus.
+ *
+ * @param string $statut
+ * @param bool $complet true : la phrase entière ; false : le mot seul
+ * @return string
+ */
+function fpl_statut_piece_libelle($statut, $complet = true)
+{
+    $statut = trim((string) $statut);
+
+    $libelles = [
+        'actif' => ['Active', 'Active'],
+        'inactif' => ['Inactive', 'Inactive — retirée de la vente'],
+        'rupture_stock' => ['En rupture', 'En rupture de stock'],
+        'attente_tarif' => ['À tarifer', 'En attente de tarification'],
+    ];
+
+    if (isset($libelles[$statut])) {
+        return $complet ? $libelles[$statut][1] : $libelles[$statut][0];
+    }
+
+    // Un statut qu'on ne connaît pas encore : au moins sans tiret bas.
+    return $statut !== '' ? ucfirst(str_replace('_', ' ', $statut)) : '';
 }

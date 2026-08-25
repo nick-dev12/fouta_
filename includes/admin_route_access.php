@@ -68,12 +68,24 @@ if (!function_exists('admin_route_relative_path')) {
         if (strpos($p, 'stock/') === 0 || strpos($p, 'produits/') === 0) {
             return true;
         }
+        /* La STRUCTURE DE L'ENTREPOT (24/08) : batir et corriger le rangement
+         * est le travail du rayonniste — chez FPL natif, le meme role porte
+         * stock.entrepot_configurer et voit Entrepots + Structure au menu. */
+        if ($p === 'parametres/hierarchie-entrepot.php' || strpos($p, 'parametres/emplacement-') === 0) {
+            return true;
+        }
 
         return in_array($p, [
             'categories/produits.php',
             'categories/modifier.php',
             'categories/ajouter.php',
             'categories/supprimer.php',
+            /* Les étiquettes de BARRE (24/08) : imprimer les étiquettes du
+             * rangement est le travail du rayonniste — ces deux écrans ne
+             * font que montrer et imprimer, ils ne changent pas la structure.
+             * Chez FPL natif, le même rôle porte `stock.etiquettes`. */
+            'parametres/emplacement-noeud-etiquette.php',
+            'parametres/emplacement-barre-etiquette.php',
         ], true);
     }
 
@@ -88,6 +100,12 @@ if (!function_exists('admin_route_relative_path')) {
             return true;
         }
         if ($p === 'parametres/alertes-stock.php' || $p === 'parametres/hierarchie-entrepot.php' || $p === 'parametres/champs-produit.php') {
+            return true;
+        }
+        // Les dimensions et tailles d'étiquette (24/08) : le Responsable règle
+        // ce que la fiche et « Toutes les étiquettes » proposent à l'impression.
+        // Même logique pour l'étiquette d'entrepôt (barres) le 25/08.
+        if ($p === 'parametres/etiquettes-produit.php' || $p === 'parametres/etiquettes-entrepot.php') {
             return true;
         }
         if (strpos($p, 'parametres/emplacement-') === 0) {
@@ -119,7 +137,9 @@ if (!function_exists('admin_route_relative_path')) {
             case 'rh':
                 return 'contacts/index.php';
             case 'gestion_stock':
-                return 'stock/index.php';
+                // « Mon travail » (25/08) : l'accueil terrain du rayonniste,
+                // comme chez FPL natif — la page Stock reste dans son menu.
+                return 'produits/mon-travail.php';
             case 'gestion_stock_general':
                 return 'dashboard.php';
             default:

@@ -35,7 +35,7 @@ function get_all_sous_categories_with_categorie_nom()
     }
     try {
         $stmt = $db->query('
-            SELECT s.id, s.categorie_id, s.nom, s.description, c.nom AS categorie_nom
+            SELECT s.*, c.nom AS categorie_nom
             FROM sous_categories s
             INNER JOIN categories c ON c.id = s.categorie_id
             ORDER BY c.nom ASC, s.nom ASC
@@ -58,7 +58,7 @@ function get_sous_categories_by_categorie_id($categorie_id)
     }
     try {
         $stmt = $db->prepare('
-            SELECT id, categorie_id, nom, description
+            SELECT *
             FROM sous_categories
             WHERE categorie_id = :cid
             ORDER BY nom ASC
@@ -104,15 +104,30 @@ function create_sous_categorie($data)
         return false;
     }
     try {
-        $stmt = $db->prepare('
-            INSERT INTO sous_categories (categorie_id, nom, description, date_creation)
-            VALUES (:cid, :nom, :descr, NOW())
-        ');
-        $stmt->execute([
+        /* L'image et les mots-clés (colonnes du 23/08, reprises de FPL natif)
+         * ne s'écrivent que si la base les a : la fonction marche avant comme
+         * après la migration. */
+        $cols = 'categorie_id, nom, description, date_creation';
+        $vals = ':cid, :nom, :descr, NOW()';
+        $params = [
             'cid' => $cid,
             'nom' => $nom,
             'descr' => $desc !== '' ? $desc : null,
-        ]);
+        ];
+        if (sous_categories_has_column('image') && array_key_exists('image', $data)) {
+            $cols .= ', image';
+            $vals .= ', :image';
+            $img = trim((string) $data['image']);
+            $params['image'] = $img !== '' ? $img : null;
+        }
+        if (sous_categories_has_column('mots_cles') && array_key_exists('mots_cles', $data)) {
+            $cols .= ', mots_cles';
+            $vals .= ', :mots_cles';
+            $mc = trim((string) $data['mots_cles']);
+            $params['mots_cles'] = $mc !== '' ? mb_substr($mc, 0, 500) : null;
+        }
+        $stmt = $db->prepare("INSERT INTO sous_categories ($cols) VALUES ($vals)");
+        $stmt->execute($params);
         return (int) $db->lastInsertId();
     } catch (PDOException $e) {
         return false;
@@ -145,20 +160,85 @@ function update_sous_categorie($id, $data)
         if (!get_categorie_by_id($cid)) {
             return false;
         }
-        $stmt = $db->prepare('
-            UPDATE sous_categories
-            SET categorie_id = :cid, nom = :nom, description = :descr
-            WHERE id = :id
-        ');
-        return $stmt->execute([
+        $sets = 'categorie_id = :cid, nom = :nom, description = :descr';
+        $params = [
             'cid' => $cid,
             'nom' => $nom,
             'descr' => $desc !== '' ? $desc : null,
             'id' => $id,
-        ]);
+        ];
+        // L'image ne change que si on en donne une (clé présente et non vide)
+        if (sous_categories_has_column('image') && !empty($data['image'])) {
+            $sets .= ', image = :image';
+            $params['image'] = trim((string) $data['image']);
+        }
+        if (sous_categories_has_column('mots_cles') && array_key_exists('mots_cles', $data)) {
+            $sets .= ', mots_cles = :mots_cles';
+            $mc = trim((string) $data['mots_cles']);
+            $params['mots_cles'] = $mc !== '' ? mb_substr($mc, 0, 500) : null;
+        }
+        $stmt = $db->prepare("UPDATE sous_categories SET $sets WHERE id = :id");
+        return $stmt->execute($params);
     } catch (PDOException $e) {
         return false;
     }
+}
+
+/** Une colonne de sous_categories existe-t-elle ? (une vérification par requête) */
+function sous_categories_has_column($nom)
+{
+    global $db;
+    static $colonnes = null;
+
+    if ($colonnes === null) {
+        $colonnes = [];
+        try {
+            foreach ($db->query('SHOW COLUMNS FROM sous_categories') as $c) {
+                $colonnes[strtolower((string) $c['Field'])] = true;
+            }
+        } catch (PDOException $e) {
+            $colonnes = [];
+        }
+    }
+
+    return isset($colonnes[strtolower((string) $nom)]);
+}
+
+/**
+ * L'image d'un rayon — upload TOLÉRANT : un fichier refusé renvoie null, la
+ * sous-catégorie s'enregistre quand même. Même règle que les catégories de
+ * ce dépôt (JPG, PNG, WEBP, GIF ; taille plafonnée), rangée à part dans
+ * upload/sous_categories/ ; la valeur renvoyée est relative à upload/.
+ * (Portage de categorie_image_enregistrer() de FPL natif.)
+ */
+function sous_categorie_image_enregistrer($fichier)
+{
+    if (!is_array($fichier) || !isset($fichier['error']) || (int) $fichier['error'] !== UPLOAD_ERR_OK) {
+        return null;
+    }
+    $max = defined('FOUTA_UPLOAD_IMAGE_MAX_BYTES') ? FOUTA_UPLOAD_IMAGE_MAX_BYTES : 8 * 1024 * 1024;
+    if ((int) $fichier['size'] > $max) {
+        return null;
+    }
+    $extensions = ['jpg' => 'jpg', 'jpeg' => 'jpg', 'png' => 'png', 'webp' => 'webp', 'gif' => 'gif'];
+    $extension = strtolower(pathinfo((string) $fichier['name'], PATHINFO_EXTENSION));
+    if (!isset($extensions[$extension])) {
+        return null;
+    }
+    if (function_exists('getimagesize') && @getimagesize($fichier['tmp_name']) === false) {
+        return null;
+    }
+
+    $dossier = __DIR__ . '/../upload/sous_categories';
+    if (!is_dir($dossier)) {
+        mkdir($dossier, 0775, true);
+    }
+    $nom = 'rayon_' . bin2hex(random_bytes(10)) . '.' . $extensions[$extension];
+    if (!move_uploaded_file($fichier['tmp_name'], $dossier . '/' . $nom)) {
+        return null;
+    }
+
+    return 'sous_categories/' . $nom;
 }
 
 /**

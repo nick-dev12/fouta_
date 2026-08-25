@@ -474,6 +474,26 @@ function admin_produits_liste_recherche_sql($recherche, array &$params = [])
         }
     }
 
+    /* LA RÉFÉRENCE D'ORIGINE. Elle a sa colonne dans le tableau : on doit
+     * pouvoir taper la référence qu'on lit à l'écran et retrouver la pièce. */
+    if (produits_has_column('reference_oem')) {
+        $or[] = 'p.reference_oem LIKE :adm_st_oem';
+        $params['adm_st_oem'] = '%' . $tr . '%';
+    }
+
+    /* L'EMPLACEMENT. C'est la promesse du champ de recherche (« …marque,
+     * emplacement… ») et c'est l'apport propre de ce dépôt : savoir OÙ est la
+     * pièce. Chaque colonne est vérifiée avant d'être interrogée, donc une
+     * base qui ne les a pas cherche exactement comme avant. */
+    $emplacement_colonnes = ['etage', 'numero_rayon', 'allee', 'zone_emplacement', 'position_emplacement', 'barre_rayon'];
+    foreach ($emplacement_colonnes as $i => $colonne) {
+        if (produits_has_column($colonne)) {
+            $cle = 'adm_st_empl' . $i;
+            $or[] = 'p.' . $colonne . ' LIKE :' . $cle;
+            $params[$cle] = '%' . $tr . '%';
+        }
+    }
+
     return ' AND (' . implode(' OR ', $or) . ')';
 }
 
@@ -485,7 +505,7 @@ function admin_produits_liste_recherche_sql($recherche, array &$params = [])
  * @param int $fournisseur_id
  * @return int
  */
-function count_admin_produits_liste($categorie_id = 0, $marque_id = 0, $fournisseur_id = 0, $sous_categorie_id = 0, $du = '', $au = '')
+function count_admin_produits_liste($categorie_id = 0, $marque_id = 0, $fournisseur_id = 0, $sous_categorie_id = 0, $du = '', $au = '', $recherche = '')
 {
     global $db;
 
@@ -501,6 +521,11 @@ function count_admin_produits_liste($categorie_id = 0, $marque_id = 0, $fourniss
             WHERE 1=1
         ";
         $sql .= admin_produits_liste_filtres_sql($categorie_id, $marque_id, $fournisseur_id, $params, $sous_categorie_id, $du, $au);
+        // Le terme de recherche compte AUSSI dans le décompte, sinon la barre
+        // annonce « 3 271 pièces » au-dessus d'un tableau qui n'en montre que
+        // douze. Le constructeur de clause existait déjà — il n'était appelé
+        // que par la recherche en direct.
+        $sql .= admin_produits_liste_recherche_sql($recherche, $params);
 
         $stmt = $db->prepare($sql);
         foreach ($params as $k => $v) {
@@ -525,7 +550,7 @@ function count_admin_produits_liste($categorie_id = 0, $marque_id = 0, $fourniss
  * @param int $limit
  * @return array<int, array<string, mixed>>
  */
-function get_admin_produits_liste_paginated($categorie_id = 0, $marque_id = 0, $fournisseur_id = 0, $offset = 0, $limit = 30, $sous_categorie_id = 0, $du = '', $au = '')
+function get_admin_produits_liste_paginated($categorie_id = 0, $marque_id = 0, $fournisseur_id = 0, $offset = 0, $limit = 30, $sous_categorie_id = 0, $du = '', $au = '', $recherche = '')
 {
     global $db;
 
@@ -545,6 +570,10 @@ function get_admin_produits_liste_paginated($categorie_id = 0, $marque_id = 0, $
             WHERE 1=1
         ";
         $sql .= admin_produits_liste_filtres_sql($categorie_id, $marque_id, $fournisseur_id, $params, $sous_categorie_id, $du, $au);
+        // La recherche du formulaire filtre enfin le tableau lui-même : jusqu'ici
+        // « Filtrer » avec un mot dans la case rendait la liste entière, et seule
+        // la recherche en direct (JavaScript) savait chercher.
+        $sql .= admin_produits_liste_recherche_sql($recherche, $params);
         $sql .= ' ORDER BY p.date_creation DESC LIMIT :adm_limit OFFSET :adm_offset';
 
         $stmt = $db->prepare($sql);
@@ -1926,6 +1955,36 @@ function create_produit($data)
             $rf = $data['reference_fournisseur'] ?? null;
             $params['reference_fournisseur'] = ($rf !== null && trim((string) $rf) !== '') ? trim((string) $rf) : null;
         }
+        /* LE VÉHICULE DU WIZARD FPL (23/08) : le modèle PRINCIPAL et la
+         * génération se posent à la création — les colonnes existaient déjà,
+         * rien ne les écrivait. Les compatibilités multiples vont dans
+         * produit_modeles, après l'insertion (voir produit_modeles_poser()). */
+        if (produits_has_column('modele_id')) {
+            $cols .= ", modele_id";
+            $vals .= ", :modele_id";
+            $modid = $data['modele_id'] ?? null;
+            $params['modele_id'] = ($modid !== null && (int) $modid > 0) ? (int) $modid : null;
+        }
+        if (produits_has_column('generation_id')) {
+            $cols .= ", generation_id";
+            $vals .= ", :generation_id";
+            $genid = $data['generation_id'] ?? null;
+            $params['generation_id'] = ($genid !== null && (int) $genid > 0) ? (int) $genid : null;
+        }
+        // Le nom en wolof (titre de l'étiquette) et le prix entreprise — deux
+        // colonnes de FPL natif ajoutées par migrations/2026_08_23_wizard_piece_brouillons.sql
+        if (produits_has_column('nom_wolof')) {
+            $cols .= ", nom_wolof";
+            $vals .= ", :nom_wolof";
+            $nw = $data['nom_wolof'] ?? null;
+            $params['nom_wolof'] = ($nw !== null && trim((string) $nw) !== '') ? trim((string) $nw) : null;
+        }
+        if (produits_has_column('prix_entreprise')) {
+            $cols .= ", prix_entreprise";
+            $vals .= ", :prix_entreprise";
+            $pe = $data['prix_entreprise'] ?? null;
+            $params['prix_entreprise'] = ($pe !== null && $pe !== '' && is_numeric($pe)) ? (float) $pe : null;
+        }
         $with_extras = isset($data['couleurs']) || isset($data['taille']);
         if ($with_extras) {
             $cols .= ", couleurs, taille";
@@ -1958,6 +2017,9 @@ function create_produit($data)
 
         return false;
     } catch (PDOException $e) {
+        // Un échec silencieux cache la cause (leçon des 6 bloquants du 14/08) :
+        // le message va au journal PHP, la page garde son « une erreur est survenue ».
+        error_log('create_produit a échoué : ' . $e->getMessage());
         return false;
     }
 }
@@ -2040,6 +2102,21 @@ function update_produit($id, $data)
             $sets .= ", prix_achat = :prix_achat";
             $params['prix_achat'] = $data['prix_achat'];
         }
+        /* LA RÉFÉRENCE D'ORIGINE ET LE CÔTÉ DE MONTAGE. Ils se saisissaient à la
+         * création sans jamais pouvoir être corrigés — la mise à jour ne les
+         * touchait pas du tout. Comme pour les autres colonnes optionnelles, on
+         * n'écrit QUE si l'appelant a mis la clé : un écran qui ne montre pas le
+         * champ ne doit jamais l'effacer. C'est la leçon de la taille. */
+        if (produits_has_column('reference_oem') && array_key_exists('reference_oem', $data)) {
+            $sets .= ", reference_oem = :reference_oem";
+            $ro = $data['reference_oem'] ?? null;
+            $params['reference_oem'] = ($ro !== null && trim((string) $ro) !== '') ? trim((string) $ro) : null;
+        }
+        if (produits_has_column('position_montage') && array_key_exists('position_montage', $data)) {
+            $sets .= ", position_montage = :position_montage";
+            $pm = (string) ($data['position_montage'] ?? '');
+            $params['position_montage'] = in_array($pm, ['gauche', 'droite'], true) ? $pm : null;
+        }
         if (produits_has_column('sous_categorie_id') && array_key_exists('sous_categorie_id', $data)) {
             $sets .= ", sous_categorie_id = :sous_categorie_id";
             $scid = $data['sous_categorie_id'] ?? null;
@@ -2063,6 +2140,28 @@ function update_produit($id, $data)
         if (produits_has_column('identifiant_interne') && array_key_exists('identifiant_interne', $data) && $data['identifiant_interne'] !== null && $data['identifiant_interne'] !== '') {
             $sets .= ", identifiant_interne = :identifiant_interne";
             $params['identifiant_interne'] = trim((string) $data['identifiant_interne']);
+        }
+        /* LE VÉHICULE, LE NOM WOLOF ET LE PRIX ENTREPRISE (fiche FPL, 23/08) —
+         * même règle que les autres : la clé absente = on ne touche à rien. */
+        if (produits_has_column('modele_id') && array_key_exists('modele_id', $data)) {
+            $sets .= ", modele_id = :modele_id";
+            $modid = $data['modele_id'] ?? null;
+            $params['modele_id'] = ($modid !== null && (int) $modid > 0) ? (int) $modid : null;
+        }
+        if (produits_has_column('generation_id') && array_key_exists('generation_id', $data)) {
+            $sets .= ", generation_id = :generation_id";
+            $genid = $data['generation_id'] ?? null;
+            $params['generation_id'] = ($genid !== null && (int) $genid > 0) ? (int) $genid : null;
+        }
+        if (produits_has_column('nom_wolof') && array_key_exists('nom_wolof', $data)) {
+            $sets .= ", nom_wolof = :nom_wolof";
+            $nw = $data['nom_wolof'] ?? null;
+            $params['nom_wolof'] = ($nw !== null && trim((string) $nw) !== '') ? trim((string) $nw) : null;
+        }
+        if (produits_has_column('prix_entreprise') && array_key_exists('prix_entreprise', $data)) {
+            $sets .= ", prix_entreprise = :prix_entreprise";
+            $pe = $data['prix_entreprise'] ?? null;
+            $params['prix_entreprise'] = ($pe !== null && $pe !== '' && is_numeric($pe)) ? (float) $pe : null;
         }
         $with_extras = isset($data['couleurs']) || isset($data['taille']);
         if ($with_extras) {
@@ -2864,3 +2963,728 @@ function count_admin_produits_export_catalogue($date_debut, $date_fin, $mode = '
     }
 }
 
+
+/**
+ * LES PIÈCES D'UN EXPORT, filtrées comme dans FPL natif.
+ * Programmation procédurale uniquement
+ *
+ * Traduction de produits_export() : les mêmes critères que la page d'aperçu
+ * d'export de FPL natif — période d'ajout, catégorie OU sous-catégorie, nom,
+ * référence (FPL / OEM / fournisseur), marque, modèle, génération, année.
+ *
+ * Elle NE REMPLACE PAS get_admin_produits_export_catalogue() : celle-là sert
+ * le suivi du catalogue et son PDF, et n'est pas touchée.
+ *
+ * Chaque colonne est vérifiée avant d'être interrogée : une base qui n'a pas
+ * `generation_id` ignore simplement ce critère au lieu de tomber en erreur.
+ *
+ * @param array $f  du, au, cat, q, ref, marque, modele, generation, annee
+ * @return array{lignes: array, total: int, page: int, par: int, derniere: int}
+ */
+function produits_export_fpl(array $f, $page = 1, $par = 50)
+{
+    global $db;
+
+    $page = max(1, (int) $page);
+    $par = max(1, min(200, (int) $par));
+
+    $ou = [];
+    $p = [];
+
+    if (!empty($f['du'])) {
+        $ou[] = 'DATE(p.date_creation) >= :ex_du';
+        $p['ex_du'] = $f['du'];
+    }
+    if (!empty($f['au'])) {
+        $ou[] = 'DATE(p.date_creation) <= :ex_au';
+        $p['ex_au'] = $f['au'];
+    }
+
+    /* « cat » désigne soit une catégorie, soit un rayon : ici les deux tables
+     * ont des identifiants séparés, donc la page nous dit lequel des deux. */
+    if (!empty($f['cat'])) {
+        if (!empty($f['cat_est_sous'])) {
+            $ou[] = 'p.sous_categorie_id = :ex_cat';
+        } else {
+            $ou[] = 'p.categorie_id = :ex_cat';
+        }
+        $p['ex_cat'] = (int) $f['cat'];
+    }
+
+    if (!empty($f['q'])) {
+        $ou[] = 'p.nom LIKE :ex_q';
+        $p['ex_q'] = '%' . $f['q'] . '%';
+    }
+
+    /* LA RÉFÉRENCE, sur les trois qu'une pièce peut porter — c'est ce que
+     * promet l'étiquette du champ dans FPL natif. */
+    if (!empty($f['ref'])) {
+        $refs = [];
+        foreach (['identifiant_interne', 'reference_oem', 'reference_fournisseur'] as $i => $col) {
+            if (produits_has_column($col)) {
+                $refs[] = 'p.' . $col . ' LIKE :ex_ref' . $i;
+                $p['ex_ref' . $i] = '%' . $f['ref'] . '%';
+            }
+        }
+        if ($refs !== []) {
+            $ou[] = '(' . implode(' OR ', $refs) . ')';
+        }
+    }
+
+    if (!empty($f['marque']) && produits_has_column('marque_id')) {
+        $ou[] = 'p.marque_id = :ex_marque';
+        $p['ex_marque'] = (int) $f['marque'];
+    }
+    if (!empty($f['modele']) && produits_has_column('modele_id')) {
+        $ou[] = 'p.modele_id = :ex_modele';
+        $p['ex_modele'] = (int) $f['modele'];
+    }
+    if (!empty($f['generation']) && produits_has_column('generation_id')) {
+        $ou[] = 'p.generation_id = :ex_gen';
+        $p['ex_gen'] = (int) $f['generation'];
+    }
+    /* L'ANNÉE passe par la génération du véhicule, qui porte la fourchette. */
+    if (!empty($f['annee']) && produits_has_column('generation_id')) {
+        $ou[] = 'EXISTS (SELECT 1 FROM vehicule_generations gx WHERE gx.id = p.generation_id
+                 AND (gx.annee_debut IS NULL OR gx.annee_debut <= :ex_annee)
+                 AND (gx.annee_fin IS NULL OR gx.annee_fin >= :ex_annee2))';
+        $p['ex_annee'] = (int) $f['annee'];
+        $p['ex_annee2'] = (int) $f['annee'];
+    }
+
+    $where = $ou === [] ? '' : ' AND ' . implode(' AND ', $ou);
+
+    try {
+        $jb = produits_catalog_join_bundle();
+
+        $st = $db->prepare('SELECT COUNT(*) FROM produits p
+            LEFT JOIN categories c ON p.categorie_id = c.id ' . $jb['join'] . ' WHERE 1=1' . $where);
+        foreach ($p as $k => $v) {
+            $st->bindValue(':' . $k, $v, is_int($v) ? PDO::PARAM_INT : PDO::PARAM_STR);
+        }
+        $st->execute();
+        $total = (int) $st->fetchColumn();
+
+        $derniere = max(1, (int) ceil($total / $par));
+        if ($page > $derniere) {
+            $page = $derniere;
+        }
+
+        $sql = 'SELECT p.*, c.nom AS categorie_nom,
+                       (SELECT sc.nom FROM sous_categories sc WHERE sc.id = p.sous_categorie_id LIMIT 1) AS sous_categorie_nom,
+                       (SELECT vm.nom FROM vehicule_modeles vm WHERE vm.id = p.modele_id LIMIT 1) AS modele_nom
+                       ' . $jb['sel'] . '
+                FROM produits p
+                LEFT JOIN categories c ON p.categorie_id = c.id ' . $jb['join'] . '
+                WHERE 1=1' . $where . '
+                ORDER BY p.date_creation DESC
+                LIMIT :ex_limit OFFSET :ex_offset';
+
+        $st = $db->prepare($sql);
+        foreach ($p as $k => $v) {
+            $st->bindValue(':' . $k, $v, is_int($v) ? PDO::PARAM_INT : PDO::PARAM_STR);
+        }
+        $st->bindValue(':ex_limit', $par, PDO::PARAM_INT);
+        $st->bindValue(':ex_offset', ($page - 1) * $par, PDO::PARAM_INT);
+        $st->execute();
+        $lignes = $st->fetchAll(PDO::FETCH_ASSOC);
+
+        // Le périmètre d'accès s'applique ici aussi : on n'exporte pas ce que
+        // la liste ne montre pas.
+        $lignes = produits_appliquer_filtre_acces_liste($lignes ? $lignes : []);
+
+        return ['lignes' => $lignes, 'total' => $total, 'page' => $page, 'par' => $par, 'derniere' => $derniere];
+    } catch (PDOException $e) {
+        return ['lignes' => [], 'total' => 0, 'page' => 1, 'par' => $par, 'derniere' => 1];
+    }
+}
+
+/**
+ * LES COLONNES QU'UN EXPORT PEUT EMPORTER — reprise de FPL natif.
+ * Programmation procédurale uniquement
+ *
+ * Une seule liste sert les TROIS endroits : les cases à cocher de la page
+ * d'export, les colonnes de l'aperçu, et celles du fichier téléchargé. C'est
+ * la seule façon d'être sûr que l'aperçu montre bien ce que le fichier
+ * contiendra — la promesse écrite en haut de la page de FPL natif.
+ *
+ * Chaque entrée : clé => [libellé, colonne de la base à vérifier].
+ * Une colonne absente de CETTE base n'est pas proposée du tout.
+ *
+ * @return array<string, array{0: string, 1: string}>
+ */
+function export_colonnes_fpl_toutes()
+{
+    $toutes = [
+        'reference' => ['Référence FPL', 'identifiant_interne'],
+        'nom' => ['Nom', ''],
+        'categorie' => ['Catégorie', ''],
+        'sous_categorie' => ['Sous-catégorie', 'sous_categorie_id'],
+        'marque' => ['Marque', 'marque_id'],
+        'modele' => ['Modèle', 'modele_id'],
+        'taille' => ['Taille', 'taille'],
+        'couleur' => ['Couleur', 'couleurs'],
+        'poids' => ['Poids', 'poids'],
+        'reference_oem' => ['Réf. OEM', 'reference_oem'],
+        'reference_fournisseur' => ['Réf. fournisseur', 'reference_fournisseur'],
+        'fournisseur' => ['Fournisseur', 'fournisseur_id'],
+        'description' => ['Description', 'description'],
+        'stock' => ['Stock', 'stock'],
+        'emplacement' => ['Emplacement', 'etage'],
+        'statut' => ['Statut', 'statut'],
+        'prix' => ['Prix de vente (FCFA)', 'prix'],
+        'prix_promotion' => ['Prix promo (FCFA)', 'prix_promotion'],
+        'prix_achat' => ['Prix d\'achat (FCFA)', 'prix_achat'],
+        'date_creation' => ['Ajoutée le', 'date_creation'],
+    ];
+
+    $dispo = [];
+    foreach ($toutes as $cle => $def) {
+        if ($def[1] === '' || produits_has_column($def[1])) {
+            $dispo[$cle] = $def;
+        }
+    }
+
+    return $dispo;
+}
+
+/** Les colonnes retenues par défaut — celles de l'export d'origine de FPL. */
+function export_colonnes_fpl_defaut()
+{
+    $defaut = ['reference', 'nom', 'categorie', 'sous_categorie', 'marque', 'modele',
+        'taille', 'reference_oem', 'reference_fournisseur', 'stock'];
+
+    return array_values(array_intersect($defaut, array_keys(export_colonnes_fpl_toutes())));
+}
+
+/**
+ * Les colonnes réellement retenues : celles demandées, gardées dans l'ordre
+ * officiel. Aucune demandée : les colonnes habituelles sortent.
+ *
+ * @param array|null $demandees
+ * @return array<int, string>
+ */
+function export_colonnes_fpl_retenues($demandees = null)
+{
+    $toutes = export_colonnes_fpl_toutes();
+    if (!is_array($demandees) || $demandees === []) {
+        return export_colonnes_fpl_defaut();
+    }
+    $garde = [];
+    foreach (array_keys($toutes) as $cle) {
+        if (in_array($cle, $demandees, true)) {
+            $garde[] = $cle;
+        }
+    }
+
+    return $garde === [] ? export_colonnes_fpl_defaut() : $garde;
+}
+
+/**
+ * La valeur d'une colonne pour une pièce, mise en forme pour l'écran comme
+ * pour le fichier. Un vide reste un vide : dans un tableur, une case vide se
+ * compte, un tiret cadratin s'efface à la main.
+ *
+ * @return string
+ */
+function export_valeur_colonne_fpl($cle, array $p)
+{
+    switch ($cle) {
+        case 'reference':
+            $c = trim((string) ($p['identifiant_interne'] ?? ''));
+            return $c !== '' && function_exists('fpl_code_afficher') ? fpl_code_afficher($c) : $c;
+        case 'nom':                   return (string) ($p['nom'] ?? '');
+        case 'categorie':             return (string) ($p['categorie_nom'] ?? '');
+        case 'sous_categorie':        return (string) ($p['sous_categorie_nom'] ?? '');
+        case 'marque':                return (string) ($p['marque_libelle_catalogue'] ?? '');
+        case 'modele':                return (string) ($p['modele_nom'] ?? '');
+        case 'taille':                return (string) ($p['taille'] ?? '');
+        case 'couleur':               return trim((string) ($p['couleurs'] ?? ''), " \t\n\r\0\x0B[]");
+        case 'poids':                 return (string) ($p['poids'] ?? '');
+        case 'reference_oem':         return (string) ($p['reference_oem'] ?? '');
+        case 'reference_fournisseur': return (string) ($p['reference_fournisseur'] ?? '');
+        case 'fournisseur':
+            return function_exists('produits_fournisseur_nom_affichage')
+                ? (string) produits_fournisseur_nom_affichage($p)
+                : (string) ($p['nom_fournisseur'] ?? '');
+        case 'description':           return trim(strip_tags((string) ($p['description'] ?? '')));
+        case 'stock':                 return (string) (int) ($p['stock'] ?? 0);
+        case 'statut':                return (string) ($p['statut'] ?? '');
+        case 'emplacement':
+            $bouts = [];
+            foreach (['etage', 'allee', 'numero_rayon', 'zone_emplacement', 'position_emplacement'] as $col) {
+                $v = trim((string) ($p[$col] ?? ''));
+                if ($v !== '') {
+                    $bouts[] = $v;
+                }
+            }
+            return implode(' · ', $bouts);
+        case 'prix':                  return $p['prix'] ? (string) (float) $p['prix'] : '';
+        case 'prix_promotion':        return $p['prix_promotion'] ? (string) (float) $p['prix_promotion'] : '';
+        case 'prix_achat':            return $p['prix_achat'] ? (string) (float) $p['prix_achat'] : '';
+        case 'date_creation':
+            return !empty($p['date_creation']) ? date('d/m/Y', strtotime((string) $p['date_creation'])) : '';
+    }
+
+    return '';
+}
+
+/**
+ * OÙ UNE PIÈCE EST RANGÉE — le stock, emplacement par emplacement.
+ * Programmation procédurale uniquement
+ *
+ * Traduction de produit_niveaux() de FPL natif. La table `stock_emplacement`
+ * et la hiérarchie `entrepot_hierarchie_noeud` existent déjà dans ce dépôt :
+ * personne ne les lisait encore côté fiche, c'est tout ce qui manquait.
+ *
+ * Une pièce peut être à PLUSIEURS endroits, avec une quantité par endroit —
+ * c'est précisément ce que la fiche ne savait pas montrer.
+ *
+ * @param int $produit_id
+ * @return array<int, array{noeud_id:int, noeud_nom:string, noeud_code:string,
+ *                          est_defectueux:int, quantite:float, chemin:string}>
+ */
+function produit_emplacements($produit_id)
+{
+    global $db;
+
+    $produit_id = (int) $produit_id;
+    if ($produit_id <= 0) {
+        return [];
+    }
+
+    try {
+        $st = $db->prepare('
+            SELECT se.noeud_id, se.quantite,
+                   n.nom AS noeud_nom, n.code_scan AS noeud_code,
+                   n.est_defectueux, n.niveau_id
+            FROM stock_emplacement se
+            INNER JOIN entrepot_hierarchie_noeud n ON n.id = se.noeud_id
+            WHERE se.produit_id = :pid
+              AND (se.sync_deleted_at IS NULL)
+            ORDER BY n.est_defectueux ASC, n.nom ASC
+        ');
+        $st->bindValue(':pid', $produit_id, PDO::PARAM_INT);
+        $st->execute();
+        $lignes = $st->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        return [];
+    }
+
+    // Le chemin complet (« Étage 1 › Allée B › Rayon 4 ») est calculé par le
+    // modèle de hiérarchie, qui sait remonter les parents.
+    $chemin_dispo = false;
+    $fichier = __DIR__ . '/model_entrepot_hierarchie_libre.php';
+    if (is_file($fichier)) {
+        require_once $fichier;
+        $chemin_dispo = function_exists('entrepot_noeud_chemin_libelle');
+    }
+
+    foreach ($lignes as &$l) {
+        $l['noeud_id'] = (int) $l['noeud_id'];
+        $l['quantite'] = (float) $l['quantite'];
+        $l['est_defectueux'] = (int) $l['est_defectueux'];
+        $l['noeud_code'] = (string) ($l['noeud_code'] ?? '');
+        $l['noeud_nom'] = (string) ($l['noeud_nom'] ?? '');
+        $l['chemin'] = $chemin_dispo ? (string) entrepot_noeud_chemin_libelle($l['noeud_id']) : '';
+    }
+    unset($l);
+
+    return $lignes;
+}
+
+/**
+ * Le stock d'une pièce séparé en DEUX : ce qui est vendable, et ce qui dort
+ * en zone défectueux. FPL natif fait cette distinction sur sa fiche, et elle
+ * change ce qu'on annonce au client.
+ *
+ * @return array{vendable: float, defectueux: float, emplacements: int}
+ */
+function produit_stock_par_nature($produit_id)
+{
+    $vendable = 0.0;
+    $defectueux = 0.0;
+    $emplacements = produit_emplacements($produit_id);
+    foreach ($emplacements as $e) {
+        if (!empty($e['est_defectueux'])) {
+            $defectueux += (float) $e['quantite'];
+        } else {
+            $vendable += (float) $e['quantite'];
+        }
+    }
+
+    return ['vendable' => $vendable, 'defectueux' => $defectueux, 'emplacements' => count($emplacements)];
+}
+
+/**
+ * CE QUI MANQUE À UNE FICHE pour qu'elle tienne sa place au catalogue.
+ * Programmation procédurale uniquement
+ *
+ * Traduction de produit_infos_manquantes() de FPL natif. Une pièce sans
+ * marque, sans modèle ou sans photo se retrouve mal : le catalogue par
+ * véhicule ne la propose pas, et le client ne la reconnaît pas.
+ *
+ * On ne réclame la génération que si la pièce ne vise qu'un seul modèle :
+ * une pièce commune à plusieurs modèles n'a pas de génération unique.
+ *
+ * @param array $produit
+ * @param int $nb_modeles Nombre de modèles rattachés
+ * @param int $nb_images  Nombre de photos RÉELLES (sans l'image de remplacement)
+ * @return array<int, string> Les manques, en toutes lettres
+ */
+function produit_infos_manquantes(array $produit, $nb_modeles = 0, $nb_images = 0)
+{
+    $manque = [];
+
+    if (produits_has_column('marque_id') && empty($produit['marque_id'])) {
+        $manque[] = 'marque';
+    }
+    if (produits_has_column('modele_id') && empty($produit['modele_id'])) {
+        $manque[] = 'modèle';
+    }
+    if (produits_has_column('generation_id') && empty($produit['generation_id']) && (int) $nb_modeles <= 1) {
+        $manque[] = 'génération';
+    }
+    if (produits_has_column('reference_oem') && empty($produit['reference_oem'])) {
+        $manque[] = 'réf. OEM';
+    }
+    if ((int) $nb_images === 0) {
+        $manque[] = 'photo';
+    }
+
+    return $manque;
+}
+
+/**
+ * « OÙ RANGER CETTE PIÈCE ? » — la recherche de l'écran d'ajout par le nom.
+ * Programmation procédurale uniquement
+ *
+ * Traduction de placement_recherche() de FPL natif. Trois recherches :
+ *   1. les rayons dont le NOM (ou les mots-clés) contient le mot tapé ;
+ *   2. les rayons DÉDUITS des pièces déjà rangées qui portent ce mot —
+ *      c'est là l'intelligence de l'écran : « filtre » trouve le bon rayon
+ *      même si aucun rayon ne s'appelle « filtre » ;
+ *   3. les pièces qui existent DÉJÀ sous ce nom, pour ne pas créer un doublon.
+ *
+ * Les colonnes `image` et `mots_cles` de sous_categories n'existent pas dans
+ * toutes les bases : chacune est vérifiée avant d'être interrogée, donc la
+ * fonction rend le même service avant et après la migration qui les ajoute.
+ *
+ * @param string $q
+ * @return array{categories: array, products: array}
+ */
+function placement_recherche($q)
+{
+    global $db;
+
+    $q = trim((string) $q);
+    if (mb_strlen($q) < 2) {
+        return ['categories' => [], 'products' => []];
+    }
+    $like = '%' . $q . '%';
+
+    $a_image = sous_categories_a_colonne('image');
+    $a_mots = sous_categories_a_colonne('mots_cles');
+    $col_image = $a_image ? 'sc.image' : 'NULL';
+    $ou_mots = $a_mots ? ' OR sc.mots_cles LIKE :q2' : '';
+
+    $prefixe = function_exists('get_public_root_uri_path')
+        ? rtrim((string) get_public_root_uri_path(), '/') . '/upload/'
+        : '/upload/';
+
+    $categories = [];
+
+    try {
+        // 1 — les rayons par leur nom (et leurs mots-clés si la colonne existe)
+        $sql = "SELECT sc.id, sc.categorie_id, sc.nom, $col_image AS image, c.nom AS parent_nom
+                FROM sous_categories sc
+                JOIN categories c ON c.id = sc.categorie_id
+                WHERE sc.sync_deleted_at IS NULL
+                  AND (sc.nom LIKE :q1$ou_mots)
+                ORDER BY sc.nom
+                LIMIT 8";
+        $st = $db->prepare($sql);
+        $st->bindValue(':q1', $like, PDO::PARAM_STR);
+        if ($a_mots) {
+            $st->bindValue(':q2', $like, PDO::PARAM_STR);
+        }
+        $st->execute();
+        $directes = $st->fetchAll(PDO::FETCH_ASSOC);
+
+        $ids = array_map(function ($c) { return (int) $c['id']; }, $directes);
+        $exclusion = $ids !== [] ? ' AND sc.id NOT IN (' . implode(',', $ids) . ')' : '';
+
+        // 2 — les rayons déduits des pièces déjà rangées sous ce mot
+        $st = $db->prepare("
+            SELECT sc.id, sc.categorie_id, sc.nom, $col_image AS image, c.nom AS parent_nom,
+                   (SELECT COUNT(*) FROM produits p
+                     WHERE p.sous_categorie_id = sc.id AND p.nom LIKE :q1) AS nb
+            FROM sous_categories sc
+            JOIN categories c ON c.id = sc.categorie_id
+            WHERE sc.sync_deleted_at IS NULL $exclusion
+              AND EXISTS (SELECT 1 FROM produits p
+                          WHERE p.sous_categorie_id = sc.id AND p.nom LIKE :q2)
+            ORDER BY nb DESC
+            LIMIT 6");
+        $st->execute(['q1' => $like, 'q2' => $like]);
+        $deduites = $st->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ([[$directes, 'nom'], [$deduites, 'pieces']] as [$liste, $origine]) {
+            foreach ($liste as $c) {
+                $img = trim((string) ($c['image'] ?? ''));
+                $categories[] = [
+                    'id' => (int) $c['id'],
+                    'name' => function_exists('fpl_texte') ? fpl_texte($c['nom']) : $c['nom'],
+                    'parent' => function_exists('fpl_texte') ? fpl_texte($c['parent_nom']) : $c['parent_nom'],
+                    'image' => $img !== '' ? $prefixe . ltrim($img, '/') : null,
+                    'origine' => $origine,
+                    'nb' => $origine === 'pieces' ? (int) ($c['nb'] ?? 0) : null,
+                    // LES DEUX identifiants : le formulaire d'ajout pré-remplit sa
+                    // cascade à partir de la catégorie, le rayon seul ne suffit pas.
+                    'url' => 'ajouter.php?categorie_id=' . (int) ($c['categorie_id'] ?? 0)
+                        . '&sous_categorie_id=' . (int) $c['id'],
+                ];
+            }
+        }
+    } catch (PDOException $e) {
+        $categories = [];
+    }
+
+    // 3 — les pièces qui existent déjà : on prévient AVANT de créer un doublon
+    $products = [];
+    try {
+        $col_oem = produits_has_column('reference_oem') ? 'p.reference_oem' : 'NULL';
+        $ou_oem = produits_has_column('reference_oem') ? ' OR p.reference_oem LIKE :q2' : '';
+        $st = $db->prepare("
+            SELECT p.id, p.nom, p.identifiant_interne, $col_oem AS reference_oem,
+                   sc.nom AS sous_categorie_nom, c.nom AS categorie_nom
+            FROM produits p
+            LEFT JOIN sous_categories sc ON sc.id = p.sous_categorie_id
+            LEFT JOIN categories c ON c.id = p.categorie_id
+            WHERE (p.nom LIKE :q1$ou_oem)
+            LIMIT 5");
+        $st->bindValue(':q1', $like, PDO::PARAM_STR);
+        if ($ou_oem !== '') {
+            $st->bindValue(':q2', $like, PDO::PARAM_STR);
+        }
+        $st->execute();
+        foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $p) {
+            $chemin = trim(($p['categorie_nom'] ?? '') . ' › ' . ($p['sous_categorie_nom'] ?? ''), " ›");
+            $products[] = [
+                'id' => (int) $p['id'],
+                'name' => function_exists('fpl_texte') ? fpl_texte($p['nom']) : $p['nom'],
+                'code' => function_exists('fpl_code_afficher')
+                    ? fpl_code_afficher((string) $p['identifiant_interne'])
+                    : (string) $p['identifiant_interne'],
+                'oem' => (string) ($p['reference_oem'] ?? ''),
+                'path' => function_exists('fpl_texte') ? fpl_texte($chemin) : $chemin,
+                'url' => 'ajuster-stock.php?id=' . (int) $p['id'],
+            ];
+        }
+    } catch (PDOException $e) {
+        $products = [];
+    }
+
+    return ['categories' => $categories, 'products' => $products];
+}
+
+/** Une colonne de sous_categories existe-t-elle ? (mise en cache) */
+function sous_categories_a_colonne($nom)
+{
+    global $db;
+    static $colonnes = null;
+
+    if ($colonnes === null) {
+        $colonnes = [];
+        try {
+            foreach ($db->query('SHOW COLUMNS FROM sous_categories') as $c) {
+                $colonnes[strtolower((string) $c['Field'])] = true;
+            }
+        } catch (PDOException $e) {
+            $colonnes = [];
+        }
+    }
+
+    return isset($colonnes[strtolower((string) $nom)]);
+}
+
+/* =====================================================================
+ *  LE VÉHICULE DU WIZARD « NOUVELLE PIÈCE » (portage de FPL natif, 23/08)
+ *  Les tables marques / vehicule_modeles / vehicule_generations /
+ *  produit_modeles existaient déjà dans ce dépôt ; seules les fonctions
+ *  manquaient.
+ * ===================================================================== */
+
+/** « 2010 – 2016 », « depuis 2018 », « jusqu'à 2009 » ou null. */
+function produit_periode_affichee($produit)
+{
+    $de = isset($produit['annee_debut']) ? (int) $produit['annee_debut'] : 0;
+    $a = isset($produit['annee_fin']) ? (int) $produit['annee_fin'] : 0;
+
+    if ($de && $a && $de === $a) {
+        return (string) $de;
+    }
+    if ($de && $a) {
+        return $de . ' – ' . $a;
+    }
+    if ($de) {
+        return 'depuis ' . $de;
+    }
+    if ($a) {
+        return "jusqu'à " . $a;
+    }
+
+    return null;
+}
+
+/** Les tables véhicule sont-elles là ? (une vérification par requête) */
+function vehicule_tables_ok()
+{
+    static $ok = null;
+    global $db;
+
+    if ($ok === null) {
+        $ok = false;
+        try {
+            $s = $db->query("SELECT COUNT(*) FROM information_schema.TABLES
+                             WHERE TABLE_SCHEMA = DATABASE()
+                               AND TABLE_NAME IN ('marques', 'vehicule_modeles', 'vehicule_generations', 'produit_modeles')");
+            $ok = (int) $s->fetchColumn() === 4;
+        } catch (PDOException $e) {
+            $ok = false;
+        }
+    }
+
+    return $ok;
+}
+
+/**
+ * Les modèles retenus parmi ceux cochés : seulement ceux qui appartiennent
+ * à la marque choisie, dans l'ordre ALPHABÉTIQUE — le premier devient le
+ * modèle principal (produits.modele_id). Un formulaire trafiqué ne rattache
+ * pas un modèle Volvo à une marque Mercedes.
+ */
+function produit_modeles_retenus($models, $marque_id)
+{
+    global $db;
+
+    $bruts = array_values(array_filter(array_map('intval', (array) $models)));
+    if ($bruts === [] || !$marque_id || !vehicule_tables_ok()) {
+        return [];
+    }
+
+    $stmt = $db->prepare("SELECT id FROM vehicule_modeles
+                          WHERE id IN (" . implode(',', $bruts) . ") AND marque_id = :marque
+                            AND sync_deleted_at IS NULL
+                          ORDER BY nom");
+    $stmt->execute(['marque' => (int) $marque_id]);
+
+    return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+}
+
+/**
+ * La génération retenue : celle choisie, MAIS seulement si elle appartient
+ * bien au modèle de la pièce. Elle n'a de sens qu'à modèle unique.
+ */
+function produit_generation_retenue($generation_id, $modele_id)
+{
+    global $db;
+
+    if (!$generation_id || !$modele_id || !vehicule_tables_ok()) {
+        return null;
+    }
+
+    $stmt = $db->prepare("SELECT id FROM vehicule_generations
+                          WHERE id = :g AND modele_id = :m AND sync_deleted_at IS NULL");
+    $stmt->execute(['g' => (int) $generation_id, 'm' => (int) $modele_id]);
+    $id = $stmt->fetchColumn();
+
+    return $id ? (int) $id : null;
+}
+
+/**
+ * Toutes les compatibilités d'une pièce — le modèle principal compris —
+ * dans le pivot produit_modeles. Remplace l'existant (pas de doublon : la
+ * clé unique (produit_id, modele_id) le garantit de toute façon).
+ */
+function produit_modeles_poser($produit_id, array $modele_ids)
+{
+    global $db;
+
+    if (!vehicule_tables_ok()) {
+        return;
+    }
+    $produit_id = (int) $produit_id;
+    $stmt = $db->prepare("DELETE FROM produit_modeles WHERE produit_id = :p");
+    $stmt->execute(['p' => $produit_id]);
+    $ins = $db->prepare("INSERT IGNORE INTO produit_modeles (produit_id, modele_id, date_creation)
+                         VALUES (:p, :m, NOW())");
+    foreach ($modele_ids as $mid) {
+        $ins->execute(['p' => $produit_id, 'm' => (int) $mid]);
+    }
+}
+
+/**
+ * Les marques avec leurs modèles et générations — la cascade du wizard.
+ * Les générations voyagent AVEC leur modèle : la liste se remplit toute
+ * seule quand on choisit le modèle.
+ */
+function marques_pour_wizard()
+{
+    global $db;
+
+    $vide = ['marques' => [], 'modeles_par_marque' => [], 'generations_par_modele' => []];
+    if (!vehicule_tables_ok()) {
+        return $vide;
+    }
+    try {
+        $marques = $db->query("SELECT id, nom FROM marques
+                               WHERE sync_deleted_at IS NULL ORDER BY nom")->fetchAll(PDO::FETCH_ASSOC);
+        $modeles = $db->query("SELECT id, marque_id, nom FROM vehicule_modeles
+                               WHERE sync_deleted_at IS NULL ORDER BY nom")->fetchAll(PDO::FETCH_ASSOC);
+        $generations = $db->query("SELECT id, modele_id, nom, annee_debut, annee_fin FROM vehicule_generations
+                                   WHERE sync_deleted_at IS NULL
+                                   ORDER BY annee_debut, nom")->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        return $vide;
+    }
+
+    $modeles_par_marque = [];
+    foreach ($modeles as $m) {
+        $modeles_par_marque[(int) $m['marque_id']][] = ['id' => (int) $m['id'], 'name' => $m['nom']];
+    }
+    $generations_par_modele = [];
+    foreach ($generations as $g) {
+        $generations_par_modele[(int) $g['modele_id']][] = [
+            'id' => (int) $g['id'],
+            'nom' => $g['nom'],
+            'periode' => produit_periode_affichee(['annee_debut' => $g['annee_debut'], 'annee_fin' => $g['annee_fin']]),
+        ];
+    }
+
+    return [
+        'marques' => $marques,
+        'modeles_par_marque' => $modeles_par_marque,
+        'generations_par_modele' => $generations_par_modele,
+    ];
+}
+
+/** Les modèles compatibles d'une pièce (pivot produit_modeles), en ids. */
+function produit_modeles_ids($produit_id)
+{
+    global $db;
+
+    if (!vehicule_tables_ok()) {
+        return [];
+    }
+    try {
+        $stmt = $db->prepare("SELECT modele_id FROM produit_modeles
+                              WHERE produit_id = :p AND sync_deleted_at IS NULL
+                              ORDER BY modele_id");
+        $stmt->execute(['p' => (int) $produit_id]);
+
+        return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+    } catch (PDOException $e) {
+        return [];
+    }
+}
