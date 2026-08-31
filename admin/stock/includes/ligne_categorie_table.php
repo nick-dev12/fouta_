@@ -52,9 +52,10 @@ $can_edit = !function_exists('admin_is_restricted_admin_account') || !admin_is_r
         <a href="<?php echo e($detail_href); ?>" class="stock-cat-table__action" title="Produits"><i class="fas fa-box" aria-hidden="true"></i></a>
         <?php if ($can_edit): ?>
         <a href="../categories/modifier.php?id=<?php echo $cid; ?>" class="stock-cat-table__action" title="Modifier"><i class="fas fa-edit" aria-hidden="true"></i></a>
+        <?php // Pas de confirm() ici : le lien mène à la page de confirmation
+              // supprimer.php (comme le rail du catalogue) — une seule étape. ?>
         <a href="../categories/supprimer.php?id=<?php echo $cid; ?>" class="stock-cat-table__action stock-cat-table__action--danger"
-            title="Supprimer"
-            onclick="return confirm('Supprimer cette catégorie ?');"><i class="fas fa-trash" aria-hidden="true"></i></a>
+            title="Supprimer"><i class="fas fa-trash" aria-hidden="true"></i></a>
         <?php endif; ?>
     </td>
 </tr>

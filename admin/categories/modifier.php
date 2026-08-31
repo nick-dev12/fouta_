@@ -1,7 +1,13 @@
 <?php
 /**
- * Page de modification de catégorie
+ * MODIFIER UNE CATÉGORIE RACINE — au patron FPL (form-card). Le moteur ne
+ * bouge pas : process_update_categorie() valide et enregistre, en gardant
+ * l'ancienne image si aucune n'est déposée.
  * Programmation procédurale uniquement
+ *
+ * En plus du rayon : la COULEUR D'ÉTIQUETTE STOCK FPL (bandeau, écusson,
+ * pastilles véhicules de la fiche « Ajuster le stock »). Laisser le bleu
+ * par défaut = couleur calculée automatiquement pour la catégorie.
  */
 
 session_start();
@@ -14,6 +20,8 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
 
 require_once __DIR__ . '/../includes/require_access.php';
 require_once __DIR__ . '/../../includes/fouta_upload_limits.php';
+require_once __DIR__ . '/../../includes/fpl_texte.php';
+require_once __DIR__ . '/../../includes/fpl_ui.php';
 
 // Récupérer l'ID de la catégorie
 $categorie_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
@@ -36,178 +44,163 @@ if (!$categorie) {
 require_once __DIR__ . '/../../controllers/controller_categories.php';
 $result = process_update_categorie($categorie_id);
 
-// Si la modification est réussie, rediriger vers la liste
+// Si la modification est réussie, retour au catalogue — la carte corrigée sous les yeux.
 if (isset($result['success']) && $result['success']) {
     $_SESSION['success_message'] = $result['message'];
-    // Retour au catalogue, la carte corrigée sous les yeux.
     header('Location: ../produits/index.php');
     exit;
 }
+
+$erreur = (isset($result['message']) && $result['message'] !== '' && empty($result['success']))
+    ? (string) $result['message'] : '';
+
+// Reprise de saisie sur erreur, sinon la valeur en base
+$val_nom = isset($_POST['nom']) ? (string) $_POST['nom'] : fpl_texte((string) $categorie['nom']);
+$val_desc = isset($_POST['description']) ? (string) $_POST['description'] : fpl_texte((string) ($categorie['description'] ?? ''));
+
+// Couleur d'étiquette : #RRGGBB, bleu FPL par défaut
+$couleur_val = preg_match('/^#[0-9A-Fa-f]{6}$/i', (string) ($categorie['couleur_etiquette'] ?? ''))
+    ? strtoupper((string) $categorie['couleur_etiquette']) : '#1E3A5F';
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['couleur_etiquette'])
+    && preg_match('/^#[0-9A-Fa-f]{6}$/i', trim((string) $_POST['couleur_etiquette']))) {
+    $couleur_val = strtoupper(trim((string) $_POST['couleur_etiquette']));
+}
+
+$image_actuelle = trim((string) ($categorie['image'] ?? ''));
+$retour = '../produits/index.php';
+$fpl_titre_page = 'Modifier « ' . fpl_texte((string) $categorie['nom']) . ' »';
+$fpl_retour_page = $retour;
 ?>
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
     <?php include __DIR__ . '/../../includes/favicon.php'; ?>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Modifier une Catégorie - Administration</title>
+    <title><?php echo e($fpl_titre_page); ?> — Administration</title>
     <?php require_once __DIR__ . '/../../includes/asset_version.php'; ?>
-<?php include __DIR__ . '/..//includes/fpl_head.php'; ?>
-    <style>
-        .form-container {
-            background: #ffffff;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-            max-width: 600px;
-            margin: 0 auto;
-        }
-
-        .form-group {
-            margin-bottom: 25px;
-        }
-
-        .form-group label {
-            display: block;
-            color: #6b2f20;
-            font-weight: 500;
-            margin-bottom: 8px;
-            font-size: 14px;
-        }
-
-        .form-group input,
-        .form-group textarea {
-            width: 100%;
-            padding: 12px 15px;
-            border: 2px solid #e8e8e8;
-            border-radius: 8px;
-            font-size: 15px;
-            transition: all 0.3s ease;
-            background: #ffffff;
-            color: #000000;
-            font-family: inherit;
-        }
-
-        .form-group input[type="color"] {
-            max-width: 120px;
-            height: 48px;
-            padding: 4px;
-            cursor: pointer;
-        }
-
-        .form-group input:focus,
-        .form-group textarea:focus {
-            outline: none;
-            border-color: #918a44;
-            box-shadow: 0 0 0 3px rgba(145, 138, 68, 0.1);
-        }
-
-        .form-group textarea {
-            min-height: 100px;
-            resize: vertical;
-        }
-
-        .error-message {
-            background: #fee;
-            border-left: 4px solid #c26638;
-            color: #6b2f20;
-            padding: 12px 15px;
-            border-radius: 6px;
-            margin-bottom: 20px;
-            font-size: 14px;
-        }
-
-        .btn-back {
-            background: #e0e0e0;
-            color: #6b2f20;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 8px;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 20px;
-            transition: all 0.3s ease;
-        }
-
-        .btn-back:hover {
-            background: #d0d0d0;
-        }
-
-        .current-image {
-            margin-top: 10px;
-            max-width: 200px;
-            border-radius: 8px;
-        }
-    </style>
+<?php include __DIR__ . '/../includes/fpl_head.php'; ?>
+    <?php fpl_css_link('admin-produits-index.css'); ?>
 </head>
-<body>
+
+<body class="fpl-catalogue">
     <?php include '../includes/nav.php'; ?>
-    
-    <div class="content-header">
-        <h1><i class="fas fa-edit"></i> Modifier une Catégorie</h1>
-        <a href="../produits/index.php" class="btn-back">
-            <i class="fas fa-arrow-left"></i> Retour
-        </a>
+
+    <div class="page-produits-admin">
+
+<form method="POST" action="" enctype="multipart/form-data">
+  <input type="hidden" name="MAX_FILE_SIZE" value="<?php echo (int) FOUTA_UPLOAD_IMAGE_MAX_BYTES; ?>">
+
+  <div class="form-card" style="max-width:640px">
+    <div class="form-block">
+      <h3>
+        <?php echo fpl_icone('folder', 14); ?>
+        Identité
+      </h3>
+
+      <?php if ($erreur !== '') : ?>
+        <div class="alert warn" style="margin-bottom:var(--s3)"><?php echo $erreur; ?></div>
+      <?php endif; ?>
+
+      <div class="field">
+        <label for="nom">Nom <span class="req">*</span></label>
+        <input type="text" id="nom" name="nom" value="<?php echo e($val_nom); ?>" required minlength="2" autofocus>
+      </div>
+
+      <div class="field">
+        <label for="description">Description</label>
+        <textarea id="description" name="description" rows="2"><?php echo e($val_desc); ?></textarea>
+      </div>
     </div>
 
-    <div class="form-container">
-        <?php if (isset($result['message']) && !empty($result['message']) && !$result['success']): ?>
-            <div class="error-message">
-                <i class="fas fa-exclamation-circle"></i> <?php echo $result['message']; ?>
-            </div>
+    <div class="form-block">
+      <h3>
+        <?php echo fpl_icone('tag', 14); ?> Couleur d'étiquette stock FPL
+      </h3>
+      <div class="field">
+        <label for="couleur_etiquette">Teinte de l'étiquette</label>
+        <input type="color" id="couleur_etiquette" name="couleur_etiquette" value="<?php echo e($couleur_val); ?>"
+               style="max-width:120px;height:44px;padding:4px;cursor:pointer">
+        <div class="help">
+          Bandeau vertical, bande du haut, écusson, pied de page et pastilles véhicules des étiquettes FPL
+          (fiche « Ajuster le stock »). Laissé sur le bleu foncé par défaut (#1E3A5F), une couleur est
+          calculée automatiquement pour cette catégorie ; choisissez une teinte ci-dessus pour l'imposer.
+        </div>
+      </div>
+    </div>
+
+    <div class="form-block">
+      <h3>
+        <?php echo fpl_icone('image', 14); ?> Image
+        <span class="hint-inline">Laissez vide pour conserver l'actuelle</span>
+      </h3>
+
+      <label class="dropzone" id="dz">
+        <span class="dz-icon"><?php echo fpl_icone('image', 18); ?></span>
+        <span class="dz-title"><?php echo $image_actuelle !== '' ? 'Remplacer l\'image' : 'Cliquez ou déposez une image'; ?></span>
+        <span class="dz-sub">JPG, PNG, WEBP — <?php echo (int) fouta_upload_image_max_mo_int(); ?> Mo max</span>
+        <input type="file" id="image" name="image" accept="image/jpeg,image/png,image/webp,image/gif">
+      </label>
+
+      <div class="previews" id="previews">
+        <?php if ($image_actuelle !== '') : ?>
+          <div class="preview">
+            <img src="../../upload/<?php echo e($image_actuelle); ?>" alt="">
+            <span class="tag">Actuelle</span>
+          </div>
         <?php endif; ?>
-        
-        <form method="POST" action="" enctype="multipart/form-data">
-            <input type="hidden" name="MAX_FILE_SIZE" value="<?php echo (int) FOUTA_UPLOAD_IMAGE_MAX_BYTES; ?>">
-            <div class="form-group">
-                <label for="nom">Nom de la catégorie *</label>
-                <input type="text" id="nom" name="nom" required
-                       value="<?php echo htmlspecialchars($categorie['nom']); ?>">
-            </div>
-
-            <div class="form-group">
-                <label for="description">Description</label>
-                <textarea id="description" name="description"><?php echo htmlspecialchars($categorie['description'] ?? ''); ?></textarea>
-            </div>
-
-            <div class="form-group">
-                <label for="couleur_etiquette">Couleur étiquette stock FPL</label>
-                <?php
-                $ce_def = htmlspecialchars(preg_match('/^#[0-9A-Fa-f]{6}$/i', (string) ($categorie['couleur_etiquette'] ?? ''))
-                    ? (string) $categorie['couleur_etiquette']
-                    : '#1e3a5f');
-                if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['couleur_etiquette'])
-                    && preg_match('/^#[0-9A-Fa-f]{6}$/i', trim($_POST['couleur_etiquette']))) {
-                    $ce_def = htmlspecialchars(strtoupper(trim($_POST['couleur_etiquette'])));
-                }
-                ?>
-                <input type="color" id="couleur_etiquette" name="couleur_etiquette" value="<?php echo $ce_def; ?>">
-                <small style="color: #666; font-size: 12px; display: block; margin-top: 5px;">
-                    Étiquettes FPL (Ajuster le stock) : bandeau vertical, bande du haut, écusson, pied de page et pastilles véhicules.
-                    Si vous laissez le bleu foncé par défaut (#1e3a5f), une couleur est calculée automatiquement pour cette catégorie (règles par nom si connues — ex. amortisseur / air compresseur — sinon palette stable par catégorie). Choisissez une autre couleur ci-dessus pour imposer définitivement une teinte.
-                </small>
-            </div>
-
-            <div class="form-group">
-                <label for="image">Image de la catégorie</label>
-                <?php if ($categorie['image']): ?>
-                    <div>
-                        <img src="../../upload/<?php echo htmlspecialchars($categorie['image']); ?>" 
-                             alt="Image actuelle" class="current-image">
-                        <p style="font-size: 12px; color: #666; margin-top: 5px;">Image actuelle (laisser vide pour conserver)</p>
-                    </div>
-                <?php endif; ?>
-                <input type="file" id="image" name="image" accept="image/*">
-                <small style="color: #666; font-size: 12px; display: block; margin-top: 5px;">Formats acceptés: JPG, PNG, GIF, WEBP (max <?php echo (int) (FOUTA_UPLOAD_IMAGE_MAX_BYTES / (1024 * 1024)); ?> Mo)</small>
-            </div>
-
-            <button type="submit" class="btn-primary">
-                <i class="fas fa-save"></i> Enregistrer les modifications
-            </button>
-        </form>
+      </div>
     </div>
+  </div>
+
+  <div class="form-bar" style="max-width:640px">
+    <button type="submit" class="btn btn-primary">
+      <?php echo fpl_icone('save', 14); ?>
+      Enregistrer
+    </button>
+    <a href="<?php echo e($retour); ?>" class="btn btn-outline">Annuler</a>
+  </div>
+</form>
+
+    </div><!-- .page-produits-admin -->
+
+<script>
+  // Aperçu de l'image déposée
+  (function () {
+    const input = document.getElementById('image');
+    const zone = document.getElementById('dz');
+    const grid = document.getElementById('previews');
+    if (!input || !zone || !grid) return;
+
+    function show() {
+      const f = input.files?.[0];
+      if (!f) return;
+      grid.innerHTML = '';
+      const item = document.createElement('div');
+      item.className = 'preview';
+      const img = document.createElement('img');
+      img.src = URL.createObjectURL(f);
+      img.onload = () => URL.revokeObjectURL(img.src);
+      const tag = document.createElement('span');
+      tag.className = 'tag';
+      tag.textContent = 'Nouvelle';
+      const rm = document.createElement('button');
+      rm.type = 'button'; rm.className = 'rm'; rm.innerHTML = '&times;'; rm.title = 'Retirer';
+      rm.addEventListener('click', (e) => { e.preventDefault(); input.value = ''; grid.innerHTML = ''; });
+      item.append(img, tag, rm);
+      grid.appendChild(item);
+    }
+
+    input.addEventListener('change', show);
+    ['dragenter', 'dragover'].forEach(ev => zone.addEventListener(ev, e => { e.preventDefault(); zone.classList.add('over'); }));
+    ['dragleave', 'drop'].forEach(ev => zone.addEventListener(ev, e => { e.preventDefault(); zone.classList.remove('over'); }));
+    zone.addEventListener('drop', e => {
+      const dt = new DataTransfer();
+      const f = [...e.dataTransfer.files].find(x => x.type.startsWith('image/'));
+      if (f) { dt.items.add(f); input.files = dt.files; show(); }
+    });
+  })();
+</script>
 
     <?php include '../includes/footer.php'; ?>
-

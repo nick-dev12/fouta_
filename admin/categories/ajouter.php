@@ -1,7 +1,14 @@
 <?php
 /**
- * Page d'ajout de catégorie
+ * AJOUTER UNE CATÉGORIE RACINE — au patron FPL (form-card), comme le
+ * rayon (sous-catégorie) et le wizard des pièces. Le moteur ne bouge pas :
+ * c'est toujours process_add_categorie() qui valide et enregistre.
  * Programmation procédurale uniquement
+ *
+ * Portage de la mise en page de FPL natif (categorie-nouvelle.php +
+ * includes/categorie_form.php). La couleur d'étiquette n'est pas demandée
+ * ici : elle se calcule automatiquement à la création, puis se règle sur
+ * l'écran « Modifier ». Pas de numéro (ce dépôt n'a pas la colonne `code`).
  */
 
 session_start();
@@ -14,146 +21,140 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
 
 require_once __DIR__ . '/../includes/require_access.php';
 require_once __DIR__ . '/../../includes/fouta_upload_limits.php';
+require_once __DIR__ . '/../../includes/fpl_texte.php';
+require_once __DIR__ . '/../../includes/fpl_ui.php';
 
 // Traiter le formulaire
 require_once __DIR__ . '/../../controllers/controller_categories.php';
 $result = process_add_categorie();
 
-// Si l'ajout est réussi, rediriger vers la liste
+// Si l'ajout est réussi, retour au catalogue — la carte neuve sous les yeux.
 if (isset($result['success']) && $result['success']) {
     $_SESSION['success_message'] = $result['message'];
     header('Location: ../produits/index.php');
     exit;
 }
+
+$erreur = (isset($result['message']) && $result['message'] !== '' && empty($result['success']))
+    ? (string) $result['message'] : '';
+$saisies = [
+    'nom' => isset($_POST['nom']) ? (string) $_POST['nom'] : '',
+    'description' => isset($_POST['description']) ? (string) $_POST['description'] : '',
+];
+
+$retour = '../produits/index.php';
+$fpl_titre_page = 'Nouvelle catégorie';
+$fpl_retour_page = $retour;
 ?>
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
     <?php include __DIR__ . '/../../includes/favicon.php'; ?>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ajouter une Catégorie - Administration</title>
+    <title><?php echo e($fpl_titre_page); ?> — Administration</title>
     <?php require_once __DIR__ . '/../../includes/asset_version.php'; ?>
-<?php include __DIR__ . '/..//includes/fpl_head.php'; ?>
-    <style>
-        .form-container {
-            background: #ffffff;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-            max-width: 600px;
-            margin: 0 auto;
-        }
-
-        .form-group {
-            margin-bottom: 25px;
-        }
-
-        .form-group label {
-            display: block;
-            color: #6b2f20;
-            font-weight: 500;
-            margin-bottom: 8px;
-            font-size: 14px;
-        }
-
-        .form-group input,
-        .form-group textarea {
-            width: 100%;
-            padding: 12px 15px;
-            border: 2px solid #e8e8e8;
-            border-radius: 8px;
-            font-size: 15px;
-            transition: all 0.3s ease;
-            background: #ffffff;
-            color: #000000;
-            font-family: inherit;
-        }
-
-        .form-group input:focus,
-        .form-group textarea:focus {
-            outline: none;
-            border-color: #918a44;
-            box-shadow: 0 0 0 3px rgba(145, 138, 68, 0.1);
-        }
-
-        .form-group textarea {
-            min-height: 100px;
-            resize: vertical;
-        }
-
-        .error-message {
-            background: #fee;
-            border-left: 4px solid #c26638;
-            color: #6b2f20;
-            padding: 12px 15px;
-            border-radius: 6px;
-            margin-bottom: 20px;
-            font-size: 14px;
-        }
-
-        .btn-back {
-            background: #e0e0e0;
-            color: #6b2f20;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 8px;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 20px;
-            transition: all 0.3s ease;
-        }
-
-        .btn-back:hover {
-            background: #d0d0d0;
-        }
-    </style>
+<?php include __DIR__ . '/../includes/fpl_head.php'; ?>
+    <?php fpl_css_link('admin-produits-index.css'); ?>
 </head>
-<body>
+
+<body class="fpl-catalogue">
     <?php include '../includes/nav.php'; ?>
-    
-    <div class="content-header">
-        <h1><i class="fas fa-plus-circle"></i> Ajouter une Catégorie</h1>
-        <a href="../produits/index.php" class="btn-back">
-            <i class="fas fa-arrow-left"></i> Retour
-        </a>
+
+    <div class="page-produits-admin">
+
+<form method="POST" action="" enctype="multipart/form-data">
+  <input type="hidden" name="MAX_FILE_SIZE" value="<?php echo (int) FOUTA_UPLOAD_IMAGE_MAX_BYTES; ?>">
+
+  <div class="form-card" style="max-width:640px">
+    <div class="form-block">
+      <h3>
+        <?php echo fpl_icone('folder', 14); ?>
+        Nouvelle catégorie
+      </h3>
+
+      <?php if ($erreur !== '') : ?>
+        <div class="alert warn" style="margin-bottom:var(--s3)"><?php echo $erreur; ?></div>
+      <?php endif; ?>
+
+      <div class="field">
+        <label for="nom">Nom <span class="req">*</span></label>
+        <input type="text" id="nom" name="nom" value="<?php echo e($saisies['nom']); ?>" required minlength="2"
+               placeholder="Ex. Freinage" autofocus>
+      </div>
+
+      <div class="field">
+        <label for="description">Description</label>
+        <textarea id="description" name="description" rows="2"
+                  placeholder="Facultative"><?php echo e($saisies['description']); ?></textarea>
+      </div>
     </div>
 
-    <div class="form-container">
-        <?php if (isset($result['message']) && !empty($result['message']) && !$result['success']): ?>
-            <div class="error-message">
-                <i class="fas fa-exclamation-circle"></i> <?php echo $result['message']; ?>
-            </div>
-        <?php endif; ?>
-        
-        <form method="POST" action="" enctype="multipart/form-data">
-            <input type="hidden" name="MAX_FILE_SIZE" value="<?php echo (int) FOUTA_UPLOAD_IMAGE_MAX_BYTES; ?>">
-            <div class="form-group">
-                <label for="nom">Nom de la catégorie *</label>
-                <input type="text" id="nom" name="nom" required
-                       value="<?php echo isset($_POST['nom']) ? htmlspecialchars($_POST['nom']) : ''; ?>"
-                       placeholder="Ex: Les Noix, Les Fruits, etc.">
-            </div>
+    <div class="form-block">
+      <h3>
+        <?php echo fpl_icone('image', 14); ?> Image
+        <span class="hint-inline">Pour reconnaître la catégorie d'un coup d'œil</span>
+      </h3>
 
-            <div class="form-group">
-                <label for="description">Description</label>
-                <textarea id="description" name="description" 
-                          placeholder="Description de la catégorie (optionnel)"><?php echo isset($_POST['description']) ? htmlspecialchars($_POST['description']) : ''; ?></textarea>
-            </div>
+      <label class="dropzone" id="dz">
+        <span class="dz-icon"><?php echo fpl_icone('image', 18); ?></span>
+        <span class="dz-title">Cliquez ou déposez une image</span>
+        <span class="dz-sub">JPG, PNG, WEBP — <?php echo (int) fouta_upload_image_max_mo_int(); ?> Mo max</span>
+        <input type="file" id="image" name="image" accept="image/jpeg,image/png,image/webp,image/gif">
+      </label>
 
-            <div class="form-group">
-                <label for="image">Image de la catégorie (optionnel)</label>
-                <input type="file" id="image" name="image" accept="image/*">
-                <small style="color: #666; font-size: 12px; display: block; margin-top: 5px;">Formats acceptés: JPG, PNG, GIF, WEBP (max <?php echo (int) fouta_upload_image_max_mo_int(); ?> Mo)</small>
-            </div>
-
-            <button type="submit" class="btn-primary">
-                <i class="fas fa-save"></i> Enregistrer la catégorie
-            </button>
-        </form>
+      <div class="previews" id="previews"></div>
     </div>
+  </div>
+
+  <div class="form-bar" style="max-width:640px">
+    <button type="submit" class="btn btn-primary">
+      <?php echo fpl_icone('save', 14); ?>
+      Créer la catégorie
+    </button>
+    <a href="<?php echo e($retour); ?>" class="btn btn-outline">Annuler</a>
+  </div>
+</form>
+
+    </div><!-- .page-produits-admin -->
+
+<script>
+  // Aperçu de l'image déposée
+  (function () {
+    const input = document.getElementById('image');
+    const zone = document.getElementById('dz');
+    const grid = document.getElementById('previews');
+    if (!input || !zone || !grid) return;
+
+    function show() {
+      const f = input.files?.[0];
+      if (!f) return;
+      grid.innerHTML = '';
+      const item = document.createElement('div');
+      item.className = 'preview';
+      const img = document.createElement('img');
+      img.src = URL.createObjectURL(f);
+      img.onload = () => URL.revokeObjectURL(img.src);
+      const tag = document.createElement('span');
+      tag.className = 'tag';
+      tag.textContent = 'Nouvelle';
+      const rm = document.createElement('button');
+      rm.type = 'button'; rm.className = 'rm'; rm.innerHTML = '&times;'; rm.title = 'Retirer';
+      rm.addEventListener('click', (e) => { e.preventDefault(); input.value = ''; grid.innerHTML = ''; });
+      item.append(img, tag, rm);
+      grid.appendChild(item);
+    }
+
+    input.addEventListener('change', show);
+    ['dragenter', 'dragover'].forEach(ev => zone.addEventListener(ev, e => { e.preventDefault(); zone.classList.add('over'); }));
+    ['dragleave', 'drop'].forEach(ev => zone.addEventListener(ev, e => { e.preventDefault(); zone.classList.remove('over'); }));
+    zone.addEventListener('drop', e => {
+      const dt = new DataTransfer();
+      const f = [...e.dataTransfer.files].find(x => x.type.startsWith('image/'));
+      if (f) { dt.items.add(f); input.files = dt.files; show(); }
+    });
+  })();
+</script>
 
     <?php include '../includes/footer.php'; ?>
-

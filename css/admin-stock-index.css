@@ -1,0 +1,209 @@
+/**
+ * HUB « Gestion du stock » (admin/stock/index.php) — habillage FPL.
+ * Porté du design Fouta d'origine (jetons brun/olive en <style> inline) vers
+ * les jetons FPL. Ne redéfinit QUE ce qui est propre à cette page : le tableau
+ * de gestion des catégories et le bandeau des sous-catégories. Le reste (page-
+ * produits-admin, page-lead, .btn, table de base) vient de fpl.css et
+ * admin-produits-index.css, déjà chargés.
+ */
+
+/* --- Bandeau des sous-catégories : rail horizontal --- */
+.stock-sous-categories {
+  margin: var(--s4) 0 var(--s5);
+}
+.stock-sous-categories__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s3);
+  margin-bottom: var(--s3);
+}
+.stock-sous-categories__title {
+  font-size: 15px;
+  font-weight: 650;
+  color: var(--navy);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.stock-sous-categories__title i { color: var(--slate); font-size: 14px; }
+.stock-sous-categories__all {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--blue);
+  text-decoration: none;
+}
+.stock-sous-categories__all:hover { text-decoration: underline; }
+
+.stock-sous-categories__track {
+  display: flex;
+  gap: var(--s3);
+  overflow-x: auto;
+  padding-bottom: var(--s2);
+  scroll-snap-type: x proximity;
+}
+.stock-sous-categories__track::-webkit-scrollbar { height: 8px; }
+.stock-sous-categories__track::-webkit-scrollbar-thumb {
+  background: var(--line); border-radius: 999px;
+}
+
+.stock-sous-cat-card {
+  flex: 0 0 auto;
+  width: 132px;
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: var(--s3) var(--s2);
+  border: 1px solid var(--line);
+  border-radius: var(--r, 10px);
+  background: var(--surface);
+  text-decoration: none;
+  color: var(--ink);
+  transition: border-color .12s ease, box-shadow .12s ease, transform .12s ease;
+}
+.stock-sous-cat-card:hover {
+  border-color: var(--navy);
+  box-shadow: var(--sh-1, 0 2px 8px rgba(16, 49, 111, .08));
+  transform: translateY(-1px);
+}
+.stock-sous-cat-card.is-active {
+  border-color: var(--navy);
+  box-shadow: 0 0 0 2px var(--blue-tint, rgba(16, 49, 111, .12));
+}
+.stock-sous-cat-card__img {
+  width: 46px;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--blue-tint-2, #eef2fb);
+  color: var(--navy);
+  font-size: 18px;
+}
+.stock-sous-cat-card__name {
+  font-size: 12.5px;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.stock-sous-cat-card__meta {
+  font-size: 11px;
+  color: var(--slate);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* --- Tableau de gestion des catégories --- */
+/* Le tableau hérite du style de base (fpl.css : entêtes centrés, lignes
+   bordées). On ajoute ici la vignette, le nom aligné à gauche, les actions
+   en icônes et le survol cliquable. */
+.stock-cat-table { width: 100%; }
+.stock-cat-table .col-thumb { width: 64px; }
+.stock-cat-table td.col-thumb { text-align: center; }
+
+.stock-cat-table__thumb {
+  width: 42px;
+  height: 42px;
+  border-radius: var(--r, 10px);
+  object-fit: cover;
+  border: 1px solid var(--line);
+  display: inline-block;
+  vertical-align: middle;
+}
+.stock-cat-table__thumb--ph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--blue-tint-2, #eef2fb);
+  color: var(--navy);
+  font-size: 16px;
+}
+
+.stock-cat-table td[data-label="Catégorie"] { text-align: left; }
+.stock-cat-table__nom {
+  font-weight: 650;
+  color: var(--ink);
+}
+
+.stock-cat-table__row--linkable { cursor: pointer; }
+.stock-cat-table__row--linkable:hover td { background: var(--blue-tint-2, #f4f7fd); }
+.stock-cat-table__row--linkable:focus-visible {
+  outline: 2px solid var(--navy);
+  outline-offset: -2px;
+}
+
+.stock-cat-table .col-actions { white-space: nowrap; }
+.stock-cat-table__action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin: 0 2px;
+  border-radius: var(--r, 10px);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--slate);
+  text-decoration: none;
+  transition: background .12s ease, color .12s ease, border-color .12s ease;
+}
+.stock-cat-table__action:hover {
+  background: var(--navy);
+  border-color: var(--navy);
+  color: #fff;
+}
+.stock-cat-table__action--danger:hover {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+
+/* --- État vide --- */
+.stock-empty {
+  text-align: center;
+  padding: var(--s6) var(--s4);
+  color: var(--slate);
+}
+.stock-empty i { font-size: 30px; color: var(--line); }
+.stock-empty h3 { margin: var(--s3) 0 4px; color: var(--ink); font-size: 17px; }
+.stock-empty p { margin: 0 0 var(--s4); }
+
+/* --- Barre d'actions de l'en-tête (regroupe les boutons à droite) --- */
+.stock-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin-left: auto;
+  align-items: center;
+}
+
+/* --- Bandeau de notice --- */
+.stock-banner-ok {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r, 10px);
+  background: var(--bleu-pale, #eef2fb);
+  color: var(--ink);
+  margin-bottom: var(--s4);
+}
+.stock-banner-ok i { color: var(--navy); }
+
+/* Petit écran : le tableau reste lisible (le style de base gère déjà le
+   scroll horizontal via .table-wrap). */
+@media (max-width: 640px) {
+  .stock-sous-cat-card { width: 116px; }
+}
