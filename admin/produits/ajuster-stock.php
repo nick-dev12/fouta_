@@ -771,10 +771,25 @@ $fiche_statut = pf_champ_visible('statut') ? trim((string) ($produit['statut'] ?
         <div class="stock-form-block page-ajuster-stock-aux fpl-etiquette-sheet-wrap fpl-etiquette-sheet-wrap--fullwidth" id="fpl-etiquette-print-root"
             data-css-url="<?php echo htmlspecialchars($fpl_etiq_css_abs, ENT_QUOTES, 'UTF-8'); ?>"
             <?php echo $fpl_dims_data; ?>>
-            <h3 class="page-ajuster-stock-aux__title"><i class="fas fa-tags" aria-hidden="true"></i> <?php echo htmlspecialchars((string) $fpl_dims['label'], ENT_QUOTES, 'UTF-8'); ?></h3>
-            <p class="fpl-etiq-preview-meta"><?php echo htmlspecialchars((string) $fpl_dims['meta'], ENT_QUOTES, 'UTF-8'); ?>
-                · <a href="../parametres/etiquettes-produit.php?produit_id=<?php echo (int) $produit_id; ?>">Modifier les dimensions</a>
-            </p>
+            <?php /* LE TITRE DIT CE QUE C'EST, PAS SES MESURES (31/08) : il
+                     annonçait « Étiquette FPL 70×70 mm » et la ligne dessous
+                     récitait le format, le modèle d'imprimante et le nombre de
+                     points — de la fiche technique là où l'on vient chercher
+                     l'étiquette d'une pièce. Les tailles restent choisies juste
+                     en dessous, en toutes lettres. */ ?>
+            <h3 class="page-ajuster-stock-aux__title"><i class="fas fa-tags" aria-hidden="true"></i> Étiquette de la pièce</h3>
+            <?php /* LE RÉGLAGE DES DIMENSIONS N'EST PAS DE TOUS LES PROFILS
+                     (31/08) : cette page est réservée au Responsable stock
+                     (décision du 24/08) — le rayonniste qui cliquait était
+                     renvoyé sur son accueil sans un mot. On ne montre plus le
+                     lien à qui ne peut pas l'ouvrir ; c'est le geste de FPL
+                     natif, qui enveloppe le même lien dans
+                     admin_can('stock.configurer'). La ligne technique qui le
+                     précédait (format, imprimante, points) est retirée : elle
+                     n'apprenait rien à qui vient imprimer une étiquette. */ ?>
+            <?php if (admin_route_is_allowed($_SESSION['admin_role'] ?? 'admin', 'parametres/etiquettes-produit.php')) : ?>
+            <p class="fpl-etiq-preview-meta"><a href="../parametres/etiquettes-produit.php?produit_id=<?php echo (int) $produit_id; ?>">Modifier les dimensions</a></p>
+            <?php endif; ?>
             <?php if ($fpl_formats_pieces !== []) : ?>
             <?php /* LES TAILLES AU CHOIX — un clic re-rend l'étiquette à la
                      taille voulue, comme chez FPL natif. */ ?>

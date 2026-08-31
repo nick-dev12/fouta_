@@ -157,7 +157,8 @@ function etiquettes_pieces_liste($q, $etat, $du, $au, $page, $par)
         $derniere = max(1, (int) ceil($total / $par));
         $page = min(max(1, $page), $derniere);
 
-        $stmt = $db->prepare("SELECT p.id, p.nom, p.identifiant_interne, p.reference_oem, p.image_principale,
+        $stmt = $db->prepare("SELECT p.id, p.nom, p.identifiant_interne, p.reference_oem,
+                                     p.reference_fournisseur, p.image_principale,
                                      c.nom AS categorie_nom, sc.nom AS sous_categorie_nom
                               FROM produits p
                               LEFT JOIN marques ma ON ma.id = p.marque_id

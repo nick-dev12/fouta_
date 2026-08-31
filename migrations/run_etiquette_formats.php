@@ -3,7 +3,11 @@
  * LES FORMATS D'ÉTIQUETTE — les tailles proposées au moment d'imprimer
  * (24/08/2026). Même table que chez FPL natif (`etiquette_formats`), semée
  * avec les mêmes tailles : pièce 70×70 (modèle de la charte), 50×30,
- * 165×100, 130×100 — et barre 90×40.
+ * 65×100, 100×130 — et barre 90×40.
+ * (31/08 : les deux dernières étaient fausses — 165×100 au lieu de 65×100,
+ *  et 130×100 au lieu de 100×130, la hauteur et la largeur retournées.
+ *  Les tailles réelles des étiquettes de la maison sont 70×70, 50×30,
+ *  65×100 et 100×130.)
  *
  * Table NEUVE, aucune donnée touchée. Se rejoue sans risque :
  *   php migrations/run_etiquette_formats.php
@@ -49,8 +53,8 @@ if ($n === 0) {
     foreach ([
         ['70 × 70 mm', 'piece', 70, 70, 0],
         ['50 × 30 mm', 'piece', 50, 30, 1],
-        ['165 × 100 mm', 'piece', 165, 100, 2],
-        ['130 × 100 mm', 'piece', 130, 100, 3],
+        ['65 × 100 mm', 'piece', 65, 100, 2],
+        ['100 × 130 mm', 'piece', 100, 130, 3],
         ['90 × 40 mm', 'barre', 90, 40, 0],
     ] as $f) {
         $ins->execute(['nom' => $f[0], 'type' => $f[1], 'l' => $f[2], 'h' => $f[3], 'o' => $f[4]]);

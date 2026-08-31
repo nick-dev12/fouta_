@@ -225,7 +225,13 @@ $user_q = $cible_id !== (int) $_SESSION['admin_id'] ? '&user=' . $cible_id : '';
   <div class="report-doc">
     <div class="report-header">
       <div class="report-brand">
-        <img src="<?php echo htmlspecialchars(fpl_asset_uri('img/logo-fpl.png'), ENT_QUOTES, 'UTF-8'); ?>" alt="FPL">
+        <?php /* LE LOGO DE LA MAISON (31/08) : le fichier était cherché dans
+                 img/, qui n'existe pas — les logos vivent dans image/. L'image
+                 ne se chargeait donc jamais et le navigateur affichait à sa
+                 place le texte de secours « FPL ». Bon dossier, et texte de
+                 secours vidé : le nom de l'entreprise est écrit juste à côté,
+                 l'image n'a rien à répéter. */ ?>
+        <img src="<?php echo htmlspecialchars(fpl_asset_uri('image/logo-fpl.png'), ENT_QUOTES, 'UTF-8'); ?>" alt="">
         <div>
           <strong style="color:var(--navy)">FOUTA POIDS LOURDS</strong>
           <div class="muted" style="font-style:italic">The Solution</div>

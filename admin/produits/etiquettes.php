@@ -179,7 +179,7 @@ $fpl_retour_page = 'index.php';
                 <tr>
                   <th style="width:52px"></th>
                   <th>Pièce</th>
-                  <th>Réf. OEM</th>
+                  <th>Référence</th>
                   <th>Rangement</th>
                   <?php if ($peut_imprimer) : ?>
                     <th>État d'impression</th>
@@ -208,7 +208,27 @@ $fpl_retour_page = 'index.php';
                       <a class="cell-title" href="ajuster-stock.php?id=<?php echo (int) $p['id']; ?>" style="color:var(--ink)"><?php echo fpl_e($p['nom']); ?></a>
                       <div class="cell-sub"><span class="chip-code"><?php echo e(fpl_code_afficher((string) $p['identifiant_interne'])); ?></span></div>
                     </td>
-                    <td class="mono" style="font-size:14px"><?php echo $p['reference_oem'] ? fpl_e($p['reference_oem']) : '—'; ?></td>
+                    <?php /* LA RÉFÉRENCE QU'ON A (31/08) : la référence d'origine
+                             (OEM) n'est renseignée que sur 1 pièce du catalogue,
+                             celle du fournisseur sur 2126 — la colonne affichait
+                             « — » partout alors que la fiche, elle, montrait la
+                             réf. fournisseur. On montre celle qui existe, et on
+                             dit laquelle. */ ?>
+                    <?php
+                      $ref_oem = trim((string) ($p['reference_oem'] ?? ''));
+                      $ref_fou = trim((string) ($p['reference_fournisseur'] ?? ''));
+                      $ref_aff = $ref_oem !== '' ? $ref_oem : $ref_fou;
+                    ?>
+                    <td class="mono" style="font-size:14px"><?php
+                        if ($ref_aff !== '') {
+                            echo fpl_e($ref_aff);
+                            if ($ref_oem === '') {
+                                echo ' <span class="muted" style="font-size:11px">fourn.</span>';
+                            }
+                        } else {
+                            echo '—';
+                        }
+                    ?></td>
                     <td class="muted">
                       <?php echo fpl_e(($p['categorie_nom'] ?: '') . ($p['categorie_nom'] && $p['sous_categorie_nom'] ? ' › ' : '') . ($p['sous_categorie_nom'] ?: ($p['categorie_nom'] ? '' : '—'))); ?>
                     </td>
@@ -234,9 +254,11 @@ $fpl_retour_page = 'index.php';
                         <a href="ajuster-stock.php?id=<?php echo (int) $p['id']; ?>" class="btn btn-outline btn-sm" title="Voir la fiche de la pièce">
                           Détails
                         </a>
-                        <a href="ajuster-stock.php?id=<?php echo (int) $p['id']; ?>#fpl-etiquette-print-root" class="btn btn-outline btn-sm btn-icon" title="Voir l'étiquette">
-                          <?php echo fpl_icone('eye', 13); ?>
-                        </a>
+                        <?php /* L'ŒIL A ÉTÉ RETIRÉ (31/08) : chez FPL natif il ouvre
+                                 une page d'étiquette à part (etiquette-piece.php) ;
+                                 ici l'étiquette vit DANS la fiche, il menait donc à
+                                 la même page que « Détails », à l'ancre près.
+                                 « Imprimer » conduit déjà à l'étiquette. */ ?>
                         <?php if ($peut_imprimer) : ?>
                           <?php if ($trace) : ?>
                             <form method="POST" action="etiquettes.php"
@@ -330,9 +352,15 @@ $fpl_retour_page = 'index.php';
                     <?php endif; ?>
                     <td>
                       <div class="row-actions">
+                        <?php /* L'ŒIL ET « IMPRIMER » AVAIENT LA MÊME ADRESSE
+                                 (31/08) : l'œil ne reste que pour les comptes
+                                 restreints, qui n'ont pas le bouton d'impression
+                                 et n'auraient sinon plus aucune porte. */ ?>
+                        <?php if (!$peut_imprimer) : ?>
                         <a href="<?php echo e($cible_barre); ?>" class="btn btn-outline btn-sm btn-icon" title="Voir l'étiquette">
                           <?php echo fpl_icone('eye', 13); ?>
                         </a>
+                        <?php endif; ?>
                         <?php if ($peut_imprimer) : ?>
                           <?php if ($trace) : ?>
                             <form method="POST" action="etiquettes.php"
