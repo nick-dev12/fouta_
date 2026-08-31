@@ -23,7 +23,11 @@ $config = [
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vérification config Firebase - Admin</title>
-    <?php require_once __DIR__ . '/../includes/asset_version.php'; ?>
+    <?php /* LE GARDE-BARRIÈRE (31/08/2026) : cette page ne demandait jamais si le
+ * compte connecté avait le droit d'être là. La règle existe depuis
+ * toujours dans includes/admin_route_access.php ; il manquait l'appel. */
+require_once __DIR__ . '/includes/require_access.php';
+require_once __DIR__ . '/../includes/asset_version.php'; ?>
 <?php include __DIR__ . '/includes/fpl_head.php'; ?>
 </head>
 <body>

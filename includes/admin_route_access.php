@@ -163,6 +163,13 @@ if (!function_exists('admin_route_relative_path')) {
             if ($p === 'profil.php' || $p === 'inscription-admin.php' || $p === 'test-notification.php') {
                 return true;
             }
+            /* LES CHAMPS DE LA FICHE PIÈCE SONT À L'ADMINISTRATEUR (31/08).
+             * C'est là qu'on décide quel profil voit le prix et qui a le droit
+             * de l'écrire : la décision est de direction, pas d'informatique.
+             * Le reste des Paramètres reste fermé au rôle « admin ». */
+            if ($p === 'parametres/champs-produit.php' || $p === 'parametres/alertes-stock.php') {
+                return true;
+            }
             // Paramètres + sous-pages : informaticien / développeur (rôle admin exclu)
             if ($p === 'parametres.php' || strpos($p, 'parametres/') === 0) {
                 return $acces_sans_restriction;
@@ -289,6 +296,13 @@ if (!function_exists('admin_route_relative_path')) {
         if (admin_route_is_allowed($_SESSION['admin_role'], $rel)) {
             return;
         }
+
+        /* LE RENVOI NE SE FAIT PLUS EN SILENCE (31/08) : un lien affiché peut
+         * mener à une page interdite au rôle, et l'utilisateur se retrouvait
+         * sur son accueil sans savoir pourquoi (« Modifier les dimensions »
+         * de la fiche pièce, cliqué par un rayonniste). On dépose un mot ;
+         * nav.php l'affiche sur la page d'arrivée, quelle qu'elle soit. */
+        $_SESSION['acces_refuse_message'] = "Cette page est réservée à un autre profil — vous avez été ramené à votre accueil.";
 
         $target = admin_role_default_redirect_path($_SESSION['admin_role']);
         header('Location: ' . admin_route_build_url($target));

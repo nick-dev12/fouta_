@@ -13,6 +13,10 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
 }
 
 // Récupérer uniquement les commandes avec le statut "livree"
+/* LE GARDE-BARRIÈRE (31/08/2026) : cette page ne demandait jamais si le
+ * compte connecté avait le droit d'être là. La règle existe depuis
+ * toujours dans includes/admin_route_access.php ; il manquait l'appel. */
+require_once __DIR__ . '/../includes/require_access.php';
 require_once __DIR__ . '/../../models/model_commandes_admin.php';
 require_once __DIR__ . '/../../models/model_commandes_retours.php';
 $crc_tables_ok = crc_retour_tables_available();

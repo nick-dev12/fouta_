@@ -12,6 +12,10 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
     exit;
 }
 
+/* LE GARDE-BARRIÈRE (31/08/2026) : cette page ne demandait jamais si le
+ * compte connecté avait le droit d'être là. La règle existe depuis
+ * toujours dans includes/admin_route_access.php ; il manquait l'appel. */
+require_once __DIR__ . '/../includes/require_access.php';
 require_once __DIR__ . '/../../includes/fouta_upload_limits.php';
 
 // Récupérer l'ID du slide

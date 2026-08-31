@@ -21,6 +21,10 @@ if ($slide_id <= 0) {
 }
 
 // Récupérer le slide
+/* LE GARDE-BARRIÈRE (31/08/2026) : cette page ne demandait jamais si le
+ * compte connecté avait le droit d'être là. La règle existe depuis
+ * toujours dans includes/admin_route_access.php ; il manquait l'appel. */
+require_once __DIR__ . '/../includes/require_access.php';
 require_once __DIR__ . '/../../models/model_slider.php';
 $slide = get_slide_by_id($slide_id);
 
