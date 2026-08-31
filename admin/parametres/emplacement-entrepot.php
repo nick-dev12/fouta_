@@ -479,7 +479,7 @@ $peut_ajouter_champ = $mode_hierarchie_libre ? true : ($niveaux_hierarchie_dispo
     <?php include __DIR__ . '/../../includes/favicon.php'; ?>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Emplacement entrepôt — Paramètres</title>
+    <title>Emplacements, étage par étage — Paramètres</title>
     <?php require_once __DIR__ . '/../../includes/asset_version.php'; ?>
 <?php include __DIR__ . '/..//includes/fpl_head.php'; ?>
     <?php fpl_css_link('admin-parametres-page.css'); ?>
@@ -496,7 +496,7 @@ $peut_ajouter_champ = $mode_hierarchie_libre ? true : ($niveaux_hierarchie_dispo
             <div class="ee-hero__row">
                 <div class="ee-hero__icon"><i class="fas fa-warehouse"></i></div>
                 <div class="ee-hero__text">
-                    <h1 class="ee-hero__title">Emplacement entrepôt</h1>
+                    <h1 class="ee-hero__title">Emplacements, étage par étage</h1>
                     <p class="ee-hero__lead">
                         Hiérarchie <strong><?php echo htmlspecialchars($hierarchie_chemin, ENT_QUOTES, 'UTF-8'); ?></strong>.
                         Gérez la structure par onglets et assignez les emplacements aux produits.
@@ -529,36 +529,54 @@ $peut_ajouter_champ = $mode_hierarchie_libre ? true : ($niveaux_hierarchie_dispo
                 <strong><?php echo count($niveaux); ?></strong> étage(s) ·
                 <strong><?php echo $mode_hierarchie_libre ? count($hierarchie_defs) : count($structure_champs); ?></strong> niveau(x) hiérarchique(s)
             </p>
+            <?php /* LA BARRE D'ACTIONS, RANGÉE PAR FAMILLE (31/08/2026).
+                     Dix boutons se suivaient sur deux lignes, sans que rien ne
+                     dise qu'ils ne font pas la même chose : créer un étage,
+                     ajouter un champ à la hiérarchie et ouvrir un autre écran
+                     de réglage se ressemblaient. Trois groupes nommés, et
+                     l'action principale — l'étage — en tête. Aucun bouton n'a
+                     changé : mêmes classes, mêmes gestes. */ ?>
             <div class="ee-toolbar__actions ee-toolbar__actions--wrap">
+                <div class="ee-groupe">
+                    <span class="ee-groupe__label">Ajouter</span>
+                    <?php if ($mode_hierarchie_libre): ?>
+                    <?php foreach ($hierarchie_defs as $def):
+                        $def_id = (int) ($def['id'] ?? 0);
+                        $btn_label = htmlspecialchars((string) ($def['label'] ?? ''), ENT_QUOTES, 'UTF-8');
+                        $is_etage_btn = entrepot_hierarchie_def_est_etage($def);
+                    ?>
+                    <?php if ($is_etage_btn): ?>
+                    <button type="button" class="ee-btn-primary" onclick="openModal('modalNiveau')" <?php echo $niveaux_max_atteint ? 'disabled' : ''; ?>><i class="fas fa-plus" aria-hidden="true"></i> <?php echo $btn_label; ?></button>
+                    <?php else: ?>
+                    <button type="button" class="ee-btn-secondary" onclick="eeOpenAjouterNoeud(<?php echo $def_id; ?>)"><i class="fas fa-plus" aria-hidden="true"></i> <?php echo $btn_label; ?></button>
+                    <?php endif; ?>
+                    <?php endforeach; ?>
+                    <?php else: ?>
+                    <button type="button" class="ee-btn-primary" onclick="openModal('modalNiveau')" <?php echo $niveaux_max_atteint ? 'disabled' : ''; ?>><i class="fas fa-plus" aria-hidden="true"></i> Ajouter un niveau</button>
+                    <?php foreach ($hierarchie_actifs as $niv_key => $niv_meta):
+                        $modal_id = $hierarchie_toolbar_modals[$niv_key] ?? '';
+                        if ($modal_id === '') {
+                            continue;
+                        }
+                        $btn_label = htmlspecialchars((string) ($niv_meta['label'] ?? ucfirst($niv_key)), ENT_QUOTES, 'UTF-8');
+                    ?>
+                    <button type="button" class="ee-btn-secondary" onclick="openModal('<?php echo htmlspecialchars($modal_id, ENT_QUOTES, 'UTF-8'); ?>')"><i class="fas fa-plus" aria-hidden="true"></i> <?php echo $btn_label; ?></button>
+                    <?php endforeach; ?>
+                    <?php endif; ?>
+                </div>
+
+                <div class="ee-groupe">
+                    <span class="ee-groupe__label">Les champs</span>
+                    <button type="button" class="ee-btn-secondary" onclick="openModal('modalAjouterChamp')" <?php echo empty($peut_ajouter_champ) ? 'disabled title="Tous les niveaux hiérarchiques sont déjà configurés"' : ''; ?>><i class="fas fa-plus" aria-hidden="true"></i> Ajouter un champ</button>
+                    <button type="button" class="ee-btn-secondary ee-btn-secondary--danger" onclick="openModal('modalSupprimerChamp')" <?php echo !$peut_supprimer_champ ? 'disabled' : ''; ?>><i class="fas fa-minus" aria-hidden="true"></i> Supprimer un champ</button>
+                </div>
+
                 <?php if ($mode_hierarchie_libre): ?>
-                <a href="hierarchie-entrepot.php" class="ee-btn-secondary"><i class="fas fa-sliders" aria-hidden="true"></i> Configurer la hiérarchie</a>
-                <a href="etiquettes-entrepot.php" class="ee-btn-secondary"><i class="fas fa-tags" aria-hidden="true"></i> Dimensions étiquettes</a>
-                <?php endif; ?>
-                <button type="button" class="ee-btn-secondary" onclick="openModal('modalAjouterChamp')" <?php echo empty($peut_ajouter_champ) ? 'disabled title="Tous les niveaux hiérarchiques sont déjà configurés"' : ''; ?>><i class="fas fa-plus" aria-hidden="true"></i> Ajouter un champ</button>
-                <button type="button" class="ee-btn-secondary ee-btn-secondary--danger" onclick="openModal('modalSupprimerChamp')" <?php echo !$peut_supprimer_champ ? 'disabled' : ''; ?>><i class="fas fa-minus" aria-hidden="true"></i> Supprimer un champ</button>
-                <?php if ($mode_hierarchie_libre): ?>
-                <?php foreach ($hierarchie_defs as $def):
-                    $def_id = (int) ($def['id'] ?? 0);
-                    $btn_label = htmlspecialchars((string) ($def['label'] ?? ''), ENT_QUOTES, 'UTF-8');
-                    $is_etage_btn = entrepot_hierarchie_def_est_etage($def);
-                ?>
-                <?php if ($is_etage_btn): ?>
-                <button type="button" class="ee-btn-primary" onclick="openModal('modalNiveau')" <?php echo $niveaux_max_atteint ? 'disabled' : ''; ?>><i class="fas fa-plus" aria-hidden="true"></i> <?php echo $btn_label; ?></button>
-                <?php else: ?>
-                <button type="button" class="ee-btn-secondary" onclick="eeOpenAjouterNoeud(<?php echo $def_id; ?>)"><i class="fas fa-plus" aria-hidden="true"></i> <?php echo $btn_label; ?></button>
-                <?php endif; ?>
-                <?php endforeach; ?>
-                <?php else: ?>
-                <?php foreach ($hierarchie_actifs as $niv_key => $niv_meta):
-                    $modal_id = $hierarchie_toolbar_modals[$niv_key] ?? '';
-                    if ($modal_id === '') {
-                        continue;
-                    }
-                    $btn_label = htmlspecialchars((string) ($niv_meta['label'] ?? ucfirst($niv_key)), ENT_QUOTES, 'UTF-8');
-                ?>
-                <button type="button" class="ee-btn-secondary" onclick="openModal('<?php echo htmlspecialchars($modal_id, ENT_QUOTES, 'UTF-8'); ?>')"><i class="fas fa-plus" aria-hidden="true"></i> <?php echo $btn_label; ?></button>
-                <?php endforeach; ?>
-                <button type="button" class="ee-btn-primary" onclick="openModal('modalNiveau')" <?php echo $niveaux_max_atteint ? 'disabled' : ''; ?>><i class="fas fa-plus" aria-hidden="true"></i> Ajouter un niveau</button>
+                <div class="ee-groupe ee-groupe--fin">
+                    <span class="ee-groupe__label">Réglages</span>
+                    <a href="hierarchie-entrepot.php" class="ee-btn-secondary"><i class="fas fa-sliders" aria-hidden="true"></i> Structure</a>
+                    <a href="etiquettes-entrepot.php" class="ee-btn-secondary"><i class="fas fa-tags" aria-hidden="true"></i> Étiquettes de barre</a>
+                </div>
                 <?php endif; ?>
             </div>
         </div>

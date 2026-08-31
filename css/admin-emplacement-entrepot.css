@@ -1,3 +1,9 @@
+/* LA CHARTE N'A PAS D'ORANGE (31/08/2026). Cet écran peignait ses
+   suppressions, ses avertissements et ses emplacements non assignés en
+   #FF6B35 — l'accent hérité de l'ancien site. La maison n'a qu'un bleu,
+   #10316F, et un rouge pour ce qui abîme : #A32D24. L'orange est
+   remplacé par ce rouge partout où il disait « attention » ou
+   « supprimer » : même sens, une couleur de moins dans le logiciel. */
 /**
  * Page admin — Emplacement entrepôt (paramètres)
  */
@@ -34,7 +40,7 @@
   left: 0;
   right: 0;
   height: 4px;
-  background: linear-gradient(90deg, #3564a6, #4a7ab8, #ff6b35);
+  background: linear-gradient(90deg, var(--navy, #10316F), #2957AE);  /* un seul bleu, plus de teinte d alerte dans un ornement (31/08) */
 }
 
 .page-emplacement-entrepot .ee-hero__back {
@@ -42,7 +48,7 @@
   align-items: center;
   gap: 0.45rem;
   margin-bottom: 1rem;
-  font-size: 0.8rem;
+  font-size: 1.28rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -133,13 +139,13 @@
 }
 
 .page-emplacement-entrepot .ee-btn-secondary--danger {
-  color: #e85a2a;
-  border-color: rgba(255, 107, 53, 0.35);
+  color: #A32D24;
+  border-color: rgba(163, 45, 36, 0.35);
 }
 
 .page-emplacement-entrepot .ee-btn-secondary--danger:hover:not(:disabled) {
-  background: rgba(255, 107, 53, 0.08);
-  border-color: #ff6b35;
+  background: rgba(163, 45, 36, 0.08);
+  border-color: #A32D24;
 }
 
 .page-emplacement-entrepot .ee-btn-secondary:disabled {
@@ -152,12 +158,12 @@
 }
 
 .page-emplacement-entrepot .ee-field__hint--warn {
-  color: #e85a2a;
+  color: #A32D24;
 }
 
 .page-emplacement-entrepot .ee-modal__submit--danger {
-  background: #ff6b35;
-  box-shadow: 0 4px 16px rgba(255, 107, 53, 0.25);
+  background: #A32D24;
+  box-shadow: 0 4px 16px rgba(163, 45, 36, 0.25);
 }
 
 .page-emplacement-entrepot .ee-col-champ--new {
@@ -263,7 +269,7 @@
 }
 
 .page-emplacement-entrepot .ee-table th {
-  font-size: 0.72rem;
+  font-size: 1.152rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: #3564a6;
@@ -318,7 +324,7 @@
 
 .page-emplacement-entrepot .ee-modal__subtitle {
   margin: 0;
-  font-size: 0.875rem;
+  font-size: 1.4rem;
   color: #4a4a4a;
   line-height: 1.45;
 }
@@ -355,7 +361,7 @@
 }
 
 .page-emplacement-entrepot .ee-field--checkbox span {
-  font-size: 0.92rem;
+  font-size: 1.472rem;
   color: #1a1a1a;
   line-height: 1.45;
 }
@@ -371,7 +377,7 @@
   display: block;
   margin-bottom: 0.35rem;
   font-weight: 600;
-  font-size: 0.875rem;
+  font-size: 1.4rem;
   color: #0d0d0d;
 }
 
@@ -381,13 +387,13 @@
   padding: 0.6rem 0.75rem;
   border: 1px solid rgba(53, 100, 166, 0.22);
   border-radius: 10px;
-  font-size: 0.9375rem;
+  font-size: 1.5rem;
 }
 
 .page-emplacement-entrepot .ee-field__hint {
   display: block;
   margin-top: 0.35rem;
-  font-size: 0.78rem;
+  font-size: 1.248rem;
   color: #737373;
 }
 
@@ -434,7 +440,7 @@
   background: rgba(53, 100, 166, 0.1);
   color: #3564a6;
   font-weight: 700;
-  font-size: 0.8125rem;
+  font-size: 1.3rem;
   text-decoration: none;
 }
 
@@ -460,17 +466,17 @@
   padding: 0.4rem 0.75rem;
   border: none;
   border-radius: 8px;
-  background: rgba(255, 107, 53, 0.12);
-  color: #e85a2a;
+  background: rgba(163, 45, 36, 0.12);
+  color: #A32D24;
   font-weight: 700;
-  font-size: 0.8125rem;
+  font-size: 1.3rem;
   cursor: pointer;
   font-family: inherit;
   transition: background 0.15s ease;
 }
 
 .page-emplacement-entrepot .ee-btn-delete:hover {
-  background: rgba(255, 107, 53, 0.22);
+  background: rgba(163, 45, 36, 0.22);
 }
 
 .ee-etage-page .ee-section {
@@ -503,7 +509,7 @@
 }
 
 .ee-etage-page .ee-row-item label {
-  font-size: 0.78rem;
+  font-size: 1.248rem;
   color: #737373;
 }
 
@@ -557,7 +563,7 @@
 
 .ee-etage-hero .ee-etage-kicker {
   margin: 0 0 0.35rem;
-  font-size: 0.78rem;
+  font-size: 1.248rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -591,7 +597,7 @@
 }
 
 .ee-etage-stats span {
-  font-size: 0.68rem;
+  font-size: 1.088rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: #737373;
@@ -616,7 +622,7 @@
 
 .ee-etage-nav__label {
   margin: 0 0 0.65rem;
-  font-size: 0.68rem;
+  font-size: 1.088rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -630,7 +636,7 @@
   padding: 0.55rem 0.65rem;
   margin-bottom: 0.25rem;
   border-radius: 10px;
-  font-size: 0.8125rem;
+  font-size: 1.3rem;
   font-weight: 600;
   color: #4a4a4a;
   text-decoration: none;
@@ -648,7 +654,7 @@
   padding: 0.1rem 0.45rem;
   border-radius: 999px;
   background: rgba(53, 100, 166, 0.12);
-  font-size: 0.68rem;
+  font-size: 1.088rem;
   font-weight: 700;
 }
 
@@ -705,7 +711,7 @@
 
 .ee-etage-page .ee-panel__desc {
   margin: 0.35rem 0 0;
-  font-size: 0.875rem;
+  font-size: 1.4rem;
   color: #4a4a4a;
   line-height: 1.45;
 }
@@ -716,7 +722,7 @@
   border-radius: 999px;
   background: rgba(53, 100, 166, 0.12);
   color: #3564a6;
-  font-size: 0.72rem;
+  font-size: 1.152rem;
   font-weight: 700;
 }
 
@@ -741,9 +747,9 @@
   margin: 1rem 0 0;
   padding: 0.65rem 0.85rem;
   border-radius: 10px;
-  background: rgba(255, 107, 53, 0.08);
-  border: 1px solid rgba(255, 107, 53, 0.18);
-  font-size: 0.8125rem;
+  background: rgba(163, 45, 36, 0.08);
+  border: 1px solid rgba(163, 45, 36, 0.18);
+  font-size: 1.3rem;
   color: #6b2f20;
   line-height: 1.45;
 }
@@ -761,7 +767,7 @@
   gap: 0.4rem;
   margin-bottom: 0.4rem;
   font-weight: 600;
-  font-size: 0.875rem;
+  font-size: 1.4rem;
   color: #0d0d0d;
 }
 
@@ -770,7 +776,7 @@
   padding: 0.65rem 0.85rem;
   border: 1px solid rgba(53, 100, 166, 0.22);
   border-radius: 10px;
-  font-size: 0.9375rem;
+  font-size: 1.5rem;
 }
 
 .ee-structure-grid {
@@ -794,7 +800,7 @@
   align-items: center;
   gap: 0.35rem;
   margin-bottom: 0.5rem;
-  font-size: 0.75rem;
+  font-size: 1.2rem;
   font-weight: 700;
   color: #3564a6;
   text-transform: uppercase;
@@ -806,7 +812,7 @@
   align-items: center;
   padding: 0.12rem 0.45rem;
   border-radius: 999px;
-  font-size: 0.62rem;
+  font-size: 0.992rem;
   font-weight: 700;
   letter-spacing: 0.02em;
   text-transform: none;
@@ -842,7 +848,7 @@
 
 .ee-qty-card__hint {
   margin-top: 0.35rem;
-  font-size: 0.68rem;
+  font-size: 1.088rem;
   color: #737373;
   text-align: center;
 }
@@ -862,7 +868,7 @@
   flex: 1;
   border: none;
   background: transparent;
-  font-size: 0.875rem;
+  font-size: 1.4rem;
   outline: none;
   color: #0d0d0d;
 }
@@ -886,7 +892,7 @@
 }
 
 .ee-naming-row__num {
-  font-size: 0.75rem;
+  font-size: 1.2rem;
   font-weight: 700;
   color: #737373;
   text-align: center;
@@ -897,7 +903,7 @@
   padding: 0.5rem 0.65rem;
   border: 1px solid rgba(53, 100, 166, 0.2);
   border-radius: 8px;
-  font-size: 0.875rem;
+  font-size: 1.4rem;
 }
 
 .ee-barres-stack {
@@ -941,11 +947,11 @@
   border-radius: 6px;
   background: rgba(53, 100, 166, 0.12);
   color: #3564a6;
-  font-size: 0.75rem;
+  font-size: 1.2rem;
 }
 
 .ee-barre-card__code {
-  font-size: 0.72rem;
+  font-size: 1.152rem;
   color: #737373;
 }
 
@@ -973,7 +979,7 @@
 
 .ee-barre-positions-title {
   margin: 1rem 0 0.5rem;
-  font-size: 0.8125rem;
+  font-size: 1.3rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -1040,7 +1046,7 @@
 .ee-table-etage-num {
   display: block;
   margin-top: 0.15rem;
-  font-size: 0.75rem;
+  font-size: 1.2rem;
   font-weight: 500;
   color: #737373;
 }
@@ -1048,7 +1054,7 @@
 .ee-modal__level-kicker {
   margin: 0 0 1rem;
   padding: 0.55rem 0.75rem;
-  font-size: 0.85rem;
+  font-size: 1.36rem;
   color: #3564a6;
   background: rgba(53, 100, 166, 0.08);
   border-radius: 8px;
@@ -1090,7 +1096,7 @@
   justify-content: center;
   min-width: 2.35rem;
   padding: 0.35rem 0.55rem;
-  font-size: 0.8125rem;
+  font-size: 1.3rem;
   font-weight: 800;
   letter-spacing: 0.02em;
   color: #3564a6;
@@ -1104,14 +1110,14 @@
   padding: 0.5rem 0.65rem;
   border: 1px solid rgba(53, 100, 166, 0.22);
   border-radius: 8px;
-  font-size: 0.9rem;
+  font-size: 1.44rem;
   background: #fff;
 }
 
 .ee-rayon-block__count {
   flex: 0 0 auto;
   padding: 0.3rem 0.65rem;
-  font-size: 0.78rem;
+  font-size: 1.248rem;
   font-weight: 700;
   color: #4a4a4a;
   white-space: nowrap;
@@ -1166,7 +1172,7 @@
 
 .ee-rayon-block__empty {
   margin: 0;
-  font-size: 0.85rem;
+  font-size: 1.36rem;
   color: #737373;
 }
 
@@ -1189,7 +1195,7 @@
 }
 
 .ee-barre-in-rayon__title {
-  font-size: 0.88rem;
+  font-size: 1.408rem;
   color: #0d0d0d;
 }
 
@@ -1203,7 +1209,7 @@
 
 .ee-barre-in-rayon__link-hint {
   margin: 0;
-  font-size: 0.82rem;
+  font-size: 1.312rem;
   color: #4a4a4a;
   line-height: 1.45;
 }
@@ -1213,7 +1219,7 @@
 }
 
 .ee-barre-in-rayon__unassigned {
-  color: #ff6b35;
+  color: #A32D24;
   font-weight: 600;
 }
 
@@ -1228,7 +1234,7 @@
 }
 
 .ee-barre-in-rayon__rayon {
-  font-size: 0.78rem;
+  font-size: 1.248rem;
   font-weight: 600;
   color: #737373;
   padding: 0.15rem 0.5rem;
@@ -1251,19 +1257,19 @@
 }
 
 .ee-rayon-block--unassigned .ee-rayon-block__head {
-  background: rgba(255, 107, 53, 0.06);
-  border-color: rgba(255, 107, 53, 0.18);
+  background: rgba(163, 45, 36, 0.06);
+  border-color: rgba(163, 45, 36, 0.18);
 }
 
 .ee-rayon-block__badge--muted {
-  background: rgba(255, 107, 53, 0.12);
-  color: #e85a2a;
+  background: rgba(163, 45, 36, 0.12);
+  color: #A32D24;
 }
 
 .ee-rayon-block__nom--static {
   flex: 1;
   font-weight: 700;
-  font-size: 0.92rem;
+  font-size: 1.472rem;
   color: #0d0d0d;
 }
 
@@ -1285,7 +1291,7 @@
   align-items: center;
   gap: 0.4rem;
   margin: 0 0 0.65rem;
-  font-size: 0.72rem;
+  font-size: 1.152rem;
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -1304,7 +1310,7 @@
   align-items: center;
   gap: 0.35rem 0.45rem;
   margin-bottom: 0.4rem;
-  font-size: 0.8125rem;
+  font-size: 1.3rem;
   font-weight: 700;
   color: #0d0d0d;
   line-height: 1.3;
@@ -1312,13 +1318,13 @@
 
 .ee-barre-meta__field label i {
   color: #3564a6;
-  font-size: 0.78rem;
+  font-size: 1.248rem;
   width: 1rem;
   text-align: center;
 }
 
 .ee-barre-meta__optional {
-  font-size: 0.68rem;
+  font-size: 1.088rem;
   font-weight: 600;
   letter-spacing: 0.02em;
   text-transform: uppercase;
@@ -1336,7 +1342,7 @@
   min-height: 2.5rem;
   padding: 0.55rem 0.75rem;
   font-family: inherit;
-  font-size: 0.875rem;
+  font-size: 1.4rem;
   color: #0d0d0d;
   background: #fff;
   border: 1px solid rgba(53, 100, 166, 0.22);
@@ -1381,7 +1387,7 @@
 .ee-optional {
   font-weight: 400;
   color: #737373;
-  font-size: 0.78rem;
+  font-size: 1.248rem;
 }
 
 .ee-panel__note--inline {
@@ -1390,7 +1396,7 @@
 
 .ee-barre-etiq-block__label {
   margin: 0 0 0.35rem;
-  font-size: 0.78rem;
+  font-size: 1.248rem;
   font-weight: 700;
   color: #3564a6;
   text-transform: uppercase;
@@ -1461,11 +1467,11 @@
 
 .ee-tab-niveau__nom {
   font-weight: 700;
-  font-size: 0.92rem;
+  font-size: 1.472rem;
 }
 
 .ee-tab-niveau__code {
-  font-size: 0.72rem;
+  font-size: 1.152rem;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -1510,12 +1516,12 @@
 
 .ee-card__sub {
   margin: 0.3rem 0 0;
-  font-size: 0.85rem;
+  font-size: 1.36rem;
   color: #737373;
 }
 
 .ee-card__sub code {
-  font-size: 0.82rem;
+  font-size: 1.312rem;
   padding: 0.1rem 0.4rem;
   border-radius: 6px;
   background: rgba(53, 100, 166, 0.08);
@@ -1576,7 +1582,7 @@
   border: 1px dashed rgba(53, 100, 166, 0.22);
   background: rgba(53, 100, 166, 0.04);
   color: #737373;
-  font-size: 0.88rem;
+  font-size: 1.408rem;
 }
 
 .ee-modal__body--drill .ee-h-barre-detail {
@@ -1585,7 +1591,7 @@
 
 .page-emplacement-entrepot .ee-toolbar__actions .ee-btn-secondary .fa-plus,
 .page-emplacement-entrepot .ee-toolbar__actions .ee-btn-primary .fa-plus {
-  font-size: 0.78rem;
+  font-size: 1.248rem;
   opacity: 0.95;
 }
 
@@ -1621,7 +1627,7 @@
 .ee-h-drill-hint {
   margin: 0;
   padding: 1rem;
-  font-size: 0.85rem;
+  font-size: 1.36rem;
   color: #737373;
   text-align: center;
   border-radius: 12px;
@@ -1654,8 +1660,8 @@
 }
 
 .ee-h-pick-table .ee-h-pick-row--rayon.is-selected {
-  background: rgba(255, 107, 53, 0.08);
-  box-shadow: inset 3px 0 0 #e85a2a;
+  background: rgba(163, 45, 36, 0.08);
+  box-shadow: inset 3px 0 0 #A32D24;
 }
 
 .ee-h-barre-detail[hidden] {
@@ -1688,7 +1694,7 @@
 }
 
 .ee-h-crumb__trail {
-  font-size: 0.82rem;
+  font-size: 1.312rem;
   font-weight: 600;
   color: #4a4a4a;
 }
@@ -1713,7 +1719,7 @@
 
 .ee-h-drill-panel__head h3 {
   margin: 0;
-  font-size: 0.9rem;
+  font-size: 1.44rem;
   font-weight: 700;
   color: #3564a6;
   display: inline-flex;
@@ -1781,18 +1787,18 @@
 }
 
 .ee-h-list__body strong {
-  font-size: 0.88rem;
+  font-size: 1.408rem;
   color: #0d0d0d;
 }
 
 .ee-h-list__meta {
-  font-size: 0.75rem;
+  font-size: 1.2rem;
   color: #737373;
 }
 
 .ee-h-list__chevron {
   color: #a3a3a3;
-  font-size: 0.75rem;
+  font-size: 1.2rem;
   flex-shrink: 0;
 }
 
@@ -1829,7 +1835,7 @@
 
 .ee-h-empty--hint {
   margin-top: 0.35rem;
-  font-size: 0.78rem;
+  font-size: 1.248rem;
 }
 
 .ee-table--hierarchie {
@@ -1908,7 +1914,7 @@
   align-items: center;
   padding: 0.2rem 0.55rem;
   border-radius: 999px;
-  font-size: 0.72rem;
+  font-size: 1.152rem;
   font-weight: 700;
   letter-spacing: 0.02em;
 }
@@ -1924,8 +1930,8 @@
 }
 
 .ee-badge--rayon {
-  background: rgba(255, 107, 53, 0.12);
-  color: #e85a2a;
+  background: rgba(163, 45, 36, 0.12);
+  color: #A32D24;
 }
 
 .ee-hierarchie-lists {
@@ -1956,7 +1962,7 @@
 
 .ee-h-section__head h3 {
   margin: 0;
-  font-size: 0.92rem;
+  font-size: 1.472rem;
   font-weight: 700;
   color: #3564a6;
   display: inline-flex;
@@ -1972,7 +1978,7 @@
   height: 1.5rem;
   padding: 0 0.4rem;
   border-radius: 999px;
-  font-size: 0.75rem;
+  font-size: 1.2rem;
   font-weight: 700;
   background: #fff;
   border: 1px solid rgba(53, 100, 166, 0.18);
@@ -2014,12 +2020,12 @@
 }
 
 .ee-h-barre__nom-inline {
-  font-size: 0.85rem;
+  font-size: 1.36rem;
   color: #4a4a4a;
 }
 
 .ee-h-barre__scan {
-  font-size: 0.72rem;
+  font-size: 1.152rem;
   padding: 0.1rem 0.35rem;
   border-radius: 4px;
   background: rgba(0, 0, 0, 0.06);
@@ -2044,7 +2050,7 @@
 
 .ee-h-barre__positions-title {
   margin: 0 0 0.5rem;
-  font-size: 0.82rem;
+  font-size: 1.312rem;
   font-weight: 700;
   color: #3564a6;
 }
@@ -2063,7 +2069,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  font-size: 0.85rem;
+  font-size: 1.36rem;
   padding: 0.35rem 0.5rem;
   border-radius: 8px;
   background: #fff;
@@ -2079,11 +2085,11 @@
 .ee-h-empty {
   margin: 0;
   color: #737373;
-  font-size: 0.85rem;
+  font-size: 1.36rem;
 }
 
 .ee-h-empty--sm {
-  font-size: 0.78rem;
+  font-size: 1.248rem;
 }
 
 .ee-h-delete {
@@ -2097,8 +2103,8 @@
 
 .ee-h-delete__btn {
   border: none;
-  background: rgba(255, 107, 53, 0.12);
-  color: #e85a2a;
+  background: rgba(163, 45, 36, 0.12);
+  color: #A32D24;
   width: 1.75rem;
   height: 1.75rem;
   border-radius: 8px;
@@ -2135,7 +2141,7 @@
   gap: 0.35rem;
   padding: 0.35rem 0.65rem;
   border-radius: 999px;
-  font-size: 0.78rem;
+  font-size: 1.248rem;
   font-weight: 600;
   color: #737373;
   background: #f5f5f5;
@@ -2160,7 +2166,7 @@
   width: 1.25rem;
   height: 1.25rem;
   border-radius: 50%;
-  font-size: 0.7rem;
+  font-size: 1.12rem;
   background: rgba(53, 100, 166, 0.15);
 }
 
@@ -2180,20 +2186,20 @@
   align-items: flex-start;
   padding: 0.85rem 1rem;
   border-radius: 12px;
-  background: rgba(255, 107, 53, 0.1);
-  border: 1px solid rgba(255, 107, 53, 0.25);
+  background: rgba(163, 45, 36, 0.1);
+  border: 1px solid rgba(163, 45, 36, 0.25);
   color: #6b2f20;
 }
 
 .ee-champ-impact__alert i {
   font-size: 1.2rem;
   margin-top: 0.1rem;
-  color: #e85a2a;
+  color: #A32D24;
 }
 
 .ee-champ-impact__intro {
   margin: 0.35rem 0 0;
-  font-size: 0.88rem;
+  font-size: 1.408rem;
   color: #4a4a4a;
 }
 
@@ -2213,7 +2219,7 @@
 
 .ee-champ-impact__stat span {
   display: block;
-  font-size: 0.72rem;
+  font-size: 1.152rem;
   color: #737373;
   margin-bottom: 0.2rem;
 }
@@ -2224,19 +2230,19 @@
 }
 
 .ee-champ-impact__stat--warn {
-  background: rgba(255, 107, 53, 0.08);
-  border-color: rgba(255, 107, 53, 0.22);
+  background: rgba(163, 45, 36, 0.08);
+  border-color: rgba(163, 45, 36, 0.22);
 }
 
 .ee-champ-impact__stat--warn strong {
-  color: #e85a2a;
+  color: #A32D24;
 }
 
 .ee-champ-impact__list {
   margin: 0.85rem 0 0;
   padding-left: 1.15rem;
   color: #4a4a4a;
-  font-size: 0.86rem;
+  font-size: 1.376rem;
 }
 
 .ee-champ-impact__list li + li {
@@ -2252,7 +2258,7 @@
   border-radius: 10px;
   background: rgba(53, 100, 166, 0.06);
   border: 1px solid rgba(53, 100, 166, 0.15);
-  font-size: 0.88rem;
+  font-size: 1.408rem;
   cursor: pointer;
 }
 
@@ -2271,7 +2277,7 @@
 
 .ee-h-drill-panel__hint {
   margin: 0.2rem 0 0;
-  font-size: 0.78rem;
+  font-size: 1.248rem;
   color: #737373;
   font-weight: 500;
 }
@@ -2290,7 +2296,7 @@
 
 .ee-h-pick-chevron {
   color: #3564a6;
-  font-size: 0.72rem;
+  font-size: 1.152rem;
   opacity: 0.7;
   transition: transform 0.15s ease, opacity 0.15s ease;
 }
@@ -2351,7 +2357,7 @@
   background: rgba(53, 100, 166, 0.04);
   color: #3564a6;
   font-weight: 600;
-  font-size: 0.88rem;
+  font-size: 1.408rem;
   cursor: pointer;
   transition: background 0.15s ease, border-color 0.15s ease;
 }
@@ -2410,7 +2416,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  font-size: 0.75rem;
+  font-size: 1.2rem;
   font-weight: 600;
   color: #3564a6;
   background: rgba(53, 100, 166, 0.1);
@@ -2421,12 +2427,12 @@
 .ee-libre-node__name {
   flex: 1 1 auto;
   color: #0d0d0d;
-  font-size: 0.95rem;
+  font-size: 1.52rem;
 }
 
 .ee-libre-node__num {
   color: #737373;
-  font-size: 0.8rem;
+  font-size: 1.28rem;
 }
 
 .ee-config-hierarchie-list {
@@ -2457,7 +2463,7 @@
 
 .ee-config-hierarchie-item__meta {
   margin-left: auto;
-  font-size: 0.8rem;
+  font-size: 1.28rem;
   color: #737373;
 }
 
@@ -2493,3 +2499,51 @@
   color: #dc2626;
 }
 
+
+/* LES TROIS FAMILLES DE LA BARRE D'ACTIONS (31/08/2026) : ajouter un niveau,
+   toucher aux champs, ouvrir un autre réglage. Chaque groupe porte son nom en
+   petit, et se sépare du suivant par un filet. Le dernier part à droite. */
+.page-emplacement-entrepot .ee-toolbar__actions--wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 18px;
+  width: 100%;
+}
+
+.page-emplacement-entrepot .ee-groupe {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-right: 18px;
+  border-right: 1px solid rgba(16, 49, 111, .12);
+}
+
+.page-emplacement-entrepot .ee-groupe:last-child {
+  border-right: 0;
+  padding-right: 0;
+}
+
+.page-emplacement-entrepot .ee-groupe--fin {
+  margin-left: auto;
+}
+
+.page-emplacement-entrepot .ee-groupe__label {
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: #8894A8;
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .page-emplacement-entrepot .ee-groupe {
+    border-right: 0;
+    padding-right: 0;
+  }
+  .page-emplacement-entrepot .ee-groupe--fin {
+    margin-left: 0;
+  }
+}

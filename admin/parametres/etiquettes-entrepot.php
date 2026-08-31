@@ -68,7 +68,7 @@ $label = (string) $dims['label'];
     <?php include __DIR__ . '/../../includes/favicon.php'; ?>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Étiquettes entrepôt — Paramètres</title>
+    <title>Étiquettes de barre — Paramètres</title>
 <?php include __DIR__ . '/..//includes/fpl_head.php'; ?>
     <?php fpl_css_link('admin-parametres-page.css'); ?>
     <?php fpl_css_link('entrepot-barre-etiquette.css'); ?>
@@ -84,7 +84,7 @@ $label = (string) $dims['label'];
             <div class="ee-etiq-params__hero-row">
                 <div class="ee-etiq-params__icon" aria-hidden="true"><i class="fas fa-tags"></i></div>
                 <div>
-                    <h1 class="ee-etiq-params__title">Dimensions des étiquettes</h1>
+                    <h1 class="ee-etiq-params__title">Étiquettes de barre</h1>
                     <p class="ee-etiq-params__lead">
                         Définissez la taille d’impression utilisée pour l’aperçu, le bouton <strong>Imprimer</strong>
                         et le <strong>PDF</strong> des étiquettes barres. Défaut&nbsp;: <?php echo (int) $def['largeur_mm']; ?>×<?php echo (int) $def['hauteur_mm']; ?>&nbsp;mm.

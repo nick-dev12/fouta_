@@ -201,7 +201,7 @@ function hc_options_lie_etiquette(array $defs, $exclude_id = 0) {
     <?php include __DIR__ . '/../../includes/favicon.php'; ?>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hiérarchie entrepôt — Paramètres</title>
+    <title>Structure de l’entrepôt — Paramètres</title>
     <?php require_once __DIR__ . '/../../includes/asset_version.php'; ?>
 <?php include __DIR__ . '/..//includes/fpl_head.php'; ?>
     <?php fpl_css_link('admin-parametres-page.css'); ?>
@@ -220,7 +220,7 @@ function hc_options_lie_etiquette(array $defs, $exclude_id = 0) {
                 <div class="hc-hero__icon" aria-hidden="true"><i class="fas fa-sitemap"></i></div>
                 <div class="hc-hero__text">
                     <p class="hc-hero__eyebrow">Paramètre structure</p>
-                    <h1 class="hc-hero__title">Hiérarchie de l’entrepôt</h1>
+                    <h1 class="hc-hero__title">Structure de l’entrepôt</h1>
                     <p class="hc-hero__lead">
                         Définissez l’ordre des niveaux utilisés partout&nbsp;: cartographie, formulaires produit et assignation stock.
                     </p>

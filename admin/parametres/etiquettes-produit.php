@@ -194,7 +194,7 @@ $meta = (string) $dims['meta'];
                 <div class="ee-etiq-params__hero-main">
                     <div class="ee-etiq-params__icon" aria-hidden="true"><i class="fas fa-tag"></i></div>
                     <div>
-                        <h1 class="ee-etiq-params__title">Dimensions des étiquettes de pièce</h1>
+                        <h1 class="ee-etiq-params__title">Étiquettes de pièce</h1>
                         <p class="ee-etiq-params__lead">
                             Taille d’impression des étiquettes FPL (page ajuster stock). Défaut&nbsp;:
                             <?php echo (int) $def['largeur_mm']; ?>×<?php echo (int) $def['hauteur_mm']; ?>&nbsp;mm (Zebra ZD420).

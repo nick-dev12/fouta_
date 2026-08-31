@@ -68,7 +68,7 @@
 
 .ee-barre-etiq-block__label {
   margin: 0 0 0.35rem;
-  font-size: 0.72rem;
+  font-size: 1.152rem;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -127,7 +127,7 @@
   align-items: center;
   gap: 0.35rem;
   padding: 0.35rem 0.75rem;
-  font-size: 0.82rem;
+  font-size: 1.312rem;
   font-weight: 600;
   color: var(--couleur-dominante, #3564a6);
   background: #fff;
@@ -145,7 +145,7 @@
   align-items: center;
   gap: 0.35rem;
   padding: 0.35rem 0.75rem;
-  font-size: 0.82rem;
+  font-size: 1.312rem;
   font-weight: 600;
   color: var(--couleur-dominante, #3564a6);
   background: #f0f0f0;

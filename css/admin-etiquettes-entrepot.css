@@ -18,7 +18,7 @@
   align-items: center;
   gap: 0.4rem;
   margin-bottom: 0.85rem;
-  font-size: 0.88rem;
+  font-size: 1.408rem;
   font-weight: 600;
   color: var(--couleur-dominante, #3564a6);
   text-decoration: none;
@@ -57,7 +57,7 @@
 .ee-etiq-params__lead {
   margin: 0;
   max-width: 42rem;
-  font-size: 0.95rem;
+  font-size: 1.52rem;
   line-height: 1.5;
   color: var(--texte-mute, #737373);
 }
@@ -96,7 +96,7 @@
 }
 
 .ee-etiq-field__label {
-  font-size: 0.78rem;
+  font-size: 1.248rem;
   font-weight: 700;
   letter-spacing: 0.02em;
   text-transform: uppercase;
@@ -122,7 +122,7 @@
 
 .ee-etiq-params__hint {
   margin: 1rem 0 0;
-  font-size: 0.82rem;
+  font-size: 1.312rem;
   line-height: 1.45;
   color: var(--texte-mute, #737373);
 }
@@ -143,7 +143,7 @@
   border-radius: 8px;
   background: var(--couleur-dominante, #3564a6);
   color: #fff;
-  font-size: 0.92rem;
+  font-size: 1.472rem;
   font-weight: 700;
   cursor: pointer;
 }
@@ -160,7 +160,7 @@
   border-radius: 8px;
   background: #fff;
   color: var(--couleur-dominante, #3564a6);
-  font-size: 0.88rem;
+  font-size: 1.408rem;
   font-weight: 600;
   cursor: pointer;
 }
@@ -178,6 +178,6 @@
 
 .ee-etiq-params__preview-note {
   margin: 0.85rem 0 0;
-  font-size: 0.8rem;
+  font-size: 1.28rem;
   color: var(--texte-mute, #737373);
 }

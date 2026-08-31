@@ -41,6 +41,95 @@ if (isset($_SESSION['success_message'])) {
     <?php include 'includes/nav.php'; ?>
 
     <section class="produits-section parametres-page">
+        <?php if ($parametres_stock_etendu): ?>
+        <?php /* =============================================================
+                 PARAMÈTRES STOCK — refonte du 31/08/2026.
+                 L'ancien écran empruntait le titre du site (« Paramètres —
+                 configuration du site ») et annonçait des champs produit que
+                 ce profil ne peut pas ouvrir. Ses libellés parlaient technique
+                 (« éléments nommés », « hiérarchie (niveaux) ») dans une
+                 écriture de 11 px, plus petite que partout ailleurs.
+                 Ici : le vrai nom de la page, une tuile par destination, dite
+                 en français de métier, à la taille du reste du logiciel.
+                 ============================================================= */ ?>
+        <div class="page-lead">
+            <div>
+                <h1 class="page-lead__title">Paramètres stock</h1>
+                <p class="page-lead__sub">
+                    Ce qui règle le magasin : où les pièces se rangent, quand l'alerte parle,
+                    et à quelle taille s'impriment les étiquettes.
+                </p>
+            </div>
+        </div>
+
+        <?php if (!empty($success_message)): ?>
+            <div class="alert alert-success" role="status"><?php echo htmlspecialchars($success_message); ?></div>
+        <?php endif; ?>
+
+        <h2 class="param-stock-groupe">Le rangement</h2>
+        <div class="param-stock-grille">
+            <a class="param-stock-tuile" href="parametres/hierarchie-entrepot.php">
+                <span class="param-stock-tuile__ico" aria-hidden="true"><i class="fas fa-sitemap"></i></span>
+                <span class="param-stock-tuile__txt">
+                    <strong>Structure de l'entrepôt</strong>
+                    <span>Les niveaux du rangement — étage, zone, rayon, étagère, barre. Les créer, les renommer, les remettre en ordre.</span>
+                </span>
+                <i class="fas fa-chevron-right param-stock-tuile__chev" aria-hidden="true"></i>
+            </a>
+
+            <a class="param-stock-tuile" href="parametres/emplacement-entrepot.php">
+                <span class="param-stock-tuile__ico" aria-hidden="true"><i class="fas fa-map-pin"></i></span>
+                <span class="param-stock-tuile__txt">
+                    <strong>Emplacements, étage par étage</strong>
+                    <span>Nommer chaque élément d'un étage, du niveau jusqu'à la position, onglet par onglet.</span>
+                </span>
+                <i class="fas fa-chevron-right param-stock-tuile__chev" aria-hidden="true"></i>
+            </a>
+        </div>
+
+        <h2 class="param-stock-groupe">Les alertes</h2>
+        <div class="param-stock-grille">
+            <a class="param-stock-tuile" href="parametres/alertes-stock.php">
+                <span class="param-stock-tuile__ico" aria-hidden="true"><i class="fas fa-bell"></i></span>
+                <span class="param-stock-tuile__txt">
+                    <strong>Seuils d'alerte</strong>
+                    <span>Les règles par rayon, le seuil propre à une pièce, et ce que les ventes conseillent. L'alerte parle dès que le stock est inférieur ou égal au seuil.</span>
+                </span>
+                <i class="fas fa-chevron-right param-stock-tuile__chev" aria-hidden="true"></i>
+            </a>
+
+            <a class="param-stock-tuile" href="produits/seuils-rayon.php">
+                <span class="param-stock-tuile__ico" aria-hidden="true"><i class="fas fa-list-check"></i></span>
+                <span class="param-stock-tuile__txt">
+                    <strong>Seuils, rayon par rayon</strong>
+                    <span>Poser le seuil de cinquante pièces d'un seul enregistrement, avec leur stock du jour sous les yeux.</span>
+                </span>
+                <i class="fas fa-chevron-right param-stock-tuile__chev" aria-hidden="true"></i>
+            </a>
+        </div>
+
+        <h2 class="param-stock-groupe">Les étiquettes</h2>
+        <div class="param-stock-grille">
+            <a class="param-stock-tuile" href="parametres/etiquettes-produit.php">
+                <span class="param-stock-tuile__ico" aria-hidden="true"><i class="fas fa-tag"></i></span>
+                <span class="param-stock-tuile__txt">
+                    <strong>Étiquettes de pièce</strong>
+                    <span>Les tailles proposées à l'impression — 70 × 70, 50 × 30, 65 × 100, 100 × 130 mm — et celle qui sert par défaut.</span>
+                </span>
+                <i class="fas fa-chevron-right param-stock-tuile__chev" aria-hidden="true"></i>
+            </a>
+
+            <a class="param-stock-tuile" href="parametres/etiquettes-entrepot.php">
+                <span class="param-stock-tuile__ico" aria-hidden="true"><i class="fas fa-map-pin"></i></span>
+                <span class="param-stock-tuile__txt">
+                    <strong>Étiquettes de barre</strong>
+                    <span>Les dimensions des étiquettes collées sur le rangement lui-même, et la place de chaque élément dessus.</span>
+                </span>
+                <i class="fas fa-chevron-right param-stock-tuile__chev" aria-hidden="true"></i>
+            </a>
+        </div>
+
+        <?php else: ?>
         <header class="parametres-hero">
             <p class="parametres-hero__eyebrow">Configuration du site</p>
             <h1 class="parametres-hero__title"><i class="fas fa-sliders" aria-hidden="true"></i> Paramètres</h1>
@@ -200,6 +289,7 @@ if (isset($_SESSION['success_message'])) {
             </article>
             <?php endif; ?>
         </div>
+        <?php endif; ?>
     </section>
 
     <?php include 'includes/footer.php'; ?>

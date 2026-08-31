@@ -460,3 +460,155 @@
   gap: 0.6rem;
   margin-top: 0.75rem;
 }
+
+/* =====================================================================
+   PARAMÈTRES STOCK (31/08/2026) — l'écran du responsable.
+   L'ancien écrivait ses liens en 11 px, plus petit que partout ailleurs,
+   et empilait trois cartes déséquilibrées. Ici : une tuile par
+   destination, un titre lisible, une phrase qui dit ce qu'on y fait.
+   ===================================================================== */
+.page-parametres-admin .param-stock-groupe {
+  margin: 28px 0 12px;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--slate, #5C6A85);
+}
+
+.page-parametres-admin .param-stock-groupe:first-of-type {
+  margin-top: 8px;
+}
+
+.page-parametres-admin .param-stock-grille {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 14px;
+}
+
+.page-parametres-admin .param-stock-tuile {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 18px 20px;
+  background: #fff;
+  border: 1px solid #E1E6F2;
+  border-radius: 10px;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
+}
+
+.page-parametres-admin .param-stock-tuile:hover,
+.page-parametres-admin .param-stock-tuile:focus-visible {
+  border-color: var(--navy, #10316F);
+  box-shadow: 0 6px 20px -14px rgba(16, 49, 111, .55);
+  transform: translateY(-1px);
+}
+
+.page-parametres-admin .param-stock-tuile__ico {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  background: rgba(16, 49, 111, .08);
+  color: var(--navy, #10316F);
+  font-size: 17px;
+}
+
+.page-parametres-admin .param-stock-tuile__txt {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.page-parametres-admin .param-stock-tuile__txt strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 15.5px;
+  font-weight: 650;
+  color: var(--ink, #16203A);
+}
+
+.page-parametres-admin .param-stock-tuile__txt span {
+  display: block;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--slate, #5C6A85);
+}
+
+.page-parametres-admin .param-stock-tuile__chev {
+  align-self: center;
+  margin-left: 4px;
+  font-size: 13px;
+  color: #9AA6C0;
+}
+
+@media (max-width: 640px) {
+  .page-parametres-admin .param-stock-grille {
+    grid-template-columns: 1fr;
+  }
+  .page-parametres-admin .param-stock-tuile {
+    padding: 16px;
+  }
+}
+
+/* =====================================================================
+   ÉCRANS DE RÉGLAGE — UNE SEULE ÉCHELLE (31/08/2026)
+   Alertes de stock, hiérarchie, emplacements, étiquettes de pièce et de
+   barre : quatre familles de classes héritées, quatre tailles de titre.
+   On les aligne sur le hub « Paramètres stock ».
+   ===================================================================== */
+.as-hero__title,
+.hc-hero__title,
+.ee-hero__title,
+.ee-etiq-params__title {
+  font-size: clamp(22px, 2.4vw, 28px) !important;
+  font-weight: 700 !important;
+  line-height: 1.2 !important;
+  letter-spacing: -.01em !important;
+  color: var(--ink, #16203A) !important;
+  margin: 0 0 6px !important;
+}
+
+.as-hero__lead,
+.hc-hero__lead,
+.ee-hero__lead,
+.ee-etiq-params__lead,
+.ee-etiq-params__hint {
+  font-size: 14px !important;
+  line-height: 1.6 !important;
+  max-width: 70ch !important;
+  color: var(--slate, #5C6A85) !important;
+}
+
+.as-hero__eyebrow,
+.hc-hero__eyebrow,
+.ee-hero__eyebrow {
+  font-size: 12.5px !important;
+  font-weight: 700 !important;
+  letter-spacing: .1em !important;
+  text-transform: uppercase !important;
+  color: var(--slate, #5C6A85) !important;
+}
+
+/* Le fil de retour vers les paramètres : lisible, pas minuscule. */
+.as-hero__back,
+.hc-hero__back,
+.ee-hero__back {
+  font-size: 13px !important;
+}
+
+/* Les titres de section de ces écrans, à mi-chemin entre le titre de page
+   et le corps du texte — ils étaient parfois plus petits que le texte. */
+.as-card__title,
+.as-section__title,
+.hc-card__title,
+.ee-card__title,
+.ee-etiq-params__section-title {
+  font-size: 16px !important;
+  font-weight: 650 !important;
+  color: var(--ink, #16203A) !important;
+}

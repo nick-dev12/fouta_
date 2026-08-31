@@ -96,7 +96,14 @@ $fpl_titre_page = 'Mon travail';
     <div class="card" style="margin-bottom:var(--s4)">
       <div class="scan-bar">
         <span style="color:var(--blue-600); display:flex"><?php echo fpl_icone('search', 20); ?></span>
-        <input type="text" id="mt-q" autocomplete="off" autofocus
+        <?php /* PLUS D'attribut autofocus (31/08) : le navigateur faisait
+                 défiler la page de 158 px pour dégager le champ de la barre
+                 collante, si bien qu'on ouvrait « Mon travail » déjà descendu
+                 — le haut de l'écran, et les messages qui s'y posent, passaient
+                 au-dessus du bord. Le curseur y va quand même, par le script
+                 du bas, avec preventScroll : le pistolet de scan tape toujours
+                 au bon endroit. */ ?>
+        <input type="text" id="mt-q" autocomplete="off"
                placeholder="Où est cette pièce ? Scannez ou cherchez : référence, nom, réf. OEM…">
       </div>
       <div id="mt-results" class="mt-results"></div>
@@ -265,6 +272,9 @@ $fpl_titre_page = 'Mon travail';
         if (first) first.click();
       }
     });
+
+    /* Le curseur dans la barre de scan, SANS faire défiler la page. */
+    try { input.focus({ preventScroll: true }); } catch (e) { input.focus(); }
   })();
 </script>
 

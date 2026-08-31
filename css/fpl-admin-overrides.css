@@ -312,6 +312,18 @@ body:has(.app)::before {
   box-shadow: none !important;
   margin-bottom: var(--s5) !important;
   padding: 0 !important;
+
+  /* LE COIN ARRONDI NE DOIT PLUS RIEN COUPER (31/08). L'ancien bandeau de
+     Fouta était une carte blanche : admin-dashboard.css lui donne encore
+     « border-radius: 20px » ET « overflow: hidden », plus 28/32 px de marge
+     intérieure. Ici on a retiré le fond, l'ombre et la marge — il ne reste
+     donc qu'une courbe INVISIBLE qui découpe quand même : le fil d'Ariane,
+     collé tout en haut à gauche, y perdait le « P » de « PIÈCES ». Le
+     bandeau n'a plus ni fond ni image à contenir : la découpe ne sert plus
+     à rien, on la retire. (Même symptôme que la barre ::before tuée le
+     24/08, autre cause : là c'était un ornement, ici c'est le rognage.) */
+  border-radius: 0 !important;
+  overflow: visible !important;
 }
 
 /* --- Cartes stats dashboard --- */
