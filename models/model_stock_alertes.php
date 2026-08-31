@@ -496,3 +496,365 @@ function stock_alertes_resume_pour_popup($limit = 30)
     $items = array_slice($items_full, 0, $limit);
     return ['items' => $items, 'total' => $total];
 }
+
+/* =====================================================================
+   LE SEUIL D'UNE PIÈCE ET SES SUITES (31/08/2026)
+   ---------------------------------------------------------------------
+   Trois manques comblés d'un coup, mesurés contre FPL natif :
+     1. l'EXCEPTION par pièce — un seul nombre ne peut pas gouverner un
+        rayon entier : le boulon et la boîte de vitesses n'ont pas le même
+        point de rupture ;
+     2. la SUGGESTION par les ventes — un seuil réglé au doigt mouillé ne
+        veut rien dire ; celui qui sort de « ce qu'on vend par jour × le
+        nombre de jours qu'on veut tenir » se défend ;
+     3. l'ÉTAT PERMANENT — le bandeau de 30 secondes ne parle qu'à celui
+        qui était devant l'écran au moment du franchissement. Le compte des
+        pièces sous leur seuil, lui, attend qu'on vienne le lire.
+
+   Ordre de résolution : la pièce, puis la sous-catégorie, puis la
+   catégorie, puis la règle générale.
+   ===================================================================== */
+
+/**
+ * @return bool
+ */
+function stock_alertes_seuil_piece_colonne_ok()
+{
+    static $ok = null;
+    if ($ok !== null) {
+        return $ok;
+    }
+    global $db;
+    $ok = false;
+    if ($db) {
+        try {
+            $db->query('SELECT seuil_alerte FROM produits LIMIT 1');
+            $ok = true;
+        } catch (PDOException $e) {
+            $ok = false;
+        }
+    }
+
+    return $ok;
+}
+
+/**
+ * Les règles, chargées une seule fois par requête.
+ *
+ * @return array<int, array<string, mixed>>
+ */
+function stock_alertes_regles_en_cache()
+{
+    static $regles = null;
+    if ($regles === null) {
+        $regles = stock_alertes_get_all_regles();
+    }
+
+    return $regles;
+}
+
+/**
+ * Le seuil qui s'applique VRAIMENT à cette pièce, et d'où il vient.
+ *
+ * @param array<string, mixed> $produit id, stock, seuil_alerte, categorie_id, sous_categorie_id
+ * @return array{seuil: int|null, origine: string, niveau: string|null, libelle: string}
+ */
+function stock_alerte_seuil_effectif(array $produit)
+{
+    if (stock_alertes_seuil_piece_colonne_ok()
+        && isset($produit['seuil_alerte']) && $produit['seuil_alerte'] !== null && $produit['seuil_alerte'] !== '') {
+        return [
+            'seuil' => (int) $produit['seuil_alerte'],
+            'origine' => 'piece',
+            'niveau' => null,
+            'libelle' => 'Seuil propre à la pièce',
+        ];
+    }
+
+    $cat = (int) ($produit['categorie_id'] ?? 0);
+    $sous = (int) ($produit['sous_categorie_id'] ?? 0);
+    $meilleur = null;
+    $meilleur_rang = -1;
+    foreach (stock_alertes_regles_en_cache() as $regle) {
+        if (!stock_alertes_regle_applique_produit($regle, $cat, $sous)) {
+            continue;
+        }
+        /* La plus précise gagne : sous-catégorie (3), catégorie (2), générale (1). */
+        $rang = !empty($regle['sous_categorie_ids']) ? 3 : (!empty($regle['categorie_ids']) ? 2 : 1);
+        if ($rang > $meilleur_rang) {
+            $meilleur = $regle;
+            $meilleur_rang = $rang;
+            continue;
+        }
+        if ($rang === $meilleur_rang && $meilleur !== null) {
+            /* À précision égale, la plus protectrice : le seuil le plus haut,
+               puis la gravité la plus forte. */
+            $mieux = (int) $regle['seuil'] > (int) $meilleur['seuil']
+                || ((int) $regle['seuil'] === (int) $meilleur['seuil']
+                    && stock_alertes_gravite_niveau($regle['niveau']) > stock_alertes_gravite_niveau($meilleur['niveau']));
+            if ($mieux) {
+                $meilleur = $regle;
+            }
+        }
+    }
+    if ($meilleur === null) {
+        return ['seuil' => null, 'origine' => 'aucun', 'niveau' => null, 'libelle' => 'Aucun seuil'];
+    }
+    $origine = $meilleur_rang === 3 ? 'sous_categorie' : ($meilleur_rang === 2 ? 'categorie' : 'generale');
+    $libelle = $origine === 'sous_categorie' ? 'Règle de sous-catégorie'
+        : ($origine === 'categorie' ? 'Règle de catégorie' : 'Règle générale');
+
+    return [
+        'seuil' => (int) $meilleur['seuil'],
+        'origine' => $origine,
+        'niveau' => (string) $meilleur['niveau'],
+        'libelle' => $libelle,
+    ];
+}
+
+/**
+ * Pose ou retire le seuil propre d'une pièce.
+ *
+ * @param int $produit_id
+ * @param int|null $seuil null retire l'exception
+ * @return array{success: bool, message: string}
+ */
+/**
+ * La colonne qui dit d'où vient le seuil d'une pièce : 'manuel' ou
+ * 'suggestion'. Une base qui ne l'a pas encore traite tout comme manuel —
+ * dans le doute, on protège le travail de la personne.
+ *
+ * @return bool
+ */
+function stock_alertes_seuil_source_colonne_ok()
+{
+    static $ok = null;
+    if ($ok !== null) {
+        return $ok;
+    }
+    global $db;
+    $ok = false;
+    if ($db) {
+        try {
+            $db->query('SELECT seuil_alerte_source FROM produits LIMIT 1');
+            $ok = true;
+        } catch (PDOException $e) {
+            $ok = false;
+        }
+    }
+
+    return $ok;
+}
+
+/**
+ * @param array<string, mixed> $produit
+ * @return bool  le seuil de cette pièce a-t-il été posé par une personne ?
+ */
+function stock_alertes_seuil_pose_a_la_main(array $produit)
+{
+    if (!isset($produit['seuil_alerte']) || $produit['seuil_alerte'] === null || $produit['seuil_alerte'] === '') {
+        return false;
+    }
+    if (!stock_alertes_seuil_source_colonne_ok()) {
+        return true;
+    }
+
+    return ((string) ($produit['seuil_alerte_source'] ?? 'manuel')) !== 'suggestion';
+}
+
+function stock_alertes_seuil_piece_enregistrer($produit_id, $seuil, $source = 'manuel')
+{
+    global $db;
+    $produit_id = (int) $produit_id;
+    if ($produit_id <= 0 || !$db || !stock_alertes_seuil_piece_colonne_ok()) {
+        return ['success' => false, 'message' => 'Seuil par pièce indisponible.'];
+    }
+    if ($seuil !== null && (!is_numeric($seuil) || (int) $seuil < 0)) {
+        return ['success' => false, 'message' => 'Le seuil doit être un nombre positif.'];
+    }
+    $source = $source === 'suggestion' ? 'suggestion' : 'manuel';
+    try {
+        $avec_source = stock_alertes_seuil_source_colonne_ok();
+        $sql = $avec_source
+            ? 'UPDATE produits SET seuil_alerte = :s, seuil_alerte_source = :src, date_modification = NOW() WHERE id = :id'
+            : 'UPDATE produits SET seuil_alerte = :s, date_modification = NOW() WHERE id = :id';
+        $st = $db->prepare($sql);
+        $params = [':s' => $seuil === null ? null : (int) $seuil, ':id' => $produit_id];
+        if ($avec_source) {
+            $params[':src'] = $seuil === null ? null : $source;
+        }
+        $st->execute($params);
+
+        return [
+            'success' => true,
+            'message' => $seuil === null
+                ? 'Exception retirée : la pièce suit de nouveau la règle de sa catégorie.'
+                : 'Seuil de la pièce fixé à ' . (int) $seuil . '.',
+        ];
+    } catch (PDOException $e) {
+        return ['success' => false, 'message' => 'Enregistrement impossible.'];
+    }
+}
+
+/**
+ * Les pièces qui sont SOUS leur seuil effectif, maintenant.
+ *
+ * @param int $limite
+ * @return array<int, array<string, mixed>>
+ */
+function stock_alertes_produits_sous_seuil($limite = 200)
+{
+    global $db;
+    if (!$db) {
+        return [];
+    }
+    $plafond = 0;
+    foreach (stock_alertes_regles_en_cache() as $r) {
+        $plafond = max($plafond, (int) $r['seuil']);
+    }
+    $colonne_piece = stock_alertes_seuil_piece_colonne_ok();
+    /* On ne remonte que ce qui PEUT être sous un seuil : un stock au-dessus du
+       plus haut seuil connu n'alerte personne, sauf exception propre. */
+    $sql = 'SELECT p.id, p.nom, p.identifiant_interne, p.stock, p.categorie_id, p.sous_categorie_id'
+        . ($colonne_piece ? ', p.seuil_alerte' : '')
+        . ' FROM produits p WHERE p.sync_deleted_at IS NULL AND (p.stock <= :plafond';
+    if ($colonne_piece) {
+        $sql .= ' OR (p.seuil_alerte IS NOT NULL AND p.stock <= p.seuil_alerte)';
+    }
+    $sql .= ') ORDER BY p.stock ASC, p.nom ASC';
+    try {
+        $st = $db->prepare($sql);
+        $st->execute([':plafond' => $plafond]);
+        $lignes = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (PDOException $e) {
+        return [];
+    }
+    $out = [];
+    foreach ($lignes as $p) {
+        $eff = stock_alerte_seuil_effectif($p);
+        if ($eff['seuil'] === null || (int) $p['stock'] > $eff['seuil']) {
+            continue;
+        }
+        $p['seuil_effectif'] = $eff['seuil'];
+        $p['seuil_origine'] = $eff['origine'];
+        $p['seuil_libelle'] = $eff['libelle'];
+        $p['seuil_niveau'] = $eff['niveau'];
+        $out[] = $p;
+        if (count($out) >= $limite) {
+            break;
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * Ce que les VENTES conseillent : ce qui part par jour × le nombre de jours
+ * qu'on veut tenir. La vente, ici, c'est la sortie de caisse.
+ *
+ * @param int $delai jours de couverture voulus (1 à 60)
+ * @param int $fenetre_jours période observée
+ * @return array<int, array<string, mixed>>
+ */
+function stock_alertes_suggestions($delai, $fenetre_jours = 30)
+{
+    global $db;
+    $delai = max(1, min(60, (int) $delai));
+    $fenetre_jours = max(1, (int) $fenetre_jours);
+    if (!$db) {
+        return [];
+    }
+    try {
+        $st = $db->prepare("SELECT m.produit_id, SUM(m.quantite) AS total
+                            FROM stock_mouvements m
+                            WHERE m.type = 'sortie'
+                              AND m.reference_type = 'caisse_vente'
+                              AND m.sync_deleted_at IS NULL
+                              AND m.date_mouvement >= :depuis
+                            GROUP BY m.produit_id");
+        $st->execute([':depuis' => date('Y-m-d H:i:s', strtotime('-' . $fenetre_jours . ' days'))]);
+        $ventes = [];
+        foreach ($st->fetchAll(PDO::FETCH_ASSOC) ?: [] as $v) {
+            $ventes[(int) $v['produit_id']] = (float) $v['total'];
+        }
+        if ($ventes === []) {
+            return [];
+        }
+        $ids = implode(',', array_map('intval', array_keys($ventes)));
+        $colonne_piece = stock_alertes_seuil_piece_colonne_ok();
+        /* L'ORIGINE DU SEUIL VOYAGE AVEC LA PIÈCE (31/08) : sans elle, un
+         * seuil déjà posé passait pour « posé à la main » et le calcul se
+         * refusait à le mettre à jour — même le sien. */
+        $rows = $db->query('SELECT p.id, p.nom, p.identifiant_interne, p.stock, p.categorie_id, p.sous_categorie_id'
+            . ($colonne_piece ? ', p.seuil_alerte' : '')
+            . (stock_alertes_seuil_source_colonne_ok() ? ', p.seuil_alerte_source' : '')
+            . ' FROM produits p WHERE p.id IN (' . $ids . ') AND p.sync_deleted_at IS NULL')->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (PDOException $e) {
+        return [];
+    }
+    $out = [];
+    foreach ($rows as $p) {
+        $par_jour = $ventes[(int) $p['id']] / $fenetre_jours;
+        $eff = stock_alerte_seuil_effectif($p);
+        $out[] = [
+            'produit' => $p,
+            'vendus' => (int) $ventes[(int) $p['id']],
+            'par_jour' => $par_jour,
+            'seuil_actuel' => $eff['seuil'],
+            'seuil_origine' => $eff['origine'],
+            'suggere' => (int) max(1, ceil($par_jour * $delai)),
+        ];
+    }
+    usort($out, function ($a, $b) {
+        return $b['par_jour'] <=> $a['par_jour'];
+    });
+
+    return $out;
+}
+
+/**
+ * Applique les suggestions : chaque pièce vendue reçoit SON seuil.
+ *
+ * @param int $delai
+ * @param int $fenetre_jours
+ * @return array{success: bool, message: string, appliques: int}
+ */
+function stock_alertes_appliquer_suggestions($delai, $fenetre_jours = 30)
+{
+    if (!stock_alertes_seuil_piece_colonne_ok()) {
+        return ['success' => false, 'message' => 'Seuil par pièce indisponible.', 'appliques' => 0];
+    }
+    $n = 0;
+    $gardes = 0;
+    foreach (stock_alertes_suggestions($delai, $fenetre_jours) as $s) {
+        /* LA MAIN L'EMPORTE (31/08) : un seuil décidé par une personne n'est
+         * jamais remplacé par une moyenne. Le calcul ne repasse que sur ce
+         * qu'il a lui-même posé, ou sur ce qui n'a pas de seuil. */
+        if (stock_alertes_seuil_pose_a_la_main($s['produit'])) {
+            $gardes++;
+            continue;
+        }
+        $actuel = isset($s['produit']['seuil_alerte']) && $s['produit']['seuil_alerte'] !== null
+            ? (int) $s['produit']['seuil_alerte'] : null;
+        if ($actuel === (int) $s['suggere']) {
+            continue;
+        }
+        $res = stock_alertes_seuil_piece_enregistrer((int) $s['produit']['id'], (int) $s['suggere'], 'suggestion');
+        if ($res['success']) {
+            $n++;
+        }
+    }
+
+    $message = $n . ' seuil(s) appliqué(s) — ventes des ' . (int) $fenetre_jours
+        . ' derniers jours ramenées à ' . max(1, min(60, (int) $delai)) . ' jour(s) de couverture.';
+    if ($gardes > 0) {
+        $message .= ' ' . $gardes . ' pièce(s) gardent le seuil posé à la main.';
+    }
+
+    return [
+        'success' => true,
+        'appliques' => $n,
+        'gardes' => $gardes,
+        'message' => $message,
+    ];
+}

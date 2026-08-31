@@ -310,6 +310,30 @@ function produit_fiche_faits(array $produit)
         $faits[] = ['k' => 'Unité de vente', 'v' => fpl_e($unite)];
     }
 
+    /* LE SEUIL D'ALERTE DE CETTE PIÈCE (31/08) : on dit le chiffre ET d'où il
+     * vient — son propre réglage, la règle de sa sous-catégorie, celle de sa
+     * catégorie, ou rien du tout. Sans cette précision, deux pièces « sous le
+     * seuil » se ressemblent alors qu'elles n'ont pas le même seuil. */
+    if (pf_champ_visible('seuil_alerte')) {
+        require_once __DIR__ . '/model_stock_alertes.php';
+        if (function_exists('stock_alerte_seuil_effectif')) {
+            $eff = stock_alerte_seuil_effectif($produit);
+            if ($eff['seuil'] === null) {
+                $faits[] = ['k' => 'Seuil d\'alerte', 'v' => '<span class="muted">aucun</span>'];
+            } else {
+                $stock_actuel_fiche = (int) ($produit['stock'] ?? 0);
+                $etat = $stock_actuel_fiche <= (int) $eff['seuil']
+                    ? ' — <strong>atteint</strong>'
+                    : '';
+                $faits[] = [
+                    'k' => 'Seuil d\'alerte',
+                    'v' => (int) $eff['seuil'] . $etat
+                        . '<div class="cell-sub">' . fpl_e($eff['libelle']) . '</div>',
+                ];
+            }
+        }
+    }
+
     // --- Qui la fournit, et à quel prix elle entre ---
     if (pf_champ_visible('fournisseur_id')) {
         $fournisseur = trim((string) produits_fournisseur_nom_affichage($produit));

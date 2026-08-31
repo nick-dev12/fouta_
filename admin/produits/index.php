@@ -36,6 +36,9 @@ require_once __DIR__ . '/../../models/model_sous_categories.php';
 require_once __DIR__ . '/../../includes/fpl_texte.php';
 require_once __DIR__ . '/../../includes/fpl_ui.php';
 require_once __DIR__ . '/../../includes/site_url.php';
+/* Les champs réservés à certains profils (Fournisseur, prix) : la colonne
+ * du tableau s'y conforme — voir includes/ligne_piece_fpl.php. */
+require_once __DIR__ . '/../../includes/produit_formulaire_champs.php';
 
 // Le compte « admin » est le compte restreint de ce dépôt : il regarde, il ne
 // range pas. C'est lui qui remplace les permissions nommées de FPL natif.
@@ -172,6 +175,59 @@ $produits = get_admin_produits_liste_paginated(
     $categorie_id, $marque_id, $fournisseur_id, ($page - 1) * $per_page, $per_page, $sous_categorie_id, $du, $au, $q
 );
 
+/* « CE QUI MANQUE » (31/08) : la case cochée, la liste n'est plus celle du
+ * catalogue mais celle des pièces à zéro ou arrivées à leur seuil — la plus
+ * basse d'abord. Le seuil de chaque pièce vient de la pièce elle-même, sinon
+ * de la règle de son rayon ; le calcul est celui du modèle des alertes, pas
+ * un second à entretenir. Le rayon et la recherche en cours sont respectés. */
+$filtre_manque = !empty($_GET['manque']);
+if ($filtre_manque) {
+    require_once __DIR__ . '/../../models/model_stock_alertes.php';
+    $ids_manque = [];
+    foreach (stock_alertes_produits_sous_seuil(100000) as $p_manque) {
+        if ($categorie_id > 0 && (int) ($p_manque['categorie_id'] ?? 0) !== $categorie_id) {
+            continue;
+        }
+        if ($sous_categorie_id > 0 && (int) ($p_manque['sous_categorie_id'] ?? 0) !== $sous_categorie_id) {
+            continue;
+        }
+        if ($q !== ''
+            && stripos((string) ($p_manque['nom'] ?? ''), $q) === false
+            && stripos((string) ($p_manque['identifiant_interne'] ?? ''), $q) === false) {
+            continue;
+        }
+        $ids_manque[] = (int) $p_manque['id'];
+    }
+    $total = count($ids_manque);
+    $total_pages = max(1, (int) ceil($total / $per_page));
+    $page = min(max(1, $page), $total_pages);
+    $ids_page = array_slice($ids_manque, ($page - 1) * $per_page, $per_page);
+    $produits = [];
+    if ($ids_page !== []) {
+        try {
+            $jb = produits_catalog_join_bundle();
+            $trous = implode(',', array_fill(0, count($ids_page), '?'));
+            $st = $db->prepare('SELECT p.*, c.nom AS categorie_nom ' . $jb['sel'] . '
+                                FROM produits p
+                                LEFT JOIN categories c ON c.id = p.categorie_id ' . $jb['join'] . '
+                                WHERE p.id IN (' . $trous . ')');
+            $st->execute($ids_page);
+            $par_id = [];
+            foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $ligne_m) {
+                $par_id[(int) $ligne_m['id']] = $ligne_m;
+            }
+            /* On garde l'ordre du plus bas stock au plus haut. */
+            foreach ($ids_page as $pid_m) {
+                if (isset($par_id[$pid_m])) {
+                    $produits[] = $par_id[$pid_m];
+                }
+            }
+        } catch (PDOException $e) {
+            $produits = [];
+        }
+    }
+}
+
 $pagination = [
     'total' => (int) $total,
     'page' => (int) $page,
@@ -192,6 +248,7 @@ try {
 
 // Les filtres qui voyagent : pagination, export, « tout effacer ».
 $filtres_url = array_filter([
+    'manque' => $filtre_manque ? 1 : null,
     'recherche' => $q !== '' ? $q : null,
     'categorie_id' => $categorie_id > 0 ? $categorie_id : null,
     'sous_categorie_id' => $sous_categorie_id > 0 ? $sous_categorie_id : null,
@@ -456,12 +513,32 @@ if ($sous_categorie_id > 0) {
 
         <?php // Les actions descendent sur leur propre ligne, à droite : les six
               // champs gardent ainsi la ligne du haut pour eux seuls. ?>
+        <?php /* CE QUI MANQUE (31/08) : la question qu'on se pose vraiment
+                 devant un catalogue de 3 259 pièces — qu'est-ce qu'il faut
+                 recommander ? Une case, et la liste ne garde que ça. */ ?>
+        <div class="fc-champ fc-manque">
+          <label class="fc-manque__case">
+            <input type="checkbox" name="manque" value="1" <?php echo $filtre_manque ? 'checked' : ''; ?>
+                   onchange="this.form.submit()">
+            <span>Seulement ce qui manque</span>
+          </label>
+        </div>
+
         <div class="fc-actions">
           <button type="submit" class="btn btn-primary"><?php echo fpl_icone('search', 14); ?> Filtrer</button>
-          <a href="export-catalogue.php<?php echo $filtres_url ? '?' . e(http_build_query($filtres_url)) : ''; ?>"
+          <?php /* L'export ne sait pas filtrer « ce qui manque » (31/08) :
+                   on ne lui passe donc pas ce filtre, plutôt que de promettre
+                   un fichier qui contiendrait tout le catalogue. */ ?>
+          <a href="export-catalogue.php<?php $filtres_export = array_diff_key($filtres_url, ['manque' => 1]); echo $filtres_export ? '?' . e(http_build_query($filtres_export)) : ''; ?>"
              class="btn btn-outline"><?php echo fpl_icone('download', 14); ?> Exporter</a>
         </div>
       </form>
+
+      <?php if ($filtre_manque) : ?>
+        <p class="fc-manque__note">
+          <?php echo (int) $pagination['total']; ?> pièce(s) à zéro ou arrivée(s) à leur seuil, la plus basse d'abord.
+        </p>
+      <?php endif; ?>
 
       <?php if ($q !== '' || $du !== '' || $au !== '' || $sous_categorie_id > 0 || $marque_id > 0 || $fournisseur_id > 0) : ?>
         <div class="fc-actifs">
@@ -533,8 +610,9 @@ if ($sous_categorie_id > 0) {
                 <th style="width:56px"></th>
                 <th>Pièce</th>
                 <th>Marque</th>
-                <th>Modèle</th>
-                <th>Réf. OEM</th>
+                <th><?php echo pf_champ_visible('fournisseur_id') ? 'Fournisseur' : 'Catégorie'; ?></th>
+                <th>Référence</th>
+                <th class="num">Stock</th>
                 <th style="width:190px; text-align:center">Actions</th>
               </tr>
             </thead>
@@ -564,8 +642,9 @@ if ($sous_categorie_id > 0) {
                 <th style="width:56px"></th>
                 <th>Pièce</th>
                 <th>Marque</th>
-                <th>Modèle</th>
-                <th>Réf. OEM</th>
+                <th><?php echo pf_champ_visible('fournisseur_id') ? 'Fournisseur' : 'Catégorie'; ?></th>
+                <th>Référence</th>
+                <th class="num">Stock</th>
                 <th style="width:190px; text-align:center">Actions</th>
               </tr>
             </thead>

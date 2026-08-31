@@ -7,6 +7,7 @@
 require_once __DIR__ . '/require_access.php';
 require_once __DIR__ . '/../../includes/site_url.php';
 
+
 $admin_nav_base = rtrim(get_public_root_uri_path(), '/') . '/admin/';
 $admin_nav_home = $admin_nav_base . admin_role_default_redirect_path(admin_normalize_role_for_route($_SESSION['admin_role'] ?? 'admin'));
 $admin_image_base = rtrim(get_public_root_uri_path(), '/') . '/image/';
@@ -292,6 +293,7 @@ include __DIR__ . '/../../includes/pwa_admin_boot.php';
                 <span class="menu-item-icon ico" aria-hidden="true"><?php echo fpl_icone('tool', 16); ?></span>
                 <span class="menu-item-text">Pièces</span>
             </a>
+
             <a href="<?php echo $admin_nav_base; ?>produits/etiquettes.php"
                 class="menu-item mi-etiquettes<?php echo $current_page == 'etiquettes.php' ? ' active' : ''; ?>">
                 <span class="menu-item-icon ico" aria-hidden="true"><?php echo fpl_icone('printer', 16); ?></span>
@@ -348,6 +350,7 @@ include __DIR__ . '/../../includes/pwa_admin_boot.php';
                 <span class="menu-item-icon ico" aria-hidden="true"><?php echo fpl_icone('tool', 16); ?></span>
                 <span class="menu-item-text">Pièces</span>
             </a>
+
             <a href="<?php echo $admin_nav_base; ?>produits/etiquettes.php"
                 class="menu-item mi-etiquettes<?php echo $current_page == 'etiquettes.php' ? ' active' : ''; ?>">
                 <span class="menu-item-icon ico" aria-hidden="true"><?php echo fpl_icone('printer', 16); ?></span>
@@ -456,6 +459,37 @@ include __DIR__ . '/../../includes/pwa_admin_boot.php';
         </div>
         <div class="sidebar-overlay" id="sidebarOverlay"></div>
         <main class="content admin-content" id="adminContent">
+<?php /* LE MOT DU GARDE-BARRIÈRE (31/08) — déposé par admin_route_enforce()
+         quand un lien mène à une page interdite au rôle. Affiché ici, dans le
+         seul fichier que toutes les pages admin incluent, il paraît sur la page
+         d'arrivée quelle qu'elle soit, puis s'efface. */ ?>
+<?php /* CE QU'ON VIENT DE FAIRE PASSER SOUS LE SEUIL (31/08) — déposé par
+         stock_alertes_notifier_baisse_stock() au moment du mouvement, montré
+         ici sur l'écran suivant, à la personne qui l'a provoqué, puis effacé.
+         Le bandeau d'origine ne vivait que sur quatre écrans fermés au
+         rayonniste : il sortait la pièce et n'apprenait rien. */ ?>
+<?php if (!empty($_SESSION['stock_alerte_franchie']) && is_array($_SESSION['stock_alerte_franchie'])): ?>
+        <div class="alert alert-warning" role="status" style="margin:var(--s4) var(--s4) 0">
+            <?php foreach (array_slice($_SESSION['stock_alerte_franchie'], 0, 5) as $__fr): ?>
+                <div><strong><?php echo e((string) $__fr['nom']); ?></strong> passe sous son seuil —
+                    il en reste <strong><?php echo (int) $__fr['stock']; ?></strong> pour un seuil de
+                    <strong><?php echo (int) $__fr['seuil']; ?></strong>.</div>
+            <?php endforeach; ?>
+            <?php if (count($_SESSION['stock_alerte_franchie']) > 5): ?>
+                <div>… et <?php echo count($_SESSION['stock_alerte_franchie']) - 5; ?> autre(s).</div>
+            <?php endif; ?>
+        </div>
+        <?php unset($_SESSION['stock_alerte_franchie']); ?>
+<?php endif; ?>
+<?php if (!empty($_SESSION['acces_refuse_message'])): ?>
+        <div class="alert alert-warning" role="status" style="margin:var(--s4) var(--s4) 0"><?php echo e($_SESSION['acces_refuse_message']); ?></div>
+        <?php /* LA PAGE D'ARRIVÉE PEUT S'OUVRIR DÉJÀ DESCENDUE — « Mon travail »
+                 met le curseur dans sa barre de scan (autofocus), ce qui fait
+                 défiler la page de 158 px et cachait le message tout en haut.
+                 On remonte donc en haut quand il y a quelque chose à lire. */ ?>
+        <script>window.addEventListener('load', function () { window.scrollTo(0, 0); });</script>
+        <?php unset($_SESSION['acces_refuse_message']); ?>
+<?php endif; ?>
 
 <script>
 (function () {

@@ -1835,3 +1835,15 @@
   width: 100%;
   min-width: 0;
 }
+
+/* LE STOCK SUR LA LIGNE (31/08/2026) : le nombre, et le seuil de la piece
+   quand il est atteint. Rouge de la charte, jamais orange. */
+.fpl-cell-stock strong { font-weight: 650; }
+.fpl-cell-stock__seuil { margin-left: 3px; font-size: 12px; opacity: .75; }
+.fpl-cell-stock--manque, .fpl-cell-stock--manque strong { color: #A32D24; }
+
+/* La case « ce qui manque », dans la barre des filtres. */
+.fc-manque { display: flex; align-items: flex-end; }
+.fc-manque__case { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--ink, #16203A); white-space: nowrap; cursor: pointer; }
+.fc-manque__case input { width: 16px; height: 16px; accent-color: var(--navy, #10316F); }
+.fc-manque__note { margin: 10px 0 0; font-size: 13px; color: var(--slate, #5C6A85); }

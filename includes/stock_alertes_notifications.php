@@ -37,6 +37,29 @@ function stock_alertes_notifier_baisse_stock($produit_id, $stock_avant, $stock_a
         return;
     }
     $nom = (string) ($produit['nom'] ?? 'Produit #' . $pid);
+
+    /* CELUI QUI FAIT LE GESTE L'APPREND (31/08) — le bandeau existant ne vit
+     * que sur quatre écrans, dont aucun n'est ouvert au rayonniste : il sortait
+     * une pièce, la faisait passer sous son seuil, et n'en savait rien. On
+     * dépose le franchissement dans la session ; nav.php l'affiche sur l'écran
+     * suivant, une seule fois, à la personne qui vient de le provoquer. Le
+     * courriel, lui, part comme avant vers les comptes concernés. */
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        $seuil_le_plus_haut = 0;
+        $niveau_le_plus_grave = 'standard';
+        foreach ($franchies as $r_flash) {
+            $seuil_le_plus_haut = max($seuil_le_plus_haut, (int) ($r_flash['seuil'] ?? 0));
+            if (stock_alertes_gravite_niveau($r_flash['niveau'] ?? '') > stock_alertes_gravite_niveau($niveau_le_plus_grave)) {
+                $niveau_le_plus_grave = (string) $r_flash['niveau'];
+            }
+        }
+        $_SESSION['stock_alerte_franchie'][] = [
+            'nom' => $nom,
+            'stock' => (int) $stock_apres,
+            'seuil' => $seuil_le_plus_haut,
+            'niveau' => $niveau_le_plus_grave,
+        ];
+    }
     $emails = get_admin_emails_alerte_stock();
     if (empty($emails)) {
         return;
