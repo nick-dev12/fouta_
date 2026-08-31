@@ -84,6 +84,10 @@ switch ($periode) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Historique des ventes - Comptabilité</title>
     <?php require_once __DIR__ . '/../../includes/asset_version.php'; ?>
+<?php /* fpl_css_link() vit dans fpl_assets.php, que fpl_head charge — mais la
+         ligne suivante l'appelait une ligne AVANT l'include : écran mort
+         depuis le premier commit (trouvé au balayage du 31/08). */ ?>
+<?php require_once __DIR__ . '/../../includes/fpl_assets.php'; ?>
 <?php fpl_css_link('variables.css'); ?>
 <?php include __DIR__ . '/..//includes/fpl_head.php'; ?>
     <style>

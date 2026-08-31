@@ -7,6 +7,11 @@
  * $prochain_numero_niveau, $ee_form_niveau_numero, $ee_form_nom_niveau, $ee_form_code_abrege,
  * $numeros_niveaux_occupes, $cascade_zone, $cascade_rayon, $cascade_etagere
  */
+/* Un PARTIEL ne s'ouvre pas tout seul (31/08) : appelé sans sa page hôte,
+   il mourait sur ses variables absentes. Il se tait, comme ses voisins. */
+if (!isset($numero_niveau_actif)) {
+    return;
+}
 $csrf = htmlspecialchars($_SESSION['admin_csrf']);
 $num_actif = (int) $numero_niveau_actif;
 $eid_actif = (int) $etage_id_actif;

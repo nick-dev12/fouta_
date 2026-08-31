@@ -10,7 +10,10 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
     header('Location: login.php');
     exit;
 }
-require_once __DIR__ . '/../includes/require_access.php';
+/* Le chemin visait ../includes/ — la racine du site, où ce fichier n'existe
+   pas : la page mourait au lieu de garder (premier commit ; vu au balayage
+   du 31/08). La garde vit dans admin/includes/. */
+require_once __DIR__ . '/includes/require_access.php';
 
 
 require_once __DIR__ . '/../models/model_fcm.php';
