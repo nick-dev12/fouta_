@@ -429,7 +429,8 @@ $is_ajout_par_admin = admin_exists() && isset($_SESSION['admin_id']);
                         <select id="role" name="role" required class="select-role">
                             <?php
                             $role_post = $_POST['role'] ?? 'gestion_stock';
-                            foreach (admin_roles_valides() as $r):
+                            // Un seul contexte technique (31/08) : « Développeur » n'est plus proposé.
+                            foreach (admin_roles_proposes() as $r):
                                 ?>
                                 <option value="<?php echo htmlspecialchars($r); ?>" <?php echo ($role_post === $r) ? 'selected' : ''; ?>>
                                     <?php echo htmlspecialchars(admin_role_label($r)); ?>

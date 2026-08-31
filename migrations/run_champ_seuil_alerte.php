@@ -53,7 +53,8 @@ $cid = (int) $champ['id'];
 echo "champ « ", $champ['label'], " » : id $cid, section ", $champ['section'], "\n";
 
 /* 2. Qui voit, qui modifie. */
-$modifier = ['gestion_stock_general', 'admin', 'informaticien', 'developpeur'];
+/* « developpeur » ne se sème plus : le bypass technique le couvre. */
+$modifier = ['gestion_stock_general', 'admin', 'informaticien'];
 $voir = ['gestion_stock', 'commercial', 'commercial_general', 'caissier', 'comptabilite', 'rh'];
 
 $db->prepare('DELETE FROM produit_formulaire_champ_role WHERE champ_id = :c')->execute([':c' => $cid]);

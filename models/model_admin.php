@@ -15,6 +15,21 @@ function admin_roles_valides() {
 }
 
 /**
+ * Les rôles PROPOSÉS dans les écrans (création de compte, changement de
+ * rôle, accès aux champs). Mesuré le 31/08 : « developpeur » et
+ * « informaticien » font exactement la même chose — 174 pages, 7 fonctions
+ * de permission, 14 droits de champ comparés, zéro différence. Deux noms
+ * pour un seul métier, c'est une répétition : on n'en propose plus qu'un.
+ * Le rôle « developpeur » RESTE VALIDE (admin_roles_valides) : des comptes
+ * peuvent le porter, et la synchronisation avec le système Fouta l'attend.
+ *
+ * @return array<int, string>
+ */
+function admin_roles_proposes() {
+    return array_values(array_diff(admin_roles_valides(), ['developpeur']));
+}
+
+/**
  * Libellé affichage d'un rôle
  */
 function admin_role_label($role) {

@@ -62,7 +62,10 @@ if ($col === 0) {
 }
 
 /* ------------------------------------------------------------------ 2. LA MATRICE */
-$technique = ['admin', 'informaticien', 'developpeur'];
+/* « developpeur » ne se sème plus (31/08 au soir) : le profil technique
+ * contourne de toute façon ces règles — produit_formulaire_acces_bypass_role()
+ * couvre informaticien ET developpeur — et le rôle n'est plus proposé. */
+$technique = ['admin', 'informaticien'];
 
 $matrice = [
     'prix' => [

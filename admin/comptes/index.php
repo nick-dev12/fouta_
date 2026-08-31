@@ -249,7 +249,14 @@ $comptes_csrf = (string) $_SESSION['admin_csrf'];
                                 <div class="comptes-acces-card__role-row">
                                     <label for="role-<?php echo (int) $admin['id']; ?>" class="visually-hidden">Choisir le rôle pour <?php echo htmlspecialchars($admin['prenom'] . ' ' . $admin['nom']); ?></label>
                                     <select name="nouveau_role" id="role-<?php echo (int) $admin['id']; ?>" class="comptes-acces-card__select comptes-role-select">
-                                        <?php foreach (admin_roles_valides() as $r): ?>
+                                        <?php /* Un seul contexte technique (31/08) : « Développeur »
+                                                 n'est plus proposé. Si un compte le porte encore
+                                                 (synchronisation), son rôle actuel reste affiché. */ ?>
+                                        <?php $roles_offerts = admin_roles_proposes();
+                                        if (!in_array((string) ($admin['role'] ?? ''), $roles_offerts, true) && in_array((string) ($admin['role'] ?? ''), admin_roles_valides(), true)) {
+                                            array_unshift($roles_offerts, (string) $admin['role']);
+                                        } ?>
+                                        <?php foreach ($roles_offerts as $r): ?>
                                         <option value="<?php echo htmlspecialchars($r); ?>" <?php echo (($admin['role'] ?? '') === $r) ? 'selected' : ''; ?>>
                                             <?php echo htmlspecialchars(admin_role_label($r)); ?>
                                         </option>

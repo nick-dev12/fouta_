@@ -321,6 +321,7 @@ foreach ($champs as $ch) {
                         <p class="cp-roles-fieldset__hint">Ces droits s’appliquent au formulaire produit et à l’affichage des données dans tout l’admin.</p>
                         <div class="cp-roles-grid">
                             <?php foreach ($roles_disponibles as $role_key => $role_label): ?>
+                            <?php if ($role_key === 'developpeur') continue; /* un seul contexte technique (31/08) — le rôle reste valide, il n'est plus montré */ ?>
                             <label class="cp-role-chip">
                                 <input type="checkbox" name="roles_acces[]" value="<?php echo htmlspecialchars($role_key, ENT_QUOTES, 'UTF-8'); ?>" checked>
                                 <span><?php echo htmlspecialchars($role_label, ENT_QUOTES, 'UTF-8'); ?></span>
@@ -352,9 +353,10 @@ foreach ($champs as $ch) {
                     <p class="cp-impact__intro" id="cp_acces_intro"></p>
                     <fieldset class="cp-roles-fieldset">
                         <legend>Qui a le droit, et jusqu'où</legend>
-                        <p class="cp-roles-fieldset__hint">Cochez les types de compte autorisés. Si aucune restriction n’est enregistrée, tous les types voient le champ (sauf informaticien/développeur qui voient toujours tout).</p>
+                        <p class="cp-roles-fieldset__hint">Cochez les types de compte autorisés. Si aucune restriction n’est enregistrée, tous les types voient le champ (sauf le profil technique — l'informaticien — qui voit toujours tout).</p>
                         <div class="cp-roles-grid" id="cp_acces_roles_grid">
                             <?php foreach ($roles_disponibles as $role_key => $role_label): ?>
+                            <?php if ($role_key === 'developpeur') continue; /* un seul contexte technique (31/08) — le rôle reste valide, il n'est plus montré */ ?>
                             <label class="cp-role-chip cp-role-chip--niveau">
                                 <span><?php echo htmlspecialchars($role_label, ENT_QUOTES, 'UTF-8'); ?></span>
                                 <select name="acces[<?php echo htmlspecialchars($role_key, ENT_QUOTES, 'UTF-8'); ?>]"
