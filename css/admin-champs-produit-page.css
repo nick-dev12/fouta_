@@ -700,3 +700,22 @@
     width: 100%;
   }
 }
+
+/* VOIR N'EST PAS MODIFIER (31/08) : chaque type de compte porte son niveau,
+   d'où une ligne « libellé + liste déroulante » à la place de la case. */
+.cp-role-chip--niveau {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.cp-role-chip--niveau select {
+  flex: 0 0 auto;
+  min-width: 148px;
+  padding: 4px 8px;
+  border: 1px solid var(--trait, #d8deec);
+  border-radius: 6px;
+  background: #fff;
+  font: inherit;
+  color: inherit;
+}

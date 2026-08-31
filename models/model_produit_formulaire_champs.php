@@ -23,6 +23,10 @@ function produit_formulaire_champs_systeme_defaut() {
         ['slug' => 'prix_promotion', 'label' => 'Prix promotionnel', 'icon' => 'fa-percent', 'section' => 'prix', 'colonne_db' => 'prix_promotion', 'ordre' => 120, 'verrouille' => 0, 'obligatoire' => 0],
         ['slug' => 'prix_achat', 'label' => 'Prix d\'achat', 'icon' => 'fa-receipt', 'section' => 'prix', 'colonne_db' => 'prix_achat', 'ordre' => 130, 'verrouille' => 0, 'obligatoire' => 0],
         ['slug' => 'stock', 'label' => 'Stock', 'icon' => 'fa-boxes-stacked', 'section' => 'prix', 'colonne_db' => 'stock', 'ordre' => 140, 'verrouille' => 1, 'obligatoire' => 1],
+        /* LE SEUIL DE LA PIÈCE (31/08) : chaque pièce a le sien, et l'alerte
+         * parle dès que le stock lui est inférieur OU égal. Case vide = aucun
+         * seuil, le logiciel ne dit rien ; zéro = préviens-moi à l'épuisement. */
+        ['slug' => 'seuil_alerte', 'label' => 'Seuil d\'alerte', 'icon' => 'fa-bell', 'section' => 'prix', 'colonne_db' => 'seuil_alerte', 'ordre' => 145],
         ['slug' => 'categorie_id', 'label' => 'Catégorie', 'icon' => 'fa-folder', 'section' => 'prix', 'colonne_db' => 'categorie_id', 'ordre' => 150, 'verrouille' => 1, 'obligatoire' => 1],
         ['slug' => 'sous_categorie_id', 'label' => 'Sous-catégorie', 'icon' => 'fa-folder-open', 'section' => 'prix', 'colonne_db' => 'sous_categorie_id', 'ordre' => 160, 'verrouille' => 0, 'obligatoire' => 0],
         ['slug' => 'statut', 'label' => 'Statut', 'icon' => 'fa-toggle-on', 'section' => 'prix', 'colonne_db' => 'statut', 'ordre' => 170, 'verrouille' => 0, 'obligatoire' => 0],
@@ -328,6 +332,101 @@ function produit_formulaire_champ_roles_map_all() {
 }
 
 /**
+ * VOIR N'EST PAS MODIFIER (31/08). La colonne `niveau` de
+ * produit_formulaire_champ_role dit, pour chaque rôle, s'il ne fait que voir
+ * le champ ('voir') ou s'il peut aussi l'écrire ('modifier'). Une base qui
+ * n'a pas encore la colonne se comporte comme avant : tout est 'modifier'.
+ *
+ * @return bool
+ */
+function produit_formulaire_champ_role_niveau_colonne_ok() {
+    global $db, $produit_formulaire_champ_role_niveau_ok_cache;
+    if (isset($produit_formulaire_champ_role_niveau_ok_cache)) {
+        return $produit_formulaire_champ_role_niveau_ok_cache;
+    }
+    $produit_formulaire_champ_role_niveau_ok_cache = false;
+    if ($db && produit_formulaire_champ_roles_table_ok()) {
+        try {
+            $db->query('SELECT niveau FROM produit_formulaire_champ_role LIMIT 1');
+            $produit_formulaire_champ_role_niveau_ok_cache = true;
+        } catch (PDOException $e) {
+            $produit_formulaire_champ_role_niveau_ok_cache = false;
+        }
+    }
+
+    return $produit_formulaire_champ_role_niveau_ok_cache;
+}
+
+/**
+ * @return array<int, array<string, string>> champ_id => [role => 'voir'|'modifier']
+ */
+function produit_formulaire_champ_niveaux_map_all() {
+    global $db, $produit_formulaire_champ_niveaux_map_cache;
+    if (isset($produit_formulaire_champ_niveaux_map_cache) && is_array($produit_formulaire_champ_niveaux_map_cache)) {
+        return $produit_formulaire_champ_niveaux_map_cache;
+    }
+    $map = [];
+    if (!$db || !produit_formulaire_champ_role_niveau_colonne_ok()) {
+        $produit_formulaire_champ_niveaux_map_cache = $map;
+
+        return $map;
+    }
+    try {
+        $rows = $db->query('SELECT champ_id, role, niveau FROM produit_formulaire_champ_role')
+            ->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        foreach ($rows as $row) {
+            $cid = (int) ($row['champ_id'] ?? 0);
+            $role = normalize_admin_role((string) ($row['role'] ?? ''));
+            if ($cid <= 0 || $role === '') {
+                continue;
+            }
+            $map[$cid][$role] = ((string) ($row['niveau'] ?? 'modifier')) === 'voir' ? 'voir' : 'modifier';
+        }
+    } catch (PDOException $e) {
+        $map = [];
+    }
+    $produit_formulaire_champ_niveaux_map_cache = $map;
+
+    return $map;
+}
+
+/**
+ * Le rôle peut-il ÉCRIRE ce champ ? Un champ qu'on ne voit pas ne s'écrit
+ * jamais ; un champ sans restriction de rôle reste ouvert, comme avant.
+ *
+ * @param string $slug
+ * @param string|null $role
+ * @return bool
+ */
+function produit_formulaire_champ_modifiable($slug, $role = null) {
+    if (!produit_formulaire_champ_visible($slug)) {
+        return false;
+    }
+    require_once __DIR__ . '/model_admin.php';
+    if ($role === null) {
+        if (session_status() === PHP_SESSION_NONE) {
+            return true;
+        }
+        $role = isset($_SESSION['admin_role']) ? (string) $_SESSION['admin_role'] : 'admin';
+    }
+    $role = normalize_admin_role((string) $role);
+    if (produit_formulaire_acces_bypass_role($role)) {
+        return true;
+    }
+    $champ = produit_formulaire_champ_get_by_slug($slug);
+    if ($champ === null) {
+        return true;
+    }
+    $niveaux = produit_formulaire_champ_niveaux_map_all();
+    $pour_ce_champ = $niveaux[(int) ($champ['id'] ?? 0)] ?? [];
+    if ($pour_ce_champ === []) {
+        return true;
+    }
+
+    return (($pour_ce_champ[$role] ?? 'modifier') === 'modifier');
+}
+
+/**
  * @param int $champ_id
  * @return array<int, string>
  */
@@ -348,7 +447,17 @@ function produit_formulaire_champ_roles_get($champ_id) {
  * @param array<int, string> $roles
  * @return array{success: bool, message: string}
  */
-function produit_formulaire_champ_roles_enregistrer($champ_id, array $roles) {
+/**
+ * @param int $champ_id
+ * @return array<string, string> role => 'voir'|'modifier'
+ */
+function produit_formulaire_champ_niveaux_get($champ_id) {
+    $map = produit_formulaire_champ_niveaux_map_all();
+
+    return $map[(int) $champ_id] ?? [];
+}
+
+function produit_formulaire_champ_roles_enregistrer($champ_id, array $roles, array $niveaux = []) {
     global $db;
     $champ_id = (int) $champ_id;
     if ($champ_id <= 0 || !$db || !produit_formulaire_champ_roles_table_ok()) {
@@ -364,21 +473,44 @@ function produit_formulaire_champ_roles_enregistrer($champ_id, array $roles) {
     require_once __DIR__ . '/model_admin.php';
     $tous_roles = admin_roles_valides();
     try {
+        /* LE NIVEAU DE CHAQUE DROIT (31/08) : 'voir' ou 'modifier'. Tout ce
+         * qui n'est pas dit vaut 'modifier' — c'est le comportement d'avant. */
+        $avec_niveau = produit_formulaire_champ_role_niveau_colonne_ok();
+        $niveau_de = [];
+        foreach ($roles as $role) {
+            $n = isset($niveaux[$role]) ? (string) $niveaux[$role] : 'modifier';
+            $niveau_de[$role] = $n === 'voir' ? 'voir' : 'modifier';
+        }
+        $que_des_modifier = !in_array('voir', $niveau_de, true);
+
         $db->prepare('DELETE FROM produit_formulaire_champ_role WHERE champ_id = :c')->execute([':c' => $champ_id]);
-        if (count($roles) >= count($tous_roles)) {
+        /* Le raccourci « tout le monde » ne vaut QUE si personne n'est en
+         * lecture seule : sinon la nuance se perdrait à l'enregistrement. */
+        if (count($roles) >= count($tous_roles) && $que_des_modifier) {
             produit_formulaire_champ_roles_map_reset();
 
             return ['success' => true, 'message' => 'Accès ouvert à tous les types de compte.'];
         }
-        $st = $db->prepare(
-            'INSERT INTO produit_formulaire_champ_role (champ_id, role, date_modification) VALUES (:c, :r, NOW())'
-        );
+        $st = $avec_niveau
+            ? $db->prepare('INSERT INTO produit_formulaire_champ_role (champ_id, role, niveau, date_modification) VALUES (:c, :r, :n, NOW())')
+            : $db->prepare('INSERT INTO produit_formulaire_champ_role (champ_id, role, date_modification) VALUES (:c, :r, NOW())');
+        $compte_voir = 0;
         foreach ($roles as $role) {
-            $st->execute([':c' => $champ_id, ':r' => $role]);
+            if ($avec_niveau) {
+                $st->execute([':c' => $champ_id, ':r' => $role, ':n' => $niveau_de[$role]]);
+            } else {
+                $st->execute([':c' => $champ_id, ':r' => $role]);
+            }
+            if ($niveau_de[$role] === 'voir') {
+                $compte_voir++;
+            }
         }
         produit_formulaire_champ_roles_map_reset();
 
-        return ['success' => true, 'message' => 'Accès enregistrés pour ' . count($roles) . ' type(s) de compte.'];
+        $message = 'Accès enregistrés pour ' . count($roles) . ' type(s) de compte';
+        $message .= $compte_voir > 0 ? ', dont ' . $compte_voir . ' en lecture seule.' : '.';
+
+        return ['success' => true, 'message' => $message];
     } catch (PDOException $e) {
         return ['success' => false, 'message' => 'Erreur : ' . $e->getMessage()];
     }
@@ -388,8 +520,8 @@ function produit_formulaire_champ_roles_enregistrer($champ_id, array $roles) {
  * @return void
  */
 function produit_formulaire_champ_roles_map_reset() {
-    global $produit_formulaire_champ_roles_map_cache;
-    unset($produit_formulaire_champ_roles_map_cache);
+    global $produit_formulaire_champ_roles_map_cache, $produit_formulaire_champ_niveaux_map_cache;
+    unset($produit_formulaire_champ_roles_map_cache, $produit_formulaire_champ_niveaux_map_cache);
 }
 
 /**
@@ -551,9 +683,12 @@ function produit_formulaire_champ_roles_resume($champ_id) {
         return 'Tous les types de compte';
     }
     $labels = produit_formulaire_roles_disponibles();
+    $niveaux = produit_formulaire_champ_niveaux_get((int) $champ_id);
     $parts = [];
     foreach ($roles as $role) {
-        $parts[] = $labels[$role] ?? $role;
+        $nom = $labels[$role] ?? $role;
+        /* Dire lequel ne fait que regarder : c'est toute la nuance. */
+        $parts[] = (($niveaux[$role] ?? 'modifier') === 'voir') ? $nom . ' (lecture seule)' : $nom;
     }
 
     return implode(', ', $parts);

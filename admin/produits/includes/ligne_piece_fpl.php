@@ -27,6 +27,22 @@ if (!function_exists('e')) {
 if (!function_exists('fpl_e')) {
     require_once __DIR__ . '/../../../includes/fpl_texte.php';
 }
+/* LE FOURNISSEUR N'EST PAS DE TOUS LES PROFILS (31/08) : la table
+ * produit_formulaire_champ_role réserve quatre champs — Fournisseur, Prix de
+ * vente, Prix d'achat, Prix promotionnel — à tous les rôles SAUF le stock
+ * simple. La colonne les respecte : au rayonniste elle montre la catégorie,
+ * qui est toujours renseignée et ne dit rien de confidentiel. */
+if (!function_exists('pf_champ_visible')) {
+    require_once __DIR__ . '/../../../includes/produit_formulaire_champs.php';
+}
+/* LE STOCK SE LIT SUR LA LIGNE (31/08) : jusqu'ici il fallait ouvrir la fiche
+ * d'une pièce pour savoir s'il en restait. La colonne montre le nombre ; quand
+ * la pièce est à zéro, ou à son seuil ou en dessous, elle le dit — avec LE
+ * SEUIL DE CETTE PIÈCE affiché à côté, parce que deux rayons n'ont pas le même
+ * et qu'un « sous le seuil » sans le nombre ne veut rien dire. */
+if (!function_exists('stock_alerte_seuil_effectif')) {
+    require_once __DIR__ . '/../../../models/model_stock_alertes.php';
+}
 
 $upload_base = isset($upload_base) ? (string) $upload_base : '/upload/';
 if ($upload_base !== '' && substr($upload_base, -1) !== '/') {
@@ -41,6 +57,27 @@ $img = trim((string) ($produit['image_principale'] ?? ''));
 $code = trim((string) ($produit['identifiant_interne'] ?? ''));
 $marque = trim((string) ($produit['marque_libelle_catalogue'] ?? ''));
 $oem = trim((string) ($produit['reference_oem'] ?? ''));
+
+/* CE QUE LA COLONNE MONTRE VRAIMENT (31/08) : dans ce catalogue la référence
+ * d'origine (OEM) n'est renseignée que sur 1 pièce sur 3259, et le modèle de
+ * véhicule sur 1 aussi — deux colonnes vides sur cinq, alors que la fiche,
+ * elle, affichait la réf. fournisseur (2126 pièces) et son nom (2674). D'où le
+ * « les données s'affichent dans la fiche mais pas dans les listes ». La liste
+ * montre donc le FOURNISSEUR à la place du modèle, et LA RÉFÉRENCE QU'ON A :
+ * l'OEM d'abord, sinon celle du fournisseur, en le disant. Le modèle reste
+ * calculé plus bas, prêt pour le jour où la donnée sera saisie. */
+$ref_fournisseur = trim((string) ($produit['reference_fournisseur'] ?? ''));
+$ref_affichee = $oem !== '' ? $oem : $ref_fournisseur;
+$peut_voir_fournisseur = !function_exists('pf_champ_visible') || pf_champ_visible('fournisseur_id');
+$fournisseur = $peut_voir_fournisseur ? trim((string) ($produit['nom_fournisseur'] ?? '')) : '';
+
+$stock_piece = (int) ($produit['stock'] ?? 0);
+$seuil_piece = null;
+if (function_exists('stock_alerte_seuil_effectif')) {
+    $seuil_piece = stock_alerte_seuil_effectif($produit)['seuil'];
+}
+$stock_manque = $stock_piece <= 0 || ($seuil_piece !== null && $stock_piece <= (int) $seuil_piece);
+$colonne_libre = $peut_voir_fournisseur ? $fournisseur : trim((string) ($produit['categorie_nom'] ?? ''));
 
 $modele_id = (int) ($produit['modele_id'] ?? 0);
 $modele = ($modele_id > 0 && isset($fpl_modeles_noms[$modele_id])) ? $fpl_modeles_noms[$modele_id] : '';
@@ -110,13 +147,28 @@ $galerie_json = htmlspecialchars(
     <?php endif; ?>
   </td>
   <td>
-    <?php if ($modele !== '') : ?>
-      <?php echo fpl_e($modele); ?>
+    <?php if ($colonne_libre !== '') : ?>
+      <?php echo fpl_e($colonne_libre); ?>
     <?php else : ?>
       <span class="muted">—</span>
     <?php endif; ?>
   </td>
-  <td class="mono" style="font-size:14px"><?php echo $oem !== '' ? fpl_e($oem) : '—'; ?></td>
+  <td class="mono" style="font-size:14px"><?php
+      if ($ref_affichee !== '') {
+          echo fpl_e($ref_affichee);
+          if ($oem === '') {
+              echo ' <span class="muted" style="font-size:11px">fourn.</span>';
+          }
+      } else {
+          echo '—';
+      }
+  ?></td>
+  <td class="num fpl-cell-stock<?php echo $stock_manque ? ' fpl-cell-stock--manque' : ''; ?>">
+    <strong><?php echo $stock_piece; ?></strong>
+    <?php if ($stock_manque && $seuil_piece !== null) : ?>
+      <span class="fpl-cell-stock__seuil">/ <?php echo (int) $seuil_piece; ?></span>
+    <?php endif; ?>
+  </td>
   <td>
     <div class="row-actions">
       <a href="<?php echo e($fiche); ?>" class="btn btn-outline btn-sm btn-detail">

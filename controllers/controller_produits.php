@@ -1,4 +1,12 @@
 <?php
+/* VOIR N'EST PAS MODIFIER (31/08/2026) — les quatre champs d'argent et de
+ * fournisseur (prix, prix promotionnel, prix d'achat, fournisseur) ne sont
+ * plus écrits sur la simple foi de « le rôle voit le champ ». Ils demandent
+ * produit_formulaire_champ_modifiable() : celui qui vend LIT le prix, seul
+ * le responsable stock le FIXE. Un prix envoyé par quelqu'un qui n'a que le
+ * droit de voir est ignoré — la valeur en base est conservée, exactement
+ * comme pour un champ masqué. Cacher un champ n'a jamais protégé personne :
+ * c'est ici, à l'écriture, que la règle tient. */
 /**
  * Contrôleur pour la gestion des produits
  * Programmation procédurale uniquement
@@ -335,7 +343,7 @@ function process_add_produit()
         $errors[] = 'Le nom de la pièce est obligatoire.';
     }
 
-    if (produit_formulaire_champ_visible('prix')) {
+    if (produit_formulaire_champ_modifiable('prix')) {
         if ($prix_raw === '') {
             $prix = 0.0;
         } elseif (!is_numeric($prix_raw)) {
@@ -349,7 +357,7 @@ function process_add_produit()
         $prix = 0.0;
     }
 
-    if (produit_formulaire_champ_visible('prix_promotion') && $prix_promotion !== null) {
+    if (produit_formulaire_champ_modifiable('prix_promotion') && $prix_promotion !== null) {
         if (!is_numeric($prix_promotion)) {
             $errors[] = 'Le prix promotionnel doit être un nombre valide.';
         } elseif ((float) $prix_promotion <= 0) {
@@ -378,7 +386,7 @@ function process_add_produit()
 
     $fid_sent = isset($_POST['fournisseur_id']) ? trim((string) $_POST['fournisseur_id']) : '';
     if (
-        produit_formulaire_champ_visible('fournisseur_id')
+        produit_formulaire_champ_modifiable('fournisseur_id')
         && $fid_sent !== ''
         && (int) $fid_sent > 0
         && produits_has_column('fournisseur_id')
@@ -388,7 +396,7 @@ function process_add_produit()
     }
 
     $prix_achat = null;
-    if (produit_formulaire_champ_visible('prix_achat') && produits_has_column('prix_achat')) {
+    if (produit_formulaire_champ_modifiable('prix_achat') && produits_has_column('prix_achat')) {
         $pa_raw = isset($_POST['prix_achat']) ? trim((string) $_POST['prix_achat']) : '';
         if ($pa_raw !== '') {
             if (!is_numeric($pa_raw) || (float) $pa_raw < 0) {
@@ -499,7 +507,7 @@ function process_add_produit()
     // Le prix entreprise — le tarif des professionnels, sous le prix public.
     // Même visibilité que le prix de vente : qui ne tarife pas ne le pose pas.
     $prix_entreprise_val = null;
-    if (produits_has_column('prix_entreprise') && produit_formulaire_champ_visible('prix')) {
+    if (produits_has_column('prix_entreprise') && produit_formulaire_champ_modifiable('prix')) {
         $pe_raw = isset($_POST['prix_entreprise']) ? trim((string) $_POST['prix_entreprise']) : '';
         $prix_entreprise_val = produits_valider_prix_entreprise($pe_raw, $prix ?? null, $errors);
     }
@@ -728,7 +736,7 @@ function process_update_produit($produit_id)
     if ($description === '') {
         $description = trim((string) ($produit['description'] ?? ''));
     }
-    $fournisseur_res = produit_formulaire_champ_visible('fournisseur_id')
+    $fournisseur_res = produit_formulaire_champ_modifiable('fournisseur_id')
         ? produits_resolve_fournisseur_from_post($_POST)
         : [
             'fournisseur_id' => $produit['fournisseur_id'] ?? null,
@@ -799,7 +807,7 @@ function process_update_produit($produit_id)
         $errors[] = 'Le nom de la pièce est obligatoire.';
     }
 
-    if (produit_formulaire_champ_visible('prix')) {
+    if (produit_formulaire_champ_modifiable('prix')) {
         if ($prix_raw === '') {
             $prix = 0.0;
         } elseif (!is_numeric($prix_raw)) {
@@ -813,7 +821,7 @@ function process_update_produit($produit_id)
         $prix = isset($produit['prix']) ? (float) $produit['prix'] : 0.0;
     }
 
-    if (produit_formulaire_champ_visible('prix_promotion') && $prix_promotion !== null) {
+    if (produit_formulaire_champ_modifiable('prix_promotion') && $prix_promotion !== null) {
         if (!is_numeric($prix_promotion)) {
             $errors[] = 'Le prix promotionnel doit être un nombre valide.';
         } elseif ((float) $prix_promotion <= 0) {
@@ -841,7 +849,7 @@ function process_update_produit($produit_id)
 
     $fid_sent_upd = isset($_POST['fournisseur_id']) ? trim((string) $_POST['fournisseur_id']) : '';
     if (
-        produit_formulaire_champ_visible('fournisseur_id')
+        produit_formulaire_champ_modifiable('fournisseur_id')
         && $fid_sent_upd !== ''
         && (int) $fid_sent_upd > 0
         && produits_has_column('fournisseur_id')
@@ -851,7 +859,7 @@ function process_update_produit($produit_id)
     }
 
     $prix_achat = null;
-    if (produit_formulaire_champ_visible('prix_achat') && produits_has_column('prix_achat')) {
+    if (produit_formulaire_champ_modifiable('prix_achat') && produits_has_column('prix_achat')) {
         $pa_raw = isset($_POST['prix_achat']) ? trim((string) $_POST['prix_achat']) : '';
         if ($pa_raw !== '') {
             if (!is_numeric($pa_raw) || (float) $pa_raw < 0) {
@@ -928,7 +936,7 @@ function process_update_produit($produit_id)
     // Le prix entreprise : même visibilité que le prix de vente.
     $prix_entreprise_maj = null;
     $prix_entreprise_envoye = produits_has_column('prix_entreprise')
-        && produit_formulaire_champ_visible('prix') && array_key_exists('prix_entreprise', $_POST);
+        && produit_formulaire_champ_modifiable('prix') && array_key_exists('prix_entreprise', $_POST);
     if ($prix_entreprise_envoye) {
         $pe_raw = trim((string) $_POST['prix_entreprise']);
         $prix_entreprise_maj = produits_valider_prix_entreprise($pe_raw, $prix ?? null, $errors);
@@ -1038,7 +1046,7 @@ function process_update_produit($produit_id)
         if (!produit_formulaire_champ_visible('categorie_id')) {
             $categorie_id = (int) ($produit['categorie_id'] ?? 0);
         }
-        if (!produit_formulaire_champ_visible('prix_promotion')) {
+        if (!produit_formulaire_champ_modifiable('prix_promotion')) {
             $prix_promotion = isset($produit['prix_promotion']) && $produit['prix_promotion'] !== '' && $produit['prix_promotion'] !== null
                 ? (string) $produit['prix_promotion'] : null;
         }
@@ -1079,8 +1087,22 @@ function process_update_produit($produit_id)
         foreach ($emplacement as $col => $val) {
             $data[$col] = $val;
         }
-        if (produit_formulaire_champ_visible('prix_achat') && produits_has_column('prix_achat')) {
+        if (produit_formulaire_champ_modifiable('prix_achat') && produits_has_column('prix_achat')) {
             $data['prix_achat'] = $prix_achat;
+        }
+        /* LE SEUIL DE LA PIÈCE (31/08) — écrit seulement par qui en a le droit,
+         * et posé « à la main » : le calcul des suggestions ne l'écrasera pas.
+         * Champ vide = on retire le seuil ; le formulaire qui ne l'envoie pas
+         * (profil sans le droit) ne touche à rien. */
+        if (produit_formulaire_champ_modifiable('seuil_alerte')
+            && produits_has_column('seuil_alerte')
+            && array_key_exists('seuil_alerte', $_POST)) {
+            $seuil_saisi = trim((string) $_POST['seuil_alerte']);
+            $data['seuil_alerte'] = ($seuil_saisi === '' || !is_numeric($seuil_saisi) || (int) $seuil_saisi < 0)
+                ? null : (int) $seuil_saisi;
+            if (produits_has_column('seuil_alerte_source')) {
+                $data['seuil_alerte_source'] = $data['seuil_alerte'] === null ? null : 'manuel';
+            }
         }
         /* LA RÉFÉRENCE D'ORIGINE ET LE CÔTÉ DE MONTAGE, corrigeables enfin.
          * On ne pose la clé QUE si le formulaire a envoyé le champ : un écran
@@ -1109,7 +1131,7 @@ function process_update_produit($produit_id)
         if (produit_formulaire_champ_visible('reference_fournisseur') && produits_has_column('reference_fournisseur')) {
             $data['reference_fournisseur'] = $reference_fournisseur_val;
         }
-        if (!produit_formulaire_champ_visible('fournisseur_id')) {
+        if (!produit_formulaire_champ_modifiable('fournisseur_id')) {
             unset($data['fournisseur_id'], $data['nom_fournisseur']);
         }
         // Le véhicule, le nom wolof et le prix entreprise — clés posées

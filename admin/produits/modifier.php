@@ -231,6 +231,17 @@ $fpl_titre_page = 'Modifier « ' . $nom_affiche . ' »';
 $fpl_retour_page = $retour_catalogue;
 
 $voit = function ($slug) { return pf_champ_visible($slug); };
+/* VOIR SANS TOUCHER (31/08) : un champ que le profil a le droit de LIRE mais
+ * pas d'ÉCRIRE — le prix, pour qui vend — s'affiche avec sa valeur, grisé, et
+ * n'est pas envoyé. Le contrôleur le refuserait de toute façon : ceci n'est
+ * que la politesse de l'écran. */
+$fige = function ($slug) { return pf_champ_visible($slug) && !pf_champ_modifiable($slug); };
+$attr_fige = function ($slug) use ($fige) {
+    return $fige($slug) ? ' disabled title="Lecture seule : seul le responsable stock modifie ce champ"' : '';
+};
+$note_figee = function ($slug) use ($fige) {
+    return $fige($slug) ? '<span class="hint-inline">lecture seule</span>' : '';
+};
 // Le lien vers Marques & modèles ne se montre qu'à qui a le droit d'ouvrir la page
 $peut_gerer_marques = function_exists('admin_route_is_allowed')
     && admin_route_is_allowed((string) ($_SESSION['admin_role'] ?? ''), 'parametres/logos.php');
@@ -326,7 +337,7 @@ $affiche_prix = $voit('prix');
           <div class="field">
             <label for="fournisseur_id">Fournisseur <span class="hint-inline">optionnel</span></label>
             <?php if ($fournisseurs !== []) : ?>
-              <select id="fournisseur_id" name="fournisseur_id">
+              <select id="fournisseur_id" name="fournisseur_id"<?php echo $attr_fige('fournisseur_id'); ?>>
                 <option value="">— Aucun —</option>
                 <?php foreach ($fournisseurs as $f) : ?>
                   <option value="<?php echo (int) $f['id']; ?>" <?php echo (int) ($produit['fournisseur_id'] ?? 0) === (int) $f['id'] ? 'selected' : ''; ?>><?php echo fpl_e($f['nom']); ?></option>
@@ -347,9 +358,9 @@ $affiche_prix = $voit('prix');
           <?php endif; ?>
           <?php if ($voit('prix_achat') && produits_has_column('prix_achat')) : ?>
             <div class="field">
-              <label for="prix_achat">Prix d'achat <span class="hint-inline">FCFA</span></label>
+              <label for="prix_achat">Prix d'achat <span class="hint-inline">FCFA</span> <?php echo $note_figee('prix_achat'); ?></label>
               <input type="number" id="prix_achat" name="prix_achat" min="0" step="any"
-                     value="<?php echo e($nombre($produit['prix_achat'] ?? null)); ?>">
+                     value="<?php echo e($nombre($produit['prix_achat'] ?? null)); ?>"<?php echo $attr_fige('prix_achat'); ?>>
             </div>
           <?php endif; ?>
         </div>
@@ -358,15 +369,15 @@ $affiche_prix = $voit('prix');
       <?php if ($affiche_prix) : ?>
         <div class="field-row three">
           <div class="field">
-            <label for="prix">Prix de vente <span class="hint-inline">FCFA</span></label>
+            <label for="prix">Prix de vente <span class="hint-inline">FCFA</span> <?php echo $note_figee('prix'); ?></label>
             <input type="number" id="prix" name="prix" min="0" step="any"
-                   value="<?php echo e($nombre($produit['prix'] ?? null)); ?>">
+                   value="<?php echo e($nombre($produit['prix'] ?? null)); ?>"<?php echo $attr_fige('prix'); ?>>
           </div>
           <?php if ($voit('prix_promotion')) : ?>
             <div class="field">
-              <label for="prix_promotion">Prix promotionnel <span class="hint-inline">sous le prix de vente</span></label>
+              <label for="prix_promotion">Prix promotionnel <span class="hint-inline">sous le prix de vente</span> <?php echo $note_figee('prix_promotion'); ?></label>
               <input type="number" id="prix_promotion" name="prix_promotion" min="0" step="any"
-                     value="<?php echo e($nombre($produit['prix_promotion'] ?? null)); ?>">
+                     value="<?php echo e($nombre($produit['prix_promotion'] ?? null)); ?>"<?php echo $attr_fige('prix_promotion'); ?>>
             </div>
           <?php endif; ?>
           <?php if (produits_has_column('prix_entreprise')) : ?>
@@ -397,6 +408,19 @@ $affiche_prix = $voit('prix');
             <input type="number" id="stock" name="stock" min="0" step="1"
                    value="<?php echo (int) ($produit['stock'] ?? 0); ?>">
           </div>
+          <?php /* LE SEUIL DE CETTE PIÈCE (31/08) : chaque pièce a le sien.
+                   L'alerte parle dès que le stock lui est inférieur OU égal,
+                   et tant qu'il n'est pas remonté au-dessus. Case vide : le
+                   logiciel ne dit rien sur cette pièce. Zéro : préviens-moi
+                   seulement quand il n'y en a plus du tout. */ ?>
+          <?php if ($voit('seuil_alerte') && produits_has_column('seuil_alerte')) : ?>
+            <div class="field">
+              <label for="seuil_alerte">Seuil d'alerte <span class="hint-inline">prévient sous ce nombre, ou à ce nombre</span> <?php echo $note_figee('seuil_alerte'); ?></label>
+              <input type="number" id="seuil_alerte" name="seuil_alerte" min="0" step="1"
+                     value="<?php echo $produit['seuil_alerte'] !== null && $produit['seuil_alerte'] !== '' ? (int) $produit['seuil_alerte'] : ''; ?>"
+                     placeholder="aucun"<?php echo $attr_fige('seuil_alerte'); ?>>
+            </div>
+          <?php endif; ?>
         </div>
       <?php endif; ?>
 

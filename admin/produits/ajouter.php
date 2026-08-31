@@ -129,6 +129,11 @@ $a_col = function ($c) { return produits_has_column($c); };
 $peut_gerer_marques = function_exists('admin_route_is_allowed')
     && admin_route_is_allowed((string) ($_SESSION['admin_role'] ?? ''), 'parametres/logos.php');
 $voit = function ($slug) { return pf_champ_visible($slug); };
+/* VOIR N'EST PAS MODIFIER (31/08). Sur un formulaire de CRÉATION, un champ
+ * qu'on n'a pas le droit d'écrire n'a aucune valeur à montrer : on le retire
+ * au lieu de le griser. Le prix, par exemple, n'apparaît qu'à qui le fixe —
+ * le responsable stock. */
+$saisit = function ($slug) { return pf_champ_modifiable($slug); };
 
 // Après une erreur : la saisie revient intacte (le old() de Laravel)
 $old = [
@@ -375,7 +380,7 @@ $fpl_retour_page = $url_retour;
           <?php endif; ?>
         </div>
 
-        <?php if ($voit('fournisseur_id') && ($a_col('fournisseur_id') || $a_col('nom_fournisseur'))) : ?>
+        <?php if ($saisit('fournisseur_id') && ($a_col('fournisseur_id') || $a_col('nom_fournisseur'))) : ?>
           <!-- LE FOURNISSEUR — au référentiel de préférence. Le nom libre
                reste possible, en repli (« Un autre, à saisir »). -->
           <div class="wiz-field-group">
@@ -410,7 +415,7 @@ $fpl_retour_page = $url_retour;
             <?php endif; ?>
           </div>
 
-          <?php if ($voit('prix_achat') && $a_col('prix_achat')) : ?>
+          <?php if ($saisit('prix_achat') && $a_col('prix_achat')) : ?>
             <div class="wiz-field-group">
               <div class="wiz-field">
                 <label for="prix_achat">
@@ -426,7 +431,7 @@ $fpl_retour_page = $url_retour;
           <?php endif; ?>
         <?php endif; ?>
 
-        <?php if ($voit('prix')) : ?>
+        <?php if ($saisit('prix')) : ?>
           <!-- LES PRIX DE VENTE dès la création : la pièce naît vendable -->
           <div class="wiz-field-group">
             <div class="wiz-field">
@@ -438,7 +443,7 @@ $fpl_retour_page = $url_retour;
                      value="<?php echo e($old['prix']); ?>">
               <div class="wiz-help">En FCFA. Laissé vide, le prix reste à 0 — à poser plus tard.</div>
             </div>
-            <?php if ($voit('prix_promotion')) : ?>
+            <?php if ($saisit('prix_promotion')) : ?>
               <div class="wiz-field">
                 <label for="prix_promotion">
                   <?php echo fpl_icone('tag', 13); ?> Prix promotionnel

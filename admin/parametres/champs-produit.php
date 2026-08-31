@@ -59,9 +59,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $error_message = $res['message'];
     } elseif (isset($_POST['enregistrer_acces_champ']) && $peut_gerer) {
-        $roles_acces = isset($_POST['roles_acces']) && is_array($_POST['roles_acces'])
-            ? array_map('strval', $_POST['roles_acces']) : [];
-        $res = produit_formulaire_champ_roles_enregistrer((int) ($_POST['champ_id'] ?? 0), $roles_acces);
+        /* VOIR N'EST PAS MODIFIER (31/08) : chaque type de compte reçoit un
+         * niveau — rien, « voir », ou « voir et modifier ». La liste déroulante
+         * envoie acces[role] ; la case à cocher d'avant n'existe plus. */
+        $acces_bruts = isset($_POST['acces']) && is_array($_POST['acces']) ? $_POST['acces'] : [];
+        $roles_acces = [];
+        $niveaux_acces = [];
+        foreach ($acces_bruts as $role_recu => $niveau_recu) {
+            $niveau_recu = (string) $niveau_recu;
+            if ($niveau_recu !== 'voir' && $niveau_recu !== 'modifier') {
+                continue;
+            }
+            $roles_acces[] = (string) $role_recu;
+            $niveaux_acces[(string) $role_recu] = $niveau_recu;
+        }
+        $res = produit_formulaire_champ_roles_enregistrer((int) ($_POST['champ_id'] ?? 0), $roles_acces, $niveaux_acces);
         if ($res['success']) {
             $_SESSION['success_message_champs_produit'] = $res['message'];
             header('Location: champs-produit.php');
@@ -339,13 +351,18 @@ foreach ($champs as $ch) {
                 <div class="cp-modal__body">
                     <p class="cp-impact__intro" id="cp_acces_intro"></p>
                     <fieldset class="cp-roles-fieldset">
-                        <legend>Types de compte autorisés</legend>
+                        <legend>Qui a le droit, et jusqu'où</legend>
                         <p class="cp-roles-fieldset__hint">Cochez les types de compte autorisés. Si aucune restriction n’est enregistrée, tous les types voient le champ (sauf informaticien/développeur qui voient toujours tout).</p>
                         <div class="cp-roles-grid" id="cp_acces_roles_grid">
                             <?php foreach ($roles_disponibles as $role_key => $role_label): ?>
-                            <label class="cp-role-chip">
-                                <input type="checkbox" name="roles_acces[]" value="<?php echo htmlspecialchars($role_key, ENT_QUOTES, 'UTF-8'); ?>" data-role="<?php echo htmlspecialchars($role_key, ENT_QUOTES, 'UTF-8'); ?>">
+                            <label class="cp-role-chip cp-role-chip--niveau">
                                 <span><?php echo htmlspecialchars($role_label, ENT_QUOTES, 'UTF-8'); ?></span>
+                                <select name="acces[<?php echo htmlspecialchars($role_key, ENT_QUOTES, 'UTF-8'); ?>]"
+                                        data-role="<?php echo htmlspecialchars($role_key, ENT_QUOTES, 'UTF-8'); ?>">
+                                    <option value="">Aucun accès</option>
+                                    <option value="voir">Voir seulement</option>
+                                    <option value="modifier">Voir et modifier</option>
+                                </select>
                             </label>
                             <?php endforeach; ?>
                         </div>
@@ -392,6 +409,18 @@ foreach ($champs as $ch) {
     <script>
     window.CP_CHAMPS_IMPACT = <?php echo json_encode($champs_impact, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
     window.CP_CHAMPS_ROLES = <?php echo json_encode($champs_roles_map, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
+    window.CP_CHAMPS_NIVEAUX = <?php
+        /* Le niveau de chaque droit, pour rouvrir la fenêtre sur ce qui est
+           réellement enregistré (31/08). */
+        $niveaux_map = [];
+        foreach ($champs as $ch) {
+            $cid_n = (int) ($ch['id'] ?? 0);
+            if ($cid_n > 0) {
+                $niveaux_map[$cid_n] = produit_formulaire_champ_niveaux_get($cid_n);
+            }
+        }
+        echo json_encode($niveaux_map, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+    ?>;
     window.CP_CHAMPS_LABELS = <?php
         $labels_map = [];
         foreach ($champs as $ch) {

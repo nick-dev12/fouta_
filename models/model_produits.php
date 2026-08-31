@@ -3138,11 +3138,28 @@ function export_colonnes_fpl_toutes()
         'date_creation' => ['Ajoutée le', 'date_creation'],
     ];
 
+    /* CE QU'ON N'A PAS LE DROIT DE VOIR NE S'EXPORTE PAS (31/08). L'écran
+     * proposait encore « Prix de vente » au rayonniste : la case se cochait,
+     * et le fichier sortait sans la colonne — le fichier avait raison, l'écran
+     * mentait. Les quatre champs réservés (les trois prix, le fournisseur)
+     * suivent maintenant la même règle des deux côtés. */
+    $slug_du_champ = [
+        'prix' => 'prix',
+        'prix_promotion' => 'prix_promotion',
+        'prix_achat' => 'prix_achat',
+        'fournisseur' => 'fournisseur_id',
+    ];
+
     $dispo = [];
     foreach ($toutes as $cle => $def) {
-        if ($def[1] === '' || produits_has_column($def[1])) {
-            $dispo[$cle] = $def;
+        if ($def[1] !== '' && !produits_has_column($def[1])) {
+            continue;
         }
+        if (isset($slug_du_champ[$cle]) && function_exists('produit_formulaire_champ_visible')
+            && !produit_formulaire_champ_visible($slug_du_champ[$cle])) {
+            continue;
+        }
+        $dispo[$cle] = $def;
     }
 
     return $dispo;

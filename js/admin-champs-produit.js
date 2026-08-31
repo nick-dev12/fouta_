@@ -120,15 +120,21 @@
             accesChampId.value = String(id);
         }
         if (accesIntro) {
-            accesIntro.textContent = 'Définissez quels types de compte admin peuvent voir le champ « '
-                + (labelsMap[id] || '') + ' » et ses données dans tout l’espace admin.';
+            accesIntro.textContent = 'Pour le champ « ' + (labelsMap[id] || '')
+                + ' », dites qui le voit et qui peut l’écrire. « Voir seulement » affiche la valeur en lecture seule : '
+                + 'le formulaire la grise et l’enregistrement la refuse.';
         }
+        /* VOIR N'EST PAS MODIFIER (31/08) : chaque type de compte a trois
+           états — aucun accès, voir, voir et modifier. Sans restriction
+           enregistrée, tout le monde peut voir ET modifier, comme avant. */
         var roles = rolesMap[id] || [];
-        var allRoles = roles.length === 0;
+        var niveaux = (window.CP_CHAMPS_NIVEAUX || {})[id] || {};
+        var sansRestriction = roles.length === 0;
         if (accesRolesGrid) {
-            accesRolesGrid.querySelectorAll('input[type="checkbox"][data-role]').forEach(function (cb) {
-                var role = cb.getAttribute('data-role');
-                cb.checked = allRoles || roles.indexOf(role) !== -1;
+            accesRolesGrid.querySelectorAll('select[data-role]').forEach(function (sel) {
+                var role = sel.getAttribute('data-role');
+                var aLeDroit = sansRestriction || roles.indexOf(role) !== -1;
+                sel.value = aLeDroit ? (niveaux[role] === 'voir' ? 'voir' : 'modifier') : '';
             });
         }
         openModal(accesModalId);

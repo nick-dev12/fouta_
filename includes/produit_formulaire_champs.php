@@ -13,6 +13,18 @@ function pf_champ_visible($slug) {
 }
 
 /**
+ * VOIR N'EST PAS MODIFIER (31/08) : le champ s'affiche, mais en lecture seule
+ * si le profil n'a que le droit de regarder — le prix pour la vente, par
+ * exemple, que seul le responsable stock fixe.
+ *
+ * @param string $slug
+ * @return bool
+ */
+function pf_champ_modifiable($slug) {
+    return produit_formulaire_champ_modifiable($slug);
+}
+
+/**
  * @param string $section
  * @return bool
  */
