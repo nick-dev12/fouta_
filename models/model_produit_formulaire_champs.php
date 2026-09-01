@@ -22,14 +22,14 @@ function produit_formulaire_champs_systeme_defaut() {
         ['slug' => 'prix', 'label' => 'Prix de vente', 'icon' => 'fa-coins', 'section' => 'prix', 'colonne_db' => 'prix', 'ordre' => 110, 'verrouille' => 0, 'obligatoire' => 0],
         ['slug' => 'prix_promotion', 'label' => 'Prix promotionnel', 'icon' => 'fa-percent', 'section' => 'prix', 'colonne_db' => 'prix_promotion', 'ordre' => 120, 'verrouille' => 0, 'obligatoire' => 0],
         ['slug' => 'prix_achat', 'label' => 'Prix d\'achat', 'icon' => 'fa-receipt', 'section' => 'prix', 'colonne_db' => 'prix_achat', 'ordre' => 130, 'verrouille' => 0, 'obligatoire' => 0],
-        ['slug' => 'stock', 'label' => 'Stock', 'icon' => 'fa-boxes-stacked', 'section' => 'prix', 'colonne_db' => 'stock', 'ordre' => 140, 'verrouille' => 1, 'obligatoire' => 1],
+        ['slug' => 'stock', 'label' => 'Stock', 'icon' => 'fa-boxes-stacked', 'section' => 'stock', 'colonne_db' => 'stock', 'ordre' => 140, 'verrouille' => 1, 'obligatoire' => 1],
         /* LE SEUIL DE LA PIÈCE (31/08) : chaque pièce a le sien, et l'alerte
          * parle dès que le stock lui est inférieur OU égal. Case vide = aucun
          * seuil, le logiciel ne dit rien ; zéro = préviens-moi à l'épuisement. */
-        ['slug' => 'seuil_alerte', 'label' => 'Seuil d\'alerte', 'icon' => 'fa-bell', 'section' => 'prix', 'colonne_db' => 'seuil_alerte', 'ordre' => 145],
-        ['slug' => 'categorie_id', 'label' => 'Catégorie', 'icon' => 'fa-folder', 'section' => 'prix', 'colonne_db' => 'categorie_id', 'ordre' => 150, 'verrouille' => 1, 'obligatoire' => 1],
-        ['slug' => 'sous_categorie_id', 'label' => 'Sous-catégorie', 'icon' => 'fa-folder-open', 'section' => 'prix', 'colonne_db' => 'sous_categorie_id', 'ordre' => 160, 'verrouille' => 0, 'obligatoire' => 0],
-        ['slug' => 'statut', 'label' => 'Statut', 'icon' => 'fa-toggle-on', 'section' => 'prix', 'colonne_db' => 'statut', 'ordre' => 170, 'verrouille' => 0, 'obligatoire' => 0],
+        ['slug' => 'seuil_alerte', 'label' => 'Seuil d\'alerte', 'icon' => 'fa-bell', 'section' => 'stock', 'colonne_db' => 'seuil_alerte', 'ordre' => 145],
+        ['slug' => 'categorie_id', 'label' => 'Catégorie', 'icon' => 'fa-folder', 'section' => 'categorie', 'colonne_db' => 'categorie_id', 'ordre' => 150, 'verrouille' => 1, 'obligatoire' => 1],
+        ['slug' => 'sous_categorie_id', 'label' => 'Sous-catégorie', 'icon' => 'fa-folder-open', 'section' => 'categorie', 'colonne_db' => 'sous_categorie_id', 'ordre' => 160, 'verrouille' => 0, 'obligatoire' => 0],
+        ['slug' => 'statut', 'label' => 'Statut', 'icon' => 'fa-toggle-on', 'section' => 'stock', 'colonne_db' => 'statut', 'ordre' => 170, 'verrouille' => 0, 'obligatoire' => 0],
         ['slug' => 'identifiant_interne', 'label' => 'Référence FPL', 'icon' => 'fa-qrcode', 'section' => 'ref', 'colonne_db' => 'identifiant_interne', 'ordre' => 210, 'verrouille' => 0, 'obligatoire' => 0],
         ['slug' => 'emplacement', 'label' => 'Emplacement entrepôt', 'icon' => 'fa-warehouse', 'section' => 'ref', 'colonne_db' => null, 'ordre' => 220, 'verrouille' => 0, 'obligatoire' => 0],
         ['slug' => 'variantes', 'label' => 'Variantes', 'icon' => 'fa-layer-group', 'section' => 'variantes', 'colonne_db' => null, 'ordre' => 310, 'verrouille' => 0, 'obligatoire' => 0],
@@ -153,8 +153,73 @@ function produit_formulaire_champs_ensure_schema() {
             return false;
         }
     }
+    produit_formulaire_champs_sections_split_ensure();
+    produit_formulaire_champs_sync_sections_systeme();
 
     return produit_formulaire_champ_roles_ensure();
+}
+
+/**
+ * Étend l'ENUM section (prix / stock / catégorie séparés).
+ *
+ * @return bool
+ */
+function produit_formulaire_champs_sections_split_ensure() {
+    global $db;
+    if (!$db || !produit_formulaire_champs_tables_ok()) {
+        return false;
+    }
+    static $done = false;
+    if ($done) {
+        return true;
+    }
+    try {
+        $db->exec(
+            "ALTER TABLE produit_formulaire_champ
+             MODIFY COLUMN section ENUM('info','prix','stock','categorie','ref','variantes','options','media') NOT NULL DEFAULT 'info'"
+        );
+        $done = true;
+
+        return true;
+    } catch (PDOException $e) {
+        return false;
+    }
+}
+
+/**
+ * Réaligne les sections des champs système (stock, catégorie, statut).
+ *
+ * @return void
+ */
+function produit_formulaire_champs_sync_sections_systeme() {
+    global $db;
+    if (!$db || !produit_formulaire_champs_tables_ok()) {
+        return;
+    }
+    static $synced = false;
+    if ($synced) {
+        return;
+    }
+    $map = [
+        'stock' => 'stock',
+        'statut' => 'stock',
+        'categorie_id' => 'categorie',
+        'sous_categorie_id' => 'categorie',
+        'prix' => 'prix',
+        'prix_promotion' => 'prix',
+        'prix_achat' => 'prix',
+    ];
+    try {
+        $st = $db->prepare(
+            'UPDATE produit_formulaire_champ SET section = :sec WHERE slug = :slug AND est_systeme = 1'
+        );
+        foreach ($map as $slug => $sec) {
+            $st->execute([':sec' => $sec, ':slug' => $slug]);
+        }
+        $synced = true;
+    } catch (PDOException $e) {
+        // ignore
+    }
 }
 
 /**
@@ -522,21 +587,25 @@ function produit_formulaire_champ_roles_enregistrer($champ_id, array $roles, arr
 function produit_formulaire_champ_roles_map_reset() {
     global $produit_formulaire_champ_roles_map_cache, $produit_formulaire_champ_niveaux_map_cache;
     unset($produit_formulaire_champ_roles_map_cache, $produit_formulaire_champ_niveaux_map_cache);
+    $cache_dir = dirname(__DIR__) . '/cache';
+    if (is_file($cache_dir . '/caisse_catalog_live.json')) {
+        @unlink($cache_dir . '/caisse_catalog_live.json');
+    }
+    foreach (glob($cache_dir . '/caisse_catalog_live_*.json') ?: [] as $f) {
+        @unlink($f);
+    }
 }
 
 /**
+ * Aucun rôle ne contourne les restrictions de champs produit.
+ * Les droits définis dans « Types de compte autorisés » s’appliquent à tous,
+ * y compris informaticien et développeur.
+ *
  * @param string|null $role
  * @return bool
  */
 function produit_formulaire_acces_bypass_role($role = null) {
-    require_once __DIR__ . '/model_admin.php';
-    require_once __DIR__ . '/../includes/admin_permissions.php';
-    if ($role === null) {
-        $role = admin_current_role();
-    }
-    $role = normalize_admin_role((string) $role);
-
-    return in_array($role, ['informaticien', 'developpeur'], true);
+    return false;
 }
 
 /**
@@ -577,25 +646,19 @@ function produit_formulaire_champ_acces_pour_role($slug, $role = null) {
 function produit_formulaire_champ_colonnes_donnees($champ) {
     $slug = (string) ($champ['slug'] ?? '');
     $col = trim((string) ($champ['colonne_db'] ?? ''));
+    $out = [];
     if ($col !== '') {
-        return [$col];
-    }
-    if ($slug === 'emplacement') {
+        $out[] = $col;
+    } elseif ($slug === 'emplacement') {
         $cols = ['entrepot_noeud_id', 'entrepot_position_id', 'etage', 'numero_rayon', 'allee', 'zone_emplacement', 'position_emplacement', 'barre_rayon'];
-        $out = [];
         foreach ($cols as $c) {
             if (function_exists('produits_has_column') && produits_has_column($c)) {
                 $out[] = $c;
             }
         }
-
-        return $out;
-    }
-    if ($slug === 'images_produit') {
-        return ['image_principale', 'images'];
-    }
-    if ($slug === 'fournisseur_id') {
-        $out = [];
+    } elseif ($slug === 'images_produit') {
+        $out = ['image_principale', 'images'];
+    } elseif ($slug === 'fournisseur_id') {
         if (function_exists('produits_has_column') && produits_has_column('fournisseur_id')) {
             $out[] = 'fournisseur_id';
         }
@@ -605,17 +668,21 @@ function produit_formulaire_champ_colonnes_donnees($champ) {
         if (function_exists('produits_has_column') && produits_has_column('fournisseur_nom')) {
             $out[] = 'fournisseur_nom';
         }
+    } elseif ($slug === 'marque_id' && function_exists('produits_has_column') && produits_has_column('marque_id')) {
+        $out = ['marque_id', 'marque_nom'];
+    } elseif ($slug === 'categorie_id') {
+        $out = ['categorie_id', 'categorie_nom', 'sous_categorie_id', 'sous_categorie_nom'];
+    }
+    $aliases = produit_formulaire_champ_clefs_donnees();
+    if ($slug !== '' && isset($aliases[$slug])) {
+        foreach ($aliases[$slug] as $key) {
+            if (!in_array($key, $out, true)) {
+                $out[] = $key;
+            }
+        }
+    }
 
-        return $out;
-    }
-    if ($slug === 'marque_id' && function_exists('produits_has_column') && produits_has_column('marque_id')) {
-        return ['marque_id', 'marque_nom'];
-    }
-    if ($slug === 'categorie_id') {
-        return ['categorie_id', 'categorie_nom', 'sous_categorie_id', 'sous_categorie_nom'];
-    }
-
-    return [];
+    return $out;
 }
 
 /**
@@ -642,7 +709,10 @@ function produit_formulaire_champ_visible($slug) {
         return false;
     }
     require_once __DIR__ . '/model_admin.php';
-    $role = isset($_SESSION['admin_role']) ? normalize_admin_role((string) $_SESSION['admin_role']) : 'admin';
+    require_once __DIR__ . '/../includes/admin_permissions.php';
+    $role = function_exists('admin_current_role')
+        ? admin_current_role()
+        : (isset($_SESSION['admin_role']) ? normalize_admin_role((string) $_SESSION['admin_role']) : 'admin');
     $key = $slug . '|' . $role;
     if (isset($cache[$key])) {
         return $cache[$key];
@@ -695,15 +765,42 @@ function produit_formulaire_champ_roles_resume($champ_id) {
 }
 
 /**
+ * Requête actuelle dans l’espace admin (HTML, AJAX, API).
+ *
+ * @return bool
+ */
+function produit_formulaire_requete_est_admin() {
+    if (defined('ADMIN_ROUTE_ENFORCED')) {
+        return true;
+    }
+    $hay = '';
+    foreach (['SCRIPT_NAME', 'PHP_SELF', 'REQUEST_URI', 'SCRIPT_FILENAME', 'ORIG_SCRIPT_NAME'] as $k) {
+        if (!empty($_SERVER[$k])) {
+            $hay .= ' ' . str_replace('\\', '/', (string) $_SERVER[$k]);
+        }
+    }
+    $hay = strtolower($hay);
+    if (strpos($hay, '/admin/') !== false) {
+        return true;
+    }
+    if (function_exists('admin_route_relative_path') || is_file(__DIR__ . '/../includes/admin_route_access.php')) {
+        require_once __DIR__ . '/../includes/admin_route_access.php';
+        if (admin_route_relative_path() !== '') {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
  * @return bool
  */
 function produit_formulaire_acces_filtrage_admin_actif() {
     if (session_status() === PHP_SESSION_NONE || empty($_SESSION['admin_id'])) {
         return false;
     }
-    $script = isset($_SERVER['SCRIPT_NAME']) ? (string) $_SERVER['SCRIPT_NAME'] : '';
-    $in_admin = defined('ADMIN_ROUTE_ENFORCED') || (strpos($script, '/admin/') !== false);
-    if (!$in_admin) {
+    if (!produit_formulaire_requete_est_admin()) {
         return false;
     }
     if (produit_formulaire_acces_bypass_role()) {
@@ -722,30 +819,36 @@ function produit_formulaire_filtrer_produit_acces(array $produit, $role = null) 
     if (!produit_formulaire_acces_filtrage_admin_actif()) {
         return $produit;
     }
-    require_once __DIR__ . '/model_admin.php';
-    if ($role === null) {
-        $role = isset($_SESSION['admin_role']) ? normalize_admin_role((string) $_SESSION['admin_role']) : 'admin';
-    }
+
+    return produit_formulaire_masquer_champs_item($produit);
+}
+
+/**
+ * Retire d’un item produit les clés liées aux champs non autorisés pour le rôle courant.
+ *
+ * @param array<string, mixed> $item
+ * @return array<string, mixed>
+ */
+function produit_formulaire_masquer_champs_item(array $item) {
     foreach (produit_formulaire_champs_list(false) as $ch) {
         $slug = (string) ($ch['slug'] ?? '');
         if ($slug === '' || produit_formulaire_champ_visible($slug)) {
             continue;
         }
         foreach (produit_formulaire_champ_colonnes_donnees($ch) as $col) {
-            if (array_key_exists($col, $produit)) {
-                unset($produit[$col]);
-            }
+            unset($item[$col]);
         }
+        unset($item['pf_custom_' . $slug]);
     }
-    if (isset($produit['pf_custom']) && is_array($produit['pf_custom'])) {
-        foreach (array_keys($produit['pf_custom']) as $cslug) {
+    if (isset($item['pf_custom']) && is_array($item['pf_custom'])) {
+        foreach (array_keys($item['pf_custom']) as $cslug) {
             if (!produit_formulaire_champ_visible((string) $cslug)) {
-                unset($produit['pf_custom'][$cslug]);
+                unset($item['pf_custom'][$cslug]);
             }
         }
     }
 
-    return $produit;
+    return $item;
 }
 
 /**
@@ -839,7 +942,7 @@ function produit_formulaire_champ_ajouter($label, $type_champ, $section, $option
     }
     $types = ['texte', 'textarea', 'nombre', 'select'];
     $type_champ = in_array($type_champ, $types, true) ? $type_champ : 'texte';
-    $sections = ['info', 'prix', 'ref', 'variantes', 'options', 'media'];
+    $sections = ['info', 'prix', 'stock', 'categorie', 'ref', 'variantes', 'options', 'media'];
     $section = in_array($section, $sections, true) ? $section : 'info';
     $count = (int) $db->query('SELECT COUNT(*) FROM produit_formulaire_champ')->fetchColumn();
     if ($count >= PRODUIT_FORMULAIRE_CHAMPS_MAX) {
@@ -887,6 +990,93 @@ function produit_formulaire_champ_ajouter($label, $type_champ, $section, $option
         produit_formulaire_champ_roles_enregistrer($new_id, $roles_acces);
 
         return ['success' => true, 'message' => 'Champ « ' . $label . ' » ajouté.', 'id' => $new_id];
+    } catch (PDOException $e) {
+        return ['success' => false, 'message' => 'Erreur : ' . $e->getMessage()];
+    }
+}
+
+/**
+ * @param int $id
+ * @param string $label
+ * @param string|null $section
+ * @param string|null $type_champ
+ * @param string|null $options_raw
+ * @param bool|null $obligatoire
+ * @param array<int, string>|null $roles_acces
+ * @return array{success: bool, message: string}
+ */
+function produit_formulaire_champ_modifier($id, $label, $section = null, $type_champ = null, $options_raw = null, $obligatoire = null, array $roles_acces = null) {
+    global $db;
+    $id = (int) $id;
+    $champ = produit_formulaire_champ_get($id);
+    if ($champ === null) {
+        return ['success' => false, 'message' => 'Champ introuvable.'];
+    }
+    if (!$db || !produit_formulaire_champs_tables_ok()) {
+        return ['success' => false, 'message' => 'Tables absentes.'];
+    }
+    $label = trim((string) $label);
+    if ($label === '') {
+        return ['success' => false, 'message' => 'Le libellé est obligatoire.'];
+    }
+    if (strlen($label) > PRODUIT_FORMULAIRE_CHAMP_LABEL_MAX) {
+        return ['success' => false, 'message' => 'Libellé trop long (' . PRODUIT_FORMULAIRE_CHAMP_LABEL_MAX . ' caractères max).'];
+    }
+
+    $est_sys = (int) ($champ['est_systeme'] ?? 0) === 1;
+    $verrou = (int) ($champ['verrouille'] ?? 0) === 1;
+    $sections = ['info', 'prix', 'stock', 'categorie', 'ref', 'variantes', 'options', 'media'];
+    $new_section = (string) ($champ['section'] ?? 'info');
+    if ($section !== null && !$verrou) {
+        $section = in_array($section, $sections, true) ? $section : $new_section;
+        $new_section = $section;
+    }
+    $new_type = (string) ($champ['type_champ'] ?? 'texte');
+    $new_obl = (int) ($champ['obligatoire'] ?? 0);
+    $new_opts = $champ['options_json'] ?? null;
+
+    if (!$est_sys && !$verrou) {
+        if ($type_champ !== null) {
+            $types = ['texte', 'textarea', 'nombre', 'select'];
+            $new_type = in_array($type_champ, $types, true) ? $type_champ : $new_type;
+        }
+        if ($obligatoire !== null) {
+            $new_obl = $obligatoire ? 1 : 0;
+        }
+        if ($new_type === 'select' && $options_raw !== null) {
+            $opts = array_values(array_filter(array_map('trim', preg_split('/\r\n|\r|\n|,/', (string) $options_raw))));
+            if ($opts === []) {
+                return ['success' => false, 'message' => 'Indiquez au moins une option pour une liste déroulante.'];
+            }
+            $new_opts = json_encode($opts, JSON_UNESCAPED_UNICODE);
+        } elseif ($new_type !== 'select') {
+            $new_opts = null;
+        }
+    } elseif ($est_sys && !$verrou && $section !== null) {
+        $new_section = in_array($section, $sections, true) ? $section : $new_section;
+    }
+
+    try {
+        $db->prepare(
+            'UPDATE produit_formulaire_champ
+             SET label = :label, section = :section, type_champ = :type, obligatoire = :obl, options_json = :opts
+             WHERE id = :id'
+        )->execute([
+            ':label' => $label,
+            ':section' => $new_section,
+            ':type' => $new_type,
+            ':obl' => $new_obl,
+            ':opts' => $new_opts,
+            ':id' => $id,
+        ]);
+        if ($roles_acces !== null && produit_formulaire_champ_roles_table_ok()) {
+            $res_roles = produit_formulaire_champ_roles_enregistrer($id, $roles_acces);
+            if (!$res_roles['success']) {
+                return $res_roles;
+            }
+        }
+
+        return ['success' => true, 'message' => 'Champ « ' . $label . ' » mis à jour.'];
     } catch (PDOException $e) {
         return ['success' => false, 'message' => 'Erreur : ' . $e->getMessage()];
     }
@@ -1176,12 +1366,223 @@ function produit_formulaire_valeurs_custom($produit_id) {
 function produit_formulaire_sections_labels() {
     return [
         'info' => 'Informations générales',
-        'prix' => 'Prix, stock & catégorie',
+        'prix' => 'Prix',
+        'stock' => 'Stock',
+        'categorie' => 'Catégorie',
         'ref' => 'Référence & emplacement',
         'variantes' => 'Variantes',
         'options' => 'Options d\'achat',
         'media' => 'Galerie photos',
     ];
+}
+
+/**
+ * Slugs système utilisables comme colonne de prix dans devis / BL.
+ *
+ * @return array<int, string>
+ */
+function produit_formulaire_champs_prix_systeme_slugs() {
+    $slugs = ['prix', 'prix_promotion'];
+    if (function_exists('produits_has_column') && produits_has_column('prix_achat')) {
+        $slugs[] = 'prix_achat';
+    }
+
+    return $slugs;
+}
+
+/**
+ * Champs de la section « prix » affichés dans les formulaires devis / BL.
+ *
+ * @return array<int, array{slug: string, label: string, source: string, key: string}>
+ */
+function produit_formulaire_champs_prix_devis() {
+    $out = [];
+    $system_slugs = produit_formulaire_champs_prix_systeme_slugs();
+    foreach (produit_formulaire_champs_list(true) as $ch) {
+        if (($ch['section'] ?? '') !== 'prix') {
+            continue;
+        }
+        $slug = (string) ($ch['slug'] ?? '');
+        if ($slug === '' || !produit_formulaire_champ_visible($slug)) {
+            continue;
+        }
+        $type = (string) ($ch['type_champ'] ?? '');
+        if ($type === 'systeme') {
+            if (!in_array($slug, $system_slugs, true)) {
+                continue;
+            }
+            if (!produit_formulaire_champ_colonne_disponible($ch)) {
+                continue;
+            }
+            $out[] = [
+                'slug' => $slug,
+                'label' => (string) ($ch['label'] ?? $slug),
+                'source' => 'system',
+                'key' => $slug,
+            ];
+            continue;
+        }
+        if ($type !== 'nombre') {
+            continue;
+        }
+        $out[] = [
+            'slug' => $slug,
+            'label' => (string) ($ch['label'] ?? $slug),
+            'source' => 'custom',
+            'key' => 'pf_custom_' . $slug,
+        ];
+    }
+
+    return $out;
+}
+
+/**
+ * Colonnes cochées par défaut dans les formulaires devis / BL.
+ *
+ * @return array<int, string>
+ */
+function produit_formulaire_devis_prix_colonnes_defaut() {
+    $candidats = ['prix', 'prix_promotion'];
+    $out = [];
+    foreach ($candidats as $slug) {
+        if (produit_formulaire_champ_visible($slug)) {
+            $out[] = $slug;
+        }
+    }
+    if ($out !== []) {
+        return $out;
+    }
+    $champs = produit_formulaire_champs_prix_devis();
+
+    return array_slice(array_map(function ($ch) {
+        return (string) ($ch['slug'] ?? '');
+    }, $champs), 0, 2);
+}
+
+/**
+ * Manifest JSON pour les colonnes prix dynamiques (devis / BL).
+ *
+ * @return array{champs: array<int, array<string, string>>, champ_calcul_defaut: string, colonnes_defaut: array<int, string>}
+ */
+function produit_formulaire_devis_prix_manifest() {
+    $champs = produit_formulaire_champs_prix_devis();
+    $colonnes_defaut = produit_formulaire_devis_prix_colonnes_defaut();
+    $defaut = 'prix';
+    if (in_array('prix', $colonnes_defaut, true)) {
+        $defaut = 'prix';
+    } elseif ($colonnes_defaut !== []) {
+        $defaut = (string) $colonnes_defaut[0];
+    } elseif ($champs !== []) {
+        $defaut = (string) ($champs[0]['slug'] ?? 'prix');
+    }
+
+    return [
+        'champs' => $champs,
+        'champ_calcul_defaut' => $defaut,
+        'colonnes_defaut' => $colonnes_defaut,
+    ];
+}
+
+/**
+ * @return string
+ */
+function produit_formulaire_devis_prix_manifest_json() {
+    return json_encode(produit_formulaire_devis_prix_manifest(), JSON_UNESCAPED_UNICODE);
+}
+
+/**
+ * Injecte les manifests JS de visibilité des champs (pages admin sans footer).
+ *
+ * @return void
+ */
+function produit_formulaire_echo_admin_manifests() {
+    if (empty($_SESSION['admin_id'])) {
+        return;
+    }
+    produit_formulaire_champs_ensure_schema();
+    echo '<script>window.adminProduitChampsManifest = ' . produit_formulaire_champs_manifest_json() . ';</script>' . "\n";
+    echo '<script>window.adminDevisPrixChamps = ' . produit_formulaire_devis_prix_manifest_json() . ';</script>' . "\n";
+}
+
+/**
+ * Valeur numérique d'un champ prix pour un produit (API devis / BL).
+ *
+ * @param array<string, mixed> $produit
+ * @param array{slug?: string, source?: string, key?: string} $champ
+ * @return float
+ */
+function produit_formulaire_devis_prix_valeur_produit(array $produit, array $champ) {
+    $source = (string) ($champ['source'] ?? '');
+    $slug = (string) ($champ['slug'] ?? '');
+    if ($source === 'custom') {
+        $custom = isset($produit['pf_custom']) && is_array($produit['pf_custom']) ? $produit['pf_custom'] : [];
+        $raw = isset($custom[$slug]) ? trim((string) $custom[$slug]) : '';
+
+        return $raw !== '' && is_numeric($raw) ? (float) $raw : 0.0;
+    }
+    $key = (string) ($champ['key'] ?? $slug);
+    if ($key === 'prix_promotion') {
+        $promo = $produit['prix_promotion'] ?? $produit['prix_promo'] ?? null;
+        if ($promo !== null && $promo !== '' && is_numeric($promo) && (float) $promo > 0) {
+            return (float) $promo;
+        }
+
+        return 0.0;
+    }
+    $raw = $produit[$key] ?? 0;
+
+    return is_numeric($raw) ? (float) $raw : 0.0;
+}
+
+/**
+ * Extrait le prix unitaire d'une ligne devis / BL selon le champ sélectionné.
+ *
+ * @param array<string, mixed> $ligne
+ * @param string $champ_calcul_slug
+ * @return float
+ */
+function produit_formulaire_devis_prix_unitaire_depuis_ligne(array $ligne, $champ_calcul_slug) {
+    $champ_calcul_slug = trim((string) $champ_calcul_slug);
+    if ($champ_calcul_slug === '') {
+        $champ_calcul_slug = 'prix';
+    }
+    $prix_champs = isset($ligne['prix_champs']) && is_array($ligne['prix_champs']) ? $ligne['prix_champs'] : [];
+    if (isset($prix_champs[$champ_calcul_slug]) && $prix_champs[$champ_calcul_slug] !== '') {
+        $raw = str_replace(',', '.', (string) $prix_champs[$champ_calcul_slug]);
+
+        return is_numeric($raw) ? (float) $raw : 0.0;
+    }
+    if (isset($ligne['prix_unitaire']) && $ligne['prix_unitaire'] !== '') {
+        $raw = str_replace(',', '.', (string) $ligne['prix_unitaire']);
+
+        return is_numeric($raw) ? (float) $raw : 0.0;
+    }
+    $promo = isset($ligne['prix_promotion']) && $ligne['prix_promotion'] !== ''
+        ? (float) str_replace(',', '.', (string) $ligne['prix_promotion']) : null;
+    $pu = (float) str_replace(',', '.', (string) ($ligne['prix_unitaire'] ?? '0'));
+    if ($promo !== null && $promo > 0 && $champ_calcul_slug === 'prix_promotion') {
+        return $promo;
+    }
+
+    return $pu;
+}
+
+/**
+ * Libellé du champ prix utilisé pour le calcul (factures).
+ *
+ * @param string $slug
+ * @return string
+ */
+function produit_formulaire_devis_prix_champ_label($slug) {
+    $slug = trim((string) $slug);
+    foreach (produit_formulaire_champs_prix_devis() as $ch) {
+        if (($ch['slug'] ?? '') === $slug) {
+            return (string) ($ch['label'] ?? $slug);
+        }
+    }
+    $ch = produit_formulaire_champ_get_by_slug($slug);
+
+    return $ch ? (string) ($ch['label'] ?? $slug) : $slug;
 }
 
 /**
@@ -1191,23 +1592,24 @@ function produit_formulaire_sections_labels() {
  */
 function produit_formulaire_champ_clefs_donnees() {
     return [
-        'description' => ['description', 'desc_excerpt', 'descPreview', 'descShort'],
+        'description' => ['description', 'desc', 'desc_excerpt', 'desc_preview', 'descPreview', 'desc_short', 'descShort'],
         'marque_id' => ['marque_nom', 'marque_libelle_catalogue', 'marque_id', 'pcn_marque_join_nom'],
         'fournisseur_id' => ['fournisseur_nom', 'fournisseur_id', 'nom_fournisseur', 'fournisseur_table_nom'],
         'identifiant_interne' => ['identifiant_interne', 'ref_produit', 'ref'],
-        'reference_fournisseur' => ['reference_fournisseur', 'ref_fournisseur'],
-        'categorie_id' => ['categorie_nom', 'categorie_id'],
+        'reference_fournisseur' => ['reference_fournisseur', 'ref_fournisseur', 'ref_f'],
+        'categorie_id' => ['categorie_nom', 'categorie_id', 'cat_id'],
         'sous_categorie_id' => ['sous_categorie_id', 'sous_categorie_nom'],
         'prix' => ['prix'],
         'prix_promotion' => ['prix_promotion', 'prix_promo'],
         'prix_achat' => ['prix_achat'],
         'stock' => ['stock', 'stock_dispo'],
         'statut' => ['statut'],
-        'images_produit' => ['image_principale', 'images'],
+        'images_produit' => ['image_principale', 'images', 'imgs'],
         'poids' => ['poids'],
         'couleurs' => ['couleurs'],
         'taille' => ['taille'],
         'image_etiquette_fpl' => ['image_etiquette_fpl'],
+        'emplacement' => ['entrepot_noeud_id', 'entrepot_position_id', 'etage', 'numero_rayon', 'allee', 'zone_emplacement', 'position_emplacement', 'barre_rayon'],
     ];
 }
 
@@ -1256,23 +1658,8 @@ function produit_formulaire_filtrer_produit_api(array $item) {
     if (!produit_formulaire_acces_filtrage_admin_actif()) {
         return $item;
     }
-    foreach (produit_formulaire_champ_clefs_donnees() as $slug => $keys) {
-        if (produit_formulaire_champ_visible($slug)) {
-            continue;
-        }
-        foreach ($keys as $key) {
-            unset($item[$key]);
-        }
-    }
-    if (isset($item['pf_custom']) && is_array($item['pf_custom'])) {
-        foreach (array_keys($item['pf_custom']) as $cslug) {
-            if (!produit_formulaire_champ_visible((string) $cslug)) {
-                unset($item['pf_custom'][$cslug]);
-            }
-        }
-    }
 
-    return $item;
+    return produit_formulaire_masquer_champs_item($item);
 }
 
 /**
@@ -1340,7 +1727,7 @@ function produit_formulaire_export_colonnes_definitions($context = 'suivi') {
     }
     foreach (produit_formulaire_champs_custom_actifs() as $ch) {
         $slug = (string) ($ch['slug'] ?? '');
-        if ($slug === '') {
+        if ($slug === '' || !produit_formulaire_champ_visible($slug)) {
             continue;
         }
         $key = 'custom_' . $slug;

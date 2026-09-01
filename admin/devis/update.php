@@ -38,6 +38,7 @@ if ($devis_id <= 0) {
 }
 
 require_once __DIR__ . '/../../models/model_devis.php';
+require_once __DIR__ . '/../../models/model_produit_formulaire_champs.php';
 
 $d = get_devis_by_id($devis_id);
 if (!$d || ($d['statut'] ?? '') !== 'brouillon') {
@@ -56,19 +57,19 @@ $notes = trim($_POST['notes'] ?? '');
 $zone_livraison_id = isset($_POST['zone_livraison_id']) && $_POST['zone_livraison_id'] !== '' && $_POST['zone_livraison_id'] !== 'custom'
     ? (int) $_POST['zone_livraison_id'] : null;
 $frais_livraison = (float) ($_POST['frais_livraison'] ?? 0);
+$champ_prix_calcul = trim((string) ($_POST['champ_prix_calcul'] ?? 'prix'));
 
 $items = [];
 if (!empty($_POST['lignes']) && is_array($_POST['lignes'])) {
     foreach (array_values($_POST['lignes']) as $l) {
         $produit_id = (int) ($l['produit_id'] ?? 0);
         $quantite = (int) ($l['quantite'] ?? 1);
-        $prix_unitaire = (float) str_replace(',', '.', $l['prix_unitaire'] ?? '0');
-        $prix_promotion = isset($l['prix_promotion']) && $l['prix_promotion'] !== '' ? (float) str_replace(',', '.', $l['prix_promotion']) : null;
-        if ($produit_id > 0 && $quantite > 0 && $prix_unitaire > 0) {
+        $pu = produit_formulaire_devis_prix_unitaire_depuis_ligne($l, $champ_prix_calcul);
+        if ($produit_id > 0 && $quantite > 0 && $pu > 0) {
             $items[] = [
                 'produit_id' => $produit_id,
                 'quantite' => $quantite,
-                'prix_unitaire' => $prix_promotion ?? $prix_unitaire,
+                'prix_unitaire' => $pu,
                 'nom_produit' => isset($l['nom_produit']) ? trim($l['nom_produit']) : null,
             ];
         }

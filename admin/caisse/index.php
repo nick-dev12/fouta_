@@ -85,7 +85,10 @@ if ($fournisseur_sel !== null && $fournisseur_has_col && !empty($produits_liste)
 }
 $categories = get_all_categories();
 
-$has_ident = function_exists('produits_has_column') && produits_has_column('identifiant_interne');
+$has_ident = pf_liste_col_ident_visible();
+$show_prix_caisse = pf_liste_col_prix_visible();
+$show_stock_caisse = pf_liste_col_stock_visible();
+$caisse_results_cols = 2 + ($has_ident ? 1 : 0) + ($show_prix_caisse ? 1 : 0) + ($show_stock_caisse ? 1 : 0);
 
 $ticket_id = isset($_GET['ticket']) ? (int) $_GET['ticket'] : 0;
 if ($ticket_id > 0) {
@@ -272,6 +275,7 @@ $manque_preview = null;
                                         aria-label="Recherche produit" autocomplete="off" inputmode="search"
                                         data-live-search-input autofocus>
                                 </div>
+                                <?php if (pf_champ_visible('categorie_id')): ?>
                                 <select name="cat" id="caisse_cat_live" class="caisse-search-select" aria-label="Catégorie">
                                     <option value="">Toutes les catégories</option>
                                     <?php foreach ($categories as $c): ?>
@@ -281,6 +285,11 @@ $manque_preview = null;
                                     </option>
                                     <?php endforeach; ?>
                                 </select>
+                                <?php else: ?>
+                                <select name="cat" id="caisse_cat_live" hidden aria-hidden="true" tabindex="-1">
+                                    <option value="" selected></option>
+                                </select>
+                                <?php endif; ?>
                                 <?php if (!empty($marques_liste) && $marque_has_col): ?>
                                 <select name="marque" id="caisse_marque_live" class="caisse-search-select" aria-label="Marque">
                                     <option value="">Toutes les marques</option>
@@ -332,8 +341,8 @@ $manque_preview = null;
                             <tr>
                                 <th>Produit</th>
                                 <?php if ($has_ident): ?><th>Référence</th><?php endif; ?>
-                                <th>Prix HT</th>
-                                <th>Stock</th>
+                                <?php if ($show_prix_caisse): ?><th>Prix HT</th><?php endif; ?>
+                                <?php if ($show_stock_caisse): ?><th>Stock</th><?php endif; ?>
                                 <th></th>
                             </tr>
                         </thead>
@@ -355,8 +364,12 @@ $manque_preview = null;
                                         class="caisse-ref"><?php echo htmlspecialchars(trim($pr['identifiant_interne'] ?? '') ?: '—'); ?></code>
                                 </td>
                                 <?php endif; ?>
+                                <?php if ($show_prix_caisse): ?>
                                 <td><?php echo $pu > 0 ? number_format($pu, 0, ',', ' ') : '—'; ?></td>
+                                <?php endif; ?>
+                                <?php if ($show_stock_caisse): ?>
                                 <td><?php echo $stk; ?></td>
+                                <?php endif; ?>
                                 <td class="caisse-results-act">
                                     <button type="button" class="btn-add-line caisse-inline-add-btn" data-produit-id="<?php echo (int) $pr['id']; ?>">
                                         <i class="fas fa-plus"></i> Ajouter</button>
@@ -365,7 +378,7 @@ $manque_preview = null;
                             <?php endforeach; ?>
                             <?php if (!$any_row): ?>
                             <tr>
-                                <td colspan="<?php echo $has_ident ? 5 : 4; ?>" class="caisse-results-empty">Aucun
+                                <td colspan="<?php echo (int) $caisse_results_cols; ?>" class="caisse-results-empty">Aucun
                                     article en stock pour cette recherche.</td>
                             </tr>
                             <?php endif; ?>
@@ -478,6 +491,10 @@ $manque_preview = null;
     </div>
 
     <script type="application/json" id="caisse-catalog-json">[]</script>
+    <?php
+    require_once __DIR__ . '/../../includes/produit_formulaire_champs.php';
+    produit_formulaire_echo_admin_manifests();
+    ?>
     <script src="/js/admin-caisse-live-search.js<?php echo asset_version_query(); ?>"></script>
     <script src="/js/admin-caisse-panier.js<?php echo asset_version_query(); ?>"></script>
     <script>

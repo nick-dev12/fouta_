@@ -20,7 +20,11 @@ require_once __DIR__ . '/../../models/model_factures_devis.php';
 require_once __DIR__ . '/../../models/model_devis.php';
 require_once __DIR__ . '/../../models/model_zones_livraison.php';
 require_once __DIR__ . '/../../includes/fiscal_tva.php';
+require_once __DIR__ . '/../../includes/devis_prix_champs_ui.php';
+require_once __DIR__ . '/../../models/model_produit_formulaire_champs.php';
 $fiscal_tva_pourcent_devis_bl = fiscal_taux_tva_pourcent();
+list($nb_prix_cols_devis_arr,) = devis_prix_colonnes_etat_defaut();
+$nb_prix_cols_devis = count($nb_prix_cols_devis_arr);
 
 if (empty($_SESSION['admin_csrf'])) {
     $_SESSION['admin_csrf'] = bin2hex(random_bytes(32));
@@ -228,15 +232,13 @@ $devis_page_has_alert = isset($_SESSION['success_message']) || !empty($error_dev
                                     <h3>Produits du devis</h3>
                                     <span class="lignes-count" id="lignes-count">0 article(s)</span>
                                 </div>
-                                <div id="lignes-commande" class="lignes-commande lignes-commande-modal-wrap">
-                                    <div class="ligne-commande-head ligne-commande-head-bl" id="lignes-head-devis" hidden>
-                                        <span class="lch-head-cell">Produit</span>
-                                        <span class="lch-head-cell">Quantité</span>
-                                        <span class="lch-head-cell">prix FCFA</span>
-                                        <span class="lch-head-cell">promo FCFA</span>
-                                        <span class="lch-head-cell">Total</span>
-                                        <span class="lch-head-cell lch-head-actions" aria-hidden="true"></span>
-                                    </div>
+                                <?php
+                                $colonnes_devis_post = is_array($devis_post) && !empty($devis_post['prix_colonnes']) && is_array($devis_post['prix_colonnes']) ? $devis_post['prix_colonnes'] : null;
+                                $calc_devis_post = is_array($devis_post) ? (string) ($devis_post['champ_prix_calcul'] ?? '') : '';
+                                devis_prix_colonnes_panel_render('devis_prix_panel_devis', $colonnes_devis_post, $calc_devis_post);
+                                ?>
+                                <div id="lignes-commande" class="lignes-commande lignes-commande-modal-wrap" style="--devis-prix-cols: <?php echo max(1, $nb_prix_cols_devis); ?>;">
+                                    <div class="ligne-commande-head ligne-commande-head-bl" id="lignes-head-devis" hidden></div>
                                     <div class="lignes-empty" id="lignes-empty">
                                         <i class="fas fa-inbox"></i>
                                         <p>Aucun produit ajouté. Utilisez la recherche ci-dessus.</p>
@@ -386,6 +388,12 @@ $devis_page_has_alert = isset($_SESSION['success_message']) || !empty($error_dev
         var lignesCount = document.getElementById('lignes-count');
         var ligneIndex = 0;
         var ajaxUrl = 'ajax_search_produits.php';
+        var champPrixPanelDevis = document.getElementById('devis_prix_panel_devis');
+        var headDevis = document.getElementById('lignes-head-devis');
+        var UInit = window.FoutaAdminProduitSearchUi;
+        if (UInit && UInit.buildLignesHeadHtml && headDevis) {
+            UInit.buildLignesHeadHtml(headDevis, lignesContainer, champPrixPanelDevis);
+        }
 
         function openModal() {
             if (modal) modal.classList.add('modal-open');
@@ -417,12 +425,13 @@ $devis_page_has_alert = isset($_SESSION['success_message']) || !empty($error_dev
 
         function addLigne(produit) {
             var U = window.FoutaAdminProduitSearchUi;
+            var calc = U && U.getChampCalculSlug ? U.getChampCalculSlug(champPrixPanelDevis) : 'prix';
             var idx = ligneIndex++;
             var div = document.createElement('div');
             div.className = 'ligne-commande-item ligne-commande-item-bl';
             div.dataset.produitId = produit.id;
             div.innerHTML = U && U.buildLigneCommandeItemHtml
-                ? U.buildLigneCommandeItemHtml(produit, idx, 'lignes')
+                ? U.buildLigneCommandeItemHtml(produit, idx, 'lignes', calc, champPrixPanelDevis)
                 : '';
             if (lignesEmpty) lignesEmpty.style.display = 'none';
             div.querySelector('.ligne-remove').addEventListener('click', function() {
@@ -431,7 +440,7 @@ $devis_page_has_alert = isset($_SESSION['success_message']) || !empty($error_dev
                 updateRecap();
             });
             lignesContainer.appendChild(div);
-            if (U && U.updateLigneRowTotal) U.updateLigneRowTotal(div);
+            if (U && U.updateLigneRowTotal) U.updateLigneRowTotal(div, calc);
             updateLignesUI();
             updateRecap();
         }
@@ -517,8 +526,9 @@ $devis_page_has_alert = isset($_SESSION['success_message']) || !empty($error_dev
 
         function getSousTotal() {
             var U = window.FoutaAdminProduitSearchUi;
+            var calc = U && U.getChampCalculSlug ? U.getChampCalculSlug(champPrixPanelDevis) : 'prix';
             if (U && U.getLignesSousTotal) {
-                return U.getLignesSousTotal(lignesContainer);
+                return U.getLignesSousTotal(lignesContainer, calc);
             }
             return 0;
         }
@@ -580,8 +590,11 @@ $devis_page_has_alert = isset($_SESSION['success_message']) || !empty($error_dev
         if (inclureTvaDevis) inclureTvaDevis.addEventListener('change', updateRecap);
 
         var U = window.FoutaAdminProduitSearchUi;
+        if (U && U.initChampPrixColonnesPanel) {
+            U.initChampPrixColonnesPanel(champPrixPanelDevis, lignesContainer, headDevis, updateRecap);
+        }
         if (U && U.bindLignesLiveRecap) {
-            U.bindLignesLiveRecap(lignesContainer, updateRecap);
+            U.bindLignesLiveRecap(lignesContainer, updateRecap, champPrixPanelDevis);
         }
 
         if (formDevis) {

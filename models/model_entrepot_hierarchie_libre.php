@@ -1522,10 +1522,8 @@ function entrepot_hierarchie_arbre_etage($numero_etage)
                 'enfants' => $build($nid, $depth + 1),
             ];
             if ($etiq_niveau_id > 0 && $niveau_id === $etiq_niveau_id) {
-                $payload = entrepot_noeud_etiquette_payload($nid);
-                if ($payload !== null) {
-                    $node['etiquette'] = $payload;
-                }
+                $node['has_etiquette'] = true;
+                $node['etiquette_print_key'] = 'n' . $nid;
             }
             $out[] = $node;
         }

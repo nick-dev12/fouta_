@@ -25,7 +25,10 @@ require_once __DIR__ . '/../../models/model_zones_livraison.php';
 require_once __DIR__ . '/../../models/model_bl.php';
 require_once __DIR__ . '/../../models/model_bons_retour.php';
 require_once __DIR__ . '/../../includes/fiscal_tva.php';
+require_once __DIR__ . '/../../includes/devis_prix_champs_ui.php';
 $fiscal_tva_pourcent_devis_bl = fiscal_taux_tva_pourcent();
+require_once __DIR__ . '/../../models/model_produit_formulaire_champs.php';
+$nb_prix_cols_bl = count(devis_prix_colonnes_etat_defaut()[0]);
 
 if (empty($_SESSION['admin_csrf'])) {
     $_SESSION['admin_csrf'] = bin2hex(random_bytes(32));
@@ -409,15 +412,13 @@ $devis_page_has_alert = isset($_SESSION['success_message']) || !empty($bl_erreur
                                     <h3>Produits du devis</h3>
                                     <span class="lignes-count" id="lignes-count-bl">0 article(s)</span>
                                 </div>
-                                <div id="lignes-commande-bl" class="lignes-commande lignes-commande-modal-wrap">
-                                    <div class="ligne-commande-head ligne-commande-head-bl" id="lignes-head-bl" hidden>
-                                        <span class="lch-head-cell">Produit</span>
-                                        <span class="lch-head-cell">Quantité</span>
-                                        <span class="lch-head-cell">prix FCFA</span>
-                                        <span class="lch-head-cell">promo FCFA</span>
-                                        <span class="lch-head-cell">Total</span>
-                                        <span class="lch-head-cell lch-head-actions" aria-hidden="true"></span>
-                                    </div>
+                                <?php
+                                $colonnes_bl_post = is_array($bp) && !empty($bp['prix_colonnes']) && is_array($bp['prix_colonnes']) ? $bp['prix_colonnes'] : null;
+                                $calc_bl_post = is_array($bp) ? (string) ($bp['champ_prix_calcul'] ?? '') : '';
+                                devis_prix_colonnes_panel_render('devis_prix_panel_bl', $colonnes_bl_post, $calc_bl_post);
+                                ?>
+                                <div id="lignes-commande-bl" class="lignes-commande lignes-commande-modal-wrap" style="--devis-prix-cols: <?php echo max(1, $nb_prix_cols_bl); ?>;">
+                                    <div class="ligne-commande-head ligne-commande-head-bl" id="lignes-head-bl" hidden></div>
                                     <div class="lignes-empty" id="lignes-empty-bl">
                                         <i class="fas fa-inbox"></i>
                                         <p>Aucun produit ajouté. Utilisez la recherche ci-dessus.</p>
@@ -657,6 +658,12 @@ $devis_page_has_alert = isset($_SESSION['success_message']) || !empty($bl_erreur
         var lignesCountBl = document.getElementById('lignes-count-bl');
         var ligneIndexBl = 0;
         var ajaxUrlBl = 'ajax_search_produits.php';
+        var champPrixPanelBl = document.getElementById('devis_prix_panel_bl');
+        var headBlInit = document.getElementById('lignes-head-bl');
+        var UBlInit = window.FoutaAdminProduitSearchUi;
+        if (UBlInit && UBlInit.buildLignesHeadHtml && headBlInit) {
+            UBlInit.buildLignesHeadHtml(headBlInit, lignesContainerBl, champPrixPanelBl);
+        }
 
         function updateLignesUIBl() {
             var items = lignesContainerBl ? lignesContainerBl.querySelectorAll('.ligne-commande-item') : [];
@@ -675,12 +682,13 @@ $devis_page_has_alert = isset($_SESSION['success_message']) || !empty($bl_erreur
 
         function addLigneBl(produit) {
             var U = window.FoutaAdminProduitSearchUi;
+            var calc = U && U.getChampCalculSlug ? U.getChampCalculSlug(champPrixPanelBl) : 'prix';
             var idx = ligneIndexBl++;
             var div = document.createElement('div');
             div.className = 'ligne-commande-item ligne-commande-item-bl';
             div.dataset.produitId = produit.id;
             div.innerHTML = U && U.buildLigneCommandeItemHtml
-                ? U.buildLigneCommandeItemHtml(produit, idx, 'lignes')
+                ? U.buildLigneCommandeItemHtml(produit, idx, 'lignes', calc, champPrixPanelBl)
                 : '';
             if (lignesEmptyBl) lignesEmptyBl.style.display = 'none';
             div.querySelector('.ligne-remove').addEventListener('click', function() {
@@ -689,7 +697,7 @@ $devis_page_has_alert = isset($_SESSION['success_message']) || !empty($bl_erreur
                 updateRecapBl();
             });
             lignesContainerBl.appendChild(div);
-            if (U && U.updateLigneRowTotal) U.updateLigneRowTotal(div);
+            if (U && U.updateLigneRowTotal) U.updateLigneRowTotal(div, calc);
             updateLignesUIBl();
             updateRecapBl();
         }
@@ -775,8 +783,9 @@ $devis_page_has_alert = isset($_SESSION['success_message']) || !empty($bl_erreur
 
         function getSousTotalBl() {
             var U = window.FoutaAdminProduitSearchUi;
+            var calc = U && U.getChampCalculSlug ? U.getChampCalculSlug(champPrixPanelBl) : 'prix';
             if (U && U.getLignesSousTotal) {
-                return U.getLignesSousTotal(lignesContainerBl);
+                return U.getLignesSousTotal(lignesContainerBl, calc);
             }
             return 0;
         }
@@ -838,8 +847,11 @@ $devis_page_has_alert = isset($_SESSION['success_message']) || !empty($bl_erreur
         if (inclureTvaBl) inclureTvaBl.addEventListener('change', updateRecapBl);
 
         var UBl = window.FoutaAdminProduitSearchUi;
+        if (UBl && UBl.initChampPrixColonnesPanel) {
+            UBl.initChampPrixColonnesPanel(champPrixPanelBl, lignesContainerBl, headBlInit, updateRecapBl);
+        }
         if (UBl && UBl.bindLignesLiveRecap) {
-            UBl.bindLignesLiveRecap(lignesContainerBl, updateRecapBl);
+            UBl.bindLignesLiveRecap(lignesContainerBl, updateRecapBl, champPrixPanelBl);
         }
 
         if (formBl) {

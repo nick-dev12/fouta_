@@ -24,6 +24,13 @@ require_once __DIR__ . '/../models/model_commandes_admin.php';
 require_once __DIR__ . '/../models/model_commandes_personnalisees.php';
 require_once __DIR__ . '/../models/model_produits.php';
 require_once __DIR__ . '/../models/model_categories.php';
+require_once __DIR__ . '/../includes/produit_formulaire_champs.php';
+
+$dash_col_img = pf_liste_col_image_visible();
+$dash_col_cat = pf_liste_col_categorie_visible();
+$dash_col_stock = pf_liste_col_stock_visible();
+$dash_col_statut = pf_liste_col_statut_visible();
+$dash_col_ident = pf_liste_col_ident_visible();
 
 $dashboard_show_commandes = in_array(admin_current_role(), ['informaticien', 'developpeur'], true);
 
@@ -306,20 +313,20 @@ $dash_date_longue = fpl_date_longue();
                 <table class="dash-table dash-table--produits">
                     <thead>
                         <tr>
-                            <th class="col-thumb">Visuel</th>
+                            <?php if ($dash_col_img): ?><th class="col-thumb">Visuel</th><?php endif; ?>
                             <th>Pièce</th>
-                            <th>Catégorie</th>
+                            <?php if ($dash_col_cat): ?><th>Catégorie</th><?php endif; ?>
                             <th class="col-num">Vendus</th>
                             <th class="col-num">CA généré</th>
-                            <th class="col-num">Stock</th>
-                            <th>Statut</th>
+                            <?php if ($dash_col_stock): ?><th class="col-num">Stock</th><?php endif; ?>
+                            <?php if ($dash_col_statut): ?><th>Statut</th><?php endif; ?>
                             <th></th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php if (empty($produits_top_vendus)): ?>
                         <tr>
-                            <td colspan="8" class="dash-table-empty">Aucune vente enregistrée pour le moment.</td>
+                            <td colspan="<?php echo 4 + ($dash_col_img ? 1 : 0) + ($dash_col_cat ? 1 : 0) + ($dash_col_stock ? 1 : 0) + ($dash_col_statut ? 1 : 0); ?>" class="dash-table-empty">Aucune vente enregistrée pour le moment.</td>
                         </tr>
                         <?php else: ?>
                         <?php foreach ($produits_top_vendus as $idx => $pv):
@@ -335,6 +342,7 @@ $dash_date_longue = fpl_date_longue();
                             }
                             ?>
                         <tr>
+                            <?php if ($dash_col_img): ?>
                             <td class="col-thumb" data-label="Visuel">
                                 <?php if ($img !== ''): ?>
                                 <img src="<?php echo e($dash_upload_base . $img); ?>" alt="" class="dash-produit-thumb" loading="lazy" decoding="async"
@@ -344,16 +352,22 @@ $dash_date_longue = fpl_date_longue();
                                 <span class="dash-produit-thumb dash-produit-thumb--ph" aria-hidden="true"><i class="fas fa-box"></i></span>
                                 <?php endif; ?>
                             </td>
+                            <?php endif; ?>
                             <td data-label="Pièce">
                                 <strong class="dash-produit-nom"><?php echo e($pv['nom']); ?></strong>
-                                <?php if (!empty($pv['reference'])): ?>
+                                <?php if ($dash_col_ident && !empty($pv['reference'])): ?>
                                 <span class="dash-produit-ref"><?php echo e($pv['reference']); ?></span>
                                 <?php endif; ?>
                             </td>
+                            <?php if ($dash_col_cat): ?>
                             <td data-label="Catégorie"><?php echo e($pv['categorie_nom'] !== '' ? $pv['categorie_nom'] : '—'); ?></td>
+                            <?php endif; ?>
                             <td class="col-num" data-label="Vendus"><?php echo e(fpl_quantite($pv['total_qte'], 0)); ?></td>
                             <td class="col-num" data-label="CA"><?php echo e(fpl_montant($pv['total_montant'])); ?> FCFA</td>
+                            <?php if ($dash_col_stock): ?>
                             <td class="col-num" data-label="Stock"><?php echo $pv['stock'] !== null ? (int) $pv['stock'] : '—'; ?></td>
+                            <?php endif; ?>
+                            <?php if ($dash_col_statut): ?>
                             <td data-label="Statut">
                                 <?php if ($statut !== ''): ?>
                                 <span class="dash-badge <?php echo $badge_class; ?>"><?php echo e($statut_label); ?></span>
@@ -361,6 +375,7 @@ $dash_date_longue = fpl_date_longue();
                                 <span class="dash-badge dash-badge--muted">Hors catalogue</span>
                                 <?php endif; ?>
                             </td>
+                            <?php endif; ?>
                             <td data-label="">
                                 <?php if ($pid > 0): ?>
                                 <a href="produits/ajuster-stock.php?id=<?php echo $pid; ?>" class="dash-table__view">Voir <i class="fas fa-chevron-right" aria-hidden="true"></i></a>

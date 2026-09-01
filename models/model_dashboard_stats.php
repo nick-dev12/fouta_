@@ -173,7 +173,7 @@ function dashboard_produits_top_vendus_details($limit = 15) {
                 WHERE p.id IN (' . $in . ')
             ');
             foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) ?: [] as $p) {
-                $produits_by_id[(int) $p['id']] = $p;
+                $produits_by_id[(int) $p['id']] = produits_appliquer_filtre_acces_champs($p);
             }
         } catch (PDOException $e) {
             error_log('[dashboard_produits_top_vendus_details] ' . $e->getMessage());
@@ -198,13 +198,32 @@ function dashboard_produits_top_vendus_details($limit = 15) {
         if ($pid > 0 && isset($produits_by_id[$pid])) {
             $p = $produits_by_id[$pid];
             $row['nom'] = (string) ($p['nom'] ?? $row['nom']);
-            $row['prix'] = isset($p['prix_promotion']) && $p['prix_promotion'] !== null && $p['prix_promotion'] !== ''
-                ? (float) $p['prix_promotion'] : (float) ($p['prix'] ?? 0);
-            $row['stock'] = (int) ($p['stock'] ?? 0);
-            $row['statut'] = (string) ($p['statut'] ?? '');
-            $row['categorie_nom'] = (string) ($p['categorie_nom'] ?? '');
-            $row['image_principale'] = (string) ($p['image_principale'] ?? '');
-            $row['reference'] = (string) ($p['reference'] ?? $p['code_produit'] ?? '');
+            require_once __DIR__ . '/../includes/produit_formulaire_champs.php';
+            if (pf_champ_visible('prix') || pf_champ_visible('prix_promotion')) {
+                if (pf_champ_visible('prix_promotion')
+                    && isset($p['prix_promotion'])
+                    && $p['prix_promotion'] !== null
+                    && $p['prix_promotion'] !== '') {
+                    $row['prix'] = (float) $p['prix_promotion'];
+                } elseif (pf_champ_visible('prix')) {
+                    $row['prix'] = (float) ($p['prix'] ?? 0);
+                }
+            }
+            if (pf_champ_visible('stock')) {
+                $row['stock'] = (int) ($p['stock'] ?? 0);
+            }
+            if (pf_champ_visible('statut')) {
+                $row['statut'] = (string) ($p['statut'] ?? '');
+            }
+            if (pf_champ_visible('categorie_id')) {
+                $row['categorie_nom'] = (string) ($p['categorie_nom'] ?? '');
+            }
+            if (pf_champ_visible('images_produit')) {
+                $row['image_principale'] = (string) ($p['image_principale'] ?? '');
+            }
+            if (pf_champ_visible('identifiant_interne')) {
+                $row['reference'] = (string) ($p['identifiant_interne'] ?? $p['reference'] ?? $p['code_produit'] ?? '');
+            }
         }
         $out[] = $row;
     }

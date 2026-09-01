@@ -20,6 +20,13 @@ if ($sous_categorie_id <= 0) {
 require_once __DIR__ . '/../../../models/model_sous_categories.php';
 require_once __DIR__ . '/../../../models/model_categories.php';
 require_once __DIR__ . '/../../../models/model_produits.php';
+require_once __DIR__ . '/../../includes/produit_formulaire_champs.php';
+
+$pf_col_img = pf_liste_col_image_visible();
+$pf_col_cat = pf_liste_col_categorie_visible();
+$pf_col_prix = pf_liste_col_prix_visible();
+$pf_col_stock = pf_liste_col_stock_visible();
+$pf_col_statut = pf_liste_col_statut_visible();
 
 if (!produits_has_column('sous_categorie_id') || !sous_categories_table_ok()) {
     header('Location: index.php');
@@ -41,6 +48,11 @@ if (!empty($_SESSION['success_message'])) {
     $success_message = (string) $_SESSION['success_message'];
     unset($_SESSION['success_message']);
 }
+
+require_once __DIR__ . '/../../../includes/site_url.php';
+require_once __DIR__ . '/../../../includes/fpl_ui.php';
+$produits_upload_base = rtrim(get_public_root_uri_path(), '/') . '/upload/';
+$produits_path_prefix = '../../produits/';
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -51,12 +63,13 @@ if (!empty($_SESSION['success_message'])) {
     <title>Produits — <?php echo htmlspecialchars((string) ($sous['nom'] ?? ''), ENT_QUOTES, 'UTF-8'); ?> — Admin</title>
     <?php require_once __DIR__ . '/../../../includes/asset_version.php'; ?>
 <?php include __DIR__ . '/../..//includes/fpl_head.php'; ?>
+    <?php fpl_css_link('admin-produits-index.css'); ?>
 </head>
 <body>
     <?php include __DIR__ . '/../../includes/nav.php'; ?>
 
-    <div class="contents-container dashboard-page page-categorie-produits">
-        <div class="content-header dashboard-hero">
+    <div class="page-produits-admin">
+        <div class="content-header dashboard-hero page-produits-hero">
             <div class="dashboard-hero-text">
                 <p class="dashboard-eyebrow">Sous-catégorie · <?php echo htmlspecialchars($categorie_nom, ENT_QUOTES, 'UTF-8'); ?></p>
                 <h1>
@@ -81,7 +94,7 @@ if (!empty($_SESSION['success_message'])) {
             </div>
         </div>
 
-        <section class="produits-section produits-section--dashboard" aria-labelledby="sc-prod-heading">
+        <section class="produits-section page-produits-section" aria-labelledby="sc-prod-heading">
             <div class="section-title section-title--dashboard">
                 <div>
                     <h2 id="sc-prod-heading">
@@ -93,85 +106,37 @@ if (!empty($_SESSION['success_message'])) {
             </div>
 
             <?php if (empty($produits)): ?>
-                <div class="empty-state page-categorie-produits-empty">
-                    <i class="fas fa-box-open" aria-hidden="true"></i>
-                    <p>Aucun produit dans cette sous-catégorie.</p>
-                    <a href="../../produits/ajouter.php?categorie_id=<?php echo (int) $sous['categorie_id']; ?>&amp;sous_categorie_id=<?php echo (int) $sous_categorie_id; ?>" class="btn-primary">
+                <div class="empty-state page-produits-empty">
+                    <div class="page-produits-empty__icon" aria-hidden="true"><i class="fas fa-box-open"></i></div>
+                    <p class="page-produits-empty__title">Aucun produit dans cette sous-catégorie</p>
+                    <a href="../../produits/ajouter.php?categorie_id=<?php echo (int) $sous['categorie_id']; ?>&amp;sous_categorie_id=<?php echo (int) $sous_categorie_id; ?>" class="btn-primary page-produits-empty__cta">
                         <i class="fas fa-plus"></i> Ajouter un produit
                     </a>
                 </div>
             <?php else: ?>
-                <div class="produits-grid">
-                    <?php foreach ($produits as $produit): ?>
-                        <?php
-                        $statut_class = 'statut-actif';
-                        if ($produit['statut'] == 'inactif') {
-                            $statut_class = 'statut-inactif';
-                        } elseif ($produit['statut'] == 'rupture_stock') {
-                            $statut_class = 'statut-rupture';
-                        }
-                        $statut_label = ucfirst(str_replace('_', ' ', (string) ($produit['statut'] ?? '')));
-                        ?>
-                        <div class="produit-card produit-card--dashboard produit-card-linkable" data-href="../../produits/ajuster-stock.php?id=<?php echo (int) $produit['id']; ?>">
-                            <span class="statut-badge <?php echo $statut_class; ?>"><?php echo htmlspecialchars((string) $statut_label, ENT_QUOTES, 'UTF-8'); ?></span>
-                            <div class="produit-card-media">
-                                <?php
-                                $img_principale = '';
-                                if (!empty($produit['image_principale'])) {
-                                    $img_principale = trim((string) $produit['image_principale']);
-                                }
-                                if ($img_principale !== ''):
-                                ?>
-                                <img src="../../../upload/<?php echo htmlspecialchars($img_principale, ENT_QUOTES, 'UTF-8'); ?>"
-                                    alt="<?php echo htmlspecialchars((string) ($produit['nom'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
-                                    class="produit-card-image"
-                                    onerror="this.onerror=null;var w=document.createElement('div');w.className='produit-card-media-placeholder';w.setAttribute('role','img');w.setAttribute('aria-label','Sans image');w.innerHTML='<i class=\'fas fa-truck\' aria-hidden=\'true\'></i>';this.replaceWith(w);">
-                                <?php else: ?>
-                                <div class="produit-card-media-placeholder" role="img" aria-label="Pas d'image">
-                                    <i class="fas fa-truck" aria-hidden="true"></i>
-                                </div>
-                                <?php endif; ?>
-                            </div>
-                            <div class="produit-card-body">
-                                <h3 class="produit-card-nom"><?php echo produits_card_heading_inner_html($produit, 20); ?></h3>
-                                <?php
-                            $pcm_four = function_exists('produits_fournisseur_nom_affichage')
-                                ? produits_fournisseur_nom_affichage($produit) : '';
+                <div class="page-produits-table-wrap">
+                    <table class="page-produits-table">
+                        <thead>
+                            <tr>
+                                <?php if ($pf_col_img): ?><th class="col-thumb">Visuel</th><?php endif; ?>
+                                <th>Produit</th>
+                                <?php if ($pf_col_cat): ?><th>Catégorie</th><?php endif; ?>
+                                <?php if ($pf_col_prix): ?><th class="col-num">Prix</th><?php endif; ?>
+                                <?php if ($pf_col_stock): ?><th class="col-num">Stock</th><?php endif; ?>
+                                <?php if ($pf_col_statut): ?><th>Statut</th><?php endif; ?>
+                                <th class="col-actions">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="page-sous-cat-produits-table-body">
+                            <?php
+                            $upload_base = $produits_upload_base;
+                            $hide_categorie_col = !$pf_col_cat;
+                            foreach ($produits as $produit):
+                                include __DIR__ . '/../../produits/includes/ligne_produit_table.php';
+                            endforeach;
                             ?>
-                                <?php if ($pcm_four !== ''): ?>
-                                <p class="produit-card-fournisseur"><i class="fas fa-truck-field" aria-hidden="true"></i> <?php echo htmlspecialchars($pcm_four, ENT_QUOTES, 'UTF-8'); ?></p>
-                                <?php endif; ?>
-                                <p class="produit-card-categorie">
-                                    <i class="fas fa-tag" aria-hidden="true"></i>
-                                    <?php echo htmlspecialchars($categorie_nom, ENT_QUOTES, 'UTF-8'); ?>
-                                </p>
-                                <p class="produit-card-prix">
-                                    <span class="prix-montant"><?php echo number_format((float) ($produit['prix'] ?? 0), 0, ',', ' '); ?></span>
-                                    <span class="prix-unite">FCFA</span>
-                                    <?php if (!empty($produit['prix_promotion'])): ?>
-                                        <span class="prix-promo-inline">Promo
-                                            <?php echo number_format((float) $produit['prix_promotion'], 0, ',', ' '); ?> FCFA</span>
-                                    <?php endif; ?>
-                                </p>
-                                <p class="produit-card-stock">
-                                    <i class="fas fa-cubes" aria-hidden="true"></i>
-                                    Stock <span class="stock-value"><?php echo (int) $produit['stock']; ?></span>
-                                </p>
-                                <div class="produit-card-actions">
-                                    <a href="../../produits/modifier.php?id=<?php echo (int) $produit['id']; ?>"
-                                        class="btn-card btn-edit">
-                                        <i class="fas fa-edit"></i> Modifier
-                                    </a>
-                                    <a href="../../produits/supprimer.php?id=<?php echo (int) $produit['id']; ?>"
-                                        class="btn-card btn-delete"
-                                        data-delete-confirm="true"
-                                        data-delete-name="<?php echo htmlspecialchars((string) ($produit['nom'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
-                                        <i class="fas fa-trash"></i> Supprimer
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                    <?php endforeach; ?>
+                        </tbody>
+                    </table>
                 </div>
             <?php endif; ?>
         </section>
@@ -185,7 +150,8 @@ if (!empty($_SESSION['success_message'])) {
     ?>
     <?php include __DIR__ . '/../../includes/footer.php'; ?>
 
-    <!-- Modal de confirmation de suppression -->
+    <script src="<?php echo htmlspecialchars(fpl_script_src('admin-produits-gallery-lightbox.js'), ENT_QUOTES, 'UTF-8'); ?><?php echo asset_version_query(); ?>"></script>
+
     <div class="delete-confirm-overlay" id="deleteConfirmOverlay"></div>
     <div class="delete-confirm-modal" id="deleteConfirmModal" role="dialog" aria-modal="true" aria-labelledby="deleteConfirmTitle">
         <div class="delete-confirm-modal__icon">
@@ -209,20 +175,35 @@ if (!empty($_SESSION['success_message'])) {
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            // Navigation par clic sur les cards
-            document.querySelectorAll('.produit-card-linkable').forEach(function (card) {
-                card.addEventListener('click', function (event) {
-                    if (event.target.closest('a, button, input, select, textarea, form')) {
-                        return;
-                    }
-                    var href = card.getAttribute('data-href');
-                    if (href) {
-                        window.location.href = href;
-                    }
-                });
+            document.addEventListener('click', function (event) {
+                var row = event.target.closest('.page-produits-table__row--linkable');
+                if (!row) {
+                    return;
+                }
+                if (event.target.closest('.page-produits-table__action, .page-produits-table__thumb-btn, a[data-delete-confirm="true"]')) {
+                    return;
+                }
+                var href = row.getAttribute('data-href');
+                if (href) {
+                    window.location.href = href;
+                }
             });
 
-            // Modal de confirmation de suppression
+            document.addEventListener('keydown', function (event) {
+                if (event.key !== 'Enter' && event.key !== ' ') {
+                    return;
+                }
+                var row = event.target.closest('.page-produits-table__row--linkable');
+                if (!row || event.target.closest('.page-produits-table__thumb-btn, .page-produits-table__action')) {
+                    return;
+                }
+                event.preventDefault();
+                var href = row.getAttribute('data-href');
+                if (href) {
+                    window.location.href = href;
+                }
+            });
+
             var deleteOverlay = document.getElementById('deleteConfirmOverlay');
             var deleteModal = document.getElementById('deleteConfirmModal');
             var deleteProduct = document.getElementById('deleteConfirmProduct');
@@ -230,16 +211,9 @@ if (!empty($_SESSION['success_message'])) {
             var deleteConfirm = document.getElementById('deleteConfirmConfirm');
             var currentDeleteLink = null;
 
-            function positionModal() {
-                deleteModal.style.removeProperty('left');
-                deleteModal.style.removeProperty('top');
-            }
-
             function showModal(link) {
                 currentDeleteLink = link;
-                var productName = link.getAttribute('data-delete-name') || 'ce produit';
-                deleteProduct.textContent = productName;
-
+                deleteProduct.textContent = link.getAttribute('data-delete-name') || 'ce produit';
                 deleteOverlay.classList.add('visible');
                 deleteModal.classList.add('visible', 'animated');
                 deleteCancel.focus();
@@ -251,26 +225,21 @@ if (!empty($_SESSION['success_message'])) {
                 currentDeleteLink = null;
             }
 
-            // Gestion des clics sur les liens de suppression
             document.querySelectorAll('a[data-delete-confirm="true"]').forEach(function (link) {
                 link.addEventListener('click', function (event) {
                     event.preventDefault();
-                    positionModal(link);
                     showModal(link);
                 });
             });
 
-            // Boutons de la modal
             deleteCancel.addEventListener('click', hideModal);
             deleteOverlay.addEventListener('click', hideModal);
-
             deleteConfirm.addEventListener('click', function () {
                 if (currentDeleteLink) {
                     window.location.href = currentDeleteLink.href;
                 }
             });
 
-            // Fermer avec Escape
             document.addEventListener('keydown', function (event) {
                 if (event.key === 'Escape' && deleteModal.classList.contains('visible')) {
                     hideModal();

@@ -112,6 +112,83 @@
     var accesIntro = document.getElementById('cp_acces_intro');
     var accesRolesGrid = document.getElementById('cp_acces_roles_grid');
 
+    var champsDataMap = window.CP_CHAMPS_DATA || {};
+    var editModalId = 'modalModifierChampProduit';
+    var editChampId = document.getElementById('cp_edit_champ_id');
+    var editIntro = document.getElementById('cp_edit_intro');
+    var editLabel = document.getElementById('cp_edit_label_champ');
+    var editSectionWrap = document.getElementById('cp_edit_section_wrap');
+    var editSection = document.getElementById('cp_edit_section_champ');
+    var editCustomFields = document.getElementById('cp_edit_custom_fields');
+    var editType = document.getElementById('cp_edit_type_champ');
+    var editOptionsWrap = document.getElementById('cp_edit_options_wrap');
+    var editOptions = document.getElementById('cp_edit_options_champ');
+    var editObligatoire = document.getElementById('cp_edit_obligatoire_champ');
+    var editRolesFieldset = document.getElementById('cp_edit_roles_fieldset');
+    var editRolesGrid = document.getElementById('cp_edit_roles_grid');
+
+    function syncEditOptionsVisibility() {
+        if (!editOptionsWrap || !editType) {
+            return;
+        }
+        editOptionsWrap.hidden = editType.value !== 'select';
+    }
+
+    if (editType) {
+        editType.addEventListener('change', syncEditOptionsVisibility);
+    }
+
+    window.cpOpenEditChamp = function (id) {
+        if (!id || !champsDataMap[id]) {
+            return;
+        }
+        var data = champsDataMap[id];
+        if (editChampId) {
+            editChampId.value = String(id);
+        }
+        if (editIntro) {
+            var kind = data.est_systeme ? 'champ système' : 'champ personnalisé';
+            editIntro.textContent = 'Modification du ' + kind + ' « ' + (data.label || '') + ' ».';
+        }
+        if (editLabel) {
+            editLabel.value = data.label || '';
+        }
+        if (editSection) {
+            editSection.value = data.section || 'info';
+        }
+        var verrou = !!data.verrouille;
+        var estSys = !!data.est_systeme;
+        var customOnly = !estSys && !verrou;
+
+        if (editSectionWrap) {
+            editSectionWrap.hidden = verrou;
+        }
+        if (editCustomFields) {
+            editCustomFields.hidden = !customOnly;
+        }
+        if (customOnly) {
+            if (editType) {
+                editType.value = data.type_champ || 'texte';
+            }
+            if (editOptions) {
+                editOptions.value = data.options_text || '';
+            }
+            if (editObligatoire) {
+                editObligatoire.checked = !!data.obligatoire;
+            }
+            syncEditOptionsVisibility();
+        }
+        var roles = rolesMap[id] || [];
+        var allRoles = roles.length === 0;
+        if (editRolesGrid) {
+            editRolesGrid.querySelectorAll('input[type="checkbox"][data-role]').forEach(function (cb) {
+                var role = cb.getAttribute('data-role');
+                cb.checked = allRoles || roles.indexOf(role) !== -1;
+            });
+        }
+        openModal(editModalId);
+    };
+
     window.cpOpenAccesChamp = function (id) {
         if (!id) {
             return;

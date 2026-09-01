@@ -10,6 +10,10 @@ require_once __DIR__ . '/admin_permissions.php';
 if (!admin_can_receive_stock_alerte_popup()) {
     return;
 }
+require_once __DIR__ . '/produit_formulaire_champs.php';
+if (!pf_champ_visible('stock')) {
+    return;
+}
 require_once __DIR__ . '/../models/model_stock_alertes.php';
 
 $__stock_alert_popup = stock_alertes_resume_pour_popup(25);
