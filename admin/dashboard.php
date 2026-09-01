@@ -176,12 +176,12 @@ $dash_date_longue = fpl_date_longue();
             <article class="dash-today-card dash-today-card--blue">
                 <span class="dash-today-card__icon" aria-hidden="true"><i class="fas fa-boxes-stacked"></i></span>
                 <span class="dash-today-card__value"><?php echo e(fpl_quantite($dash_stats_jour['qte_produits_jour'], 0)); ?></span>
-                <span class="dash-today-card__label">Produits vendus aujourd’hui</span>
+                <span class="dash-today-card__label">Pièces vendues aujourd’hui</span>
             </article>
             <article class="dash-today-card dash-today-card--orange">
                 <span class="dash-today-card__icon" aria-hidden="true"><i class="fas fa-shopping-bag"></i></span>
                 <span class="dash-today-card__value"><?php echo (int) $dash_stats_jour['nb_commandes_jour']; ?></span>
-                <span class="dash-today-card__label">Commandes boutique du jour</span>
+                <span class="dash-today-card__label">Commandes comptoir du jour</span>
             </article>
             <article class="dash-today-card dash-today-card--green">
                 <span class="dash-today-card__icon" aria-hidden="true"><i class="fas fa-truck-loading"></i></span>
@@ -239,6 +239,7 @@ $dash_date_longue = fpl_date_longue();
                 <header class="dash-chart-card__head">
                     <h3>Ventes <?php echo (int) date('Y'); ?></h3>
                     <span class="dash-chart-card__hint">Quantités &amp; montants par mois</span>
+                    <p class="dash-chart-card__desc">Barres : pièces vendues · Courbe : montants FCFA (comptoir + BL).</p>
                 </header>
                 <div class="dash-chart-card__body">
                     <canvas id="dashChartMensuel" aria-label="Ventes mensuelles"></canvas>
@@ -246,17 +247,19 @@ $dash_date_longue = fpl_date_longue();
             </article>
             <article class="dash-chart-card">
                 <header class="dash-chart-card__head">
-                    <h3>Top 10 produits vendus</h3>
-                    <span class="dash-chart-card__hint">Boutique + bons de livraison</span>
+                    <h3>Top 10 pièces vendues</h3>
+                    <span class="dash-chart-card__hint">Comptoir + bons de livraison</span>
+                    <p class="dash-chart-card__desc">Classement des 10 pièces les plus vendues en unités.</p>
                 </header>
                 <div class="dash-chart-card__body">
-                    <canvas id="dashChartTopProduits" aria-label="Produits les plus vendus"></canvas>
+                    <canvas id="dashChartTopProduits" aria-label="Pièces les plus vendues"></canvas>
                 </div>
             </article>
-            <article class="dash-chart-card">
+            <article class="dash-chart-card dash-chart-card--wide">
                 <header class="dash-chart-card__head">
                     <h3>BL récents (7 jours)</h3>
                     <span class="dash-chart-card__hint">Pièces commandées &amp; montant HT</span>
+                    <p class="dash-chart-card__desc">Pièces commandées et montant HT par BL sur 7 jours.</p>
                 </header>
                 <div class="dash-chart-card__body">
                     <canvas id="dashChartBlRecents" aria-label="Bons de livraison récents"></canvas>
@@ -294,9 +297,9 @@ $dash_date_longue = fpl_date_longue();
         require_once __DIR__ . '/../includes/site_url.php';
         $dash_upload_base = rtrim(get_public_root_uri_path(), '/') . '/upload/';
         ?>
-        <section class="dash-panel dash-panel--catalogue dash-panel--top-produits" aria-label="Produits les plus vendus">
+        <section class="dash-panel dash-panel--catalogue dash-panel--top-produits" aria-label="Pièces les plus vendues">
             <div class="dash-panel__head">
-                <h2 class="dash-panel__title">Produits les plus vendus</h2>
+                <h2 class="dash-panel__title">Pièces les plus vendues</h2>
                 <a href="produits/index.php" class="dash-table__view">Catalogue complet <i class="fas fa-chevron-right" aria-hidden="true"></i></a>
             </div>
             <div class="dash-table-wrap dash-table-wrap--produits">
@@ -304,7 +307,7 @@ $dash_date_longue = fpl_date_longue();
                     <thead>
                         <tr>
                             <th class="col-thumb">Visuel</th>
-                            <th>Produit</th>
+                            <th>Pièce</th>
                             <th>Catégorie</th>
                             <th class="col-num">Vendus</th>
                             <th class="col-num">CA généré</th>
@@ -341,7 +344,7 @@ $dash_date_longue = fpl_date_longue();
                                 <span class="dash-produit-thumb dash-produit-thumb--ph" aria-hidden="true"><i class="fas fa-box"></i></span>
                                 <?php endif; ?>
                             </td>
-                            <td data-label="Produit">
+                            <td data-label="Pièce">
                                 <strong class="dash-produit-nom"><?php echo e($pv['nom']); ?></strong>
                                 <?php if (!empty($pv['reference'])): ?>
                                 <span class="dash-produit-ref"><?php echo e($pv['reference']); ?></span>
@@ -371,7 +374,7 @@ $dash_date_longue = fpl_date_longue();
             </div>
             <div class="dash-panel__foot">
                 <span>Classement basé sur les ventes boutique + BL validés</span>
-                <a href="produits/index.php" class="dash-table__view">Voir tous les produits</a>
+                <a href="produits/index.php" class="dash-table__view">Voir toutes les pièces</a>
             </div>
         </section>
         <?php endif; ?>
