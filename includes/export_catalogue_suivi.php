@@ -670,7 +670,7 @@ function export_catalogue_suivi_render_cell_html($key, array $produit, array $ct
             return '<input type="number" class="page-produits-export-table__price-input"'
                 . ' name="prix[' . $pid . '][prix_achat]"'
                 . ' value="' . htmlspecialchars($val, ENT_QUOTES, 'UTF-8') . '"'
-                . ' min="0" step="1" inputmode="numeric" placeholder="—" aria-label="Prix achat"'
+                . ' min="0" step="1" inputmode="numeric" placeholder="—" aria-label="Prix grossiste"'
                 . ' data-export-prix-pid="' . $pid . '" data-export-prix-field="prix_achat" autocomplete="off">';
 
         case 'prix':

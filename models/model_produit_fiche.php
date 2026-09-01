@@ -345,7 +345,7 @@ function produit_fiche_faits(array $produit)
     if (pf_champ_visible('prix_achat')) {
         $prix_achat = $produit['prix_achat'] ?? null;
         if ($prix_achat !== null && $prix_achat !== '' && (float) $prix_achat > 0) {
-            $faits[] = ['k' => 'Prix d\'achat', 'v' => fpl_montant((float) $prix_achat) . ' FCFA'];
+            $faits[] = ['k' => 'Prix grossiste', 'v' => fpl_montant((float) $prix_achat) . ' FCFA'];
         }
     }
 

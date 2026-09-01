@@ -358,7 +358,7 @@ $affiche_prix = $voit('prix');
           <?php endif; ?>
           <?php if ($voit('prix_achat') && produits_has_column('prix_achat')) : ?>
             <div class="field">
-              <label for="prix_achat">Prix d'achat <span class="hint-inline">FCFA</span> <?php echo $note_figee('prix_achat'); ?></label>
+              <label for="prix_achat">Prix grossiste <span class="hint-inline">FCFA</span> <?php echo $note_figee('prix_achat'); ?></label>
               <input type="number" id="prix_achat" name="prix_achat" min="0" step="any"
                      value="<?php echo e($nombre($produit['prix_achat'] ?? null)); ?>"<?php echo $attr_fige('prix_achat'); ?>>
             </div>

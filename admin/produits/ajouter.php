@@ -431,7 +431,7 @@ saisie_encours_retenir('produits/ajouter.php');
             <div class="wiz-field-group">
               <div class="wiz-field">
                 <label for="prix_achat">
-                  <?php echo fpl_icone('dollar-sign', 13); ?> Prix d'achat
+                  <?php echo fpl_icone('dollar-sign', 13); ?> Prix grossiste
                   <span class="wiz-optional">optionnel</span>
                 </label>
                 <input type="number" id="prix_achat" name="prix_achat" min="0" step="any" class="wiz-input"

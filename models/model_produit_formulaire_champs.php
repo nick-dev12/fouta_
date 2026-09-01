@@ -21,7 +21,7 @@ function produit_formulaire_champs_systeme_defaut() {
         ['slug' => 'reference_fournisseur', 'label' => 'Référence fournisseur', 'icon' => 'fa-barcode', 'section' => 'info', 'colonne_db' => 'reference_fournisseur', 'ordre' => 50, 'verrouille' => 0, 'obligatoire' => 0],
         ['slug' => 'prix', 'label' => 'Prix de vente', 'icon' => 'fa-coins', 'section' => 'prix', 'colonne_db' => 'prix', 'ordre' => 110, 'verrouille' => 0, 'obligatoire' => 0],
         ['slug' => 'prix_promotion', 'label' => 'Prix promotionnel', 'icon' => 'fa-percent', 'section' => 'prix', 'colonne_db' => 'prix_promotion', 'ordre' => 120, 'verrouille' => 0, 'obligatoire' => 0],
-        ['slug' => 'prix_achat', 'label' => 'Prix d\'achat', 'icon' => 'fa-receipt', 'section' => 'prix', 'colonne_db' => 'prix_achat', 'ordre' => 130, 'verrouille' => 0, 'obligatoire' => 0],
+        ['slug' => 'prix_achat', 'label' => 'Prix grossiste', 'icon' => 'fa-receipt', 'section' => 'prix', 'colonne_db' => 'prix_achat', 'ordre' => 130, 'verrouille' => 0, 'obligatoire' => 0],
         ['slug' => 'stock', 'label' => 'Stock', 'icon' => 'fa-boxes-stacked', 'section' => 'prix', 'colonne_db' => 'stock', 'ordre' => 140, 'verrouille' => 1, 'obligatoire' => 1],
         /* LE SEUIL DE LA PIÈCE (31/08) : chaque pièce a le sien, et l'alerte
          * parle dès que le stock lui est inférieur OU égal. Case vide = aucun
@@ -1305,7 +1305,7 @@ function produit_formulaire_export_colonnes_systeme_base() {
         'marque' => ['slug' => 'marque_id', 'label' => 'Marque', 'locked' => false, 'num' => false, 'pdf' => true, 'suivi' => true, 'css_col' => 'page-produits-export-table__col-marque', 'css_cell' => ''],
         'identifiant' => ['slug' => 'identifiant_interne', 'label' => 'Réf. FPL', 'locked' => false, 'num' => false, 'pdf' => true, 'suivi' => true, 'css_col' => 'page-produits-export-table__col-ident', 'css_cell' => ''],
         'fournisseur' => ['slug' => 'fournisseur_id', 'label' => 'Fournisseur', 'locked' => false, 'num' => false, 'pdf' => true, 'suivi' => true, 'css_col' => 'page-produits-export-table__col-four', 'css_cell' => ''],
-        'prix_achat' => ['slug' => 'prix_achat', 'label' => 'Prix achat', 'locked' => false, 'num' => true, 'editable' => true, 'pdf' => true, 'suivi' => true, 'css_col' => 'page-produits-export-table__col-prix-achat', 'css_cell' => 'page-produits-export-table__num'],
+        'prix_achat' => ['slug' => 'prix_achat', 'label' => 'Prix grossiste', 'locked' => false, 'num' => true, 'editable' => true, 'pdf' => true, 'suivi' => true, 'css_col' => 'page-produits-export-table__col-prix-achat', 'css_cell' => 'page-produits-export-table__num'],
         'prix' => ['slug' => 'prix', 'label' => 'Prix vente', 'locked' => false, 'num' => true, 'editable' => true, 'pdf' => true, 'suivi' => true, 'css_col' => 'page-produits-export-table__col-prix', 'css_cell' => 'page-produits-export-table__num'],
         'promo' => ['slug' => 'prix_promotion', 'label' => 'Promo', 'locked' => false, 'num' => true, 'pdf' => true, 'suivi' => true, 'css_col' => 'page-produits-export-table__col-promo', 'css_cell' => 'page-produits-export-table__num'],
         'stock' => ['slug' => 'stock', 'label' => 'Stock', 'locked' => false, 'num' => true, 'pdf' => true, 'suivi' => true, 'css_col' => 'page-produits-export-table__col-stock', 'css_cell' => 'page-produits-export-table__num'],

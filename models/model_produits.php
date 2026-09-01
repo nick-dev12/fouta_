@@ -2456,7 +2456,7 @@ function export_catalogue_maj_prix_produits(array $rows, $admin_id = null)
                 if ($pa_norm === false) {
                     $db->rollBack();
 
-                    return ['success' => false, 'message' => 'Prix achat invalide pour le produit #' . $pid . '.', 'updated' => $updated];
+                    return ['success' => false, 'message' => 'Prix grossiste invalide pour le produit #' . $pid . '.', 'updated' => $updated];
                 }
                 $cur_pa = export_catalogue_prix_normalise_stockage($cur['prix_achat'] ?? null);
                 if ($pa_norm !== $cur_pa) {
@@ -3134,7 +3134,7 @@ function export_colonnes_fpl_toutes()
         'statut' => ['Statut', 'statut'],
         'prix' => ['Prix de vente (FCFA)', 'prix'],
         'prix_promotion' => ['Prix promo (FCFA)', 'prix_promotion'],
-        'prix_achat' => ['Prix d\'achat (FCFA)', 'prix_achat'],
+        'prix_achat' => ['Prix grossiste (FCFA)', 'prix_achat'],
         'date_creation' => ['Ajoutée le', 'date_creation'],
     ];
 
