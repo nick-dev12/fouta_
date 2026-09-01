@@ -41,6 +41,7 @@ require_once __DIR__ . '/../../models/model_produits.php';
 require_once __DIR__ . '/../../models/model_fournisseurs.php';
 require_once __DIR__ . '/../../models/model_marques.php';
 require_once __DIR__ . '/../../models/model_brouillons.php';
+require_once __DIR__ . '/../../includes/navigation_saisie.php';
 require_once __DIR__ . '/../../includes/produit_emplacement_entrepot.php';
 require_once __DIR__ . '/../../includes/produit_formulaire_champs.php';
 
@@ -92,7 +93,10 @@ $cible = [
     'parent_id' => (int) $categorie['id'],
     'parent_nom' => fpl_texte((string) $categorie['nom']),
 ];
-$url_retour = 'index.php?categorie_id=' . $cible['parent_id'] . '&sous_categorie_id=' . $cible['id'];
+/* Les DEUX sorties du wizard (« Retour au catalogue » et le Retour de la
+ * barre) portent ?liste=1 : c'est la porte de sortie volontaire de
+ * ReprendreSaisie — sans elle, le catalogue ramènerait ici sans fin. */
+$url_retour = 'index.php?categorie_id=' . $cible['parent_id'] . '&sous_categorie_id=' . $cible['id'] . '&liste=1';
 
 // ---------------------------------------------------------------------
 // L'ENREGISTREMENT — le contrôleur de ce dépôt, inchangé dans son contrat
@@ -101,7 +105,9 @@ require_once __DIR__ . '/../../controllers/controller_produits.php';
 $erreur_generale = '';
 $result = process_add_produit();
 if (isset($result['success']) && $result['success']) {
-    // L'enregistrement a abouti : le brouillon n'a plus de raison d'être
+    // L'enregistrement a abouti : le brouillon n'a plus de raison d'être,
+    // et la saisie en cours non plus — le catalogue redevient libre.
+    saisie_encours_oublier();
     brouillon_purger((int) $_SESSION['admin_id'],
         isset($_POST['_draft_key']) ? (string) $_POST['_draft_key'] : '');
     $_SESSION['success_message'] = $result['message'];
@@ -161,6 +167,12 @@ $old = [
 
 $fpl_titre_page = 'Nouvelle pièce';
 $fpl_retour_page = $url_retour;
+
+/* REPRENDRE LA SAISIE (01/09) — le formulaire va s'afficher pour de bon :
+ * tous les gardes qui redirigent sont passés. On retient l'adresse exacte,
+ * rayon compris : le catalogue y ramènera tant que la saisie vit, et le
+ * brouillon (fpl-draft) retrouvera sa clé au retour. */
+saisie_encours_retenir('produits/ajouter.php');
 ?>
 <!DOCTYPE html>
 <html lang="fr">

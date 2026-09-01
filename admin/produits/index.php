@@ -29,6 +29,16 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
 }
 
 require_once __DIR__ . '/../includes/require_access.php';
+
+/* REPRENDRE LA SAISIE (01/09) — un formulaire d'ajout est resté ouvert ?
+ * Le catalogue y ramène, là où le brouillon attend. On en sort par
+ * « Annuler »/« Retour » du wizard (ils portent ?liste=1), par un
+ * enregistrement réussi, ou en revenant ici avec ?liste=1. Dernier des
+ * trois middlewares de FPL natif à manquer — porté depuis
+ * includes/navigation_saisie.php. */
+require_once __DIR__ . '/../../includes/navigation_saisie.php';
+saisie_encours_rediriger('produits/index.php');
+
 require_once __DIR__ . '/../../includes/admin_permissions.php';
 require_once __DIR__ . '/../../models/model_produits.php';
 require_once __DIR__ . '/../../models/model_categories.php';
