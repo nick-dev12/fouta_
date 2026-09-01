@@ -841,79 +841,17 @@ $fiche_statut = pf_champ_visible('statut') ? trim((string) ($produit['statut'] ?
             </style>
             <?php endif; ?>
 
-            <div class="fpl-etiq-preview-scale">
-            <article class="fpl-etiq fpl-etiq--fixed"
-                style="--fpl-accent: <?php echo htmlspecialchars($fpl_couleur_hex, ENT_QUOTES, 'UTF-8'); ?>; --fpl-accent-dark: <?php echo htmlspecialchars($fpl_dark_hex, ENT_QUOTES, 'UTF-8'); ?>;">
-                <div class="fpl-etiq__header-zone">
-                    <div class="fpl-etiq__band-top" aria-hidden="true"></div>
-                    <div class="fpl-etiq__shield" aria-hidden="true">
-                        <img src="<?php echo htmlspecialchars($fpl_shield_logo_url, ENT_QUOTES, 'UTF-8'); ?>?v=<?php echo (int) $fpl_shield_logo_ver; ?>"
-                            width="120"
-                            height="88"
-                            alt=""
-                            class="fpl-etiq__shield-logo">
-                        <span class="fpl-etiq__shield-line">FOUTA POIDS LOURDS</span>
-                        <span class="fpl-etiq__shield-line fpl-etiq__shield-line--small">The Solution</span>
-                    </div>
-                </div>
-                <div class="fpl-etiq__sheet">
-                    <div class="fpl-etiq__body">
-                        <div class="fpl-etiq__col-left">
-                            <div class="fpl-etiq__col-left-meta">
-                                <div class="fpl-etiq__ref-big"><?php echo htmlspecialchars($fpl_ref_affichage !== '' ? $fpl_ref_affichage : (string) $produit['identifiant_interne'], ENT_QUOTES, 'UTF-8'); ?></div>
-                                <div class="fpl-etiq__nom-main"><?php echo htmlspecialchars((string) $produit['nom'], ENT_QUOTES, 'UTF-8'); ?></div>
-                                <div class="fpl-etiq__cat-muted"><?php echo htmlspecialchars($categorie_nom_etiq, ENT_QUOTES, 'UTF-8'); ?></div>
-                            </div>
-                            <div class="fpl-etiq__qr-block">
-                                <?php if (!empty($qr_code_data_uri)): ?>
-                                <div class="fpl-etiq__qr-box">
-                                    <img src="<?php echo htmlspecialchars($qr_code_data_uri, ENT_QUOTES, 'UTF-8'); ?>" width="160" height="160" alt="QR Code stock" class="fpl-etiq__qr-img">
-                                </div>
-                                <?php else: ?>
-                                <div class="fpl-etiq__qr-fallback" role="img" aria-label="QR indisponible">QR</div>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                        <div class="fpl-etiq__divider" aria-hidden="true"></div>
-                        <div class="fpl-etiq__col-right">
-                            <?php if ($fpl_compat_l1 !== '' || $fpl_compat_l2 !== ''): ?>
-                            <div class="fpl-etiq__compat">
-                                <?php if ($fpl_compat_l1 !== ''): ?>
-                                <div class="fpl-etiq__compat-l1"><?php echo htmlspecialchars($fpl_compat_l1, ENT_QUOTES, 'UTF-8'); ?></div>
-                                <?php endif; ?>
-                                <?php if ($fpl_compat_l2 !== ''): ?>
-                                <div class="fpl-etiq__compat-l2"><?php echo htmlspecialchars($fpl_compat_l2, ENT_QUOTES, 'UTF-8'); ?></div>
-                                <?php endif; ?>
-                            </div>
-                            <?php endif; ?>
-                            <div class="fpl-etiq__photo-box">
-                                <?php if ($fpl_etiq_photo_abs !== ''): ?>
-                                <img src="<?php echo htmlspecialchars($fpl_etiq_photo_abs, ENT_QUOTES, 'UTF-8'); ?>" alt="" class="fpl-etiq__photo-produit" width="200" height="140">
-                                <?php endif; ?>
-                            </div>
-                            <div class="fpl-etiq__barcode-wrap">
-                                <div class="fpl-etiq__barcode-line">
-                                    <img src="<?php echo htmlspecialchars($barcode_abs_et, ENT_QUOTES, 'UTF-8'); ?>?v=<?php echo (int) $barcode_ver_et; ?>"
-                                        width="192" height="72" alt="Code-barres <?php echo htmlspecialchars((string) $produit['identifiant_interne'], ENT_QUOTES, 'UTF-8'); ?>" class="fpl-etiq__barcode-img">
-                                </div>
-                                <div class="fpl-etiq__pcs">1 pcs</div>
-                            </div>
-                        </div>
-                    </div>
-                    <footer class="fpl-etiq__footer">
-                        <div class="fpl-etiq__footer-row1">
-                            <span><?php echo htmlspecialchars($footer_fpl['adr_rue'], ENT_QUOTES, 'UTF-8'); ?></span>
-                            <span class="fpl-etiq__footer-ico" aria-hidden="true">✉</span>
-                            <span><?php echo htmlspecialchars($footer_fpl['adr_bp'], ENT_QUOTES, 'UTF-8'); ?></span>
-                        </div>
-                        <div class="fpl-etiq__footer-row2">
-                            <span><span class="fpl-etiq__footer-ico" aria-hidden="true">☎</span> <?php echo htmlspecialchars($footer_fpl['tels'], ENT_QUOTES, 'UTF-8'); ?></span>
-                            <span><span class="fpl-etiq__footer-ico" aria-hidden="true">🌐</span> <?php echo htmlspecialchars($footer_fpl['web'], ENT_QUOTES, 'UTF-8'); ?></span>
-                            <span><span class="fpl-etiq__footer-ico" aria-hidden="true">✉</span> <?php echo htmlspecialchars($footer_fpl['mail'], ENT_QUOTES, 'UTF-8'); ?></span>
-                        </div>
-                    </footer>
-                </div>
-            </article>
+            <?php /* LE NOUVEAU DESSIN (01/09) : l'étiquette n'est plus un
+                     assemblage HTML — c'est L'IMAGE du moteur partagé
+                     (includes/etiquette_fpl70.php), celle-là même qui part au
+                     PDF. Ce que l'écran montre est ce que l'imprimante sort,
+                     au pixel — vérifié en Python contre le PDF validé. */ ?>
+            <div class="fpl-etiq70-apercu">
+                <img id="fpl-etiq70-img"
+                    src="etiquette-piece-image.php?id=<?php echo (int) $produit_id; ?>&amp;cote=1080"
+                    width="1080" height="1080"
+                    alt="Étiquette de la pièce <?php echo htmlspecialchars((string) $produit['identifiant_interne'], ENT_QUOTES, 'UTF-8'); ?>"
+                    style="width: min(430px, 100%); height: auto; display: block; border-radius: 12px; box-shadow: 0 10px 26px rgba(16, 49, 111, .14);">
             </div>
             <div class="fpl-etiquette-print-actions page-ajuster-stock-code-actions">
                 <?php if ($can_pdf_barcode): ?>
@@ -1119,19 +1057,14 @@ $fiche_statut = pf_champ_visible('statut') ? trim((string) ($produit['statut'] ?
                 body: JSON.stringify({ type: 'piece', id: <?php echo (int) $produit_id; ?>, format_id: <?php echo $fpl_format_courant !== null ? (int) $fpl_format_courant['id'] : 'null'; ?>, _jeton: <?php echo json_encode((string) $_SESSION['admin_csrf']); ?> })
             });
         } catch (e) { /* la trace ne bloque jamais l'impression */ }
-        var cssHref = <?php echo json_encode($fpl_etiq_css_abs, JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP); ?>;
-        var baseHref = <?php echo json_encode(rtrim($origin_et, '/') . '/', JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP); ?>;
-        var node = root.querySelector('.fpl-etiq');
-        if (!node || !cssHref) return;
+        var img = document.getElementById('fpl-etiq70-img');
+        if (!img || !img.src) return;
 
         var mmW = parseFloat(root.getAttribute('data-fpl-w')) || 70;
         var mmH = parseFloat(root.getAttribute('data-fpl-h')) || 70;
-        var sx = parseFloat(root.getAttribute('data-fpl-sx'));
-        var sy = parseFloat(root.getAttribute('data-fpl-sy'));
-        if (isNaN(sx) || sx <= 0) sx = mmW / 70;
-        if (isNaN(sy) || sy <= 0) sy = mmH / 70;
-        var sizeW = mmW + 'mm';
-        var sizeH = mmH + 'mm';
+        /* le dessin est carré : il prend le côté COURT de la page, centré —
+           le geste de l'atelier de la direction, le même que le PDF */
+        var mmCote = Math.min(mmW, mmH);
 
         var w = window.open('', '_blank', 'width=420,height=460');
         if (!w || !w.document) return;
@@ -1139,25 +1072,12 @@ $fiche_statut = pf_champ_visible('statut') ? trim((string) ($produit['statut'] ?
         var doc = w.document;
         doc.open();
         doc.write('<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>Étiquette FPL ' + mmW + '\u00d7' + mmH + ' mm</title>');
-        doc.write('<base href="' + String(baseHref).replace(/"/g, '&quot;') + '">');
         doc.write('<style>');
-        doc.write(':root{--fpl-w:' + sizeW + ';--fpl-h:' + sizeH + ';--fpl-sx:' + sx + ';--fpl-sy:' + sy + ';--fpl-s:' + Math.min(sx, sy) + '}');
-        doc.write('@page{size:' + sizeW + ' ' + sizeH + ';margin:0}');
-        doc.write('html,body{margin:0;padding:0;width:' + sizeW + ';height:' + sizeH + ';overflow:hidden;box-sizing:border-box;background:#fff;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}');
-        doc.write('.fpl-etiq{margin:0!important;box-shadow:none!important;border:none!important;');
-        doc.write('transform:scale(' + sx + ',' + sy + ')!important;transform-origin:top left!important}');
-        doc.write('</style></head><body></body></html>');
+        doc.write('@page{size:' + mmW + 'mm ' + mmH + 'mm;margin:0}');
+        doc.write('html,body{margin:0;padding:0;width:' + mmW + 'mm;height:' + mmH + 'mm;overflow:hidden;background:#fff;display:flex;align-items:center;justify-content:center;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}');
+        doc.write('img{width:' + mmCote + 'mm;height:' + mmCote + 'mm;display:block;}');
+        doc.write('</style></head><body><img src="' + String(img.src).replace(/"/g, '&quot;') + '" alt=""></body></html>');
         doc.close();
-
-        var head = doc.head;
-        var body = doc.body;
-
-        var fa = doc.createElement('link');
-        fa.rel = 'stylesheet';
-        fa.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css';
-        head.appendChild(fa);
-
-        body.innerHTML = node.outerHTML;
 
         var printed = false;
         function runPrint() {
@@ -1175,52 +1095,14 @@ $fiche_statut = pf_champ_visible('statut') ? trim((string) ($produit['statut'] ?
                 }, 120);
             });
         }
-
-        function whenImagesReady(cb) {
-            var imgs = doc.images;
-            var n = imgs.length;
-            var pending = 0;
-            var i;
-            for (i = 0; i < n; i++) {
-                if (!imgs[i].complete) pending++;
-            }
-            if (pending === 0) {
-                cb();
-                return;
-            }
-            function tick() {
-                pending--;
-                if (pending <= 0) cb();
-            }
-            for (i = 0; i < n; i++) {
-                if (!imgs[i].complete) {
-                    imgs[i].addEventListener('load', tick);
-                    imgs[i].addEventListener('error', tick);
-                }
-            }
+        var pimg = doc.images.length ? doc.images[0] : null;
+        if (pimg && !pimg.complete) {
+            pimg.addEventListener('load', runPrint);
+            pimg.addEventListener('error', runPrint);
+            setTimeout(runPrint, 1500);
+        } else {
+            runPrint();
         }
-
-        var sheet = doc.createElement('link');
-        sheet.rel = 'stylesheet';
-        sheet.href = cssHref;
-        sheet.onload = function () {
-            whenImagesReady(runPrint);
-        };
-        sheet.onerror = function () {
-            whenImagesReady(runPrint);
-        };
-        head.appendChild(sheet);
-
-        setTimeout(function () {
-            if (printed || w.closed) return;
-            try {
-                if (sheet.sheet) {
-                    whenImagesReady(runPrint);
-                }
-            } catch (e) {
-                whenImagesReady(runPrint);
-            }
-        }, 700);
     };
 
     (function () {

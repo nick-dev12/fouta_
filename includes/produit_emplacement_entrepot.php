@@ -824,6 +824,21 @@ function produit_emplacement_extraire_fpl_du_scan($raw) {
         $raw = trim((string) explode(';', $raw, 2)[0]);
     }
 
+    /* L'EAN-13 DE LA NOUVELLE ÉTIQUETTE (01/09) : 200 (plage GS1 réservée à
+       l'usage interne) + les 9 chiffres de l'identifiant + la clé. La
+       douchette tape ces 13 chiffres : on les rend comme l'identifiant FPL,
+       après vérification de la clé — un vrai EAN du commerce qui commencerait
+       par 200 sans bonne clé ne passe pas. */
+    if (preg_match('/^200(\d{9})(\d)$/', $raw, $m)) {
+        $somme = 0;
+        for ($i = 0; $i < 12; $i++) {
+            $somme += ((int) $raw[$i]) * ($i % 2 === 0 ? 1 : 3);
+        }
+        if ((int) $m[2] === (10 - $somme % 10) % 10) {
+            return 'FPL' . $m[1];
+        }
+    }
+
     return $raw;
 }
 

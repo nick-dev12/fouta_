@@ -327,19 +327,41 @@ $meta = (string) $dims['meta'];
             <aside class="ee-etiq-params__preview fpl-params-preview" aria-label="Aperçu">
                 <p class="ee-barre-etiq-block__label" id="fplPreviewLabel"><?php echo htmlspecialchars($label, ENT_QUOTES, 'UTF-8'); ?></p>
                 <p class="fpl-etiq-preview-meta" id="fplPreviewMeta"><?php echo htmlspecialchars($meta, ENT_QUOTES, 'UTF-8'); ?></p>
-                <div class="fpl-etiq-preview-scale" id="fplPreviewScale">
-                    <article class="fpl-etiq fpl-etiq--fixed" style="--fpl-accent:#19377d;--fpl-accent-dark:#00155B;">
-                        <div class="fpl-etiq__header-zone">
-                            <div class="fpl-etiq__band-top" aria-hidden="true"></div>
-                        </div>
-                        <div class="fpl-etiq__sheet">
-                            <div class="fpl-params-mini">Aperçu<br>format d’impression</div>
-                        </div>
-                        <footer class="fpl-etiq__footer" style="position:absolute;bottom:0;left:0;right:0;">
-                            <div class="fpl-etiq__footer-row1"><span>FOUTA POIDS LOURDS</span></div>
-                        </footer>
-                    </article>
+                <?php
+                /* L'APERÇU DU NOUVEAU DESSIN (01/09) : l'image du moteur
+                   partagé, posée dans une page aux proportions des mm saisis
+                   (le dessin est carré, au côté court, comme le PDF). La pièce
+                   d'où l'on vient sert de modèle ; sinon la dernière pièce. */
+                $apercu_pid = $produit_id_retour;
+                if ($apercu_pid <= 0 && isset($db) && $db instanceof PDO) {
+                    try {
+                        $apercu_pid = (int) $db->query('SELECT id FROM produits WHERE sync_deleted_at IS NULL ORDER BY id DESC LIMIT 1')->fetchColumn();
+                    } catch (PDOException $e) {
+                        $apercu_pid = 0;
+                    }
+                }
+                ?>
+                <div class="fpl-etiq70-page-apercu" id="fplPreviewScale">
+                    <?php if ($apercu_pid > 0) : ?>
+                    <img src="../produits/etiquette-piece-image.php?id=<?php echo (int) $apercu_pid; ?>&amp;cote=600"
+                        alt="Aperçu de l'étiquette" class="fpl-etiq70-page-apercu__img" width="600" height="600">
+                    <?php else : ?>
+                    <span class="fpl-etiq70-page-apercu__vide">Aperçu du format</span>
+                    <?php endif; ?>
                 </div>
+                <style>
+                    .fpl-etiq70-page-apercu {
+                        width: min(300px, 100%);
+                        aspect-ratio: var(--fpl-sx, 1) / var(--fpl-sy, 1);
+                        border: 1.5px dashed var(--line, #DFE4EC);
+                        border-radius: 8px;
+                        background: #fff;
+                        display: flex; align-items: center; justify-content: center;
+                        overflow: hidden;
+                    }
+                    .fpl-etiq70-page-apercu__img { width: auto; height: auto; max-width: 100%; max-height: 100%; aspect-ratio: 1 / 1; display: block; }
+                    .fpl-etiq70-page-apercu__vide { font-size: 12.5px; color: var(--slate, #5A6A85); }
+                </style>
                 <p class="ee-etiq-params__preview-note">Aperçu réduit — l’impression réelle utilise les mm saisis.</p>
             </aside>
         </div>
