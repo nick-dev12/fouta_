@@ -375,14 +375,14 @@ $affiche_prix = $voit('prix');
           </div>
           <?php if ($voit('prix_promotion')) : ?>
             <div class="field">
-              <label for="prix_promotion">Prix promotionnel <span class="hint-inline">sous le prix de vente</span> <?php echo $note_figee('prix_promotion'); ?></label>
+              <label for="prix_promotion">Prix promotionnel <?php echo $note_figee('prix_promotion'); ?></label>
               <input type="number" id="prix_promotion" name="prix_promotion" min="0" step="any"
                      value="<?php echo e($nombre($produit['prix_promotion'] ?? null)); ?>"<?php echo $attr_fige('prix_promotion'); ?>>
             </div>
           <?php endif; ?>
           <?php if (produits_has_column('prix_entreprise')) : ?>
             <div class="field">
-              <label for="prix_entreprise">Prix entreprise <span class="hint-inline">clients professionnels</span></label>
+              <label for="prix_entreprise">Prix entreprise</label>
               <input type="number" id="prix_entreprise" name="prix_entreprise" min="0" step="any"
                      value="<?php echo e($nombre($produit['prix_entreprise'] ?? null)); ?>">
             </div>
