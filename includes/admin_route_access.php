@@ -99,7 +99,12 @@ if (!function_exists('admin_route_relative_path')) {
         if (strpos($p, 'categories/') === 0) {
             return true;
         }
-        if ($p === 'parametres/alertes-stock.php' || $p === 'parametres/hierarchie-entrepot.php' || $p === 'parametres/champs-produit.php') {
+        /* champs-produit RETIRÉ de cette liste (01/09) : la liste blanche le
+         * promettait au Responsable stock, mais la page exige d'être
+         * administrateur complet et le renvoyait — une porte peinte sur un mur.
+         * Décision de la direction du 31/08 : les champs de la fiche pièce se
+         * règlent par l'administrateur. La liste dit enfin la même chose. */
+        if ($p === 'parametres/alertes-stock.php' || $p === 'parametres/hierarchie-entrepot.php') {
             return true;
         }
         // Les dimensions et tailles d'étiquette (24/08) : le Responsable règle
