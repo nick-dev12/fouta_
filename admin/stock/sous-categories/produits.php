@@ -20,7 +20,7 @@ if ($sous_categorie_id <= 0) {
 require_once __DIR__ . '/../../../models/model_sous_categories.php';
 require_once __DIR__ . '/../../../models/model_categories.php';
 require_once __DIR__ . '/../../../models/model_produits.php';
-require_once __DIR__ . '/../../includes/produit_formulaire_champs.php';
+require_once __DIR__ . '/../../../includes/produit_formulaire_champs.php';
 
 $pf_col_img = pf_liste_col_image_visible();
 $pf_col_cat = pf_liste_col_categorie_visible();
@@ -62,7 +62,7 @@ $produits_path_prefix = '../../produits/';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Produits — <?php echo htmlspecialchars((string) ($sous['nom'] ?? ''), ENT_QUOTES, 'UTF-8'); ?> — Admin</title>
     <?php require_once __DIR__ . '/../../../includes/asset_version.php'; ?>
-<?php include __DIR__ . '/../..//includes/fpl_head.php'; ?>
+<?php include __DIR__ . '/../../includes/fpl_head.php'; ?>
     <?php fpl_css_link('admin-produits-index.css'); ?>
 </head>
 <body>
