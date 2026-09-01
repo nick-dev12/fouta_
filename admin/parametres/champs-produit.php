@@ -90,6 +90,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             $error_message = $res['message'];
         }
+    } elseif (isset($_POST['modifier_champ_produit'])) {
+        $cid = (int) ($_POST['champ_id'] ?? 0);
+        $champ_edit = produit_formulaire_champ_get($cid);
+        if ($champ_edit === null) {
+            $error_message = 'Champ introuvable.';
+        } else {
+            $est_sys = (int) ($champ_edit['est_systeme'] ?? 0) === 1;
+            $verrou = (int) ($champ_edit['verrouille'] ?? 0) === 1;
+            $roles_acces = isset($_POST['roles_acces']) && is_array($_POST['roles_acces'])
+                ? array_map('strval', $_POST['roles_acces']) : [];
+            if ($est_sys || $verrou) {
+                $res = produit_formulaire_champ_modifier(
+                    $cid,
+                    isset($_POST['label_champ']) ? (string) $_POST['label_champ'] : '',
+                    $verrou ? null : (isset($_POST['section_champ']) ? (string) $_POST['section_champ'] : null),
+                    null,
+                    null,
+                    null,
+                    $roles_acces
+                );
+            } else {
+                $res = produit_formulaire_champ_modifier(
+                    $cid,
+                    isset($_POST['label_champ']) ? (string) $_POST['label_champ'] : '',
+                    isset($_POST['section_champ']) ? (string) $_POST['section_champ'] : null,
+                    isset($_POST['type_champ']) ? (string) $_POST['type_champ'] : null,
+                    isset($_POST['options_champ']) ? (string) $_POST['options_champ'] : null,
+                    !empty($_POST['obligatoire_champ']),
+                    $roles_acces
+                );
+            }
+            if ($res['success']) {
+                $_SESSION['success_message_champs_produit'] = $res['message'];
+                header('Location: champs-produit.php');
+                exit;
+            }
+            $error_message = $res['message'];
+        }
     }
 }
 
@@ -121,10 +159,28 @@ foreach ($champs as $ch) {
 
 $roles_disponibles = produit_formulaire_roles_disponibles();
 $champs_roles_map = [];
+$champs_data_map = [];
 foreach ($champs as $ch) {
     $cid = (int) ($ch['id'] ?? 0);
     if ($cid > 0) {
         $champs_roles_map[$cid] = produit_formulaire_champ_roles_get($cid);
+        $opts_text = '';
+        if (!empty($ch['options_json'])) {
+            $decoded = json_decode((string) $ch['options_json'], true);
+            if (is_array($decoded)) {
+                $opts_text = implode("\n", array_map('strval', $decoded));
+            }
+        }
+        $champs_data_map[$cid] = [
+            'id' => $cid,
+            'label' => (string) ($ch['label'] ?? ''),
+            'section' => (string) ($ch['section'] ?? 'info'),
+            'type_champ' => (string) ($ch['type_champ'] ?? 'systeme'),
+            'obligatoire' => (int) ($ch['obligatoire'] ?? 0) === 1,
+            'est_systeme' => (int) ($ch['est_systeme'] ?? 0) === 1,
+            'verrouille' => (int) ($ch['verrouille'] ?? 0) === 1,
+            'options_text' => $opts_text,
+        ];
     }
 }
 
@@ -160,7 +216,7 @@ foreach ($champs as $ch) {
                 <div>
                     <p class="cp-hero__eyebrow">Catalogue produits</p>
                     <h1 class="cp-hero__title">Champs du formulaire produit</h1>
-                    <p class="cp-hero__lead">Activez, désactivez ou créez des champs affichés lors de l’ajout et de la modification des produits. Définissez quels types de compte admin peuvent voir chaque champ et ses données dans tout l’espace admin, y compris les colonnes du <strong>suivi catalogue</strong>. Les champs verrouillés (nom, stock, catégorie) restent obligatoires.</p>
+                    <p class="cp-hero__lead">Activez, désactivez ou créez des champs affichés lors de l’ajout et de la modification des produits. Les sections <strong>Prix</strong>, <strong>Stock</strong> et <strong>Catégorie</strong> sont distinctes. Les champs de la section Prix (y compris les champs personnalisés de type nombre) apparaissent dans les formulaires devis et bons de livraison. Définissez quels types de compte admin peuvent voir chaque champ.</p>
                 </div>
             </div>
             <?php if (!$tables_ok): ?>
@@ -225,6 +281,13 @@ foreach ($champs as $ch) {
                     </div>
                     <div class="cp-champ-row__actions">
                         <?php if ($peut_gerer): ?>
+                        <button type="button"
+                            class="cp-btn-icon"
+                            title="Modifier ce champ"
+                            aria-label="Modifier le champ <?php echo htmlspecialchars((string) ($ch['label'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                            onclick="cpOpenEditChamp(<?php echo $cid; ?>)">
+                            <i class="fas fa-pen" aria-hidden="true"></i>
+                        </button>
                         <button type="button"
                             class="cp-btn-icon"
                             title="Configurer les accès par type de compte"
@@ -306,7 +369,7 @@ foreach ($champs as $ch) {
                     </label>
                     <fieldset class="cp-roles-fieldset">
                         <legend>Types de compte autorisés à voir ce champ</legend>
-                        <p class="cp-roles-fieldset__hint">Ces droits s’appliquent au formulaire produit et à l’affichage des données dans tout l’admin.</p>
+                        <p class="cp-roles-fieldset__hint">Ces droits s’appliquent partout dans l’admin : formulaires produit, listes, devis, caisse, exports, etc.</p>
                         <div class="cp-roles-grid">
                             <?php foreach ($roles_disponibles as $role_key => $role_label): ?>
                             <label class="cp-role-chip">
@@ -320,6 +383,71 @@ foreach ($champs as $ch) {
                 <div class="cp-modal__footer">
                     <button type="button" class="cp-btn cp-btn--ghost" onclick="cpCloseModal('modalAjouterChampProduit')">Annuler</button>
                     <button type="submit" class="cp-btn cp-btn--primary">Créer le champ</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="cp-modal" id="modalModifierChampProduit" aria-hidden="true">
+        <div class="cp-modal__backdrop" onclick="cpCloseModal('modalModifierChampProduit')"></div>
+        <div class="cp-modal__dialog cp-modal__dialog--wide" role="dialog" aria-labelledby="cp_edit_title">
+            <div class="cp-modal__head">
+                <h2 class="cp-modal__title" id="cp_edit_title"><i class="fas fa-pen" aria-hidden="true"></i> Modifier un champ</h2>
+                <button type="button" class="cp-modal__close" onclick="cpCloseModal('modalModifierChampProduit')"><i class="fas fa-xmark"></i></button>
+            </div>
+            <form method="post" id="cp_form_edit_champ">
+                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf, ENT_QUOTES, 'UTF-8'); ?>">
+                <input type="hidden" name="modifier_champ_produit" value="1">
+                <input type="hidden" name="champ_id" id="cp_edit_champ_id" value="">
+                <div class="cp-modal__body">
+                    <p class="cp-impact__intro" id="cp_edit_intro"></p>
+                    <div class="cp-field">
+                        <label for="cp_edit_label_champ">Libellé</label>
+                        <input type="text" id="cp_edit_label_champ" name="label_champ" maxlength="100" required>
+                    </div>
+                    <div class="cp-field" id="cp_edit_section_wrap">
+                        <label for="cp_edit_section_champ">Section du formulaire</label>
+                        <select id="cp_edit_section_champ" name="section_champ">
+                            <?php foreach ($sections_labels as $sk => $sl): ?>
+                            <option value="<?php echo htmlspecialchars($sk, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($sl, ENT_QUOTES, 'UTF-8'); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div id="cp_edit_custom_fields">
+                        <div class="cp-field">
+                            <label for="cp_edit_type_champ">Type</label>
+                            <select id="cp_edit_type_champ" name="type_champ">
+                                <option value="texte">Texte court</option>
+                                <option value="textarea">Texte long</option>
+                                <option value="nombre">Nombre</option>
+                                <option value="select">Liste déroulante</option>
+                            </select>
+                        </div>
+                        <div class="cp-field" id="cp_edit_options_wrap" hidden>
+                            <label for="cp_edit_options_champ">Options (une par ligne ou séparées par des virgules)</label>
+                            <textarea id="cp_edit_options_champ" name="options_champ" rows="4"></textarea>
+                        </div>
+                        <label class="cp-checkbox">
+                            <input type="checkbox" name="obligatoire_champ" value="1" id="cp_edit_obligatoire_champ">
+                            <span>Champ obligatoire à la saisie</span>
+                        </label>
+                    </div>
+                    <fieldset class="cp-roles-fieldset" id="cp_edit_roles_fieldset">
+                        <legend>Types de compte autorisés à voir ce champ</legend>
+                        <p class="cp-roles-fieldset__hint">Ces droits s’appliquent partout dans l’admin : formulaires produit, listes, devis, caisse, exports, etc.</p>
+                        <div class="cp-roles-grid" id="cp_edit_roles_grid">
+                            <?php foreach ($roles_disponibles as $role_key => $role_label): ?>
+                            <label class="cp-role-chip">
+                                <input type="checkbox" name="roles_acces[]" value="<?php echo htmlspecialchars($role_key, ENT_QUOTES, 'UTF-8'); ?>" data-role="<?php echo htmlspecialchars($role_key, ENT_QUOTES, 'UTF-8'); ?>">
+                                <span><?php echo htmlspecialchars($role_label, ENT_QUOTES, 'UTF-8'); ?></span>
+                            </label>
+                            <?php endforeach; ?>
+                        </div>
+                    </fieldset>
+                </div>
+                <div class="cp-modal__footer">
+                    <button type="button" class="cp-btn cp-btn--ghost" onclick="cpCloseModal('modalModifierChampProduit')">Annuler</button>
+                    <button type="submit" class="cp-btn cp-btn--primary">Enregistrer</button>
                 </div>
             </form>
         </div>
@@ -340,7 +468,7 @@ foreach ($champs as $ch) {
                     <p class="cp-impact__intro" id="cp_acces_intro"></p>
                     <fieldset class="cp-roles-fieldset">
                         <legend>Types de compte autorisés</legend>
-                        <p class="cp-roles-fieldset__hint">Cochez les types de compte autorisés. Si aucune restriction n’est enregistrée, tous les types voient le champ (sauf informaticien/développeur qui voient toujours tout).</p>
+                        <p class="cp-roles-fieldset__hint">Cochez les types autorisés. Les restrictions masquent le champ et ses données partout dans l’admin (formulaires, listes, devis, caisse…). Si tous les types sont cochés, l’accès est ouvert à tous.</p>
                         <div class="cp-roles-grid" id="cp_acces_roles_grid">
                             <?php foreach ($roles_disponibles as $role_key => $role_label): ?>
                             <label class="cp-role-chip">
@@ -391,6 +519,7 @@ foreach ($champs as $ch) {
 
     <script>
     window.CP_CHAMPS_IMPACT = <?php echo json_encode($champs_impact, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
+    window.CP_CHAMPS_DATA = <?php echo json_encode($champs_data_map, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
     window.CP_CHAMPS_ROLES = <?php echo json_encode($champs_roles_map, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
     window.CP_CHAMPS_LABELS = <?php
         $labels_map = [];

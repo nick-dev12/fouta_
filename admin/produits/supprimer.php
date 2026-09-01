@@ -24,6 +24,7 @@ if ($produit_id <= 0) {
 
 // Récupérer le produit
 require_once __DIR__ . '/../../models/model_produits.php';
+require_once __DIR__ . '/../../includes/produit_formulaire_champs.php';
 $produit = get_produit_by_id($produit_id);
 
 if (!$produit) {
@@ -148,14 +149,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
         </div>
 
         <div class="produit-info">
-            <?php if ($produit['image_principale']): ?>
+            <?php if (pf_champ_visible('images_produit') && $produit['image_principale']): ?>
                 <img src="../../upload/<?php echo htmlspecialchars($produit['image_principale']); ?>" 
                      alt="<?php echo htmlspecialchars($produit['nom']); ?>">
             <?php endif; ?>
             <h3><?php echo htmlspecialchars($produit['nom'], ENT_QUOTES, 'UTF-8'); ?></h3>
+            <?php if (pf_champ_visible('prix')): ?>
             <p><strong>Prix:</strong> <?php echo number_format($produit['prix'], 0, ',', ' '); ?> FCFA</p>
+            <?php endif; ?>
+            <?php if (pf_champ_visible('stock')): ?>
             <p><strong>Stock:</strong> <?php echo (int) $produit['stock']; ?> unités</p>
+            <?php endif; ?>
+            <?php if (pf_champ_visible('categorie_id')): ?>
             <p><strong>Catégorie:</strong> <?php echo htmlspecialchars($produit['categorie_nom'] ?? 'Sans catégorie', ENT_QUOTES, 'UTF-8'); ?></p>
+            <?php endif; ?>
         </div>
 
         <form method="POST" action="" onsubmit="return confirm('Êtes-vous absolument sûr de vouloir supprimer ce produit ? Cette action est irréversible.');">

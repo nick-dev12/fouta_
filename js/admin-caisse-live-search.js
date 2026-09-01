@@ -20,6 +20,14 @@
     return digits.slice(-5);
   }
 
+  function slugVisible(slug) {
+    var m = window.adminProduitChampsManifest;
+    if (!m || !Array.isArray(m.slugs)) {
+      return true;
+    }
+    return m.slugs.indexOf(slug) !== -1;
+  }
+
   function subsequenceRatio(haystack, needle) {
     if (!needle || !haystack) {
       return 0;
@@ -267,7 +275,7 @@
   function buildCardHeading(p) {
     var html =
       '<h3 class="caisse-live-card-nom produit-card-nom"><span class="pcn-nom">' + esc(p.nom) + '</span></h3>';
-    var marqueNom = (p.marque_nom || '').trim();
+    var marqueNom = slugVisible('marque_id') ? (p.marque_nom || '').trim() : '';
     if (marqueNom) {
       html +=
         '<p class="caisse-live-marque-line produit-card-marque">' +
@@ -275,7 +283,10 @@
         esc(marqueNom) +
         '</p>';
     }
-    var descEx = (p.desc || p.desc_preview || p.desc_excerpt || p.desc_short || '').trim();
+    var descEx = '';
+    if (slugVisible('description')) {
+      descEx = (p.desc || p.desc_preview || p.desc_excerpt || p.desc_short || '').trim();
+    }
     if (descEx) {
       html += '<p class="caisse-live-desc-line produit-card-desc">' + esc(descEx) + '</p>';
     }
@@ -283,6 +294,9 @@
   }
 
   function buildCardFournisseur(p) {
+    if (!slugVisible('fournisseur_id')) {
+      return '';
+    }
     var four = (p.fournisseur_nom || '').trim();
     if (!four) {
       return '';
@@ -296,6 +310,9 @@
   }
 
   function buildCardCategorie(p) {
+    if (!slugVisible('categorie_id')) {
+      return '';
+    }
     var cat = (p.categorie_nom || '').trim() || 'Sans catégorie';
     return (
       '<p class="caisse-live-categorie produit-card-categorie">' +
@@ -341,45 +358,65 @@
     var i;
     for (i = 0; i < hits.length; i++) {
       var p = hits[i];
-      var refThumb = hasIdent && (p.ref || '').trim()
+      var showIdent = slugVisible('identifiant_interne');
+      var showPrix = slugVisible('prix') || slugVisible('prix_promotion');
+      var showStock = slugVisible('stock');
+      var showImages = slugVisible('images_produit');
+      var showRefFourn = slugVisible('reference_fournisseur');
+      var refThumb = showIdent && hasIdent && (p.ref || '').trim()
         ? '<div class="caisse-live-ref-thumb" aria-label="Référence FPL">' +
           '<code>' + esc(p.ref) + '</code></div>'
         : '';
       var headingHtml = buildCardHeading(p);
       var fournisseurHtml = buildCardFournisseur(p);
       var categorieHtml = buildCardCategorie(p);
-      var refFourn = (p.ref_f || '').trim()
+      var refFourn = showRefFourn && (p.ref_f || '').trim()
         ? '<span class="caisse-live-ref-fourn">Réf. fourn. <code>' + esc(p.ref_f) + '</code></span>'
         : '';
-      var imgs = Array.isArray(p.imgs) ? p.imgs : [];
+      var imgs = showImages && Array.isArray(p.imgs) ? p.imgs : [];
       var thumbSrc = imgs.length ? imgs[0] : placeholderImg;
-      var imgsAttr = escAttr(JSON.stringify(imgs.length ? imgs : [placeholderImg]));
+      var imgsAttr = escAttr(JSON.stringify(imgs.length ? imgs : (showImages ? [placeholderImg] : [])));
+      var metaHtml = '';
+      if (showPrix || showStock) {
+        var prixPart = '';
+        if (showPrix) {
+          prixPart = p.prix > 0
+            ? fmtFcfa(p.prix) + ' FCFA</strong> HT'
+            : 'Prix à saisir</strong>';
+        }
+        var stockPart = showStock ? esc(String(p.stock)) : '';
+        if (showPrix && showStock) {
+          metaHtml = '<span class="caisse-live-meta"><strong>' + prixPart + ' · stock ' + stockPart + '</span>';
+        } else if (showPrix) {
+          metaHtml = '<span class="caisse-live-meta"><strong>' + prixPart + '</span>';
+        } else {
+          metaHtml = '<span class="caisse-live-meta">Stock ' + stockPart + '</span>';
+        }
+      }
+      var mediaHtml = showImages
+        ? '<div class="caisse-live-media">' +
+          refThumb +
+          '<button type="button" class="caisse-live-thumb" data-caisse-gallery="' +
+          imgsAttr +
+          '" title="Voir les photos">' +
+          '<img src="' +
+          escAttr(thumbSrc) +
+          '" alt="" loading="lazy" width="96" height="96" onerror="this.src=\'' +
+          placeholderImg +
+          '\'">' +
+          '</button>' +
+          '</div>'
+        : (refThumb ? '<div class="caisse-live-media">' + refThumb + '</div>' : '');
       html +=
         '<li class="caisse-live-item" role="option">' +
         '<div class="caisse-live-add-wrap" data-caisse-add-id="' + escAttr(String(p.id)) + '" role="button" tabindex="0" aria-label="Ajouter au panier">' +
-        '<div class="caisse-live-media">' +
-        refThumb +
-        '<button type="button" class="caisse-live-thumb" data-caisse-gallery="' +
-        imgsAttr +
-        '" title="Voir les photos">' +
-        '<img src="' +
-        escAttr(thumbSrc) +
-        '" alt="" loading="lazy" width="96" height="96" onerror="this.src=\'' +
-        placeholderImg +
-        '\'">' +
-        '</button>' +
-        '</div>' +
+        mediaHtml +
         '<div class="caisse-live-row-hit">' +
         headingHtml +
         fournisseurHtml +
         categorieHtml +
         refFourn +
-        '<span class="caisse-live-meta"><strong>' +
-        (p.prix > 0
-          ? fmtFcfa(p.prix) + ' FCFA</strong> HT · stock '
-          : 'Prix à saisir</strong> · stock ') +
-        esc(String(p.stock)) +
-        '</span>' +
+        metaHtml +
         '<span class="caisse-live-hint-add">Cliquer pour ajouter au panier</span>' +
         '</div>' +
         '</div></li>';

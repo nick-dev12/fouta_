@@ -42,9 +42,14 @@ if (!$produit) {
 
 require_once __DIR__ . '/../../includes/barcode_fpl.php';
 require_once __DIR__ . '/../../includes/produit_emplacement_entrepot.php';
-$code_fpl_live = ensure_produit_identifiant_interne($produit_id);
-if ($code_fpl_live !== null && $code_fpl_live !== '') {
-    $produit['identifiant_interne'] = $code_fpl_live;
+$show_identifiant = pf_champ_visible('identifiant_interne');
+if ($show_identifiant) {
+    $code_fpl_live = ensure_produit_identifiant_interne($produit_id);
+    if ($code_fpl_live !== null && $code_fpl_live !== '') {
+        $produit['identifiant_interne'] = $code_fpl_live;
+    }
+} else {
+    unset($produit['identifiant_interne']);
 }
 $emplacement_vals_sync = produit_emplacement_from_produit($produit);
 if (produit_emplacement_a_des_donnees($emplacement_vals_sync)) {
@@ -146,7 +151,7 @@ $fpl_shield_logo_fs = __DIR__ . '/../../image/' . $fpl_shield_logo_file;
 $fpl_shield_logo_url = $origin_et . '/image/' . rawurlencode($fpl_shield_logo_file);
 $fpl_shield_logo_ver = is_file($fpl_shield_logo_fs) ? (int) filemtime($fpl_shield_logo_fs) : 1;
 
-$etiquette_fpl_ready = ($barcode_url !== '' && !empty($produit['identifiant_interne']));
+$etiquette_fpl_ready = $show_identifiant && ($barcode_url !== '' && !empty($produit['identifiant_interne']));
 $fpl_css_path_fs = __DIR__ . '/../../css/fpl-etiquette.css';
 $fpl_etiq_css_abs = $origin_et . '/css/fpl-etiquette.css?v=' . (is_file($fpl_css_path_fs) ? (int) filemtime($fpl_css_path_fs) : time());
 
@@ -191,7 +196,7 @@ if (isset($_SESSION['success_message'])) {
 
 $pdf_barcode_href = 'telecharger-code-pdf.php?id=' . $produit_id . '&type=barcode';
 $pdf_qrcode_href = 'telecharger-code-pdf.php?id=' . $produit_id . '&type=qrcode';
-$can_pdf_barcode = ($barcode_url !== '' && !empty($produit['identifiant_interne']));
+$can_pdf_barcode = $show_identifiant && ($barcode_url !== '' && !empty($produit['identifiant_interne']));
 $can_pdf_qrcode = ($stock_info_url !== '');
 ?>
 <!DOCTYPE html>
@@ -282,16 +287,20 @@ $can_pdf_qrcode = ($stock_info_url !== '');
     }
     $show_prix_vente = pf_champ_visible('prix');
     $show_emplacement = pf_champ_visible('emplacement');
+    $show_images = pf_champ_visible('images_produit');
+    $show_stock_kpis = pf_champ_visible('stock');
+    $show_valorisation = pf_champ_visible('prix');
     if (!$show_emplacement) {
         $a_emplacement = false;
     }
-    $galerie_urls = produits_galerie_web_urls($produit);
-    if (empty($galerie_urls)) {
+    $galerie_urls = $show_images ? produits_galerie_web_urls($produit) : [];
+    if ($show_images && empty($galerie_urls)) {
         $galerie_urls = ['/image/produit1.jpg'];
     }
     ?>
 
     <div class="pas-showcase">
+        <?php if ($show_images && !empty($galerie_urls)): ?>
         <div class="pas-showcase__gallery">
             <div class="pas-gallery" id="pas-product-gallery">
                 <div class="pas-gallery__main">
@@ -327,6 +336,7 @@ $can_pdf_qrcode = ($stock_info_url !== '');
                 <?php endif; ?>
             </div>
         </div>
+        <?php endif; ?>
 
         <div class="pas-showcase__panel">
             <div class="pas-showcase__head">
@@ -433,6 +443,7 @@ $can_pdf_qrcode = ($stock_info_url !== '');
     <div class="ajuster-stock-layout page-ajuster-stock-layout pas-dashboard">
         <div class="ajuster-stock-card page-ajuster-stock-card page-ajuster-stock-card--etat pas-dashboard__stats">
             <h2 class="page-ajuster-stock-card__title"><i class="fas fa-chart-bar" aria-hidden="true"></i> État du stock</h2>
+            <?php if ($show_stock_kpis): ?>
             <div class="stock-stats-grid page-ajuster-stock-stats pas-kpi-row" role="list">
                 <div class="stock-stat-card stock-total page-ajuster-stock-stat pas-kpi-tile" role="listitem">
                     <h4 class="page-ajuster-stock-stat__label">Total cumulé</h4>
@@ -447,7 +458,9 @@ $can_pdf_qrcode = ($stock_info_url !== '');
                     <div class="value page-ajuster-stock-stat__value"><?php echo (int) $stock_restant; ?></div>
                 </div>
             </div>
+            <?php endif; ?>
 
+            <?php if ($show_valorisation): ?>
             <h2 class="page-ajuster-stock-card__title page-ajuster-stock-card__title--spaced"><i class="fas fa-calculator" aria-hidden="true"></i> Valorisation</h2>
             <div class="comptabilite-grid page-ajuster-stock-compta pas-valorisation">
                 <div class="comptabilite-item page-ajuster-stock-compta__item pas-valorisation__item">
@@ -461,6 +474,7 @@ $can_pdf_qrcode = ($stock_info_url !== '');
                     <span class="detail page-ajuster-stock-compta__detail"><?php echo (int) $quantite_vendue; ?> vendu(s)</span>
                 </div>
             </div>
+            <?php endif; ?>
         </div>
 
         <div class="page-ajuster-stock-side pas-dashboard__form-col">
@@ -479,19 +493,25 @@ $can_pdf_qrcode = ($stock_info_url !== '');
                         </div>
                     </div>
                     <p class="page-ajuster-stock-form__field-hint" id="quantite_ajout_aide">
+                        <?php if ($show_stock_kpis): ?>
                         Stock actuel&nbsp;: <strong><?php echo (int) $stock_actuel; ?></strong> unité(s). La quantité saisie s’ajoute au stock existant.
+                        <?php else: ?>
+                        La quantité saisie s’ajoute au stock existant.
+                        <?php endif; ?>
                     </p>
+                    <?php if ($show_valorisation): ?>
                     <div class="pas-total-card" aria-live="polite">
                         <span class="pas-total-card__label">Valeur de l’ajout (prix vente)</span>
                         <span class="pas-total-card__value" id="pas_qty_total_value"><?php echo number_format($prix_produit * max(1, (int) ($quantite_ajout_form_value !== '' ? $quantite_ajout_form_value : 1)), 0, ',', ' '); ?> FCFA</span>
                     </div>
+                    <?php endif; ?>
                     <button type="submit" class="btn-primary page-ajuster-stock-form__submit pas-stock-form__submit">
                         <i class="fas fa-check" aria-hidden="true"></i> Enregistrer le stock
                     </button>
                 </form>
             </div>
 
-            <?php if (!$etiquette_fpl_ready): ?>
+            <?php if (!$etiquette_fpl_ready && $show_identifiant): ?>
                 <?php if (!empty($barcode_url) && !empty($produit['identifiant_interne'])): ?>
                 <div class="stock-form-block barcode-fpl-block page-ajuster-stock-aux" id="barcode-fpl-print-area"
                     data-barcode-src="<?php echo htmlspecialchars($barcode_url); ?>"
@@ -522,7 +542,7 @@ $can_pdf_qrcode = ($stock_info_url !== '');
                     </div>
                 </div>
                 <?php endif; ?>
-                <?php if (!empty($qr_code_data_uri)): ?>
+                <?php if ($show_identifiant && !empty($qr_code_data_uri)): ?>
                 <div class="stock-form-block qr-code-block page-ajuster-stock-aux" id="qr-code-print-area" data-qr="<?php echo htmlspecialchars($qr_code_data_uri); ?>" data-nom="<?php echo htmlspecialchars($produit['nom']); ?>">
                     <h3 class="page-ajuster-stock-aux__title"><i class="fas fa-qrcode" aria-hidden="true"></i> QR code du produit</h3>
                     <p class="qr-code-desc page-ajuster-stock-aux__desc">Scannez ce QR code pour afficher les détails du stock et l’emplacement en entrepôt sur mobile.</p>
@@ -549,7 +569,7 @@ $can_pdf_qrcode = ($stock_info_url !== '');
         </div>
     </div>
 
-    <?php if ($etiquette_fpl_ready): ?>
+    <?php if ($etiquette_fpl_ready && $show_identifiant): ?>
     <div class="fpl-etiquette-fixed-scroll">
         <div class="stock-form-block page-ajuster-stock-aux fpl-etiquette-sheet-wrap fpl-etiquette-sheet-wrap--fullwidth" id="fpl-etiquette-print-root"
             data-css-url="<?php echo htmlspecialchars($fpl_etiq_css_abs, ENT_QUOTES, 'UTF-8'); ?>"

@@ -20,11 +20,10 @@ if (!function_exists('fpl_css_link')) {
 <script src="<?php echo htmlspecialchars(fpl_script_src('admin-pdf-download.js'), ENT_QUOTES, 'UTF-8'); ?><?php echo asset_version_query(); ?>"></script>
 <script src="<?php echo htmlspecialchars(fpl_script_src('admin-export-catalogue-pdf.js'), ENT_QUOTES, 'UTF-8'); ?><?php echo asset_version_query(); ?>"></script>
 <?php
-if (!empty($_SESSION['admin_id'])) {
+if (!function_exists('produit_formulaire_echo_admin_manifests')) {
     require_once __DIR__ . '/../../models/model_produit_formulaire_champs.php';
-    produit_formulaire_champs_ensure_schema();
-    echo '<script>window.adminProduitChampsManifest = ' . produit_formulaire_champs_manifest_json() . ';</script>' . "\n";
 }
+produit_formulaire_echo_admin_manifests();
 ?>
 </body>
 </html>

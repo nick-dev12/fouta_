@@ -27,6 +27,7 @@ if ($produit_id <= 0 || !in_array($type, ['barcode', 'qrcode'], true)) {
 }
 
 require_once __DIR__ . '/../../models/model_produits.php';
+require_once __DIR__ . '/../../includes/produit_formulaire_champs.php';
 require_once __DIR__ . '/../../includes/export_stock_codes_pdf.php';
 require_once __DIR__ . '/../../includes/site_url.php';
 require_once __DIR__ . '/../../includes/produit_emplacement_entrepot.php';
@@ -36,6 +37,13 @@ if (!$produit) {
     http_response_code(404);
     header('Content-Type: text/plain; charset=utf-8');
     echo 'Produit introuvable.';
+    exit;
+}
+
+if (!pf_champ_visible('identifiant_interne')) {
+    http_response_code(403);
+    header('Content-Type: text/plain; charset=utf-8');
+    echo 'Accès refusé.';
     exit;
 }
 

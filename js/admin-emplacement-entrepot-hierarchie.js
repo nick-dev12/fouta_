@@ -782,6 +782,90 @@
             };
         }
 
+        var etiqCache = {};
+        var etiqPending = {};
+
+        function fetchEtiquette(noeudId) {
+            var id = parseInt(noeudId, 10) || 0;
+            if (id <= 0) {
+                return Promise.reject(new Error('invalid'));
+            }
+            if (etiqCache[id]) {
+                return Promise.resolve(etiqCache[id]);
+            }
+            if (etiqPending[id]) {
+                return etiqPending[id];
+            }
+            etiqPending[id] = fetch('ajax_entrepot_noeud_etiquette.php?id=' + encodeURIComponent(String(id)), {
+                credentials: 'same-origin',
+                headers: { Accept: 'application/json' }
+            })
+                .then(function (res) {
+                    return res.json().then(function (body) {
+                        if (!res.ok || !body || !body.success || !body.etiquette) {
+                            throw new Error((body && body.message) ? body.message : 'Chargement impossible');
+                        }
+                        etiqCache[id] = body.etiquette;
+                        return body.etiquette;
+                    });
+                })
+                .finally(function () {
+                    delete etiqPending[id];
+                });
+            return etiqPending[id];
+        }
+
+        function buildEtiquetteLazySlot(noeudId, printKey, autoLoad) {
+            var id = parseInt(noeudId, 10) || 0;
+            var key = String(printKey || ('n' + id));
+            var slot = document.createElement('div');
+            slot.className = 'ee-libre-etiq-lazy';
+            slot.setAttribute('data-ee-etiq-slot', String(id));
+            slot.setAttribute('data-ee-etiq-print-key', key);
+            slot.innerHTML = '<button type="button" class="ee-btn-secondary ee-libre-etiq-load-btn">'
+                + '<i class="fas fa-qrcode" aria-hidden="true"></i> Afficher l\u2019étiquette</button>'
+                + '<p class="ee-libre-etiq-lazy__hint">L\u2019aperçu est chargé à la demande pour accélérer la navigation.</p>';
+            var btn = slot.querySelector('.ee-libre-etiq-load-btn');
+            if (btn) {
+                btn.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    loadEtiquetteIntoSlot(slot, id, key);
+                });
+            }
+            if (autoLoad) {
+                loadEtiquetteIntoSlot(slot, id, key);
+            }
+            return slot;
+        }
+
+        function loadEtiquetteIntoSlot(slot, noeudId, printKey) {
+            if (!slot || slot.getAttribute('data-ee-etiq-loaded') === '1') {
+                return;
+            }
+            var id = parseInt(noeudId, 10) || 0;
+            var key = String(printKey || ('n' + id));
+            slot.innerHTML = '<p class="ee-libre-etiq-lazy__loading"><i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Chargement de l\u2019étiquette…</p>';
+            fetchEtiquette(id)
+                .then(function (etiq) {
+                    slot.setAttribute('data-ee-etiq-loaded', '1');
+                    slot.classList.add('is-loaded');
+                    slot.innerHTML = buildEtiquetteBlock(etiq, key);
+                })
+                .catch(function (err) {
+                    slot.innerHTML = '<p class="ee-h-empty ee-h-empty--sm">'
+                        + eeLibreEsc((err && err.message) ? err.message : 'Étiquette indisponible.')
+                        + '</p><button type="button" class="ee-btn-secondary ee-libre-etiq-load-btn">Réessayer</button>';
+                    var retry = slot.querySelector('.ee-libre-etiq-load-btn');
+                    if (retry) {
+                        retry.addEventListener('click', function (e) {
+                            e.stopPropagation();
+                            slot.removeAttribute('data-ee-etiq-loaded');
+                            loadEtiquetteIntoSlot(slot, id, key);
+                        });
+                    }
+                });
+        }
+
         function buildEtiquetteBlock(etiq, printKey) {
             if (!etiq || !etiq.libelle) {
                 return '';
@@ -869,7 +953,7 @@
                 + eeLibreEsc(label)
                 + '</h3>'
                 + (showEtiq
-                    ? '<p class="ee-h-drill-panel__hint">Aperçu étiquette — imprimez ou ouvrez le niveau suivant.</p>'
+                    ? '<p class="ee-h-drill-panel__hint">Cliquez sur un élément pour afficher son étiquette, ou ouvrez le niveau suivant.</p>'
                     : (canDrillLevel
                         ? '<p class="ee-h-drill-panel__hint">Cliquez une ligne pour ouvrir le niveau suivant.</p>'
                         : ''));
@@ -884,8 +968,8 @@
                     var nb = enfants.length;
                     var rowNext = eeLibreNextDef(defs, child.niveau_id);
                     var canDrill = !!rowNext;
-                    var etiq = child.etiquette || null;
-                    var printKey = (etiq && etiq.print_key) ? etiq.print_key : ('n' + id);
+                    var printKey = child.etiquette_print_key || ('n' + id);
+                    var hasEtiq = !!child.has_etiquette || isEtiquetteNiveau(child.niveau_id);
 
                     var card = document.createElement('article');
                     card.className = 'ee-libre-etiq-card';
@@ -903,20 +987,25 @@
                         + '<i class="fas fa-trash-can"></i></button>'
                         + '</div></div>';
 
-                    card.innerHTML = headHtml
-                        + (etiq ? buildEtiquetteBlock(etiq, printKey) : '<p class="ee-h-empty ee-h-empty--sm">Étiquette non disponible.</p>')
-                        + (canDrill
-                            ? ('<button type="button" class="ee-libre-etiq-card__drill" data-ee-libre-drill>'
-                                + '<span class="ee-badge ee-badge--muted">' + nb + '&nbsp;'
-                                + eeLibreEsc((rowNext && rowNext.label) || 'éléments')
-                                + '</span>'
-                                + '<span>Ouvrir <i class="fas fa-chevron-right" aria-hidden="true"></i></span></button>')
-                            : '');
+                    card.appendChild(document.createRange().createContextualFragment(headHtml));
+                    if (hasEtiq) {
+                        card.appendChild(buildEtiquetteLazySlot(id, printKey, false));
+                    }
+                    if (canDrill) {
+                        var drillBtn = document.createElement('button');
+                        drillBtn.type = 'button';
+                        drillBtn.className = 'ee-libre-etiq-card__drill';
+                        drillBtn.setAttribute('data-ee-libre-drill', '1');
+                        drillBtn.innerHTML = '<span class="ee-badge ee-badge--muted">' + nb + '&nbsp;'
+                            + eeLibreEsc((rowNext && rowNext.label) || 'éléments')
+                            + '</span><span>Ouvrir <i class="fas fa-chevron-right" aria-hidden="true"></i></span>';
+                        card.appendChild(drillBtn);
+                    }
 
                     bindNodeActions(card, child);
-                    var drillBtn = card.querySelector('[data-ee-libre-drill]');
-                    if (drillBtn && canDrill) {
-                        drillBtn.addEventListener('click', function (e) {
+                    var drillBtnEl = card.querySelector('[data-ee-libre-drill]');
+                    if (drillBtnEl && canDrill) {
+                        drillBtnEl.addEventListener('click', function (e) {
                             e.stopPropagation();
                             openNode(child);
                         });
@@ -992,10 +1081,11 @@
             var enfants = Array.isArray(node.enfants) ? node.enfants : [];
             var next = eeLibreNextDef(defs, node.niveau_id);
             var parentIsEtiq = isEtiquetteNiveau(node.niveau_id);
-            var etiq = node.etiquette || null;
+            var noeudId = parseInt(node.id, 10) || 0;
+            var printKey = node.etiquette_print_key || ('n' + noeudId);
 
             // Nœud étiquette : afficher l’étiquette + enfants (positions), même sans next si feuille
-            if (parentIsEtiq && etiq) {
+            if (parentIsEtiq) {
                 var parentLabel = node.nom || '';
                 pathLabels.push(parentLabel);
                 var crumbE = pathLabels.join(' · ');
@@ -1010,7 +1100,7 @@
                     build: function () {
                         var box = document.createElement('div');
                         box.className = 'ee-libre-etiq-detail';
-                        box.innerHTML = buildEtiquetteBlock(etiq, etiq.print_key || ('n' + node.id));
+                        box.appendChild(buildEtiquetteLazySlot(noeudId, printKey, true));
                         if (enfants.length && childDef) {
                             box.appendChild(buildChildrenTable(node, enfants));
                         } else if (childDef) {

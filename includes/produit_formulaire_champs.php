@@ -33,6 +33,43 @@ function pf_champ_obligatoire($slug) {
     return (int) ($ch['obligatoire'] ?? 0) === 1;
 }
 
+/** Colonne prix visible en listes admin (prix vente ou promo). */
+function pf_liste_col_prix_visible() {
+    return pf_champ_visible('prix') || pf_champ_visible('prix_promotion');
+}
+
+/** Colonne stock visible en listes admin. */
+function pf_liste_col_stock_visible() {
+    return pf_champ_visible('stock');
+}
+
+/** Colonne catégorie visible en listes admin. */
+function pf_liste_col_categorie_visible() {
+    return pf_champ_visible('categorie_id');
+}
+
+/** Colonne image visible en listes admin. */
+function pf_liste_col_image_visible() {
+    return pf_champ_visible('images_produit');
+}
+
+/** Colonne statut visible en listes admin. */
+function pf_liste_col_statut_visible() {
+    return pf_champ_visible('statut');
+}
+
+/** Colonne fournisseur visible en listes admin. */
+function pf_liste_col_fournisseur_visible() {
+    return pf_champ_visible('fournisseur_id');
+}
+
+/** Colonne référence FPL visible en listes admin. */
+function pf_liste_col_ident_visible() {
+    return pf_champ_visible('identifiant_interne')
+        && function_exists('produits_has_column')
+        && produits_has_column('identifiant_interne');
+}
+
 /**
  * @param array<string, mixed> $post
  * @param array<int, string> $errors

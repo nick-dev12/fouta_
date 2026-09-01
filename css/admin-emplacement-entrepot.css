@@ -2371,6 +2371,39 @@
   margin-bottom: 0.25rem;
 }
 
+.ee-libre-etiq-lazy {
+  padding: 0.65rem 0.75rem;
+  border: 1px dashed var(--line, #dfe4ec);
+  border-radius: 10px;
+  background: var(--ground, #f4f6fa);
+  margin: 0.5rem 0;
+}
+
+.ee-libre-etiq-lazy.is-loaded {
+  border-style: solid;
+  background: transparent;
+  padding: 0;
+}
+
+.ee-libre-etiq-lazy__hint {
+  margin: 0.45rem 0 0;
+  font-size: 0.78rem;
+  color: var(--slate, #5c6a85);
+}
+
+.ee-libre-etiq-lazy__loading {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--slate, #5c6a85);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ee-libre-etiq-load-btn {
+  font-size: 0.85rem;
+}
+
 .ee-modal__body--drill .ee-libre-etiq-card .ee-barre-etiq-block__label {
   margin-bottom: 0.35rem;
 }

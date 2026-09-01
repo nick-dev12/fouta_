@@ -39,6 +39,7 @@ if (!$categorie) {
 
 // Récupérer les produits de cette catégorie (pagination serveur)
 require_once __DIR__ . '/../../models/model_produits.php';
+require_once __DIR__ . '/../../includes/produit_formulaire_champs.php';
 
 $marque_id = isset($_GET['marque_id']) ? (int) $_GET['marque_id'] : 0;
 $fournisseur_id = isset($_GET['fournisseur_id']) ? (int) $_GET['fournisseur_id'] : 0;
@@ -46,13 +47,13 @@ $recherche = trim($_GET['recherche'] ?? '');
 
 $marques_filtre = [];
 $fournisseurs_filtre = [];
-if (produits_has_column('marque_id')) {
+if (produits_has_column('marque_id') && pf_champ_visible('marque_id')) {
     require_once __DIR__ . '/../../models/model_marques.php';
     if (marques_table_ok()) {
         $marques_filtre = get_all_marques_ordered_by_nom();
     }
 }
-if (produits_has_column('fournisseur_id')) {
+if (produits_has_column('fournisseur_id') && pf_champ_visible('fournisseur_id')) {
     require_once __DIR__ . '/../../models/model_fournisseurs.php';
     $fournisseurs_filtre = get_all_fournisseurs_ordered_by_nom();
 }

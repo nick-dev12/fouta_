@@ -674,8 +674,10 @@ function produits_card_heading_inner_html(array $produit, $desc_max_len = 20, $n
         $nom_raw = trim((string) ($produit['nom'] ?? $produit['produit_nom'] ?? ''));
     }
     $nom_esc = htmlspecialchars($nom_raw, ENT_QUOTES, 'UTF-8');
-    $marque = produits_marque_libelle_from_row($produit);
-    $desc_ex = produits_description_excerpt($produit['description'] ?? '', (int) $desc_max_len);
+    $show_marque = !function_exists('pf_champ_visible') || pf_champ_visible('marque_id');
+    $show_desc = !function_exists('pf_champ_visible') || pf_champ_visible('description');
+    $marque = $show_marque ? produits_marque_libelle_from_row($produit) : '';
+    $desc_ex = $show_desc ? produits_description_excerpt($produit['description'] ?? '', (int) $desc_max_len) : '';
     $parts = ['<span class="pcn-nom">' . $nom_esc . '</span>'];
     if ($marque !== '') {
         $parts[] = '<span class="pcn-marque">' . htmlspecialchars($marque, ENT_QUOTES, 'UTF-8') . '</span>';
@@ -990,7 +992,7 @@ function get_produits_by_categorie($categorie_id)
         $stmt->execute(['categorie_id' => $categorie_id]);
         $produits = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        return $produits ? $produits : [];
+        return produits_appliquer_filtre_acces_liste($produits ? $produits : []);
     } catch (PDOException $e) {
         return [];
     }
@@ -1026,7 +1028,9 @@ function get_produits_by_sous_categorie_id($sous_categorie_id)
             ORDER BY p.date_creation DESC, p.id DESC
         ");
         $stmt->execute(['sid' => $sous_categorie_id]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        return produits_appliquer_filtre_acces_liste($rows);
     } catch (PDOException $e) {
         return [];
     }
@@ -1190,7 +1194,7 @@ function get_produits_by_identifiant_suffix_5_chiffres($suffix5, $offset = 0, $l
         $stmt->execute();
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        return $rows ?: [];
+        return produits_appliquer_filtre_acces_liste($rows ?: []);
     } catch (PDOException $e) {
         return [];
     }
@@ -1305,7 +1309,7 @@ function get_all_produits_paginated($offset = 0, $limit = 20)
         $stmt->execute();
         $produits = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        return $produits ? $produits : [];
+        return produits_appliquer_filtre_acces_liste($produits ? $produits : []);
     } catch (PDOException $e) {
         return [];
     }
@@ -1352,7 +1356,7 @@ function search_produits($recherche, $offset = 0, $limit = 20)
         $stmt->execute();
         $produits = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        return $produits ? $produits : [];
+        return produits_appliquer_filtre_acces_liste($produits ? $produits : []);
     } catch (PDOException $e) {
         return [];
     }
@@ -1618,7 +1622,8 @@ function get_produits_en_promo($offset = 0, $limit = 50)
         $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
         $stmt->execute();
         $produits = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        return $produits ?: [];
+
+        return produits_appliquer_filtre_acces_liste($produits ?: []);
     } catch (PDOException $e) {
         return [];
     }
@@ -1670,7 +1675,7 @@ function get_produits_nouveautes($limit = 4)
         $stmt->execute();
         $produits = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        return $produits ? $produits : [];
+        return produits_appliquer_filtre_acces_liste($produits ? $produits : []);
     } catch (PDOException $e) {
         return [];
     }
@@ -1699,7 +1704,8 @@ function get_produits_nouveautes_paginated($offset = 0, $limit = 20)
         $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
         $stmt->execute();
         $produits = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        return $produits ?: [];
+
+        return produits_appliquer_filtre_acces_liste($produits ?: []);
     } catch (PDOException $e) {
         return [];
     }
@@ -1759,7 +1765,7 @@ function get_produits_vedettes($limit = 20)
             $produits = array_slice($produits, 0, $limit);
         }
 
-        return $produits ? $produits : [];
+        return produits_appliquer_filtre_acces_liste($produits ? $produits : []);
     } catch (PDOException $e) {
         // En cas d'erreur, retourner tous les produits actifs mélangés
         $produits = get_all_produits('actif');
@@ -1768,7 +1774,7 @@ function get_produits_vedettes($limit = 20)
             shuffle($produits);
             $produits = array_slice($produits, 0, $limit);
         }
-        return $produits ? $produits : [];
+        return produits_appliquer_filtre_acces_liste($produits ? $produits : []);
     }
 }
 
@@ -2208,8 +2214,12 @@ function delete_produit($id)
         }
 
         $db->commit();
-        $caisse_cache = dirname(__DIR__) . '/cache/caisse_catalog_live.json';
-        if (is_file($caisse_cache)) {
+        $cache_dir = dirname(__DIR__) . '/cache';
+        $legacy = $cache_dir . '/caisse_catalog_live.json';
+        if (is_file($legacy)) {
+            @unlink($legacy);
+        }
+        foreach (glob($cache_dir . '/caisse_catalog_live_*.json') ?: [] as $caisse_cache) {
             @unlink($caisse_cache);
         }
         return true;
@@ -2547,6 +2557,9 @@ function search_produits_en_stock_commande_manuelle($recherche = '', $limit = 30
         if (produits_has_column('reference_fournisseur')) {
             $sql .= ', p.reference_fournisseur';
         }
+        if (produits_has_column('prix_achat')) {
+            $sql .= ', p.prix_achat';
+        }
         if (produits_has_column('nom_fournisseur')) {
             $sql .= ', p.nom_fournisseur';
         }
@@ -2612,10 +2625,21 @@ function search_produits_en_stock_commande_manuelle($recherche = '', $limit = 30
                 'ref_produit' => (produits_has_column('identifiant_interne') ? strtoupper(trim((string) ($r['identifiant_interne'] ?? ''))) : ''),
                 'desc_excerpt' => produits_description_excerpt($r['description'] ?? '', 20),
             ];
+            if (produits_has_column('prix_achat')) {
+                $item['prix_achat'] = $r['prix_achat'] ?? null;
+            }
             $out[] = $item;
         }
 
         require_once __DIR__ . '/model_produit_formulaire_champs.php';
+        $ids = array_values(array_filter(array_map(function ($it) {
+            return (int) ($it['id'] ?? 0);
+        }, $out)));
+        $custom_batch = produit_formulaire_valeurs_custom_batch($ids);
+        foreach ($out as $i => $it) {
+            $pid = (int) ($it['id'] ?? 0);
+            $out[$i]['pf_custom'] = $custom_batch[$pid] ?? [];
+        }
 
         return produit_formulaire_filtrer_produits_api_liste($out);
     } catch (PDOException $e) {

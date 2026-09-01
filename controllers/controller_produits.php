@@ -1097,6 +1097,11 @@ function process_ajuster_stock_produit($produit_id)
         return ['success' => false, 'message' => ''];
     }
 
+    require_once __DIR__ . '/../includes/produit_formulaire_champs.php';
+    if (!pf_champ_visible('stock')) {
+        return ['success' => false, 'message' => 'Vous n\'avez pas accès à la modification du stock.'];
+    }
+
     $produit = get_produit_by_id($produit_id);
     if (!$produit) {
         return ['success' => false, 'message' => 'Produit introuvable.'];

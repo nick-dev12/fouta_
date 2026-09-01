@@ -25,9 +25,16 @@ if (isset($_SESSION['success_message'])) {
 // Récupérer tous les produits
 require_once __DIR__ . '/../../models/model_produits.php';
 require_once __DIR__ . '/../../models/model_categories.php';
+require_once __DIR__ . '/../../includes/produit_formulaire_champs.php';
 
-$has_marque_filtre = produits_has_column('marque_id');
-$has_fournisseur_filtre = produits_has_column('fournisseur_id');
+$pf_col_img = pf_liste_col_image_visible();
+$pf_col_cat = pf_liste_col_categorie_visible();
+$pf_col_prix = pf_liste_col_prix_visible();
+$pf_col_stock = pf_liste_col_stock_visible();
+$pf_col_statut = pf_liste_col_statut_visible();
+
+$has_marque_filtre = produits_has_column('marque_id') && pf_champ_visible('marque_id');
+$has_fournisseur_filtre = produits_has_column('fournisseur_id') && pf_champ_visible('fournisseur_id');
 $marques_filtre = [];
 $fournisseurs_filtre = [];
 
@@ -223,12 +230,12 @@ if (!empty($fournisseurs_filtre)) {
                     <table class="page-produits-table">
                         <thead>
                             <tr>
-                                <th class="col-thumb">Visuel</th>
+                                <?php if ($pf_col_img): ?><th class="col-thumb">Visuel</th><?php endif; ?>
                                 <th>Produit</th>
-                                <th>Catégorie</th>
-                                <th class="col-num">Prix</th>
-                                <th class="col-num">Stock</th>
-                                <th>Statut</th>
+                                <?php if ($pf_col_cat): ?><th>Catégorie</th><?php endif; ?>
+                                <?php if ($pf_col_prix): ?><th class="col-num">Prix</th><?php endif; ?>
+                                <?php if ($pf_col_stock): ?><th class="col-num">Stock</th><?php endif; ?>
+                                <?php if ($pf_col_statut): ?><th>Statut</th><?php endif; ?>
                                 <th class="col-actions">Actions</th>
                             </tr>
                         </thead>
@@ -280,12 +287,12 @@ if (!empty($fournisseurs_filtre)) {
                     <table class="page-produits-table">
                         <thead>
                             <tr>
-                                <th class="col-thumb">Visuel</th>
+                                <?php if ($pf_col_img): ?><th class="col-thumb">Visuel</th><?php endif; ?>
                                 <th>Produit</th>
-                                <th>Catégorie</th>
-                                <th class="col-num">Prix</th>
-                                <th class="col-num">Stock</th>
-                                <th>Statut</th>
+                                <?php if ($pf_col_cat): ?><th>Catégorie</th><?php endif; ?>
+                                <?php if ($pf_col_prix): ?><th class="col-num">Prix</th><?php endif; ?>
+                                <?php if ($pf_col_stock): ?><th class="col-num">Stock</th><?php endif; ?>
+                                <?php if ($pf_col_statut): ?><th>Statut</th><?php endif; ?>
                                 <th class="col-actions">Actions</th>
                             </tr>
                         </thead>

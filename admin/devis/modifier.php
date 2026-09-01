@@ -22,6 +22,9 @@ if (empty($_SESSION['admin_csrf'])) {
 require_once __DIR__ . '/../../models/model_devis.php';
 require_once __DIR__ . '/../../models/model_zones_livraison.php';
 require_once __DIR__ . '/../../includes/fiscal_tva.php';
+require_once __DIR__ . '/../../includes/devis_prix_champs_ui.php';
+require_once __DIR__ . '/../../models/model_produit_formulaire_champs.php';
+require_once __DIR__ . '/../../models/model_produits.php';
 $fiscal_tva_pourcent_modifier = fiscal_taux_tva_pourcent();
 
 $devis_id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
@@ -88,6 +91,26 @@ if ($devis_post && is_array($devis_post)) {
 }
 
 $nb_lignes = count($lignes_form);
+
+$champ_prix_calcul_sel = '';
+if ($devis_post && is_array($devis_post)) {
+    $champ_prix_calcul_sel = (string) ($devis_post['champ_prix_calcul'] ?? '');
+}
+if ($champ_prix_calcul_sel === '') {
+    $champ_prix_calcul_sel = (string) (produit_formulaire_devis_prix_manifest()['champ_calcul_defaut'] ?? 'prix');
+}
+
+$produits_ligne_map = [];
+foreach ($lignes_form as $lf) {
+    $pid_map = (int) ($lf['produit_id'] ?? 0);
+    if ($pid_map > 0 && !isset($produits_ligne_map[$pid_map])) {
+        $pr_map = get_produit_by_id($pid_map);
+        if ($pr_map) {
+            $pr_map['pf_custom'] = produit_formulaire_valeurs_custom($pid_map);
+            $produits_ligne_map[$pid_map] = $pr_map;
+        }
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -147,13 +170,15 @@ $nb_lignes = count($lignes_form);
                             <h3>Produits du devis</h3>
                             <span class="lignes-count" id="lignes-count"><?php echo (int) $nb_lignes; ?> article(s)</span>
                         </div>
-                        <div id="lignes-commande" class="lignes-commande lignes-commande-modal-wrap">
+                        <?php
+                        $colonnes_mod_post = ($devis_post && !empty($devis_post['prix_colonnes']) && is_array($devis_post['prix_colonnes'])) ? $devis_post['prix_colonnes'] : null;
+                        list($slugs_visibles_mod, $champ_prix_calcul_sel) = devis_prix_colonnes_etat_defaut($colonnes_mod_post, $champ_prix_calcul_sel);
+                        $nb_prix_cols_modifier = count($slugs_visibles_mod);
+                        devis_prix_colonnes_panel_render('devis_prix_panel_modifier', $slugs_visibles_mod, $champ_prix_calcul_sel);
+                        ?>
+                        <div id="lignes-commande" class="lignes-commande lignes-commande-modal-wrap" style="--devis-prix-cols: <?php echo max(1, $nb_prix_cols_modifier); ?>;">
                             <div class="ligne-commande-head ligne-commande-head-bl" id="lignes-head-devis" <?php echo $nb_lignes > 0 ? '' : 'hidden'; ?>>
-                                <span class="lch-head-cell">Produit</span>
-                                <span class="lch-head-cell">Quantité</span>
-                                <span class="lch-head-cell">prix FCFA</span>
-                                <span class="lch-head-cell">promo FCFA</span>
-                                <span class="lch-head-cell lch-head-actions" aria-hidden="true"></span>
+                                <?php devis_prix_ligne_head_cellules_render($slugs_visibles_mod); ?>
                             </div>
                             <?php if ($nb_lignes === 0): ?>
                                 <div class="lignes-empty" id="lignes-empty">
@@ -174,28 +199,20 @@ $nb_lignes = count($lignes_form);
                                     $pp = isset($l['prix_promotion']) && $l['prix_promotion'] !== '' ? htmlspecialchars((string) $l['prix_promotion']) : '';
                                     ?>
                                     <div class="ligne-commande-item ligne-commande-item-bl" data-produit-id="<?php echo $pid; ?>">
-                                        <div class="ligne-bl-cell">
-                                            <input type="hidden" name="lignes[<?php echo (int) $idx; ?>][produit_id]" value="<?php echo $pid; ?>">
-                                            <span class="ligne-bl-label">Désignation</span>
-                                            <input type="text" name="lignes[<?php echo (int) $idx; ?>][nom_produit]" value="<?php echo $nom; ?>" class="ligne-nom-input" aria-label="Désignation du produit">
-                                        </div>
+                                        <?php
+                                        $produit_ligne = isset($produits_ligne_map[$pid]) ? $produits_ligne_map[$pid] : null;
+                                        devis_ligne_designation_cell_render((int) $idx, $l, $produit_ligne);
+                                        ?>
                                         <div class="ligne-bl-cell">
                                             <span class="ligne-bl-label">Quantité</span>
                                             <input type="number" name="lignes[<?php echo (int) $idx; ?>][quantite]" value="<?php echo $q; ?>" min="1" max="99999" class="ligne-qte" aria-label="Quantité">
                                         </div>
-                                        <div class="ligne-bl-cell ligne-bl-cell-prix">
-                                            <span class="ligne-bl-label">Prix unitaire</span>
-                                            <div class="ligne-bl-prix-row">
-                                                <input type="number" name="lignes[<?php echo (int) $idx; ?>][prix_unitaire]" value="<?php echo $pu; ?>" min="0" step="0.01" class="ligne-prix" aria-label="Prix unitaire en FCFA">
-                                                <span class="ligne-unit-fcfa">FCFA</span>
-                                            </div>
-                                        </div>
-                                        <div class="ligne-bl-cell ligne-bl-cell-prix">
-                                            <span class="ligne-bl-label">Prix promo</span>
-                                            <div class="ligne-bl-prix-row">
-                                                <input type="number" name="lignes[<?php echo (int) $idx; ?>][prix_promotion]" value="<?php echo $pp; ?>" min="0" step="0.01" placeholder="Optionnel" class="ligne-prix-promo" aria-label="Prix promotionnel en FCFA">
-                                                <span class="ligne-unit-fcfa">FCFA</span>
-                                            </div>
+                                        <?php
+                                        devis_prix_ligne_cellules_render((int) $idx, $l, $champ_prix_calcul_sel, $produit_ligne, $slugs_visibles_mod);
+                                        ?>
+                                        <div class="ligne-bl-cell ligne-bl-cell-total ligne-bl-cell-total--highlight">
+                                            <span class="ligne-bl-label">Total</span>
+                                            <strong class="ligne-total-value" aria-live="polite"><?php echo number_format($q * (float) ($l['prix_unitaire'] ?? 0), 0, ',', ' '); ?></strong>
                                         </div>
                                         <button type="button" class="ligne-remove" aria-label="Retirer la ligne"><i class="fas fa-trash"></i></button>
                                     </div>
@@ -323,6 +340,8 @@ $nb_lignes = count($lignes_form);
         var lignesCount = document.getElementById('lignes-count');
         var ligneIndex = <?php echo (int) $nb_lignes; ?>;
         var ajaxUrl = 'ajax_search_produits.php';
+        var champPrixPanelModifier = document.getElementById('devis_prix_panel_modifier');
+        var headDevisMod = document.getElementById('lignes-head-devis');
 
         function updateLignesUI() {
             var items = lignesContainer ? lignesContainer.querySelectorAll('.ligne-commande-item') : [];
@@ -337,40 +356,15 @@ $nb_lignes = count($lignes_form);
         }
 
         function addLigne(produit) {
-            var prix = parseFloat(produit.prix) || 0;
-            var prixPromo = produit.prix_promotion && parseFloat(produit.prix_promotion) > 0 ? parseFloat(produit.prix_promotion) : '';
+            var U = window.FoutaAdminProduitSearchUi;
+            var calc = U && U.getChampCalculSlug ? U.getChampCalculSlug(champPrixPanelModifier) : 'prix';
             var idx = ligneIndex++;
             var div = document.createElement('div');
             div.className = 'ligne-commande-item ligne-commande-item-bl';
             div.dataset.produitId = produit.id;
-            var U = window.FoutaAdminProduitSearchUi;
-            var cellDes = U && U.buildLigneBlDesignationCellHtml
-                ? U.buildLigneBlDesignationCellHtml(produit, idx, 'lignes')
-                : ('<div class="ligne-bl-cell">' +
-                    '<input type="hidden" name="lignes[' + idx + '][produit_id]" value="' + produit.id + '">' +
-                    '<span class="ligne-bl-label">Désignation</span>' +
-                    '<input type="text" name="lignes[' + idx + '][nom_produit]" value="' + ((produit.nom || '').replace(/"/g, '&quot;')) + '" placeholder="Nom du produit" class="ligne-nom-input" aria-label="Désignation du produit">' +
-                '</div>');
-            div.innerHTML = cellDes +
-                '<div class="ligne-bl-cell">' +
-                    '<span class="ligne-bl-label">Quantité</span>' +
-                    '<input type="number" name="lignes[' + idx + '][quantite]" value="1" min="1" max="' + (produit.stock_dispo || produit.stock || 999) + '" class="ligne-qte" aria-label="Quantité">' +
-                '</div>' +
-                '<div class="ligne-bl-cell ligne-bl-cell-prix">' +
-                    '<span class="ligne-bl-label">Prix unitaire</span>' +
-                    '<div class="ligne-bl-prix-row">' +
-                        '<input type="number" name="lignes[' + idx + '][prix_unitaire]" value="' + (prixPromo || prix) + '" min="0" step="0.01" class="ligne-prix" aria-label="Prix unitaire en FCFA">' +
-                        '<span class="ligne-unit-fcfa">FCFA</span>' +
-                    '</div>' +
-                '</div>' +
-                '<div class="ligne-bl-cell ligne-bl-cell-prix">' +
-                    '<span class="ligne-bl-label">Prix promo</span>' +
-                    '<div class="ligne-bl-prix-row">' +
-                        '<input type="number" name="lignes[' + idx + '][prix_promotion]" value="' + (prixPromo || '') + '" min="0" step="0.01" placeholder="Optionnel" class="ligne-prix-promo" aria-label="Prix promotionnel en FCFA">' +
-                        '<span class="ligne-unit-fcfa">FCFA</span>' +
-                    '</div>' +
-                '</div>' +
-                '<button type="button" class="ligne-remove" aria-label="Retirer la ligne"><i class="fas fa-trash"></i></button>';
+            div.innerHTML = U && U.buildLigneCommandeItemHtml
+                ? U.buildLigneCommandeItemHtml(produit, idx, 'lignes', calc, champPrixPanelModifier)
+                : '';
             if (lignesEmpty) lignesEmpty.style.display = 'none';
             div.querySelector('.ligne-remove').addEventListener('click', function() {
                 div.remove();
@@ -378,6 +372,7 @@ $nb_lignes = count($lignes_form);
                 updateRecap();
             });
             lignesContainer.appendChild(div);
+            if (U && U.updateLigneRowTotal) U.updateLigneRowTotal(div, calc);
             updateLignesUI();
             updateRecap();
         }
@@ -451,16 +446,12 @@ $nb_lignes = count($lignes_form);
         }
 
         function getSousTotal() {
-            var total = 0;
-            var items = lignesContainer ? lignesContainer.querySelectorAll('.ligne-commande-item') : [];
-            items.forEach(function(row) {
-                var qte = parseFloat(row.querySelector('.ligne-qte').value) || 0;
-                var prix = parseFloat(row.querySelector('.ligne-prix').value) || 0;
-                var promo = row.querySelector('.ligne-prix-promo');
-                var p = promo && promo.value && parseFloat(promo.value) > 0 ? parseFloat(promo.value) : prix;
-                total += p * qte;
-            });
-            return total;
+            var U = window.FoutaAdminProduitSearchUi;
+            var calc = U && U.getChampCalculSlug ? U.getChampCalculSlug(champPrixPanelModifier) : 'prix';
+            if (U && U.getLignesSousTotal) {
+                return U.getLignesSousTotal(lignesContainer, calc);
+            }
+            return 0;
         }
 
         function getFraisLivraison() {
@@ -519,17 +510,23 @@ $nb_lignes = count($lignes_form);
 
         if (inclureTvaDevis) inclureTvaDevis.addEventListener('change', updateRecap);
 
+        var UMod = window.FoutaAdminProduitSearchUi;
+        if (UMod && UMod.initChampPrixColonnesPanel) {
+            UMod.initChampPrixColonnesPanel(champPrixPanelModifier, lignesContainer, headDevisMod, updateRecap);
+        }
+        if (UMod && UMod.bindLignesLiveRecap) {
+            UMod.bindLignesLiveRecap(lignesContainer, updateRecap, champPrixPanelModifier);
+        }
+        if (UMod && UMod.updateAllLigneTotals) {
+            UMod.updateAllLigneTotals(lignesContainer, UMod.getChampCalculSlug(champPrixPanelModifier));
+        }
+
         if (lignesContainer) {
             lignesContainer.querySelectorAll('.ligne-remove').forEach(function(btn) {
                 btn.addEventListener('click', function() {
                     var row = btn.closest('.ligne-commande-item');
                     if (row) { row.remove(); updateLignesUI(); updateRecap(); }
                 });
-            });
-            lignesContainer.addEventListener('input', function(ev) {
-                if (ev.target.classList.contains('ligne-qte') || ev.target.classList.contains('ligne-prix') || ev.target.classList.contains('ligne-prix-promo')) {
-                    updateRecap();
-                }
             });
         }
 

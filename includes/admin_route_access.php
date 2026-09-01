@@ -289,6 +289,9 @@ if (!function_exists('admin_route_relative_path')) {
         $_SESSION['admin_role'] = $role;
         $rel = admin_route_relative_path();
         if (admin_route_is_allowed($role, $rel)) {
+            if (!defined('ADMIN_ROUTE_ENFORCED')) {
+                define('ADMIN_ROUTE_ENFORCED', true);
+            }
             return;
         }
         header('Content-Type: application/json; charset=utf-8');

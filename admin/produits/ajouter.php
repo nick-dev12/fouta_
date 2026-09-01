@@ -193,8 +193,8 @@ $pf_custom_vals = [];
                         <div class="pm-card__head">
                             <span class="pm-card__icon" aria-hidden="true"><i class="fas fa-coins"></i></span>
                             <div>
-                                <h2 id="pm-sec-prix-add" class="pm-card__title">Prix, stock &amp; catégorie</h2>
-                                <p class="pm-card__hint">Tarif, inventaire et classement</p>
+                                <h2 id="pm-sec-prix-add" class="pm-card__title">Prix</h2>
+                                <p class="pm-card__hint">Tarifs et grilles de prix</p>
                             </div>
                         </div>
                         <div class="pm-card__body">
@@ -227,16 +227,59 @@ $pf_custom_vals = [];
                                 </div>
                             </div>
                             <?php endif; ?>
-                            <?php if (pf_champ_visible('stock') || pf_champ_visible('categorie_id')): ?>
+                            <?php produit_formulaire_render_champs_custom('prix', $pf_custom_vals, $_POST); ?>
+                        </div>
+                    </section>
+                    <?php endif; ?>
+
+                    <?php if (pf_section_visible('stock')): ?>
+                    <section class="pm-card" aria-labelledby="pm-sec-stock-add">
+                        <div class="pm-card__head">
+                            <span class="pm-card__icon" aria-hidden="true"><i class="fas fa-boxes-stacked"></i></span>
+                            <div>
+                                <h2 id="pm-sec-stock-add" class="pm-card__title">Stock</h2>
+                                <p class="pm-card__hint">Inventaire et disponibilité</p>
+                            </div>
+                        </div>
+                        <div class="pm-card__body">
+                            <?php if (pf_champ_visible('stock')): ?>
                             <div class="form-row">
-                                <?php if (pf_champ_visible('stock')): ?>
                                 <div class="form-group">
                                     <label for="stock">Stock<?php echo pf_champ_obligatoire('stock') ? ' *' : ''; ?></label>
                                     <input type="number" id="stock" name="stock" min="0"<?php echo pf_champ_obligatoire('stock') ? ' required' : ''; ?>
                                         value="<?php echo isset($_POST['stock']) ? htmlspecialchars($_POST['stock']) : '0'; ?>">
                                 </div>
-                                <?php endif; ?>
-                                <?php if (pf_champ_visible('categorie_id')): ?>
+                            </div>
+                            <?php endif; ?>
+                            <?php if (pf_champ_visible('statut')): ?>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="statut">Statut</label>
+                                    <select id="statut" name="statut">
+                                        <option value="actif" <?php echo (!isset($_POST['statut']) || $_POST['statut'] === 'actif') ? 'selected' : ''; ?>>Actif</option>
+                                        <option value="inactif" <?php echo (isset($_POST['statut']) && $_POST['statut'] === 'inactif') ? 'selected' : ''; ?>>Inactif</option>
+                                        <option value="rupture_stock" <?php echo (isset($_POST['statut']) && $_POST['statut'] === 'rupture_stock') ? 'selected' : ''; ?>>Rupture de stock</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <?php endif; ?>
+                            <?php produit_formulaire_render_champs_custom('stock', $pf_custom_vals, $_POST); ?>
+                        </div>
+                    </section>
+                    <?php endif; ?>
+
+                    <?php if (pf_section_visible('categorie')): ?>
+                    <section class="pm-card" aria-labelledby="pm-sec-categorie-add">
+                        <div class="pm-card__head">
+                            <span class="pm-card__icon" aria-hidden="true"><i class="fas fa-folder"></i></span>
+                            <div>
+                                <h2 id="pm-sec-categorie-add" class="pm-card__title">Catégorie</h2>
+                                <p class="pm-card__hint">Classement catalogue</p>
+                            </div>
+                        </div>
+                        <div class="pm-card__body">
+                            <?php if (pf_champ_visible('categorie_id')): ?>
+                            <div class="form-row">
                                 <div class="form-group">
                                     <label for="categorie_id">Catégorie<?php echo pf_champ_obligatoire('categorie_id') ? ' *' : ''; ?></label>
                                     <select id="categorie_id" name="categorie_id"<?php echo pf_champ_obligatoire('categorie_id') ? ' required' : ''; ?>>
@@ -258,7 +301,6 @@ $pf_custom_vals = [];
                                     </small>
                                     <?php endif; ?>
                                 </div>
-                                <?php endif; ?>
                             </div>
                             <?php endif; ?>
                             <?php if (pf_champ_visible('sous_categorie_id') && $has_sous_cat_col): ?>
@@ -282,7 +324,7 @@ $pf_custom_vals = [];
                                 </div>
                             </div>
                             <?php endif; ?>
-                            <?php produit_formulaire_render_champs_custom('prix', $pf_custom_vals, $_POST); ?>
+                            <?php produit_formulaire_render_champs_custom('categorie', $pf_custom_vals, $_POST); ?>
                         </div>
                     </section>
                     <?php endif; ?>

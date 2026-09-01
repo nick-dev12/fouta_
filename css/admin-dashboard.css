@@ -8904,11 +8904,15 @@ body {
 }
 
 /* Modal devis / BL — en-têtes de colonnes + lignes tabulaires + unité FCFA */
+.lignes-commande-modal-wrap {
+  --devis-prix-cols: 2;
+}
 .lignes-commande-modal-wrap .ligne-commande-head-bl {
   display: grid;
   grid-template-columns:
-    minmax(100px, 1fr) minmax(50px, 72px) minmax(100px, 130px)
-    minmax(100px, 130px) minmax(72px, 96px) 44px;
+    minmax(100px, 1fr) minmax(50px, 72px)
+    repeat(var(--devis-prix-cols), minmax(90px, 120px))
+    minmax(72px, 96px) 44px;
   gap: 10px;
   align-items: end;
   padding: 6px 0 8px;
@@ -8936,10 +8940,60 @@ body {
 .ligne-commande-item-bl {
   display: grid;
   grid-template-columns:
-    minmax(100px, 1fr) minmax(50px, 72px) minmax(100px, 130px)
-    minmax(100px, 130px) minmax(72px, 96px) 44px;
+    minmax(140px, 1.5fr) minmax(50px, 72px)
+    repeat(var(--devis-prix-cols), minmax(90px, 120px))
+    minmax(100px, 130px) 44px;
   gap: 10px;
-  align-items: start;
+  align-items: center;
+}
+.ligne-bl-cell--designation {
+  min-width: 0;
+}
+.ligne-bl-designation-inner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.ligne-bl-designation-inner .ligne-nom-input {
+  flex: 1;
+  min-width: 0;
+}
+.ligne-bl-thumb {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 8px;
+  flex-shrink: 0;
+  border: 1px solid var(--line, #DFE4EC);
+  background: #fff;
+}
+.ligne-bl-thumb--ph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--slate, #5C6A85);
+  font-size: 1.1rem;
+  background: var(--ground, #F4F6FA);
+}
+.ligne-bl-cell-total--highlight {
+  background: rgba(16, 49, 111, 0.06);
+  border-radius: 10px;
+  padding: 6px 10px;
+  margin: -4px 0;
+}
+.ligne-bl-cell-total--highlight .ligne-bl-label {
+  color: var(--navy, #10316F);
+  font-weight: 700;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.ligne-bl-cell-total--highlight .ligne-total-value {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--navy, #10316F);
+  line-height: 1.2;
 }
 .ligne-bl-cell {
   display: flex;
@@ -8960,9 +9014,92 @@ body {
   min-width: 0;
 }
 .ligne-bl-prix-row .ligne-prix,
-.ligne-bl-prix-row .ligne-prix-promo {
+.ligne-bl-prix-row .ligne-prix-promo,
+.ligne-bl-prix-row .ligne-prix-champ {
   flex: 1;
   min-width: 0;
+}
+.ligne-bl-cell-prix--calc {
+  background: rgba(16, 49, 111, 0.06);
+  border-radius: 8px;
+  padding: 4px 6px;
+  margin: -4px -6px;
+}
+.ligne-bl-cell-prix--calc .ligne-bl-label {
+  color: var(--navy, #10316F);
+  font-weight: 700;
+}
+.devis-champ-prix-calcul-wrap {
+  margin-bottom: 12px;
+}
+.devis-prix-colonnes-fieldset {
+  border: 1px solid var(--line, #DFE4EC);
+  border-radius: 10px;
+  padding: 12px 14px 10px;
+  margin: 0;
+  background: var(--blue-tint, #EDF1F8);
+}
+.devis-prix-colonnes-fieldset legend {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--navy, #10316F);
+  padding: 0 6px;
+}
+.devis-prix-colonnes-hint {
+  margin: 0 0 10px;
+  font-size: 0.8125rem;
+}
+.devis-prix-colonnes-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.devis-prix-colonne-chip {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border: 1px solid var(--line, #DFE4EC);
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  min-width: 140px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.devis-prix-colonne-chip.is-checked {
+  border-color: var(--blue, #2957AE);
+  box-shadow: 0 0 0 1px rgba(41, 87, 174, 0.15);
+}
+.devis-prix-colonne-chip.is-calc {
+  background: rgba(16, 49, 111, 0.04);
+}
+.devis-prix-colonne-chip__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--ink, #16203A);
+}
+.devis-prix-colonne-chip__calc {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: var(--slate, #5C6A85);
+  padding-left: 22px;
+}
+.devis-prix-apercu {
+  margin-top: 10px;
+  font-size: 0.8125rem;
+  color: var(--slate, #5C6A85);
+}
+.devis-prix-apercu__label {
+  font-weight: 600;
+  color: var(--ink, #16203A);
+}
+.devis-prix-apercu__cols {
+  font-variant-numeric: tabular-nums;
 }
 .ligne-unit-fcfa {
   font-size: 0.75rem;
@@ -8978,6 +9115,12 @@ body {
   color: var(--couleur-dominante, #3564a6);
   line-height: 1.3;
   padding-top: 4px;
+}
+.ligne-bl-cell-total--highlight .ligne-total-value {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--navy, #10316F);
+  padding-top: 2px;
 }
 .search-result-item .sr-fournisseur,
 .search-result-item .sr-categorie {

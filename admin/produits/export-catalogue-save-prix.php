@@ -11,6 +11,7 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
 
 require_once __DIR__ . '/../includes/require_access.php';
 require_once __DIR__ . '/../../models/model_produits.php';
+require_once __DIR__ . '/../../includes/produit_formulaire_champs.php';
 require_once __DIR__ . '/../../includes/export_produits_catalogue_pdf.php';
 require_once __DIR__ . '/../../includes/export_catalogue_suivi.php';
 
@@ -32,10 +33,10 @@ foreach ($rows_in as $pid => $data) {
         continue;
     }
     $row = [];
-    if (array_key_exists('prix', $data)) {
+    if (array_key_exists('prix', $data) && pf_champ_visible('prix')) {
         $row['prix'] = (string) $data['prix'];
     }
-    if (array_key_exists('prix_achat', $data)) {
+    if (array_key_exists('prix_achat', $data) && pf_champ_visible('prix_achat')) {
         $row['prix_achat'] = (string) $data['prix_achat'];
     }
     if ($row !== []) {

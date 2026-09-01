@@ -188,15 +188,39 @@ if (!defined('CAISSE_CATALOG_LIVE_LIMIT')) {
 /**
  * Fichier cache du catalogue live (TTL court).
  */
+function caisse_catalog_live_cache_role_key()
+{
+    require_once dirname(__DIR__) . '/includes/admin_permissions.php';
+    $role = function_exists('admin_current_role')
+        ? (string) admin_current_role()
+        : (string) ($_SESSION['admin_role'] ?? 'anon');
+    $role = preg_replace('/[^a-z0-9_]/', '', $role);
+    if ($role === '') {
+        $role = 'anon';
+    }
+
+    return $role;
+}
+
+/**
+ * Fichier cache du catalogue live (TTL court), un fichier par rôle.
+ */
 function caisse_catalog_live_cache_file()
 {
-    return dirname(__DIR__) . '/cache/caisse_catalog_live.json';
+    return dirname(__DIR__) . '/cache/caisse_catalog_live_' . caisse_catalog_live_cache_role_key() . '.json';
 }
 
 function caisse_catalog_live_cache_invalidate()
 {
-    $f = caisse_catalog_live_cache_file();
-    if (is_file($f)) {
+    $dir = dirname(__DIR__) . '/cache';
+    $legacy = $dir . '/caisse_catalog_live.json';
+    if (is_file($legacy)) {
+        @unlink($legacy);
+    }
+    if (!is_dir($dir)) {
+        return;
+    }
+    foreach (glob($dir . '/caisse_catalog_live_*.json') ?: [] as $f) {
         @unlink($f);
     }
 }
@@ -303,6 +327,21 @@ function caisse_catalog_live_items($limit = null)
             'stock' => (int) ($pr['stock'] ?? 0),
             'imgs' => $img !== '' ? [$img] : [],
         ];
+    }
+
+    require_once __DIR__ . '/model_produit_formulaire_champs.php';
+    foreach ($out as $i => $item) {
+        $item = produit_formulaire_filtrer_produit_api($item);
+        $search_parts = [(string) ($item['nom'] ?? '')];
+        foreach (['ref', 'ref_f', 'marque_nom', 'fournisseur_nom', 'categorie_nom', 'desc'] as $sk) {
+            if (!empty($item[$sk])) {
+                $search_parts[] = (string) $item[$sk];
+            }
+        }
+        $item['search'] = function_exists('produits_recherche_normalize')
+            ? produits_recherche_normalize(implode(' ', $search_parts))
+            : mb_strtolower(implode(' ', $search_parts));
+        $out[$i] = $item;
     }
 
     return $out;
