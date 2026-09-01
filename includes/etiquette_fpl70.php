@@ -523,12 +523,13 @@ function etiquette70_rendu(array $donnees, $cote)
         $ph = etiquette70_photo_detouree($donnees['photo_chemin']);
         if ($ph !== null) {
             /* L'atelier posait la pièce dans une boîte de 650 ; la direction
-               l'a trouvée envahissante sur les vraies photos (01/09) : 520,
-               même centre (755, 647) — la pièce reste à sa place, en plus
-               discret. C'est l'écart assumé avec le dessin de l'atelier. */
+               l'a réduite deux fois sur les vraies photos (01/09) : 520 puis
+               420, même centre (755, 647) — la pièce reste à sa place, en
+               nettement plus discret. Écart assumé avec le dessin de
+               l'atelier. */
             $boite = [
-                'x' => (int) round(495 * $s), 'y' => (int) round(387 * $s),
-                'w' => (int) round(520 * $s), 'h' => (int) round(520 * $s),
+                'x' => (int) round(545 * $s), 'y' => (int) round(437 * $s),
+                'w' => (int) round(420 * $s), 'h' => (int) round(420 * $s),
             ];
             $pl = imagesx($ph['img']);
             $phh = imagesy($ph['img']);
