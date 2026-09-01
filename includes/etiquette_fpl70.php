@@ -471,20 +471,29 @@ function etiquette70_donnees_pour_produit(array $produit)
         $ref_affichee = 'FPL ' . substr($m[1], 0, 3) . ' ' . substr($m[1], 3, 3);
     }
 
+    /* LA PHOTO DE L'ÉTIQUETTE = LA PHOTO PRINCIPALE D'ABORD (01/09). L'ancien
+       ordre préférait la « photo étiquette dédiée » — mesure faite : 121
+       pièces en portent une DIFFÉRENTE de la principale, toutes d'anciennes
+       images figées (celle de la pièce #2 est même une image parasite),
+       pendant que l'équipe entretient la photo principale. L'étiquette
+       montre donc la photo vivante ; la dédiée puis la galerie restent des
+       replis quand la principale manque ou que son fichier est absent. */
     $photo_chemin = null;
-    $photo_rel = trim((string) ($produit['image_etiquette_fpl'] ?? ''));
-    if ($photo_rel === '') {
-        $imgs = json_decode((string) ($produit['images'] ?? ''), true);
-        if (is_array($imgs) && !empty($imgs[0])) {
-            $photo_rel = (string) $imgs[0];
-        } elseif (!empty($produit['image_principale'])) {
-            $photo_rel = (string) $produit['image_principale'];
+    $imgs = json_decode((string) ($produit['images'] ?? ''), true);
+    $candidates = [
+        (string) ($produit['image_principale'] ?? ''),
+        (string) ($produit['image_etiquette_fpl'] ?? ''),
+        is_array($imgs) && !empty($imgs[0]) ? (string) $imgs[0] : '',
+    ];
+    foreach ($candidates as $photo_rel) {
+        $photo_rel = trim($photo_rel);
+        if ($photo_rel === '') {
+            continue;
         }
-    }
-    if ($photo_rel !== '') {
         $chemin = __DIR__ . '/../upload/' . ltrim($photo_rel, '/');
         if (is_file($chemin)) {
             $photo_chemin = $chemin;
+            break;
         }
     }
 
