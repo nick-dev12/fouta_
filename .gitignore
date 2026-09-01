@@ -80,4 +80,7 @@ fpl_natif-main/
 /vendor/dompdf/dompdf/lib/fonts/installed-fonts.json
 /vendor/dompdf/dompdf/lib/fonts/*.ufm.json
 /vendor/dompdf/dompdf/lib/fonts/*.afm.json
-
+# Configurations du serveur entreprise — secrets locaux, jamais dans Git
+# (le guide des développeurs les marque « ne pas committer » ; les .example, eux, se committent)
+config/update_entreprise.php
+config/backup_local_to_vps.php
