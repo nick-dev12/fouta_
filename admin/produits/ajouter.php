@@ -363,7 +363,7 @@ saisie_encours_retenir('produits/ajouter.php');
           <div class="wiz-field wiz-field-full">
             <label for="nom_wolof">
               <?php echo fpl_icone('tag', 13); ?> Appellation
-              <span class="hint-inline">le nom qu'on demande au comptoir</span>
+
             </label>
             <input type="text" id="nom_wolof" name="nom_wolof" value="<?php echo e($old['nom_wolof']); ?>"
                    placeholder="Ex. XOTTU SETTU" class="wiz-input">

@@ -295,7 +295,7 @@ $affiche_prix = $voit('prix');
       <?php if (produits_has_column('nom_wolof')) : ?>
         <div class="field">
           <label for="nom_wolof">Appellation
-            <span class="hint-inline">le nom qu'on demande au comptoir — il titre l'étiquette</span>
+           
           </label>
           <input type="text" id="nom_wolof" name="nom_wolof"
                  value="<?php echo e((string) ($produit['nom_wolof'] ?? '')); ?>" placeholder="Ex. XOTTU SETTU">
