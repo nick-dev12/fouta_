@@ -39,10 +39,12 @@ function produits_valider_prix_entreprise($pe_raw, $prix, array &$errors)
         $errors[] = 'Le prix entreprise doit être un nombre valide (0 ou plus).';
         return null;
     }
-    if (isset($prix) && (float) $prix > 0 && (float) $pe_raw > (float) $prix) {
-        $errors[] = 'Le prix entreprise doit rester sous le prix de vente.';
-        return null;
-    }
+    /* PAS DE CONTRAINTE « SOUS LE PRIX DE VENTE » (02/09) : le prix entreprise
+     * est un TARIF DISTINCT (clients professionnels), souvent PLUS ÉLEVÉ que le
+     * prix public — 72 pièces l'avaient déjà ainsi. L'ancienne règle (recopiée
+     * de celle du prix promotionnel) bloquait l'enregistrement et retenait la
+     * direction sur le formulaire sans rien sauver. Le paramètre $prix reste
+     * dans la signature pour ne pas toucher aux appelants. */
 
     return (float) $pe_raw;
 }
