@@ -5,13 +5,14 @@
  * marque par marque, les gammes/séries qui deviennent les MODÈLES de
  * l'étape 1 du wizard (table vehicule_modeles, jusqu'ici vide en prod).
  *
- * Les intitulés sont ceux du fichier, à la lettre. Quatre marques du fichier
- * n'existent pas dans la table marques (FAW, ROR, YORK, TRAILOR) : leurs
- * modèles attendent une décision de la direction — la migration les liste
- * sans les créer.
+ * Les intitulés sont ceux du fichier, à la lettre. Six marques du fichier
+ * manquaient à la table marques (FAW, ROR, TRAILOR, YORK, SMB, KASSBOHRER) :
+ * sur ordre de la direction du 02/09 (« remplis les marques et les modèles »),
+ * la migration les CRÉE d'abord, puis sème leurs modèles. SMB et KASSBOHRER
+ * n'ont pas de feuille de modèles dans le fichier : marque seule.
  *
- * Idempotent : un modèle déjà présent (même marque, même nom, non supprimé)
- * n'est pas reposé. Rejouable telle quelle en production.
+ * Idempotent : une marque ou un modèle déjà présents (même nom, non
+ * supprimés) ne sont pas reposés. Rejouable telle quelle en production.
  *   php migrations/run_semis_modeles_vehicules.php
  */
 
@@ -20,6 +21,20 @@ require_once __DIR__ . '/../conn/conn.php';
 /** @var PDO $db */
 $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 echo 'Base : ', $db->query('SELECT DATABASE()')->fetchColumn(), "\n";
+
+/* --- 1. les marques du fichier absentes de la table --- */
+$marques_a_creer = ['FAW', 'ROR', 'TRAILOR', 'YORK', 'SMB', 'KASSBOHRER'];
+$marque_existe = $db->prepare('SELECT id FROM marques WHERE UPPER(TRIM(nom)) = UPPER(?) LIMIT 1');
+$marque_creer = $db->prepare('INSERT INTO marques (nom, sync_uuid, sync_updated_at) VALUES (?, UUID(), NOW())');
+foreach ($marques_a_creer as $nom_marque) {
+    $marque_existe->execute([$nom_marque]);
+    if ((int) $marque_existe->fetchColumn() > 0) {
+        echo "  marque $nom_marque : déjà là\n";
+        continue;
+    }
+    $marque_creer->execute([$nom_marque]);
+    echo "  marque $nom_marque : CRÉÉE (#", (int) $db->lastInsertId(), ")\n";
+}
 
 $semis = [
     'BEIBEN' => ['V3', 'Beiben heavy truck', 'Spécialités'],
@@ -80,7 +95,7 @@ foreach ($semis as $marque => $modeles) {
 
 printf("TOTAL : %d modèle(s) posé(s), %d déjà en place\n", $total_poses, $total_deja);
 if ($marques_absentes !== []) {
-    echo 'MARQUES DU FICHIER ABSENTES DE LA TABLE marques (modèles non semés, décision direction attendue) : ',
+    echo 'ANOMALIE : marques toujours absentes malgré la création (modèles non semés) : ',
         implode(', ', $marques_absentes), "\n";
 }
 
