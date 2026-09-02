@@ -23,6 +23,7 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
 require_once __DIR__ . '/../includes/require_access.php';
 require_once __DIR__ . '/../../includes/admin_permissions.php';
 require_once __DIR__ . '/../../models/model_produits.php';
+require_once __DIR__ . '/../../includes/produit_formulaire_champs.php';
 require_once __DIR__ . '/../../models/model_categories.php';
 require_once __DIR__ . '/../../models/model_sous_categories.php';
 require_once __DIR__ . '/../../includes/fpl_texte.php';
@@ -293,7 +294,10 @@ $fpl_retour_page = 'index.php';
                 <tr>
                   <?php foreach ($colonnes_choisies as $cle) : ?>
                     <?php $v = export_valeur_colonne_fpl($cle, $p); ?>
-                    <?php if ($cle === 'reference') : ?>
+                    <?php if ($cle === 'image') : ?>
+                      <?php $rel_img = ltrim(str_replace('\\', '/', trim((string) ($p['image_principale'] ?? ''))), '/'); ?>
+                      <td><?php if ($rel_img !== '') : ?><img src="../../upload/<?php echo e($rel_img); ?>" alt="" loading="lazy" style="width:34px;height:34px;object-fit:cover;border-radius:6px;display:block"><?php else : ?><span class="muted">—</span><?php endif; ?></td>
+                    <?php elseif ($cle === 'reference') : ?>
                       <td><span class="chip-code"><?php echo e($v); ?></span></td>
                     <?php elseif ($cle === 'nom') : ?>
                       <td><a href="ajuster-stock.php?id=<?php echo (int) $p['id']; ?>" style="color:var(--ink)"><?php echo fpl_e($v); ?></a></td>

@@ -25,6 +25,9 @@ require_once __DIR__ . '/../../includes/admin_permissions.php';
 
 require_once __DIR__ . '/../../models/model_produits.php';
 require_once __DIR__ . '/../../models/model_categories.php';
+/* la garde des colonnes réservées (prix, fournisseur) a besoin du module des
+   droits de champs — sans lui, export_colonnes_fpl_toutes laisse tout passer */
+require_once __DIR__ . '/../../includes/produit_formulaire_champs.php';
 require_once __DIR__ . '/../../includes/export_produits_catalogue_pdf.php';
 require_once __DIR__ . '/../../includes/export_catalogue_fichier.php';
 

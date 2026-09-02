@@ -3142,6 +3142,7 @@ function export_colonnes_fpl_toutes()
     $toutes = [
         'reference' => ['Référence FPL', 'identifiant_interne'],
         'nom' => ['Nom', ''],
+        'image' => ['Image (lien)', 'image_principale'],
         'categorie' => ['Catégorie', ''],
         'sous_categorie' => ['Sous-catégorie', 'sous_categorie_id'],
         'marque' => ['Marque', 'marque_id'],
@@ -3158,6 +3159,7 @@ function export_colonnes_fpl_toutes()
         'statut' => ['Statut', 'statut'],
         'prix' => ['Prix de vente (FCFA)', 'prix'],
         'prix_promotion' => ['Prix promo (FCFA)', 'prix_promotion'],
+        'prix_entreprise' => ['Prix entreprise (FCFA)', 'prix_entreprise'],
         'prix_achat' => ['Prix grossiste (FCFA)', 'prix_achat'],
         'date_creation' => ['Ajoutée le', 'date_creation'],
     ];
@@ -3170,6 +3172,7 @@ function export_colonnes_fpl_toutes()
     $slug_du_champ = [
         'prix' => 'prix',
         'prix_promotion' => 'prix_promotion',
+        'prix_entreprise' => 'prix', // prix de vente négocié : la règle du prix de vente
         'prix_achat' => 'prix_achat',
         'fournisseur' => 'fournisseur_id',
     ];
@@ -3262,7 +3265,16 @@ function export_valeur_colonne_fpl($cle, array $p)
             return implode(' · ', $bouts);
         case 'prix':                  return $p['prix'] ? (string) (float) $p['prix'] : '';
         case 'prix_promotion':        return $p['prix_promotion'] ? (string) (float) $p['prix_promotion'] : '';
+        case 'prix_entreprise':       return !empty($p['prix_entreprise']) ? (string) (float) $p['prix_entreprise'] : '';
         case 'prix_achat':            return $p['prix_achat'] ? (string) (float) $p['prix_achat'] : '';
+        case 'image':
+            $rel = ltrim(str_replace('\\', '/', trim((string) ($p['image_principale'] ?? ''))), '/');
+            if ($rel === '') {
+                return '';
+            }
+            require_once __DIR__ . '/../includes/site_url.php';
+            return rtrim(get_site_base_url(), '/') . '/upload/'
+                . implode('/', array_map('rawurlencode', explode('/', $rel)));
         case 'date_creation':
             return !empty($p['date_creation']) ? date('d/m/Y', strtotime((string) $p['date_creation'])) : '';
     }
