@@ -49,6 +49,9 @@ require_once __DIR__ . '/../../includes/site_url.php';
 /* Les champs réservés à certains profils (Fournisseur, prix) : la colonne
  * du tableau s'y conforme — voir includes/ligne_piece_fpl.php. */
 require_once __DIR__ . '/../../includes/produit_formulaire_champs.php';
+/* LES COLONNES DU TABLEAU, choisies à l'écran (02/09) : la même liste sert
+ * aux deux en-têtes, à la ligne et au sélecteur de colonnes. */
+require_once __DIR__ . '/../../includes/catalogue_colonnes.php';
 
 // Le compte « admin » est le compte restreint de ce dépôt : il regarde, il ne
 // range pas. C'est lui qui remplace les permissions nommées de FPL natif.
@@ -592,6 +595,41 @@ if ($sous_categorie_id > 0) {
         <?php endif; ?>
       </div>
 
+      <?php /* LE SÉLECTEUR DE COLONNES (02/09) — la direction choisit à l'écran
+               ce que le tableau montre, y compris les prix qui n'étaient que
+               dans la fiche. Les colonnes proposées sont celles auxquelles le
+               rôle a droit (les autres ne sont même pas dans la page). Le choix
+               est retenu dans CE navigateur ; il vaut pour le tableau paginé
+               ET la recherche en direct. */ ?>
+      <div class="fpl-colonnes" data-fpl-colonnes>
+        <button type="button" class="btn btn-outline btn-sm" id="fpl-colonnes-btn" aria-expanded="false" aria-controls="fpl-colonnes-panneau">
+          <?php echo fpl_icone('list', 13); ?> Colonnes
+        </button>
+        <div class="fpl-colonnes__panneau" id="fpl-colonnes-panneau" hidden role="group" aria-label="Colonnes affichées">
+          <p class="fpl-colonnes__titre">Colonnes affichées</p>
+          <?php foreach (catalogue_colonnes_disponibles() as $fpl_col_cle => $fpl_col_def) : ?>
+            <label class="fpl-colonnes__ligne">
+              <input type="checkbox" data-col-key="<?php echo e($fpl_col_cle); ?>"<?php echo $fpl_col_def['defaut'] ? ' data-defaut="1"' : ''; ?>>
+              <span><?php echo e($fpl_col_def['label']); ?></span>
+            </label>
+          <?php endforeach; ?>
+          <button type="button" class="fpl-colonnes__reset" id="fpl-colonnes-reset">Réinitialiser</button>
+        </div>
+      </div>
+      <style>
+        .fpl-colonnes { position: relative; display: inline-block; margin: 0 0 var(--s3); }
+        .fpl-colonnes__panneau {
+          position: absolute; z-index: 40; top: calc(100% + 6px); left: 0; min-width: 210px;
+          background: #fff; border: 1px solid var(--line, #DFE4EC); border-radius: 12px;
+          box-shadow: 0 12px 30px rgba(16, 49, 111, .16); padding: 12px 14px;
+        }
+        .fpl-colonnes__titre { margin: 0 0 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--slate, #5A6A85); }
+        .fpl-colonnes__ligne { display: flex; align-items: center; gap: 9px; padding: 5px 0; font-size: 13.5px; color: var(--ink, #1c2733); cursor: pointer; }
+        .fpl-colonnes__ligne input { width: 16px; height: 16px; accent-color: var(--navy, #10316f); cursor: pointer; }
+        .fpl-colonnes__reset { margin-top: 8px; width: 100%; background: none; border: 0; border-top: 1px solid var(--line-soft, #EDF1F6); padding: 8px 0 2px; font: inherit; font-size: 12.5px; color: var(--blue, #2957ae); cursor: pointer; text-align: left; }
+        .fpl-colonnes__reset:hover { text-decoration: underline; }
+      </style>
+
       <div id="fpl-catalog-empty"<?php echo $produits !== [] ? ' hidden' : ''; ?>>
         <div class="empty">
           <span class="big"><?php echo fpl_icone('tool', 34); ?></span>
@@ -619,10 +657,9 @@ if ($sous_categorie_id > 0) {
               <tr>
                 <th style="width:56px"></th>
                 <th>Pièce</th>
-                <th>Marque</th>
-                <th><?php echo pf_champ_visible('fournisseur_id') ? 'Fournisseur' : 'Catégorie'; ?></th>
-                <th>Référence</th>
-                <th class="num">Stock</th>
+                <?php foreach (catalogue_colonnes_disponibles() as $fpl_col_cle => $fpl_col_def) : ?>
+                  <th data-col="<?php echo e($fpl_col_cle); ?>"<?php echo !empty($fpl_col_def['num']) ? ' class="num"' : ''; ?>><?php echo e($fpl_col_def['label']); ?></th>
+                <?php endforeach; ?>
                 <th style="width:190px; text-align:center">Actions</th>
               </tr>
             </thead>
@@ -651,10 +688,9 @@ if ($sous_categorie_id > 0) {
               <tr>
                 <th style="width:56px"></th>
                 <th>Pièce</th>
-                <th>Marque</th>
-                <th><?php echo pf_champ_visible('fournisseur_id') ? 'Fournisseur' : 'Catégorie'; ?></th>
-                <th>Référence</th>
-                <th class="num">Stock</th>
+                <?php foreach (catalogue_colonnes_disponibles() as $fpl_col_cle => $fpl_col_def) : ?>
+                  <th data-col="<?php echo e($fpl_col_cle); ?>"<?php echo !empty($fpl_col_def['num']) ? ' class="num"' : ''; ?>><?php echo e($fpl_col_def['label']); ?></th>
+                <?php endforeach; ?>
                 <th style="width:190px; text-align:center">Actions</th>
               </tr>
             </thead>
@@ -680,6 +716,93 @@ if ($sous_categorie_id > 0) {
              ce qu'ils attendent. */ ?>
     <script src="<?php echo e(fpl_script_src('admin-produits-index-search.js')); ?><?php echo asset_version_query(); ?>"></script>
     <script src="<?php echo e(fpl_script_src('admin-produits-gallery-lightbox.js')); ?><?php echo asset_version_query(); ?>"></script>
+
+    <?php /* LE SÉLECTEUR DE COLONNES — ouverture du panneau, mémoire du choix
+             dans CE navigateur, et application par une feuille de style qui
+             cache les colonnes décochées (tableau paginé ET recherche en
+             direct, car les sélecteurs visent tout [data-produits-index-page]).
+             Aucun aller-retour serveur : les colonnes réservées ne sont même
+             pas dans la page pour un rôle sans droit. */ ?>
+    <script>
+    (function () {
+      var racine = document.querySelector('[data-fpl-colonnes]');
+      if (!racine) { return; }
+      var btn = document.getElementById('fpl-colonnes-btn');
+      var panneau = document.getElementById('fpl-colonnes-panneau');
+      var reset = document.getElementById('fpl-colonnes-reset');
+      var cases = Array.prototype.slice.call(racine.querySelectorAll('input[data-col-key]'));
+      var CLE = 'fpl_cols_pieces';
+
+      var toutes = cases.map(function (c) { return c.getAttribute('data-col-key'); });
+      var defaut = cases.filter(function (c) { return c.hasAttribute('data-defaut'); })
+                        .map(function (c) { return c.getAttribute('data-col-key'); });
+
+      // Une feuille de style dédiée, réécrite à chaque changement.
+      var style = document.getElementById('fpl-colonnes-style');
+      if (!style) {
+        style = document.createElement('style');
+        style.id = 'fpl-colonnes-style';
+        document.head.appendChild(style);
+      }
+
+      function lire() {
+        try {
+          var brut = window.localStorage.getItem(CLE);
+          if (brut === null) { return defaut.slice(); }
+          var arr = JSON.parse(brut);
+          if (!Array.isArray(arr)) { return defaut.slice(); }
+          // on ne garde que des colonnes qui existent VRAIMENT pour ce rôle
+          return arr.filter(function (k) { return toutes.indexOf(k) !== -1; });
+        } catch (e) { return defaut.slice(); }
+      }
+
+      function ecrire(visibles) {
+        try { window.localStorage.setItem(CLE, JSON.stringify(visibles)); } catch (e) {}
+      }
+
+      function appliquer(visibles) {
+        var caches = toutes.filter(function (k) { return visibles.indexOf(k) === -1; });
+        var css = caches.map(function (k) {
+          return '[data-produits-index-page] [data-col="' + k + '"]';
+        });
+        style.textContent = css.length ? (css.join(',') + '{display:none}') : '';
+        cases.forEach(function (c) {
+          c.checked = visibles.indexOf(c.getAttribute('data-col-key')) !== -1;
+        });
+      }
+
+      // état initial
+      appliquer(lire());
+
+      cases.forEach(function (c) {
+        c.addEventListener('change', function () {
+          var visibles = cases.filter(function (x) { return x.checked; })
+                              .map(function (x) { return x.getAttribute('data-col-key'); });
+          ecrire(visibles);
+          appliquer(visibles);
+        });
+      });
+
+      if (reset) {
+        reset.addEventListener('click', function () {
+          ecrire(defaut.slice());
+          appliquer(defaut.slice());
+        });
+      }
+
+      function ouvrir(v) {
+        panneau.hidden = !v;
+        btn.setAttribute('aria-expanded', v ? 'true' : 'false');
+      }
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        ouvrir(panneau.hidden);
+      });
+      panneau.addEventListener('click', function (e) { e.stopPropagation(); });
+      document.addEventListener('click', function () { ouvrir(false); });
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { ouvrir(false); } });
+    })();
+    </script>
 
     <?php // LA FENÊTRE DE CONFIRMATION DE SUPPRESSION de ce dépôt, gardée telle
           // quelle : elle est plus sûre que le confirm() du navigateur, et son

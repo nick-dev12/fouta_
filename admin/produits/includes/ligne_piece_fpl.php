@@ -43,6 +43,12 @@ if (!function_exists('pf_champ_visible')) {
 if (!function_exists('stock_alerte_seuil_effectif')) {
     require_once __DIR__ . '/../../../models/model_stock_alertes.php';
 }
+/* LES COLONNES DU MILIEU sont désormais choisies à l'écran (02/09) : leur
+ * liste et le contenu de chaque cellule viennent d'une source unique, partagée
+ * avec les deux en-têtes du catalogue. */
+if (!function_exists('catalogue_colonnes_disponibles')) {
+    require_once __DIR__ . '/../../../includes/catalogue_colonnes.php';
+}
 
 $upload_base = isset($upload_base) ? (string) $upload_base : '/upload/';
 if ($upload_base !== '' && substr($upload_base, -1) !== '/') {
@@ -139,36 +145,30 @@ $galerie_json = htmlspecialchars(
       <div class="cell-sub"><span class="chip-code"><?php echo e(fpl_code_afficher($code)); ?></span></div>
     <?php endif; ?>
   </td>
-  <td>
-    <?php if ($marque !== '') : ?>
-      <span class="cell-title" style="font-weight:550"><?php echo fpl_e($marque); ?></span>
-    <?php else : ?>
-      <span class="muted">—</span>
-    <?php endif; ?>
-  </td>
-  <td>
-    <?php if ($colonne_libre !== '') : ?>
-      <?php echo fpl_e($colonne_libre); ?>
-    <?php else : ?>
-      <span class="muted">—</span>
-    <?php endif; ?>
-  </td>
-  <td class="mono" style="font-size:14px"><?php
-      if ($ref_affichee !== '') {
-          echo fpl_e($ref_affichee);
-          if ($oem === '') {
-              echo ' <span class="muted" style="font-size:11px">fourn.</span>';
-          }
-      } else {
-          echo '—';
-      }
-  ?></td>
-  <td class="num fpl-cell-stock<?php echo $stock_manque ? ' fpl-cell-stock--manque' : ''; ?>">
-    <strong><?php echo $stock_piece; ?></strong>
-    <?php if ($stock_manque && $seuil_piece !== null) : ?>
-      <span class="fpl-cell-stock__seuil">/ <?php echo (int) $seuil_piece; ?></span>
-    <?php endif; ?>
-  </td>
+  <?php /* LES COLONNES DU MILIEU, dans l'ordre du catalogue partagé. Chacune
+           porte data-col : le sélecteur de colonnes les montre ou les cache
+           sans toucher au serveur. La colonne « stock » garde sa pastille de
+           manque, et « reference »/prix leur alignement mono/chiffré. */ ?>
+  <?php foreach (catalogue_colonnes_disponibles() as $fpl_col_cle => $fpl_col_def) : ?>
+    <?php
+    $fpl_td_class = [];
+    if (!empty($fpl_col_def['num'])) {
+        $fpl_td_class[] = 'num';
+    }
+    if ($fpl_col_cle === 'reference') {
+        $fpl_td_class[] = 'mono';
+    }
+    if ($fpl_col_cle === 'stock') {
+        $fpl_td_class[] = 'fpl-cell-stock';
+        if ($stock_manque) {
+            $fpl_td_class[] = 'fpl-cell-stock--manque';
+        }
+    }
+    ?>
+    <td data-col="<?php echo e($fpl_col_cle); ?>"<?php echo $fpl_td_class !== [] ? ' class="' . e(implode(' ', $fpl_td_class)) . '"' : ''; ?><?php echo $fpl_col_cle === 'reference' ? ' style="font-size:14px"' : ''; ?>><?php
+        echo catalogue_colonne_cellule_html($fpl_col_cle, $produit, $fpl_modeles_noms);
+    ?></td>
+  <?php endforeach; ?>
   <td>
     <div class="row-actions">
       <a href="<?php echo e($fiche); ?>" class="btn btn-outline btn-sm btn-detail">
