@@ -160,7 +160,7 @@ $galerie_json = htmlspecialchars(
     if (!empty($fpl_col_def['num'])) {
         $fpl_td_class[] = 'num';
     }
-    if ($fpl_col_cle === 'reference') {
+    if ($fpl_col_cle === 'reference_oem' || $fpl_col_cle === 'reference_fournisseur') {
         $fpl_td_class[] = 'mono';
     }
     if ($fpl_col_cle === 'stock') {
@@ -170,7 +170,7 @@ $galerie_json = htmlspecialchars(
         }
     }
     ?>
-    <td data-col="<?php echo e($fpl_col_cle); ?>"<?php echo $fpl_td_class !== [] ? ' class="' . e(implode(' ', $fpl_td_class)) . '"' : ''; ?><?php echo $fpl_col_cle === 'reference' ? ' style="font-size:14px"' : ''; ?>><?php
+    <td data-col="<?php echo e($fpl_col_cle); ?>"<?php echo $fpl_td_class !== [] ? ' class="' . e(implode(' ', $fpl_td_class)) . '"' : ''; ?><?php echo ($fpl_col_cle === 'reference_oem' || $fpl_col_cle === 'reference_fournisseur') ? ' style="font-size:14px"' : ''; ?>><?php
         echo catalogue_colonne_cellule_html($fpl_col_cle, $produit, $fpl_modeles_noms);
     ?></td>
   <?php endforeach; ?>

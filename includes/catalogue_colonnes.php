@@ -30,6 +30,7 @@ require_once __DIR__ . '/produit_formulaire_champs.php';
 function catalogue_colonnes_disponibles()
 {
     $voit_fournisseur = !function_exists('pf_champ_visible') || pf_champ_visible('fournisseur_id');
+    $voit_ref_fournisseur = !function_exists('pf_champ_visible') || pf_champ_visible('reference_fournisseur');
     $voit_prix = !function_exists('pf_champ_visible') || pf_champ_visible('prix');
     $voit_promo = !function_exists('pf_champ_visible') || pf_champ_visible('prix_promotion');
     $voit_grossiste = !function_exists('pf_champ_visible') || pf_champ_visible('prix_achat');
@@ -46,7 +47,15 @@ function catalogue_colonnes_disponibles()
         // place par défaut, comme le faisait la colonne unique.
         $cols['categorie'] = ['label' => 'Catégorie', 'defaut' => true, 'num' => false];
     }
-    $cols['reference'] = ['label' => 'Référence', 'defaut' => true, 'num' => false];
+    /* DEUX RÉFÉRENCES DISTINCTES (02/09) — l'OEM (la référence d'origine
+     * constructeur) et la référence FOURNISSEUR sont deux choses différentes :
+     * chacune a SA colonne, on ne les mélange plus dans une seule « Référence ».
+     * La référence FPL de la maison, elle, reste sous le nom dans la colonne
+     * « Pièce ». La réf. fournisseur suit les droits (cachée au stock simple). */
+    $cols['reference_oem'] = ['label' => 'Réf. OEM', 'defaut' => true, 'num' => false];
+    if ($voit_ref_fournisseur) {
+        $cols['reference_fournisseur'] = ['label' => 'Réf. fournisseur', 'defaut' => false, 'num' => false];
+    }
     $cols['stock'] = ['label' => 'Stock', 'defaut' => true, 'num' => true];
     if ($voit_prix) {
         // Affiché PAR DÉFAUT (02/09) : la direction attend les prix dans la
@@ -118,23 +127,17 @@ function catalogue_colonne_cellule_html($cle, array $produit, array $modeles_nom
             $v = trim((string) ($produit['categorie_nom'] ?? ''));
             return $v !== '' ? fpl_e($v) : $muet;
 
-        case 'reference':
+        case 'reference_oem':
             $oem = trim((string) ($produit['reference_oem'] ?? ''));
-            /* LA RÉFÉRENCE FOURNISSEUR NE FUIT PLUS AU STOCK SIMPLE (02/09) :
-             * la colonne montrait l'OEM, et à défaut la réf. fournisseur — que
-             * le rayonniste ne doit pas voir (au même titre que le fournisseur
-             * lui-même). On ne retombe sur elle que si le rôle y a droit. */
-            $voit_ref_f = !function_exists('pf_champ_visible') || pf_champ_visible('reference_fournisseur');
-            $ref_f = $voit_ref_f ? trim((string) ($produit['reference_fournisseur'] ?? '')) : '';
-            $ref = $oem !== '' ? $oem : $ref_f;
-            if ($ref === '') {
-                return '—';
+            return $oem !== '' ? fpl_e($oem) : $muet;
+
+        case 'reference_fournisseur':
+            /* réservée : le stock simple ne la voit pas (droit reference_fournisseur) */
+            if (function_exists('pf_champ_visible') && !pf_champ_visible('reference_fournisseur')) {
+                return $muet;
             }
-            $out = fpl_e($ref);
-            if ($oem === '' && $ref_f !== '') {
-                $out .= ' <span class="muted" style="font-size:11px">fourn.</span>';
-            }
-            return $out;
+            $ref_f = trim((string) ($produit['reference_fournisseur'] ?? ''));
+            return $ref_f !== '' ? fpl_e($ref_f) : $muet;
 
         case 'stock':
             $stock = (int) ($produit['stock'] ?? 0);
