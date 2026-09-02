@@ -58,8 +58,10 @@ function catalogue_colonnes_disponibles()
     }
     if ($voit_prix) {
         // Le prix entreprise suit la règle du prix de vente (un tarif de vente
-        // négocié) — même décision que la fusion et l'export.
-        $cols['prix_entreprise'] = ['label' => 'Prix entreprise', 'defaut' => false, 'num' => true];
+        // négocié) — même décision que la fusion et l'export. Affiché PAR
+        // DÉFAUT (02/09) : c'est un prix de vente que le comptoir consulte,
+        // au même titre que le prix public.
+        $cols['prix_entreprise'] = ['label' => 'Prix entreprise', 'defaut' => true, 'num' => true];
     }
     if ($voit_grossiste) {
         $cols['prix_achat'] = ['label' => 'Prix grossiste', 'defaut' => false, 'num' => true];
