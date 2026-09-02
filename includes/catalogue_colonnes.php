@@ -49,7 +49,9 @@ function catalogue_colonnes_disponibles()
     $cols['reference'] = ['label' => 'Référence', 'defaut' => true, 'num' => false];
     $cols['stock'] = ['label' => 'Stock', 'defaut' => true, 'num' => true];
     if ($voit_prix) {
-        $cols['prix'] = ['label' => 'Prix de vente', 'defaut' => false, 'num' => true];
+        // Affiché PAR DÉFAUT (02/09) : la direction attend les prix dans la
+        // liste, pas seulement dans la fiche. Les autres prix restent à cocher.
+        $cols['prix'] = ['label' => 'Prix de vente', 'defaut' => true, 'num' => true];
     }
     if ($voit_promo) {
         $cols['prix_promotion'] = ['label' => 'Prix promo', 'defaut' => false, 'num' => true];
