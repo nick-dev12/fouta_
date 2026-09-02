@@ -1235,27 +1235,35 @@ function process_update_produit($produit_id)
                     generer_qrcode_produit($produit_id);
                 }
             }
-            $old_emplacement = produit_emplacement_from_produit($produit);
+            /* L'EMPLACEMENT A-T-IL VRAIMENT CHANGÉ ? (02/09 — performance de
+             * l'enregistrement). En mode référentiel (le cas courant), le
+             * NŒUD d'entrepôt EST la source : on compare le nœud POSTé au nœud
+             * enregistré, directement. Avant, on recalculait tout l'ancien
+             * emplacement (produit_emplacement_from_produit ≈ 5 requêtes à
+             * CHAQUE sauvegarde) PUIS on comparait aussi l'entrepot_position_id
+             * — que le formulaire ne renvoie pas — d'où un « modifié » FAUX qui
+             * régénérait le code-barres ET le QR à chaque enregistrement
+             * (~130 ms perdus + les requêtes). Désormais le code-barres/QR ne
+             * se régénère QUE si le nœud change réellement. Le mode legacy (peu
+             * utilisé) garde l'ancienne comparaison complète. */
             $emplacement_modifie = false;
             if (produit_emplacement_use_referentiel()) {
-                $ancien_pid = isset($old_emplacement['entrepot_position_id']) ? (string) $old_emplacement['entrepot_position_id'] : '';
-                $nouveau_pid = isset($emplacement['entrepot_position_id']) ? (string) $emplacement['entrepot_position_id'] : '';
-                $ancien_nid = isset($old_emplacement['entrepot_noeud_id']) ? (string) $old_emplacement['entrepot_noeud_id'] : '';
-                $nouveau_nid = isset($emplacement['entrepot_noeud_id']) ? (string) $emplacement['entrepot_noeud_id'] : '';
-                $emplacement_modifie = ($ancien_pid !== $nouveau_pid) || ($ancien_nid !== $nouveau_nid);
-            }
-            if (!$emplacement_modifie) {
-            foreach ($emplacement as $col => $val) {
-                if ($col === 'entrepot_position_id') {
-                    continue;
+                $ancien_nid = (int) ($produit['entrepot_noeud_id'] ?? 0);
+                $nouveau_nid = (int) ($emplacement['entrepot_noeud_id'] ?? 0);
+                $emplacement_modifie = ($ancien_nid !== $nouveau_nid);
+            } else {
+                $old_emplacement = produit_emplacement_from_produit($produit);
+                foreach ($emplacement as $col => $val) {
+                    if ($col === 'entrepot_position_id') {
+                        continue;
+                    }
+                    $ancien = isset($old_emplacement[$col]) ? (string) $old_emplacement[$col] : '';
+                    $nouveau = $val !== null ? (string) $val : '';
+                    if ($ancien !== $nouveau) {
+                        $emplacement_modifie = true;
+                        break;
+                    }
                 }
-                $ancien = isset($old_emplacement[$col]) ? (string) $old_emplacement[$col] : '';
-                $nouveau = $val !== null ? (string) $val : '';
-                if ($ancien !== $nouveau) {
-                    $emplacement_modifie = true;
-                    break;
-                }
-            }
             }
             if ($emplacement_modifie) {
                 generer_barcode_produit_fpl($produit_id);
