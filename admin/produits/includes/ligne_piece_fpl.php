@@ -109,6 +109,11 @@ if (function_exists('produits_galerie_web_urls')) {
 if ($galerie === [] && $img !== '') {
     $galerie[] = $upload_base . $img;
 }
+/* LA VIGNETTE : la photo principale si elle existe, sinon la première photo
+   trouvée (galerie ou, en dernier recours, la photo étiquette — les pièces
+   récentes n'ont parfois QUE celle-là). Sans ce repli, leur ligne restait
+   sans image alors que l'étiquette en montrait une. */
+$vignette = $img !== '' ? ($upload_base . $img) : (string) ($galerie[0] ?? '');
 $galerie_json = htmlspecialchars(
     json_encode(array_values($galerie), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
     ENT_QUOTES,
@@ -121,7 +126,7 @@ $galerie_json = htmlspecialchars(
 <tr class="fpl-ligne-cliquable" data-href="<?php echo e($fiche); ?>" tabindex="0" role="link"
     aria-label="<?php echo e('Voir la fiche : ' . $nom); ?>">
   <td>
-    <?php if ($img !== '') : ?>
+    <?php if ($vignette !== '') : ?>
       <?php // Les DEUX classes : celle que la visionneuse de ce dépôt écoute
             // (page-produits-table__thumb-btn), et la nôtre pour l'habillage.
             // Ainsi le JavaScript existant marche sans qu'on y touche. ?>
@@ -130,7 +135,7 @@ $galerie_json = htmlspecialchars(
               data-produit-nom="<?php echo e($nom); ?>"
               title="Voir la galerie photos"
               aria-label="<?php echo e('Voir la galerie photos : ' . $nom); ?>">
-        <img class="thumb" src="<?php echo e($upload_base . $img); ?>" alt="<?php echo e($nom); ?>" loading="lazy" decoding="async"
+        <img class="thumb" src="<?php echo e($vignette); ?>" alt="<?php echo e($nom); ?>" loading="lazy" decoding="async"
              onerror="this.nextElementSibling.style.display='flex'; this.remove();">
         <span class="thumb" style="display:none;align-items:center;justify-content:center;color:var(--slate)"><i class="fas fa-box" aria-hidden="true"></i></span>
       </button>

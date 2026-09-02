@@ -106,6 +106,14 @@ function produits_galerie_web_urls($p)
     if (empty($galerie) && !empty($p['image_principale'])) {
         $galerie = [trim((string) $p['image_principale'])];
     }
+    /* DERNIER RECOURS : la photo dédiée à l'étiquette (02/09). Des pièces
+     * saisies récemment n'ont QUE cette photo (ni principale, ni galerie) :
+     * sans ce repli, elles s'affichaient sur l'étiquette mais restaient vides
+     * dans le tableau et la fiche. La photo étiquette EST une photo de la
+     * pièce — on la montre partout où l'on montre ses photos. */
+    if (empty($galerie) && !empty($p['image_etiquette_fpl'])) {
+        $galerie = [trim((string) $p['image_etiquette_fpl'])];
+    }
     $out = [];
     foreach ($galerie as $rel) {
         $rel = str_replace('\\', '/', $rel);

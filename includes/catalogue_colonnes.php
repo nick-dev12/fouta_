@@ -120,13 +120,18 @@ function catalogue_colonne_cellule_html($cle, array $produit, array $modeles_nom
 
         case 'reference':
             $oem = trim((string) ($produit['reference_oem'] ?? ''));
-            $ref_f = trim((string) ($produit['reference_fournisseur'] ?? ''));
+            /* LA RÉFÉRENCE FOURNISSEUR NE FUIT PLUS AU STOCK SIMPLE (02/09) :
+             * la colonne montrait l'OEM, et à défaut la réf. fournisseur — que
+             * le rayonniste ne doit pas voir (au même titre que le fournisseur
+             * lui-même). On ne retombe sur elle que si le rôle y a droit. */
+            $voit_ref_f = !function_exists('pf_champ_visible') || pf_champ_visible('reference_fournisseur');
+            $ref_f = $voit_ref_f ? trim((string) ($produit['reference_fournisseur'] ?? '')) : '';
             $ref = $oem !== '' ? $oem : $ref_f;
             if ($ref === '') {
                 return '—';
             }
             $out = fpl_e($ref);
-            if ($oem === '') {
+            if ($oem === '' && $ref_f !== '') {
                 $out .= ' <span class="muted" style="font-size:11px">fourn.</span>';
             }
             return $out;
