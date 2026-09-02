@@ -910,13 +910,27 @@ function produit_formulaire_champ_slug_depuis_label($label) {
     if ($label === '') {
         return '';
     }
+    /* MINUSCULE D'ABORD (02/09). Sinon le [^a-z0-9] plus bas prend chaque
+     * MAJUSCULE pour un séparateur et l'ampute : « Prix Entreprise » donnait
+     * « rix_ntreprise » — le champ en double du bug des prix. Même recette
+     * que la hiérarchie (24/08) : minuscule, accents mappés à la main,
+     * iconv en dernier recours, regex ensuite. */
+    $label = function_exists('mb_strtolower') ? mb_strtolower($label, 'UTF-8') : strtolower($label);
+    $label = strtr($label, [
+        'à' => 'a', 'â' => 'a', 'ä' => 'a', 'á' => 'a', 'ã' => 'a', 'å' => 'a',
+        'ç' => 'c', 'é' => 'e', 'è' => 'e', 'ê' => 'e', 'ë' => 'e',
+        'î' => 'i', 'ï' => 'i', 'í' => 'i', 'ì' => 'i',
+        'ô' => 'o', 'ö' => 'o', 'ó' => 'o', 'ò' => 'o', 'õ' => 'o',
+        'ù' => 'u', 'û' => 'u', 'ü' => 'u', 'ú' => 'u',
+        'ñ' => 'n', 'ý' => 'y', 'ÿ' => 'y', 'œ' => 'oe', 'æ' => 'ae',
+    ]);
     if (function_exists('iconv')) {
         $ascii = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $label);
         if ($ascii !== false) {
             $label = $ascii;
         }
     }
-    $slug = strtolower(preg_replace('/[^a-z0-9]+/', '_', $label));
+    $slug = preg_replace('/[^a-z0-9]+/', '_', $label);
     $slug = trim($slug, '_');
 
     return substr($slug, 0, 50);
