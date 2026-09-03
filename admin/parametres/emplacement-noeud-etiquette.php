@@ -142,34 +142,41 @@ $libelle_h = htmlspecialchars($libelle, ENT_QUOTES, 'UTF-8');
  * La 2ᵉ page blanche du PDF venait de l'image QR alignée sur la ligne de
  * base (piège dompdf) : le QR est en bloc, et la hauteur n'est plus forcée
  * sur html/body (elle l'était et créait un débordement d'un cheveu). */
+/* MISE EN PAGE EN TABLEAU, PAS EN FLEX (03/09) : dompdf ne sait pas rendre
+ * `display:flex` — il empilait le texte puis le QR à la verticale, ce qui
+ * débordait des 40 mm et créait une 2ᵉ page blanche. Un tableau à une ligne
+ * (QR dans sa colonne, libellé centré) tient sur une seule page. */
+$col_qr = $qr_uri !== ''
+    ? '<td class="cell-qr"><img class="qr" src="' . $qr_uri . '" alt="QR"></td>'
+    : '';
+$col_txt = '<td class="cell-txt"><span class="txt">' . $libelle_h . '</span></td>';
+
 $html = '<!DOCTYPE html><html><head><meta charset="utf-8"><style>
 @page { size: ' . $mm_w . 'mm ' . $mm_h . 'mm; margin: 0; }
 html, body { margin: 0; padding: 0; width: ' . $mm_w . 'mm; overflow: hidden; background: #FFE600; }
-.ee-barre-etiq {
+.wrap {
   width: ' . $mm_w . 'mm; height: ' . $mm_h . 'mm; box-sizing: border-box;
-  padding: ' . $mm_pad . 'mm;
-  display: flex; align-items: center; justify-content: space-between;
-  gap: ' . $mm_gap . 'mm;
-  font-family: DejaVu Sans, Arial, sans-serif;
-  background: #FFE600; overflow: hidden;
+  padding: ' . $mm_pad . 'mm; background: #FFE600; overflow: hidden;
 }
-.ee-barre-etiq__text {
-  flex: 1; text-align: center;
+.grid { width: 100%; height: 100%; border-collapse: collapse; table-layout: fixed; }
+.grid td { padding: 0; vertical-align: middle; }
+.cell-qr { width: ' . $mm_qr . 'mm; }
+.cell-txt {
+  text-align: center;
+  font-family: DejaVu Sans, Arial, sans-serif;
   font-size: ' . $pt_tx . 'pt; font-weight: bold; color: #000;
   white-space: nowrap; line-height: 1;
-  position: relative; left: ' . $mm_decx . 'mm; top: ' . $mm_decy . 'mm;
 }
-.ee-barre-etiq__qr {
+.qr {
   display: block;
   width: ' . $mm_qr . 'mm; height: ' . $mm_qr . 'mm;
   position: relative; left: ' . $mm_decx . 'mm; top: ' . $mm_decy . 'mm;
 }
+.txt { position: relative; left: ' . $mm_decx . 'mm; top: ' . $mm_decy . 'mm; }
 </style></head><body>
-<div class="ee-barre-etiq">';
-$bloc_texte = '<span class="ee-barre-etiq__text">' . $libelle_h . '</span>';
-$bloc_qr = $qr_uri !== '' ? '<img class="ee-barre-etiq__qr" src="' . $qr_uri . '" alt="QR">' : '';
-$html .= $qr_a_gauche ? ($bloc_qr . $bloc_texte) : ($bloc_texte . $bloc_qr);
-$html .= '</div></body></html>';
+<div class="wrap"><table class="grid"><tr>'
+    . ($qr_a_gauche ? ($col_qr . $col_txt) : ($col_txt . $col_qr))
+    . '</tr></table></div></body></html>';
 
 if (!is_file(__DIR__ . '/../../vendor/autoload.php')) {
     http_response_code(500);
