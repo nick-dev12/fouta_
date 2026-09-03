@@ -359,8 +359,8 @@ saisie_encours_retenir('produits/ajouter.php');
         </div>
 
         <?php if ($a_col('nom_wolof')) : ?>
-          <!-- LE NOM EN WOLOF — celui qu'on entend au comptoir. Il devient
-               le titre de l'étiquette, le français passe en dessous. -->
+          <!-- L'APPELLATION — le nom usuel de la pièce. Il devient le titre
+               de l'étiquette, le nom français passe en dessous. -->
           <div class="wiz-field wiz-field-full">
             <label for="nom_wolof">
               <?php echo fpl_icone('tag', 13); ?> Appellation
