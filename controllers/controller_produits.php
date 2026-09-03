@@ -39,14 +39,45 @@ function produits_valider_prix_entreprise($pe_raw, $prix, array &$errors)
         $errors[] = 'Le prix entreprise doit être un nombre valide (0 ou plus).';
         return null;
     }
-    /* PAS DE CONTRAINTE « SOUS LE PRIX DE VENTE » (02/09) : le prix entreprise
-     * est un TARIF DISTINCT (clients professionnels), souvent PLUS ÉLEVÉ que le
-     * prix public — 72 pièces l'avaient déjà ainsi. L'ancienne règle (recopiée
-     * de celle du prix promotionnel) bloquait l'enregistrement et retenait la
-     * direction sur le formulaire sans rien sauver. Le paramètre $prix reste
-     * dans la signature pour ne pas toucher aux appelants. */
+    /* La position du prix entreprise par rapport au prix de vente n'est PAS
+     * jugée ici : elle l'est par produits_valider_ordre_prix (règle
+     * vente < entreprise), avec les autres prix. Le paramètre $prix reste dans
+     * la signature pour ne pas toucher aux appelants. */
 
     return (float) $pe_raw;
+}
+
+/**
+ * L'ORDRE DES PRIX (02/09/2026) — décision de la direction :
+ *   prix d'achat (coût) ≤ prix grossiste < prix de vente < prix entreprise.
+ * On ne compare QUE les paires dont les DEUX prix sont renseignés (> 0) : un
+ * prix vide ne bloque jamais. Chaque écart ajoute un message d'erreur clair.
+ *
+ * @param float|string|null $revient   Prix d'achat réel (coût), colonne prix_revient
+ * @param float|string|null $grossiste Prix grossiste, colonne prix_achat
+ * @param float|string|null $vente     Prix de vente
+ * @param float|string|null $entreprise Prix entreprise
+ * @param array<int, string> $errors
+ */
+function produits_valider_ordre_prix($revient, $grossiste, $vente, $entreprise, array &$errors)
+{
+    $val = function ($x) {
+        return (is_numeric($x) && (float) $x > 0) ? (float) $x : null;
+    };
+    $r = $val($revient);
+    $g = $val($grossiste);
+    $v = $val($vente);
+    $e = $val($entreprise);
+
+    if ($r !== null && $g !== null && $r > $g) {
+        $errors[] = 'Le prix d\'achat doit rester inférieur ou égal au prix grossiste.';
+    }
+    if ($g !== null && $v !== null && $g >= $v) {
+        $errors[] = 'Le prix grossiste doit être strictement inférieur au prix de vente.';
+    }
+    if ($v !== null && $e !== null && $v >= $e) {
+        $errors[] = 'Le prix de vente doit être strictement inférieur au prix entreprise.';
+    }
 }
 
 /**
@@ -402,9 +433,22 @@ function process_add_produit()
         $pa_raw = isset($_POST['prix_achat']) ? trim((string) $_POST['prix_achat']) : '';
         if ($pa_raw !== '') {
             if (!is_numeric($pa_raw) || (float) $pa_raw < 0) {
-                $errors[] = 'Le prix d\'achat doit être un nombre valide (0 ou plus).';
+                $errors[] = 'Le prix grossiste doit être un nombre valide (0 ou plus).';
             } else {
                 $prix_achat = (float) $pa_raw;
+            }
+        }
+    }
+
+    /* LE PRIX D'ACHAT RÉEL (le coût) — même droit que le prix grossiste. */
+    $prix_revient = null;
+    if (produit_formulaire_champ_modifiable('prix_achat') && produits_has_column('prix_revient')) {
+        $pr_raw = isset($_POST['prix_revient']) ? trim((string) $_POST['prix_revient']) : '';
+        if ($pr_raw !== '') {
+            if (!is_numeric($pr_raw) || (float) $pr_raw < 0) {
+                $errors[] = 'Le prix d\'achat doit être un nombre valide (0 ou plus).';
+            } else {
+                $prix_revient = (float) $pr_raw;
             }
         }
     }
@@ -514,6 +558,10 @@ function process_add_produit()
         $prix_entreprise_val = produits_valider_prix_entreprise($pe_raw, $prix ?? null, $errors);
     }
 
+    /* L'ORDRE DES PRIX : achat ≤ grossiste < vente < entreprise (paires
+     * renseignées seulement). */
+    produits_valider_ordre_prix($prix_revient, $prix_achat, $prix ?? null, $prix_entreprise_val, $errors);
+
     $identifiant_attribue = null;
     if (produit_formulaire_champ_visible('identifiant_interne') && produits_has_column('identifiant_interne')) {
         $identifiant_attribue = produits_allouer_identifiant_fpl_9_auto(0);
@@ -592,6 +640,9 @@ function process_add_produit()
         }
         if (produits_has_column('prix_achat')) {
             $data['prix_achat'] = $prix_achat;
+        }
+        if (produits_has_column('prix_revient')) {
+            $data['prix_revient'] = $prix_revient;
         }
         // Identité technique des pièces poids lourds (reprise de FPL natif)
         if (produits_has_column('reference_oem')) {
@@ -865,9 +916,22 @@ function process_update_produit($produit_id)
         $pa_raw = isset($_POST['prix_achat']) ? trim((string) $_POST['prix_achat']) : '';
         if ($pa_raw !== '') {
             if (!is_numeric($pa_raw) || (float) $pa_raw < 0) {
-                $errors[] = 'Le prix d\'achat doit être un nombre valide (0 ou plus).';
+                $errors[] = 'Le prix grossiste doit être un nombre valide (0 ou plus).';
             } else {
                 $prix_achat = (float) $pa_raw;
+            }
+        }
+    }
+
+    /* LE PRIX D'ACHAT RÉEL (le coût) — même droit que le prix grossiste. */
+    $prix_revient = null;
+    if (produit_formulaire_champ_modifiable('prix_achat') && produits_has_column('prix_revient')) {
+        $pr_raw = isset($_POST['prix_revient']) ? trim((string) $_POST['prix_revient']) : '';
+        if ($pr_raw !== '') {
+            if (!is_numeric($pr_raw) || (float) $pr_raw < 0) {
+                $errors[] = 'Le prix d\'achat doit être un nombre valide (0 ou plus).';
+            } else {
+                $prix_revient = (float) $pr_raw;
             }
         }
     }
@@ -943,6 +1007,17 @@ function process_update_produit($produit_id)
         $pe_raw = trim((string) $_POST['prix_entreprise']);
         $prix_entreprise_maj = produits_valider_prix_entreprise($pe_raw, $prix ?? null, $errors);
     }
+
+    /* L'ORDRE DES PRIX : achat ≤ grossiste < vente < entreprise. On compare
+     * aux valeurs qui SERONT en base — la valeur envoyée si le champ était
+     * modifiable, sinon celle déjà enregistrée sur la pièce. */
+    produits_valider_ordre_prix(
+        $prix_revient !== null ? $prix_revient : ($produit['prix_revient'] ?? null),
+        $prix_achat !== null ? $prix_achat : ($produit['prix_achat'] ?? null),
+        $prix ?? ($produit['prix'] ?? null),
+        $prix_entreprise_envoye ? $prix_entreprise_maj : ($produit['prix_entreprise'] ?? null),
+        $errors
+    );
 
     $nouvel_identifiant = null;
     if (
@@ -1091,6 +1166,9 @@ function process_update_produit($produit_id)
         }
         if (produit_formulaire_champ_modifiable('prix_achat') && produits_has_column('prix_achat')) {
             $data['prix_achat'] = $prix_achat;
+        }
+        if (produit_formulaire_champ_modifiable('prix_achat') && produits_has_column('prix_revient')) {
+            $data['prix_revient'] = $prix_revient;
         }
         /* LE SEUIL DE LA PIÈCE (31/08) — écrit seulement par qui en a le droit,
          * et posé « à la main » : le calcul des suggestions ne l'écrasera pas.

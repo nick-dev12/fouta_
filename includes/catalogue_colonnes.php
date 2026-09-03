@@ -73,6 +73,7 @@ function catalogue_colonnes_disponibles()
         $cols['prix_entreprise'] = ['label' => 'Prix entreprise', 'defaut' => true, 'num' => true];
     }
     if ($voit_grossiste) {
+        $cols['prix_revient'] = ['label' => 'Prix d\'achat', 'defaut' => false, 'num' => true];
         $cols['prix_achat'] = ['label' => 'Prix grossiste', 'defaut' => false, 'num' => true];
     }
     $cols['statut'] = ['label' => 'Statut', 'defaut' => false, 'num' => false];
@@ -156,6 +157,7 @@ function catalogue_colonne_cellule_html($cle, array $produit, array $modeles_nom
         case 'prix_promotion':
         case 'prix_entreprise':
         case 'prix_achat':
+        case 'prix_revient':
             $v = $produit[$cle] ?? null;
             if ($v === null || $v === '' || (float) $v <= 0) {
                 return $muet;

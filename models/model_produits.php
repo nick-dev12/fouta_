@@ -1945,6 +1945,12 @@ function create_produit($data)
             $vals .= ", :prix_achat";
             $params['prix_achat'] = array_key_exists('prix_achat', $data) ? $data['prix_achat'] : null;
         }
+        if (produits_has_column('prix_revient')) {
+            $cols .= ", prix_revient";
+            $vals .= ", :prix_revient";
+            $pr = $data['prix_revient'] ?? null;
+            $params['prix_revient'] = ($pr !== null && $pr !== '' && is_numeric($pr)) ? (float) $pr : null;
+        }
         if (produits_has_column('sous_categorie_id')) {
             $cols .= ", sous_categorie_id";
             $vals .= ", :sous_categorie_id";
@@ -2115,6 +2121,11 @@ function update_produit($id, $data)
         if (produits_has_column('prix_achat') && array_key_exists('prix_achat', $data)) {
             $sets .= ", prix_achat = :prix_achat";
             $params['prix_achat'] = $data['prix_achat'];
+        }
+        if (produits_has_column('prix_revient') && array_key_exists('prix_revient', $data)) {
+            $sets .= ", prix_revient = :prix_revient";
+            $pr = $data['prix_revient'];
+            $params['prix_revient'] = ($pr !== null && $pr !== '' && is_numeric($pr)) ? (float) $pr : null;
         }
         /* LA RÉFÉRENCE D'ORIGINE ET LE CÔTÉ DE MONTAGE. Ils se saisissaient à la
          * création sans jamais pouvoir être corrigés — la mise à jour ne les

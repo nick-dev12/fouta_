@@ -158,6 +158,7 @@ $old = [
     'fournisseur_id' => isset($_POST['fournisseur_id']) ? (string) $_POST['fournisseur_id'] : '',
     'nom_fournisseur' => isset($_POST['nom_fournisseur']) ? (string) $_POST['nom_fournisseur'] : '',
     'prix_achat' => isset($_POST['prix_achat']) ? (string) $_POST['prix_achat'] : '',
+    'prix_revient' => isset($_POST['prix_revient']) ? (string) $_POST['prix_revient'] : '',
     'prix' => isset($_POST['prix']) ? (string) $_POST['prix'] : '',
     'prix_promotion' => isset($_POST['prix_promotion']) ? (string) $_POST['prix_promotion'] : '',
     'prix_entreprise' => isset($_POST['prix_entreprise']) ? (string) $_POST['prix_entreprise'] : '',
@@ -429,6 +430,17 @@ saisie_encours_retenir('produits/ajouter.php');
 
           <?php if ($saisit('prix_achat') && $a_col('prix_achat')) : ?>
             <div class="wiz-field-group">
+              <?php if ($a_col('prix_revient')) : ?>
+              <div class="wiz-field">
+                <label for="prix_revient">
+                  <?php echo fpl_icone('dollar-sign', 13); ?> Prix d'achat
+                  <span class="wiz-optional">optionnel</span>
+                </label>
+                <input type="number" id="prix_revient" name="prix_revient" min="0" step="any" class="wiz-input"
+                       value="<?php echo e($old['prix_revient']); ?>">
+                <div class="wiz-help">En FCFA — ce que la pièce vous a coûté (le plus bas).</div>
+              </div>
+              <?php endif; ?>
               <div class="wiz-field">
                 <label for="prix_achat">
                   <?php echo fpl_icone('dollar-sign', 13); ?> Prix grossiste
@@ -436,9 +448,9 @@ saisie_encours_retenir('produits/ajouter.php');
                 </label>
                 <input type="number" id="prix_achat" name="prix_achat" min="0" step="any" class="wiz-input"
                        value="<?php echo e($old['prix_achat']); ?>">
-                <div class="wiz-help">En FCFA — ce que la pièce vous a coûté.</div>
+                <div class="wiz-help">En FCFA — le prix vendu aux grossistes (sous le prix de vente).</div>
               </div>
-              <div class="wiz-field"></div>
+              <?php if (!$a_col('prix_revient')) : ?><div class="wiz-field"></div><?php endif; ?>
             </div>
           <?php endif; ?>
         <?php endif; ?>
@@ -476,7 +488,7 @@ saisie_encours_retenir('produits/ajouter.php');
                 </label>
                 <input type="number" id="prix_entreprise" name="prix_entreprise" min="0" step="any" class="wiz-input"
                        value="<?php echo e($old['prix_entreprise']); ?>">
-                <div class="wiz-help">Le tarif des clients professionnels — sous le prix public.</div>
+                <div class="wiz-help">Le tarif des clients professionnels — au-dessus du prix de vente.</div>
               </div>
               <div class="wiz-field"></div>
             </div>
