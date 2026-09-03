@@ -52,30 +52,9 @@ if ($produit === false) {
 }
 $produit_id = (int) $produit['id'];
 
-// Le format demandé, sinon celui dont les mm sont ceux du réglage, sinon le premier.
-$format = !empty($_GET['format']) ? fpl_etiquette_format_get((int) $_GET['format'], 'piece') : false;
-if ($format === false) {
-    // La liste des formats ne se lit qu'UNE fois : elle sert au repérage par mm
-    // puis au repli « premier format ».
-    $formats_pieces = fpl_etiquette_formats_pieces();
-    $reglage = fpl_etiquette_dims();
-    foreach ($formats_pieces as $fx) {
-        if (abs((float) $fx['largeur_mm'] - (float) $reglage['largeur_mm']) < 0.01
-            && abs((float) $fx['hauteur_mm'] - (float) $reglage['hauteur_mm']) < 0.01) {
-            $format = $fx;
-            break;
-        }
-    }
-    if ($format === false) {
-        $format = $formats_pieces[0] ?? false;
-    }
-}
-if ($format === false) {
-    // Sans table de formats : la taille du réglage fait une « format » de fortune.
-    $reglage = fpl_etiquette_dims();
-    $format = ['id' => 0, 'nom' => fpl_etiquette_dims_label_short($reglage),
-        'largeur_mm' => $reglage['largeur_mm'], 'hauteur_mm' => $reglage['hauteur_mm']];
-}
+// Le format demandé, sinon celui dont les mm sont ceux du réglage, sinon le
+// premier — résolution partagée avec l'image (fpl_etiquette_format_ou_reglage).
+$format = fpl_etiquette_format_ou_reglage(isset($_GET['format']) ? (int) $_GET['format'] : 0);
 
 $L = (float) $format['largeur_mm'];
 $H = (float) $format['hauteur_mm'];

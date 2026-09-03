@@ -845,13 +845,26 @@ $fiche_statut = pf_champ_visible('statut') ? trim((string) ($produit['statut'] ?
                      assemblage HTML — c'est L'IMAGE du moteur partagé
                      (includes/etiquette_fpl70.php), celle-là même qui part au
                      PDF. Ce que l'écran montre est ce que l'imprimante sort,
-                     au pixel — vérifié en Python contre le PDF validé. */ ?>
+                     au pixel — vérifié en Python contre le PDF validé.
+                     DEPUIS LE 03/09, l'image suit la TAILLE choisie : elle rend
+                     la page entière aux mm du format (carré posé au côté
+                     court, centré — la géométrie du PDF et de l'atelier), et
+                     s'affiche à l'échelle des mm réels (430 px ≡ 70 mm) :
+                     changer de pastille change VISIBLEMENT l'étiquette. */ ?>
+            <?php
+            $fpl_img_lmm = (float) $fpl_dims['largeur_mm'];
+            $fpl_img_hmm = (float) $fpl_dims['hauteur_mm'];
+            $fpl_img_min = max(1.0, min($fpl_img_lmm, $fpl_img_hmm));
+            $fpl_img_w = max(1080, (int) round(1080 * $fpl_img_lmm / $fpl_img_min));
+            $fpl_img_h = max(1080, (int) round(1080 * $fpl_img_hmm / $fpl_img_min));
+            $fpl_img_css = max(240, min(560, (int) round(430 * $fpl_img_lmm / 70)));
+            ?>
             <div class="fpl-etiq70-apercu">
                 <img id="fpl-etiq70-img"
-                    src="etiquette-piece-image.php?id=<?php echo (int) $produit_id; ?>&amp;cote=1080"
-                    width="1080" height="1080"
+                    src="etiquette-piece-image.php?id=<?php echo (int) $produit_id; ?>&amp;cote=1080<?php echo $fpl_format_courant !== null ? '&amp;format=' . (int) $fpl_format_courant['id'] : ''; ?>"
+                    width="<?php echo $fpl_img_w; ?>" height="<?php echo $fpl_img_h; ?>"
                     alt="Étiquette de la pièce <?php echo htmlspecialchars((string) $produit['identifiant_interne'], ENT_QUOTES, 'UTF-8'); ?>"
-                    style="width: min(430px, 100%); height: auto; display: block; border-radius: 12px; box-shadow: 0 10px 26px rgba(16, 49, 111, .14);">
+                    style="width: min(<?php echo $fpl_img_css; ?>px, 100%); height: auto; display: block; border-radius: 12px; box-shadow: 0 10px 26px rgba(16, 49, 111, .14);">
             </div>
             <div class="fpl-etiquette-print-actions page-ajuster-stock-code-actions">
                 <?php if ($can_pdf_barcode): ?>

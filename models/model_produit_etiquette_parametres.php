@@ -280,6 +280,40 @@ function fpl_etiquette_format_get($id, $type = 'piece') {
 }
 
 /**
+ * LE FORMAT À SERVIR — résolution partagée par le PDF et l'image d'étiquette
+ * (avant, chacun refaisait la sienne ; l'image ne la faisait pas du tout et
+ * les pastilles de taille de la fiche ne changeaient rien à l'écran) :
+ * le format demandé, sinon celui dont les mm sont ceux du réglage, sinon le
+ * premier de la table, sinon le réglage lui-même en format de fortune.
+ *
+ * @param int $format_id id demandé (0 = aucun)
+ * @return array{id:int, nom:string, largeur_mm:float, hauteur_mm:float}
+ */
+function fpl_etiquette_format_ou_reglage($format_id) {
+    $format = $format_id > 0 ? fpl_etiquette_format_get((int) $format_id, 'piece') : false;
+    if ($format === false) {
+        $formats = fpl_etiquette_formats_pieces();
+        $reglage = fpl_etiquette_dims();
+        foreach ($formats as $fx) {
+            if (abs((float) $fx['largeur_mm'] - (float) $reglage['largeur_mm']) < 0.01
+                && abs((float) $fx['hauteur_mm'] - (float) $reglage['hauteur_mm']) < 0.01) {
+                $format = $fx;
+                break;
+            }
+        }
+        if ($format === false) {
+            $format = $formats[0] ?? false;
+        }
+        if ($format === false) {
+            $format = ['id' => 0, 'nom' => fpl_etiquette_dims_label_short($reglage),
+                'largeur_mm' => $reglage['largeur_mm'], 'hauteur_mm' => $reglage['hauteur_mm']];
+        }
+    }
+    return ['id' => (int) ($format['id'] ?? 0), 'nom' => (string) $format['nom'],
+        'largeur_mm' => (float) $format['largeur_mm'], 'hauteur_mm' => (float) $format['hauteur_mm']];
+}
+
+/**
  * Le calcul commun d'échelle + méta d'une étiquette, à partir des mm déjà
  * posés dans $d — partagé par fpl_etiquette_dims() (le réglage) et
  * fpl_etiquette_dims_pour_mm() (un format choisi). Référence : 70 mm à
