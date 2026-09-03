@@ -123,10 +123,21 @@ function fpl_detour_membre_fond($rr, $vv, $bb, $mR, $mV, $mB, $mSom, $nbModes, $
         // teinte SOMBRE (joint de carrelage, ombre) : tolérance plafonnée à
         // 18 pour la CROISSANCE — à 30, « proche du joint » avalait la chair
         // OMBRÉE des pièces (les plis d'un filtre jaune à l'ombre passent à
-        // 25 du joint, le vrai joint est à moins de 12). Les DIAGNOSTICS
-        // (« la pièce garde du fond ») passent $plafondSombre = false : un
-        // carton kraft collé à la pièce doit compter comme du fond, lui.
-        $t = ($plafondSombre && $mSom[$k] < 460 && $tol > 18) ? 18 : $tol;
+        // 25 du joint, le vrai joint est à moins de 12). Même plafond, à 20,
+        // pour les teintes TRÈS CLAIRES : un fond studio blanc est uniforme à
+        // ±10, alors qu'à 30 « proche du blanc » avalait les zones claires
+        // d'un pare-choc crème (photo DZ97259624070, pièce rendue fendue).
+        // Les DIAGNOSTICS (« la pièce garde du fond ») passent
+        // $plafondSombre = false : un carton kraft collé à la pièce doit
+        // compter comme du fond, lui.
+        $t = $tol;
+        if ($plafondSombre) {
+            if ($mSom[$k] < 460 && $t > 18) {
+                $t = 18;
+            } elseif ($mSom[$k] >= 660 && $t > 20) {
+                $t = 20;
+            }
+        }
         $d1 = $rr > $mR[$k] ? $rr - $mR[$k] : $mR[$k] - $rr;
         $d2 = $vv > $mV[$k] ? $vv - $mV[$k] : $mV[$k] - $vv;
         $d3 = $bb > $mB[$k] ? $bb - $mB[$k] : $mB[$k] - $bb;
@@ -157,12 +168,12 @@ function fpl_detourage_gd($src, $force = 45, &$motif = null)
     if ($L0 < 8 || $H0 < 8) {
         return null;
     }
-    // PHOTO TROP PETITE (panne du pare-choc #3636, vignette 259×194) : sous
-    // ~300 px, l'érosion d'1 px et les tolérances pèsent 3× plus qu'à 720 px,
-    // les zones claires d'une pièce claire partent avec le fond et la pièce
-    // ressort coupée. À cette échelle aucune découpe propre n'est possible :
-    // on décline, l'étiquette garde la photo telle quelle.
-    if (max($L0, $H0) < 300) {
+    // PHOTO MINUSCULE : en dessous de ~120 px il n'y a plus de matière du
+    // tout — on décline. Entre 120 et 300 px (vignette du pare-choc
+    // DZ97259624070 : 259×194), la photo est AGRANDIE à la taille de travail
+    // avant le détourage : l'érosion d'1 px et les tolérances retrouvent
+    // leurs proportions de 720 px au lieu de peser 3× trop lourd.
+    if (max($L0, $H0) < 120) {
         $motif = sprintf('photo trop petite pour un detourage propre (%dx%d)', $L0, $H0);
         return null;
     }
@@ -182,8 +193,17 @@ function fpl_detourage_gd($src, $force = 45, &$motif = null)
         }
     }
 
-    // travail à taille plafonnée
-    $ech = min(1.0, $tailleMax720 / max($L0, $H0));
+    // travail à taille plafonnée — et taille PLANCHER : une petite photo est
+    // agrandie (interpolation lisse) pour que le pipeline travaille toujours
+    // aux proportions prévues
+    $ech = $tailleMax720 / max($L0, $H0);
+    if ($ech > 1.0 && max($L0, $H0) >= 300) {
+        $ech = 1.0; // une photo déjà correcte n'est jamais agrandie
+    }
+    // les rayons du ménage de bord (érosion, ouverture) suivent
+    // l'agrandissement : sur une vignette agrandie x3, une frange d'1 px
+    // d'origine fait 3 px de travail
+    $morpho = $ech > 1.0 ? max(1, (int) round($ech)) : 1;
     $L = max(8, (int) round($L0 * $ech));
     $H = max(8, (int) round($H0 * $ech));
     $im = imagecreatetruecolor($L, $H);
@@ -826,26 +846,74 @@ function fpl_detourage_gd($src, $force = 45, &$motif = null)
         }
         $garde = $lisse;
     }
-    // érosion 1 px (le liseré clair du contour part avec) — le bord de l'image
-    // compte comme « gardé » : une pièce cadrée serré garde son bord droit.
-    $erode = new SplFixedArray($N);
-    for ($y = 0; $y < $H; $y++) {
-        $base = $y * $L;
-        for ($x = 0; $x < $L; $x++) {
-            $p = $base + $x;
-            if (!$garde[$p]) {
-                $erode[$p] = 0;
-                continue;
+    // érosion 1 px d'origine (le liseré clair du contour part avec) — le bord
+    // de l'image compte comme « gardé » : une pièce cadrée serré garde son
+    // bord droit. Sur une photo agrandie, autant de passes que le facteur.
+    for ($pe = 0; $pe < $morpho; $pe++) {
+        $erode = new SplFixedArray($N);
+        for ($y = 0; $y < $H; $y++) {
+            $base = $y * $L;
+            for ($x = 0; $x < $L; $x++) {
+                $p = $base + $x;
+                if (!$garde[$p]) {
+                    $erode[$p] = 0;
+                    continue;
+                }
+                $ok = 1;
+                if ($x > 0 && !$garde[$p - 1]) { $ok = 0; }
+                elseif ($x < $L - 1 && !$garde[$p + 1]) { $ok = 0; }
+                elseif ($y > 0 && !$garde[$p - $L]) { $ok = 0; }
+                elseif ($y < $H - 1 && !$garde[$p + $L]) { $ok = 0; }
+                $erode[$p] = $ok;
             }
-            $ok = 1;
-            if ($x > 0 && !$garde[$p - 1]) { $ok = 0; }
-            elseif ($x < $L - 1 && !$garde[$p + 1]) { $ok = 0; }
-            elseif ($y > 0 && !$garde[$p - $L]) { $ok = 0; }
-            elseif ($y < $H - 1 && !$garde[$p + $L]) { $ok = 0; }
-            $erode[$p] = $ok;
         }
+        $garde = $erode;
     }
-    $garde = $erode;
+
+    // OUVERTURE (érosion puis dilatation, rayon 2 px d'origine) — SEULEMENT
+    // sur les photos AGRANDIES : leurs lambeaux d'ombre portée (1-3 px
+    // d'origine devenus 3-8 px de travail) échappent à la couleur comme aux
+    // composantes ; l'ouverture les efface et restaure le corps de la pièce.
+    // Les photos de taille normale n'en ont pas besoin (mesuré sur les
+    // bancs) : on ne touche pas à ce qui est déjà propre.
+    for ($passe = 0; $passe < ($morpho > 1 ? 2 * $morpho : 0); $passe++) {
+        $ero = new SplFixedArray($N);
+        for ($y = 0; $y < $H; $y++) {
+            $base = $y * $L;
+            for ($x = 0; $x < $L; $x++) {
+                $p = $base + $x;
+                if (!$garde[$p]) {
+                    $ero[$p] = 0;
+                    continue;
+                }
+                $ok = 1;
+                if ($x > 0 && !$garde[$p - 1]) { $ok = 0; }
+                elseif ($x < $L - 1 && !$garde[$p + 1]) { $ok = 0; }
+                elseif ($y > 0 && !$garde[$p - $L]) { $ok = 0; }
+                elseif ($y < $H - 1 && !$garde[$p + $L]) { $ok = 0; }
+                $ero[$p] = $ok;
+            }
+        }
+        $garde = $ero;
+    }
+    for ($passe = 0; $passe < ($morpho > 1 ? 2 * $morpho : 0); $passe++) {
+        $dil = new SplFixedArray($N);
+        for ($y = 0; $y < $H; $y++) {
+            $base = $y * $L;
+            for ($x = 0; $x < $L; $x++) {
+                $p = $base + $x;
+                $ok = $garde[$p];
+                if (!$ok) {
+                    if (($x > 0 && $garde[$p - 1]) || ($x < $L - 1 && $garde[$p + 1])
+                        || ($y > 0 && $garde[$p - $L]) || ($y < $H - 1 && $garde[$p + $L])) {
+                        $ok = 1;
+                    }
+                }
+                $dil[$p] = $ok;
+            }
+        }
+        $garde = $dil;
+    }
 
     // le lissage et l'érosion peuvent avoir DÉTACHÉ des miettes (fins ponts
     // coupés) : on les balaie, et on recompte les morceaux — un masque qui
@@ -990,10 +1058,39 @@ function fpl_detourage_gd($src, $force = 45, &$motif = null)
     // la pièce ne doit pas GARDER du fond : si une grosse part des pixels
     // gardés colle aux teintes du pourtour, un pan de sol ou le carton-support
     // est resté soudé à la pièce — on décline (le carton torpille l'étiquette)
+    // Cette porte a été calibrée sur des supports MI-TEINTE restés soudés à
+    // la pièce (carton kraft 34 %, carrelage 41 %, chrome sale 27 % — les
+    // bonnes découpes font ≤ 10 %). Les teintes TRÈS CLAIRES n'y comptent
+    // pas : une pièce claire garde légitimement ses reflets quasi blancs et
+    // ses ouvertures laissent voir du blanc enclavé — les compter déclinait
+    // à tort le pare-choc DZ97259624070 ; le blanc massif reste tenu par les
+    // portes part/bord/fendue.
     $presFond = 0;
     for ($p = 0; $p < $N; $p++) {
-        if ($garde[$p] && fpl_detour_membre_fond($r[$p], $v[$p], $b[$p], $mR, $mV, $mB, $mSom, $nbModes, $tolMode + 8, false)) {
-            $presFond++;
+        if (!$garde[$p]) {
+            continue;
+        }
+        $rr = $r[$p];
+        $vv = $v[$p];
+        $bb = $b[$p];
+        for ($k = 0; $k < $nbModes; $k++) {
+            if ($mSom[$k] >= 660) {
+                continue;
+            }
+            $t = $tolMode + 8;
+            $d1 = $rr > $mR[$k] ? $rr - $mR[$k] : $mR[$k] - $rr;
+            if ($d1 > $t) {
+                continue;
+            }
+            $d2 = $vv > $mV[$k] ? $vv - $mV[$k] : $mV[$k] - $vv;
+            if ($d2 > $t) {
+                continue;
+            }
+            $d3 = $bb > $mB[$k] ? $bb - $mB[$k] : $mB[$k] - $bb;
+            if ($d3 <= $t) {
+                $presFond++;
+                break;
+            }
         }
     }
     // mesuré sur les planches : les sorties sales (phare chromé en lambeaux,
@@ -1143,7 +1240,7 @@ function fpl_detourage_fichier($chemin)
     if (!is_dir($dir)) {
         @mkdir($dir, 0775, true);
     }
-    $cle = md5(realpath($chemin) . '|' . filemtime($chemin) . '|v5');
+    $cle = md5(realpath($chemin) . '|' . filemtime($chemin) . '|v6');
     $cache = $dir . '/' . $cle . '.png';
     $refus = $dir . '/' . $cle . '.non';
     if (is_file($cache)) {
