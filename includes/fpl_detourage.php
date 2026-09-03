@@ -238,6 +238,19 @@ function fpl_detourage_gd($src, $force = 45, &$motif = null)
     $profRive  = 60;  // profondeur (px) de la relaxation des franges — les ombres
                       // portées sont traitées à part (ombre d'une teinte du fond)
 
+    $profOmbre = 18;  // profondeur (px) des admissions « ombre d'une teinte
+                      // claire » dans la rive — une bande, jamais une invasion
+
+    // sur une photo AGRANDIE, les seuils de pente se divisent par le facteur :
+    // l'interpolation étire les gradients (un bord de 20/px natif devient 7/px
+    // une fois agrandi ×3) — à pente 8 fixe, la rive traversait le bord ombré
+    // du pare-choc DZ97259624070 et mordait la pièce en dents de scie
+    if ($ech > 1.0) {
+        $pente = max(3, (int) round($pente / $ech));
+        $sautMax = max(24, (int) round($sautMax / $ech));
+        $profOmbre = (int) round($profOmbre * $ech);
+    }
+
     // ------------------------------------------------------------------
     // 1) MODÈLE DE FOND : teintes dominantes de l'anneau de pourtour (3 px)
     // ------------------------------------------------------------------
@@ -500,21 +513,54 @@ function fpl_detourage_gd($src, $force = 45, &$motif = null)
             if ($marche > $pente) {
                 continue;
             }
-            // pas trop loin des teintes du fond ?
+            // pas trop loin des teintes du fond ? La marge de rive respecte
+            // les PLAFONDS par teinte (sombre 18, très claire 20) : à
+            // tolMode+12 uniforme, la rive grignotait la chair OMBRÉE d'une
+            // pièce crème (l'ondulation au bas du pare-choc DZ97259624070).
+            // OU BIEN : l'OMBRE PORTÉE d'une teinte claire — la même teinte
+            // assombrie en gardant ses proportions (rapport de canaux ±12).
+            // Un gris neutre sur fond blanc passe (l'ombre sous un
+            // rétroviseur), le crème ou le jaune d'une pièce NON (leurs
+            // proportions diffèrent du blanc) ; et il faut être ARRIVÉ là par
+            // petites marches depuis le fond — le bord franc d'une pièce
+            // grise (volant moteur : marche de 25-50) bloque la rive avant.
             $pres = ($nbModes === 0);
             for ($k = 0; $k < $nbModes; $k++) {
+                $tk = $tolRive;
+                if ($mSom[$k] < 460 && $tk > 30) {
+                    $tk = 30;
+                } elseif ($mSom[$k] >= 660 && $tk > 32) {
+                    $tk = 32;
+                }
                 $e1 = $rr > $mR[$k] ? $rr - $mR[$k] : $mR[$k] - $rr;
-                if ($e1 > $tolRive) {
-                    continue;
+                if ($e1 <= $tk) {
+                    $e2 = $vv > $mV[$k] ? $vv - $mV[$k] : $mV[$k] - $vv;
+                    if ($e2 <= $tk) {
+                        $e3 = $bb > $mB[$k] ? $bb - $mB[$k] : $mB[$k] - $bb;
+                        if ($e3 <= $tk) {
+                            $pres = true;
+                            break;
+                        }
+                    }
                 }
-                $e2 = $vv > $mV[$k] ? $vv - $mV[$k] : $mV[$k] - $vv;
-                if ($e2 > $tolRive) {
-                    continue;
-                }
-                $e3 = $bb > $mB[$k] ? $bb - $mB[$k] : $mB[$k] - $bb;
-                if ($e3 <= $tolRive) {
-                    $pres = true;
-                    break;
+                if ($mSom[$k] >= 660 && $prof < $profOmbre) {
+                    // fenêtre 0,50-0,92 : l'ombre portée réelle est à
+                    // 0,55-0,80 du fond. À 0,40 le flanc ombré d'une coque
+                    // gris sombre se faisait mordre ; au-delà de 0,92 c'est le
+                    // corps ÉCLAIRÉ d'une pièce blanche (0,95-1,0) — et la
+                    // PROFONDEUR est bornée : l'ombre est une BANDE au ras du
+                    // contour, pas un droit d'entrer dans la pièce (le
+                    // pare-choc blanc #2779 s'est fait dévorer sans la borne)
+                    $ks = ($rr + $vv + $bb) / $mSom[$k];
+                    if ($ks >= 0.50 && $ks <= 0.92) {
+                        $o1 = $rr - $ks * $mR[$k];
+                        $o2 = $vv - $ks * $mV[$k];
+                        $o3 = $bb - $ks * $mB[$k];
+                        if ($o1 <= 12 && $o1 >= -12 && $o2 <= 12 && $o2 >= -12 && $o3 <= 12 && $o3 >= -12) {
+                            $pres = true;
+                            break;
+                        }
+                    }
                 }
             }
             if (!$pres) {
@@ -913,6 +959,51 @@ function fpl_detourage_gd($src, $force = 45, &$motif = null)
             }
         }
         $garde = $dil;
+    }
+
+    // FERMETURE (dilatation puis érosion, même rayon) — toujours réservée aux
+    // photos AGRANDIES : sur une vignette, la compression rend l'ombre et la
+    // chair ombrée pareillement grises et le contour ressort RONGÉ par
+    // échancrures ; la fermeture comble les morsures de moins de ~2×rayon
+    // (le bas du pare-choc DZ97259624070 retrouve son bord franc). Les creux
+    // réels d'une pièce, bien plus larges, ne sont pas touchés.
+    for ($passe = 0; $passe < ($morpho > 1 ? 2 * $morpho : 0); $passe++) {
+        $dil = new SplFixedArray($N);
+        for ($y = 0; $y < $H; $y++) {
+            $base = $y * $L;
+            for ($x = 0; $x < $L; $x++) {
+                $p = $base + $x;
+                $ok = $garde[$p];
+                if (!$ok) {
+                    if (($x > 0 && $garde[$p - 1]) || ($x < $L - 1 && $garde[$p + 1])
+                        || ($y > 0 && $garde[$p - $L]) || ($y < $H - 1 && $garde[$p + $L])) {
+                        $ok = 1;
+                    }
+                }
+                $dil[$p] = $ok;
+            }
+        }
+        $garde = $dil;
+    }
+    for ($passe = 0; $passe < ($morpho > 1 ? 2 * $morpho : 0); $passe++) {
+        $ero2 = new SplFixedArray($N);
+        for ($y = 0; $y < $H; $y++) {
+            $base = $y * $L;
+            for ($x = 0; $x < $L; $x++) {
+                $p = $base + $x;
+                if (!$garde[$p]) {
+                    $ero2[$p] = 0;
+                    continue;
+                }
+                $ok = 1;
+                if ($x > 0 && !$garde[$p - 1]) { $ok = 0; }
+                elseif ($x < $L - 1 && !$garde[$p + 1]) { $ok = 0; }
+                elseif ($y > 0 && !$garde[$p - $L]) { $ok = 0; }
+                elseif ($y < $H - 1 && !$garde[$p + $L]) { $ok = 0; }
+                $ero2[$p] = $ok;
+            }
+        }
+        $garde = $ero2;
     }
 
     // le lissage et l'érosion peuvent avoir DÉTACHÉ des miettes (fins ponts
