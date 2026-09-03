@@ -256,6 +256,81 @@ function fpl_detourage_gd($src, $force = 45)
         return null; // aurait mangé la pièce
     }
 
+    // ---------------------------------------------------------------------
+    // NETTOYAGE DU BORD (anti « contour gris » / résidus)
+    // Le pourtour de la pièce garde un fin liséré clair (le blanc du fond a
+    // bavé sur le contour et il est gardé comme pièce) et la propagation laisse
+    // parfois de petites taches isolées. On nettoie en deux temps.
+    // ---------------------------------------------------------------------
+    $garde = new SplFixedArray($N);
+    for ($p = 0; $p < $N; $p++) {
+        $garde[$p] = ($efface[$p] < 0.5) ? 1 : 0;
+    }
+
+    // (1) Retirer les petits ÎLOTS gardés (taches) : on n'a garde que les
+    //     composantes assez grandes (les vraies pièces). Étiquetage 4-connexe.
+    $label = new SplFixedArray($N);
+    for ($p = 0; $p < $N; $p++) {
+        $label[$p] = 0;
+    }
+    $sizes = [0 => 0];
+    $lab = 0;
+    for ($p0 = 0; $p0 < $N; $p0++) {
+        if (!$garde[$p0] || $label[$p0] !== 0) {
+            continue;
+        }
+        $lab++;
+        $sz = 0;
+        $pile = [$p0];
+        $label[$p0] = $lab;
+        while ($pile) {
+            $p = array_pop($pile);
+            $sz++;
+            $x = $p % $L;
+            $y = ($p - $x) / $L;
+            if ($x > 0)      { $q = $p - 1;  if ($garde[$q] && $label[$q] === 0) { $label[$q] = $lab; $pile[] = $q; } }
+            if ($x < $L - 1) { $q = $p + 1;  if ($garde[$q] && $label[$q] === 0) { $label[$q] = $lab; $pile[] = $q; } }
+            if ($y > 0)      { $q = $p - $L; if ($garde[$q] && $label[$q] === 0) { $label[$q] = $lab; $pile[] = $q; } }
+            if ($y < $H - 1) { $q = $p + $L; if ($garde[$q] && $label[$q] === 0) { $label[$q] = $lab; $pile[] = $q; } }
+        }
+        $sizes[$lab] = $sz;
+    }
+    $tailleMin = max(40, (int) round($N * 0.003));
+    for ($p = 0; $p < $N; $p++) {
+        if ($garde[$p] && $sizes[$label[$p]] < $tailleMin) {
+            $garde[$p] = 0;
+            $efface[$p] = 1.0;
+        }
+    }
+
+    // (2) Rétracter le bord de 1 px (mange le liséré clair) + fondu doux d'1 px
+    //     pour un contour net mais pas coupé au couteau.
+    $bord = [];
+    for ($y = 0; $y < $H; $y++) {
+        for ($x = 0; $x < $L; $x++) {
+            $p = $y * $L + $x;
+            if (!$garde[$p]) {
+                continue;
+            }
+            if (($x > 0 && !$garde[$p - 1]) || ($x < $L - 1 && !$garde[$p + 1])
+                || ($y > 0 && !$garde[$p - $L]) || ($y < $H - 1 && !$garde[$p + $L])) {
+                $bord[] = $p;
+            }
+        }
+    }
+    foreach ($bord as $p) {
+        $efface[$p] = 1.0;
+        $garde[$p] = 0;
+    }
+    foreach ($bord as $p) {
+        $x = $p % $L;
+        $y = ($p - $x) / $L;
+        if ($x > 0      && $garde[$p - 1]  && $efface[$p - 1]  < 0.5) { $efface[$p - 1]  = 0.5; }
+        if ($x < $L - 1 && $garde[$p + 1]  && $efface[$p + 1]  < 0.5) { $efface[$p + 1]  = 0.5; }
+        if ($y > 0      && $garde[$p - $L] && $efface[$p - $L] < 0.5) { $efface[$p - $L] = 0.5; }
+        if ($y < $H - 1 && $garde[$p + $L] && $efface[$p + $L] < 0.5) { $efface[$p + $L] = 0.5; }
+    }
+
     // application du masque À LA TAILLE DE TRAVAIL ($im, ≤ plafond) : on modifie
     // directement les pixels déjà en mémoire, SANS la boucle pleine résolution
     // qui traitait des millions de pixels un par un (le lot passait de quelques
@@ -315,7 +390,7 @@ function fpl_detourage_fichier($chemin)
     if (!is_dir($dir)) {
         @mkdir($dir, 0775, true);
     }
-    $cle = md5(realpath($chemin) . '|' . filemtime($chemin) . '|v2');
+    $cle = md5(realpath($chemin) . '|' . filemtime($chemin) . '|v3');
     $cache = $dir . '/' . $cle . '.png';
     if (is_file($cache)) {
         $im = @imagecreatefrompng($cache);
