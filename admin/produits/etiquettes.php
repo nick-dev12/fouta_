@@ -121,6 +121,12 @@ $fpl_retour_page = 'index.php';
         </div>
         <span class="lab-tab-sub">Nomment les barres du rangement</span>
       </a>
+      <a href="detourage-lot.php" class="lab-tab">
+        <div class="lab-tab-title">
+          <?php echo fpl_icone('image', 15); ?> Tout détourer
+        </div>
+        <span class="lab-tab-sub">Retirer le fond de toutes les photos</span>
+      </a>
     </div>
 
     <div class="card">

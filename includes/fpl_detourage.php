@@ -17,12 +17,14 @@
  *  - bords doux (dégradé d'alpha), et GARDE-FOU : si presque tout est effacé,
  *    on rend la photo intacte (mieux vaut un fond visible qu'une pièce mangée).
  *
- * Traitement plafonné à ~900 px (mémoire/temps) : bien assez pour une photo
- * d'étiquette (la boîte fait ~520 px). Programmation procédurale uniquement.
+ * Traitement plafonné à 720 px (mémoire/temps) : bien assez pour une photo
+ * d'étiquette (la boîte fait ~520 px) ; le résultat est rendu À CETTE TAILLE,
+ * sans repasser en pleine résolution (ce qui écroulait le temps du lot).
+ * Programmation procédurale uniquement.
  */
 
 if (!defined('FPL_DETOURAGE_MAX')) {
-    define('FPL_DETOURAGE_MAX', 900);
+    define('FPL_DETOURAGE_MAX', 720);
 }
 
 /**
@@ -193,9 +195,12 @@ function fpl_detourage_gd($src, $force = 45)
     }
 
     for ($c = 0; $c <= $penteMax; $c++) {
-        $seau = $seaux[$c];
-        for ($k = 0; $k < count($seau); $k++) {
-            $p = $seau[$k];
+        // IMPORTANT : parcourir $seaux[$c] EN DIRECT (pas une copie) — un voisin
+        // de même coût y est ajouté pendant le parcours et DOIT être traité,
+        // comme la référence de tableau du JS d'origine. Une copie tuait la
+        // propagation (le fond n'était presque pas retiré).
+        for ($k = 0; $k < count($seaux[$c]); $k++) {
+            $p = $seaux[$c][$k];
             if ($cout[$p] !== $c) {
                 continue;
             }
@@ -251,34 +256,29 @@ function fpl_detourage_gd($src, $force = 45)
         return null; // aurait mangé la pièce
     }
 
-    // application sur l'image pleine résolution (le masque est remis à l'échelle)
-    $out = imagecreatetruecolor($L0, $H0);
-    imagealphablending($out, false);
-    imagesavealpha($out, true);
-    for ($y = 0; $y < $H0; $y++) {
-        $sy = min($H - 1, (int) ($y * $H / $H0));
-        for ($x = 0; $x < $L0; $x++) {
-            $sx = min($L - 1, (int) ($x * $L / $L0));
-            $mp = $sy * $L + $sx;
-            $c = imagecolorat($src, $x, $y);
-            $srcAlpha = ($c >> 24) & 127;
-            $al = $efface[$mp];
-            if ($al <= 0) {
-                imagesetpixel($out, $x, $y, $c);
-            } else {
-                // alpha final : plus le fond, plus transparent
-                $na = (int) round($srcAlpha + (127 - $srcAlpha) * $al);
-                if ($na >= 127) {
-                    imagesetpixel($out, $x, $y, imagecolorallocatealpha($out, ($c >> 16) & 255, ($c >> 8) & 255, $c & 255, 127));
-                } else {
-                    imagesetpixel($out, $x, $y, imagecolorallocatealpha($out, ($c >> 16) & 255, ($c >> 8) & 255, $c & 255, $na));
-                }
-            }
+    // application du masque À LA TAILLE DE TRAVAIL ($im, ≤ plafond) : on modifie
+    // directement les pixels déjà en mémoire, SANS la boucle pleine résolution
+    // qui traitait des millions de pixels un par un (le lot passait de quelques
+    // minutes à plus d'une heure). La boîte photo de l'étiquette est petite : la
+    // taille de travail suffit largement.
+    imagealphablending($im, false);
+    imagesavealpha($im, true);
+    for ($p = 0; $p < $N; $p++) {
+        $al = $efface[$p];
+        if ($al <= 0) {
+            continue; // pixel d'origine gardé tel quel
         }
+        $sa = (int) $a[$p]; // alpha d'origine (0 opaque … 127 transparent)
+        $na = (int) round($sa + (127 - $sa) * $al);
+        if ($na > 127) {
+            $na = 127;
+        }
+        $x = $p % $L;
+        $y = ($p - $x) / $L;
+        imagesetpixel($im, $x, (int) $y, imagecolorallocatealpha($im, (int) $r[$p], (int) $v[$p], (int) $b[$p], $na));
     }
-    imagedestroy($im);
 
-    return ['img' => $out, 'detouree' => true];
+    return ['img' => $im, 'detouree' => true];
 }
 
 /**
@@ -315,7 +315,7 @@ function fpl_detourage_fichier($chemin)
     if (!is_dir($dir)) {
         @mkdir($dir, 0775, true);
     }
-    $cle = md5(realpath($chemin) . '|' . filemtime($chemin) . '|v1');
+    $cle = md5(realpath($chemin) . '|' . filemtime($chemin) . '|v2');
     $cache = $dir . '/' . $cle . '.png';
     if (is_file($cache)) {
         $im = @imagecreatefrompng($cache);
