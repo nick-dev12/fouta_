@@ -1331,7 +1331,7 @@ function fpl_detourage_fichier($chemin)
     if (!is_dir($dir)) {
         @mkdir($dir, 0775, true);
     }
-    $cle = md5(realpath($chemin) . '|' . filemtime($chemin) . '|v6');
+    $cle = md5(realpath($chemin) . '|' . filemtime($chemin) . '|v7');
     $cache = $dir . '/' . $cle . '.png';
     $refus = $dir . '/' . $cle . '.non';
     if (is_file($cache)) {
