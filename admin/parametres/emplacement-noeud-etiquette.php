@@ -87,21 +87,71 @@ function ee_noeud_label_data_uri($path) {
     return 'data:image/png;base64,' . base64_encode((string) file_get_contents($path));
 }
 
-$qr_uri = ee_noeud_label_data_uri($qr_path);
+/**
+ * LE QR SUR FOND JAUNE (03/09) : le QR stocké a un fond BLANC, qui ferait un
+ * carré blanc sur le jaune du PDF. On repeint le blanc en #FFE600 (le jaune de
+ * l'étiquette) pour qu'il se fonde — seuls les modules noirs restent visibles,
+ * comme le QR SVG de l'écran. Repli sur le PNG brut si GD manque.
+ *
+ * @param string $path  chemin du PNG stocké
+ * @param int[]  $bg     couleur de fond voulue [r,g,b]
+ * @return string data:URI ou ''
+ */
+function ee_noeud_qr_data_uri_fond($path, array $bg) {
+    if (!is_file($path) || !function_exists('imagecreatefrompng')) {
+        return ee_noeud_label_data_uri($path);
+    }
+    $src = @imagecreatefrompng($path);
+    if (!$src) {
+        return ee_noeud_label_data_uri($path);
+    }
+    $w = imagesx($src);
+    $h = imagesy($src);
+    $out = imagecreatetruecolor($w, $h);
+    $jaune = imagecolorallocate($out, $bg[0], $bg[1], $bg[2]);
+    imagefilledrectangle($out, 0, 0, $w, $h, $jaune);
+    for ($y = 0; $y < $h; $y++) {
+        for ($x = 0; $x < $w; $x++) {
+            $c = imagecolorat($src, $x, $y);
+            $r = ($c >> 16) & 255;
+            $g = ($c >> 8) & 255;
+            $b = $c & 255;
+            // les modules SOMBRES sont recopiés ; le clair (blanc) laisse le jaune
+            if (0.299 * $r + 0.587 * $g + 0.114 * $b < 128) {
+                imagesetpixel($out, $x, $y, imagecolorallocate($out, $r, $g, $b));
+            }
+        }
+    }
+    imagedestroy($src);
+    ob_start();
+    imagepng($out);
+    $png = (string) ob_get_clean();
+    imagedestroy($out);
+
+    return 'data:image/png;base64,' . base64_encode($png);
+}
+
+$qr_uri = ee_noeud_qr_data_uri_fond($qr_path, [255, 230, 0]);
 $libelle_h = htmlspecialchars($libelle, ENT_QUOTES, 'UTF-8');
 
 /* Le dessin de FPL natif : libellé CENTRÉ dans la place restante, QR au
- * bord (à gauche si la disposition le dit), décalages appliqués. Fond
- * blanc : le support Zebra est jaune, on n'imprime que le noir. */
+ * bord (à gauche si la disposition le dit), décalages appliqués.
+ * FOND JAUNE (03/09) : le PDF reprend le jaune de l'étiquette écran
+ * (#FFE600) — la direction veut le voir tel quel à l'écran comme à
+ * l'impression, plus le fond blanc d'avant.
+ * La 2ᵉ page blanche du PDF venait de l'image QR alignée sur la ligne de
+ * base (piège dompdf) : le QR est en bloc, et la hauteur n'est plus forcée
+ * sur html/body (elle l'était et créait un débordement d'un cheveu). */
 $html = '<!DOCTYPE html><html><head><meta charset="utf-8"><style>
 @page { size: ' . $mm_w . 'mm ' . $mm_h . 'mm; margin: 0; }
-html, body { margin: 0; padding: 0; width: ' . $mm_w . 'mm; height: ' . $mm_h . 'mm; overflow: hidden; }
+html, body { margin: 0; padding: 0; width: ' . $mm_w . 'mm; overflow: hidden; background: #FFE600; }
 .ee-barre-etiq {
   width: ' . $mm_w . 'mm; height: ' . $mm_h . 'mm; box-sizing: border-box;
   padding: ' . $mm_pad . 'mm;
   display: flex; align-items: center; justify-content: space-between;
   gap: ' . $mm_gap . 'mm;
   font-family: DejaVu Sans, Arial, sans-serif;
+  background: #FFE600; overflow: hidden;
 }
 .ee-barre-etiq__text {
   flex: 1; text-align: center;
@@ -110,6 +160,7 @@ html, body { margin: 0; padding: 0; width: ' . $mm_w . 'mm; height: ' . $mm_h . 
   position: relative; left: ' . $mm_decx . 'mm; top: ' . $mm_decy . 'mm;
 }
 .ee-barre-etiq__qr {
+  display: block;
   width: ' . $mm_qr . 'mm; height: ' . $mm_qr . 'mm;
   position: relative; left: ' . $mm_decx . 'mm; top: ' . $mm_decy . 'mm;
 }
