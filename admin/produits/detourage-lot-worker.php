@@ -41,9 +41,10 @@ $ecrire = function (array $etat) use ($prog) {
     @file_put_contents($prog, json_encode($etat, JSON_UNESCAPED_UNICODE));
 };
 
-// « Tout refaire » : on efface le cache pour reconstruire à neuf.
+// « Tout refaire » : on efface le cache pour reconstruire à neuf
+// (les résultats .png ET les marqueurs de refus .non du moteur v4).
 if ($refaire) {
-    foreach (glob($dir . '/*.png') as $f) {
+    foreach (array_merge(glob($dir . '/*.png') ?: [], glob($dir . '/*.non') ?: []) as $f) {
         @unlink($f);
     }
 }
