@@ -198,15 +198,30 @@ function etiquette70_photo_charger($chemin)
 }
 
 /**
- * DÉTOURER LA PHOTO — le dessin pose la pièce à même le fond. Deux temps :
- * rogner les bandes unies du pourtour, puis rendre le fond blanc transparent
- * — SEULEMENT si les quatre coins de l'image rognée sont blancs.
- * (Même logique que l'étiquette du 24/08, mais on rend l'image GD.)
+ * DÉTOURER LA PHOTO — le dessin pose la pièce à même le fond.
+ *
+ * DEPUIS LE 03/09 : on essaie D'ABORD le détourage COULEUR porté de l'atelier
+ * (includes/fpl_detourage.php) — bien meilleur (fond dominant, contour, bords
+ * doux, garde-fou), et mis en cache. S'il décline (garde-fou : il aurait mangé
+ * la pièce, cas des fonds chargés), on retombe sur l'ancienne méthode (rogner
+ * les bords unis + blanc→transparent si coins blancs).
  *
  * @return array{img: resource|GdImage, detouree: bool}|null
  */
 function etiquette70_photo_detouree($chemin)
 {
+    // 1) l'algorithme couleur de l'atelier (le meilleur), avec cache
+    if (is_file(__DIR__ . '/fpl_detourage.php')) {
+        require_once __DIR__ . '/fpl_detourage.php';
+        if (function_exists('fpl_detourage_fichier')) {
+            $bon = fpl_detourage_fichier($chemin);
+            if ($bon !== null) {
+                return $bon;
+            }
+        }
+    }
+
+    // 2) repli : l'ancienne méthode (rogner unies + blanc→transparent)
     $src = etiquette70_photo_charger($chemin);
     if ($src === null) {
         return null;
