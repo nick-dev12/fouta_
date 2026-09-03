@@ -729,30 +729,26 @@ function entrepot_noeud_etiquette_libelle($noeud_id)
     $segment_lie = '';
     $lie_trouve = false;
 
-    // Nom du champ / nœud lié sur le chemin (pas le numéro seul) — PUIS les
-    // niveaux INTERMÉDIAIRES entre le lié et l'étiquette. Sans eux, deux
-    // barres de deux étagères d'un même rayon sortaient le même libellé
-    // (mesuré le 25/08 : 71 collisions sur 272 barres, ex. B15B-02 ×3).
-    // Avec eux, le libellé encode tout le chemin : B15BE2-02 est unique.
+    // Nom du champ / nœud lié sur le chemin — LE RAYON SEUL, PAS les niveaux
+    // intermédiaires (03/09). Décision de la direction : le libellé colle à
+    // FPL natif ({étage}{rayon}-{barre} → C15A-01), sans l'étagère. Les
+    // niveaux intermédiaires (étagère) ne figurent plus.
+    // (L'inclusion de l'étagère avait été ajoutée le 25/08 contre des
+    // collisions dues à deux rayons de TEST — retirés depuis, vérifié 0
+    // doublon sur les rayons en service : les barres d'un même rayon y sont
+    // numérotées en continu.)
     if ($lie_type === 'niveau' && $lie_niveau_id > 0) {
         foreach ($chemin as $n) {
             $nid = (int) ($n['niveau_id'] ?? 0);
             if ($nid === $etiq_niveau_id) {
                 break;
             }
-            if (!$lie_trouve && $nid === $lie_niveau_id) {
-                $lie_trouve = true;
+            if ($nid === $lie_niveau_id) {
                 $segment_lie = entrepot_noeud_etiquette_segment_lie(
                     (string) ($n['nom'] ?? ''),
                     (int) ($n['numero'] ?? 1)
                 );
-                continue;
-            }
-            if ($lie_trouve) {
-                $segment_lie .= entrepot_noeud_etiquette_segment_lie(
-                    (string) ($n['nom'] ?? ''),
-                    (int) ($n['numero'] ?? 1)
-                );
+                break;
             }
         }
         if (strlen($segment_lie) > 20) {
@@ -760,9 +756,9 @@ function entrepot_noeud_etiquette_libelle($noeud_id)
         }
     }
 
-    // Format : {code_abrégé}[{nom_lie}{intermédiaires}]-{n°_étiquette}
+    // Format : {code_abrégé}[{rayon}]-{n°_étiquette}
     // — lié à Niveau (étage) : C-01
-    // — lié à un autre niveau : AR1E1-01 (rayon PUIS étagère, jusqu'à la barre)
+    // — lié à un autre niveau : C15A-01 (étage + rayon, puis la barre)
     if ($lie_type === 'niveau' && $segment_lie !== '') {
         return sprintf('%s%s-%02d', $code, $segment_lie, $num_etiq);
     }
