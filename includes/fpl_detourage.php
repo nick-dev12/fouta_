@@ -86,6 +86,28 @@ function fpl_detourage_fond_uni($im)
 }
 
 /**
+ * Convertit une limite mémoire php.ini (« 128M », « 2G », « -1 ») en octets.
+ * -1 (illimité) et les valeurs illisibles rendent 0 (= pas de contrainte connue).
+ *
+ * @param string|false $v
+ * @return int
+ */
+function fpl_detour_memoire_octets($v)
+{
+    $v = trim((string) $v);
+    if ($v === '' || $v === '-1') {
+        return 0;
+    }
+    $n = (float) $v;
+    switch (strtoupper(substr($v, -1))) {
+        case 'G': $n *= 1073741824; break;
+        case 'M': $n *= 1048576; break;
+        case 'K': $n *= 1024; break;
+    }
+    return (int) $n;
+}
+
+/**
  * Un pixel appartient-il à une TEINTE du fond (écart ≤ $tol par canal) ?
  *
  * (L'« ombre d'une teinte » ne se juge JAMAIS ici, au pixel : un volant moteur
@@ -136,8 +158,23 @@ function fpl_detourage_gd($src, $force = 45, &$motif = null)
         return null;
     }
 
+    // MÉMOIRE : le moteur veut ~200 Mo en pointe à 720 px, or PHP sous Apache
+    // est souvent limité à 128M (mesuré sur foutasvr : la page étiquette d'une
+    // photo pas encore en cache serait morte en fatale). On tente de relever
+    // la limite ; si elle reste basse, on RÉTRÉCIT le travail à 520 px — la
+    // boîte photo de l'étiquette fait ~520 px, la qualité ne bouge pas.
+    $tailleMax720 = FPL_DETOURAGE_MAX;
+    $lim = fpl_detour_memoire_octets(ini_get('memory_limit'));
+    if ($lim > 0 && $lim < 512 * 1048576) {
+        @ini_set('memory_limit', '512M');
+        $lim = fpl_detour_memoire_octets(ini_get('memory_limit'));
+        if ($lim > 0 && $lim < 384 * 1048576) {
+            $tailleMax720 = min($tailleMax720, 520);
+        }
+    }
+
     // travail à taille plafonnée
-    $ech = min(1.0, FPL_DETOURAGE_MAX / max($L0, $H0));
+    $ech = min(1.0, $tailleMax720 / max($L0, $H0));
     $L = max(8, (int) round($L0 * $ech));
     $H = max(8, (int) round($H0 * $ech));
     $im = imagecreatetruecolor($L, $H);

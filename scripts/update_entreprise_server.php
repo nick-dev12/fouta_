@@ -186,9 +186,17 @@ if ($dry_run) {
 } else {
     if (is_dir($upload)) {
         deploy_run('chown -R ' . escapeshellarg($owner) . ':' . escapeshellarg($group) . ' ' . escapeshellarg($web_root), false);
+        // GARDE-FOU (panne du 03/09/2026) : des dossiers avaient le mode 707
+        // (groupe SANS AUCUN droit, « autres » tout permis). Tant que
+        // www-data restait PROPRIÉTAIRE, Apache passait ; le chown ci-dessus
+        // l'a fait retomber dans la case « groupe » vide → 403/500 sur tout
+        // le site. Après chaque chown on garantit donc au groupe la lecture
+        // et la traversée, et on retire l'écriture aux « autres » (sécurité).
+        deploy_run('chmod -R g+rX ' . escapeshellarg($web_root), false);
+        deploy_run('find ' . escapeshellarg($web_root) . ' -type d -perm -o=w -exec chmod o-w {} +', false);
         deploy_run('chown -R www-data:www-data ' . escapeshellarg($upload), false);
         deploy_run('chmod -R ' . escapeshellarg($perm['upload_mode'] ?? '775') . ' ' . escapeshellarg($upload), false);
-        deploy_log('Permissions upload/ : OK');
+        deploy_log('Permissions upload/ : OK (groupe lecture garantie, ecriture "autres" retiree)');
     }
 }
 
