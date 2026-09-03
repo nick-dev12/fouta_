@@ -157,6 +157,15 @@ function fpl_detourage_gd($src, $force = 45, &$motif = null)
     if ($L0 < 8 || $H0 < 8) {
         return null;
     }
+    // PHOTO TROP PETITE (panne du pare-choc #3636, vignette 259×194) : sous
+    // ~300 px, l'érosion d'1 px et les tolérances pèsent 3× plus qu'à 720 px,
+    // les zones claires d'une pièce claire partent avec le fond et la pièce
+    // ressort coupée. À cette échelle aucune découpe propre n'est possible :
+    // on décline, l'étiquette garde la photo telle quelle.
+    if (max($L0, $H0) < 300) {
+        $motif = sprintf('photo trop petite pour un detourage propre (%dx%d)', $L0, $H0);
+        return null;
+    }
 
     // MÉMOIRE : le moteur veut ~200 Mo en pointe à 720 px, or PHP sous Apache
     // est souvent limité à 128M (mesuré sur foutasvr : la page étiquette d'une
@@ -655,9 +664,24 @@ function fpl_detourage_gd($src, $force = 45, &$motif = null)
             continue;
         }
         // parasite périphérique (objet au ras du bord : chaussure, carton…)
+        // — SAUF si ce morceau chevauche la boîte de la pièce et lui ressemble :
+        // c'est alors un BOUT DE LA PIÈCE que la découpe a détaché (pare-choc
+        // #3636 : le tiers droit, tué ici en silence, rendait une pièce coupée).
+        // Cette preuve de coupe doit DÉCLINER la photo, pas être jetée.
         $peripherique = ($c['cx'] < $margeX || $c['cx'] > $L - $margeX
             || $c['cy'] < $margeY || $c['cy'] > $H - $margeY);
         if ($peripherique && $c['n'] < 0.8 * $tailleMax) {
+            if ($principal !== null && $c['n'] >= 0.04 * $tailleMax) {
+                $cp = $comps[$principal];
+                $chevauche = !($c['x1'] < $cp['x0'] || $c['x0'] > $cp['x1']
+                    || $c['y1'] < $cp['y0'] || $c['y0'] > $cp['y1']);
+                $dCoul = max(abs($c['r'] - $cp['r']), abs($c['v'] - $cp['v']), abs($c['b'] - $cp['b']));
+                if ($chevauche && $dCoul <= 40) {
+                    $motif = 'un bout de la piece a ete detache par la decoupe';
+                    imagedestroy($im);
+                    return null;
+                }
+            }
             $jeter[$k] = 'peripherique';
             continue;
         }
@@ -722,7 +746,7 @@ function fpl_detourage_gd($src, $force = 45, &$motif = null)
         // blanche sur fond blanc : il reste deux bandes noires superposées).
         // Une vraie paire côte à côte diffère par la couleur (filtre jaune +
         // filtre bleu) et n'est pas concernée.
-        if ($c2['n'] >= 0.10 * $c1['n'] && $ecart <= 0.05 * $diag) {
+        if ($c2['n'] >= 0.07 * $c1['n'] && $ecart <= 0.05 * $diag) {
             $dc1 = abs($c1['r'] - $c2['r']);
             $dc2 = abs($c1['v'] - $c2['v']);
             $dc3 = abs($c1['b'] - $c2['b']);
@@ -1119,7 +1143,7 @@ function fpl_detourage_fichier($chemin)
     if (!is_dir($dir)) {
         @mkdir($dir, 0775, true);
     }
-    $cle = md5(realpath($chemin) . '|' . filemtime($chemin) . '|v4');
+    $cle = md5(realpath($chemin) . '|' . filemtime($chemin) . '|v5');
     $cache = $dir . '/' . $cle . '.png';
     $refus = $dir . '/' . $cle . '.non';
     if (is_file($cache)) {
