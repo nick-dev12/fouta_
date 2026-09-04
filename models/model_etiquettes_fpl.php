@@ -190,14 +190,15 @@ function etiquettes_pieces_liste($q, $etat, $du, $au, $page, $par)
 }
 
 /**
- * Les BARRES de la liste des étiquettes : les nœuds du niveau `barre`
- * (celui qui porte l'étiquette QR), filtrés et paginés.
+ * Les CONTENANTS de la liste des étiquettes : les nœuds des niveaux qui portent
+ * l'étiquette QR — les barres ET les boxes (depuis le 04/09, piloté par
+ * est_etiquette_qr plutôt que le seul slug 'barre'), filtrés et paginés.
  */
 function etiquettes_barres_liste($q, $etat, $du, $au, $page, $par)
 {
     global $db;
 
-    $ou = ["v.slug = 'barre'", 'n.sync_deleted_at IS NULL'];
+    $ou = ['v.est_etiquette_qr = 1', 'n.sync_deleted_at IS NULL'];
     $params = [];
     if ($q !== '') {
         $ou[] = '(n.nom LIKE :q1 OR n.numero LIKE :q2 OR n.code_scan LIKE :q3)';

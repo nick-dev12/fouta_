@@ -383,35 +383,19 @@ function entrepot_hierarchie_def_normaliser_etiquette($est_etiquette_qr, $lie_ty
 }
 
 /**
- * Un seul niveau peut porter l’étiquette / QR.
+ * PLUSIEURS niveaux-feuilles peuvent porter l’étiquette / QR (les barres ET
+ * les boxes, depuis le 04/09). Cette fonction NE force plus l’exclusivité :
+ * activer le QR sur un niveau n’enlève plus le QR des autres. Conservée pour
+ * les appelants existants (elle devient un no-op volontaire).
  *
  * @param int $keep_id
  * @return void
  */
 function entrepot_hierarchie_def_clear_autres_etiquette($keep_id)
 {
-    global $db;
-    $keep_id = (int) $keep_id;
-    if (!$db || !entrepot_hierarchie_etiquette_schema_ok()) {
-        return;
-    }
-    try {
-        if ($keep_id > 0) {
-            $db->prepare(
-                'UPDATE entrepot_hierarchie_niveau
-                 SET est_etiquette_qr = 0, etiquette_lie_type = \'etage\', etiquette_lie_niveau_id = NULL
-                 WHERE id != :id AND est_etiquette_qr = 1'
-            )->execute([':id' => $keep_id]);
-        } else {
-            $db->exec(
-                'UPDATE entrepot_hierarchie_niveau
-                 SET est_etiquette_qr = 0, etiquette_lie_type = \'etage\', etiquette_lie_niveau_id = NULL
-                 WHERE est_etiquette_qr = 1'
-            );
-        }
-    } catch (PDOException $e) {
-        // ignore
-    }
+    // Volontairement vide : un entrepôt peut avoir plusieurs contenants à QR.
+    // (Avant le 04/09, un seul niveau pouvait porter le QR ; cette contrainte
+    // a été levée pour permettre les boxes à côté des barres.)
 }
 
 /**
@@ -436,6 +420,29 @@ function entrepot_hierarchie_def_etiquette()
     }
 
     return null;
+}
+
+/**
+ * TOUS les niveaux qui portent une étiquette QR (barre, box…), indexés par id.
+ * Depuis le 04/09 un entrepôt peut avoir PLUSIEURS contenants-feuilles à QR
+ * (les barres ET les boxes) : le libellé, le QR et « Toutes les étiquettes »
+ * se pilotent sur cet ensemble, plus sur un niveau unique.
+ *
+ * @return array<int, array<string, mixed>> id du niveau → def
+ */
+function entrepot_hierarchie_defs_etiquette()
+{
+    if (!entrepot_hierarchie_etiquette_ensure_schema()) {
+        return [];
+    }
+    $out = [];
+    foreach (entrepot_hierarchie_def_list(false) as $def) {
+        if ((int) ($def['est_etiquette_qr'] ?? 0) === 1) {
+            $out[(int) $def['id']] = $def;
+        }
+    }
+
+    return $out;
 }
 
 /**
@@ -651,13 +658,14 @@ function entrepot_noeud_etiquette_libelle($noeud_id)
     if ($noeud_id <= 0 || !entrepot_hierarchie_etiquette_ensure_schema() || !$db) {
         return '';
     }
-    $etiq_def = entrepot_hierarchie_def_etiquette();
-    if ($etiq_def === null) {
+    // Tous les niveaux à QR (barre ET box…). Le libellé s'attache au nœud dont
+    // le PROPRE niveau porte le QR, quel qu'il soit — trouvé plus bas sur le
+    // chemin. La config de lien (rayon…) et le marqueur (BOX) sortent de CE
+    // niveau, pas d'un niveau unique global.
+    $etiq_defs = entrepot_hierarchie_defs_etiquette();
+    if ($etiq_defs === []) {
         return '';
     }
-    $etiq_niveau_id = (int) ($etiq_def['id'] ?? 0);
-    $lie_type = (string) ($etiq_def['etiquette_lie_type'] ?? 'etage');
-    $lie_niveau_id = (int) ($etiq_def['etiquette_lie_niveau_id'] ?? 0);
 
     $chemin = [];
     $current = $noeud_id;
@@ -685,18 +693,28 @@ function entrepot_noeud_etiquette_libelle($noeud_id)
         return '';
     }
 
-    // Trouver le nœud du niveau étiquette (soi-même ou ancêtre / descendant proche sur le chemin)
+    // Trouver le nœud dont le PROPRE niveau porte un QR (barre ou box…) sur le
+    // chemin, et retenir CE niveau (sa config de lien + son marqueur).
     $noeud_etiq = null;
+    $etiq_def = null;
     foreach ($chemin as $n) {
-        if ((int) ($n['niveau_id'] ?? 0) === $etiq_niveau_id) {
+        $nid = (int) ($n['niveau_id'] ?? 0);
+        if (isset($etiq_defs[$nid])) {
             $noeud_etiq = $n;
+            $etiq_def = $etiq_defs[$nid];
             break;
         }
     }
-    if ($noeud_etiq === null) {
+    if ($noeud_etiq === null || $etiq_def === null) {
         // Si on part d’un enfant, remonter déjà fait ; si on part d’un parent, pas d’étiquette
         return '';
     }
+    $etiq_niveau_id = (int) ($etiq_def['id'] ?? 0);
+    $lie_type = (string) ($etiq_def['etiquette_lie_type'] ?? 'etage');
+    $lie_niveau_id = (int) ($etiq_def['etiquette_lie_niveau_id'] ?? 0);
+    // Marqueur du contenant : une BOX se distingue d'une barre par « BOX » dans
+    // son libellé (C15A-BOX-01 vs C15A-01). Piloté par le slug du niveau.
+    $marqueur = (strtolower((string) ($etiq_def['slug'] ?? '')) === 'box') ? 'BOX-' : '';
 
     $code = 'N';
     if ($etage_id > 0) {
@@ -760,10 +778,10 @@ function entrepot_noeud_etiquette_libelle($noeud_id)
     // — lié à Niveau (étage) : C-01
     // — lié à un autre niveau : C15A-01 (étage + rayon, puis la barre)
     if ($lie_type === 'niveau' && $segment_lie !== '') {
-        return sprintf('%s%s-%02d', $code, $segment_lie, $num_etiq);
+        return sprintf('%s%s-%s%02d', $code, $segment_lie, $marqueur, $num_etiq);
     }
 
-    return sprintf('%s-%02d', $code, $num_etiq);
+    return sprintf('%s-%s%02d', $code, $marqueur, $num_etiq);
 }
 
 /**
@@ -836,15 +854,16 @@ function entrepot_noeud_etiquette_payload($noeud_id)
     if ($noeud_id <= 0) {
         return null;
     }
-    $etiq_def = entrepot_hierarchie_def_etiquette();
-    if ($etiq_def === null) {
+    $etiq_defs = entrepot_hierarchie_defs_etiquette();
+    if ($etiq_defs === []) {
         return null;
     }
     $noeud = entrepot_noeud_get($noeud_id);
     if ($noeud === null) {
         return null;
     }
-    if ((int) ($noeud['niveau_id'] ?? 0) !== (int) ($etiq_def['id'] ?? 0)) {
+    // Le nœud porte une étiquette si SON niveau est un niveau à QR (barre OU box…)
+    if (!isset($etiq_defs[(int) ($noeud['niveau_id'] ?? 0)])) {
         return null;
     }
 
@@ -1228,17 +1247,44 @@ function entrepot_noeud_ajouter($etage_id, $niveau_id, $parent_id, $nom, $numero
     if ($idx === 0) {
         $parent_id = 0;
     } else {
-        $prev = $defs[$idx - 1] ?? null;
-        if (entrepot_hierarchie_def_est_etage($prev)) {
+        // Les contenants-feuilles à QR (barre, box…) sont des FRÈRES : ils
+        // partagent le même parent (l'étagère). Un contenant saute donc ses
+        // frères contenants pour trouver son niveau parent. Réciproquement, une
+        // position (non-contenant après les contenants) accepte N'IMPORTE quel
+        // contenant frère (barre OU box) comme parent.
+        $cur_container = (int) ($defs[$idx]['est_etiquette_qr'] ?? 0) === 1;
+        $j = $idx - 1;
+        if ($cur_container) {
+            while ($j >= 0 && (int) ($defs[$j]['est_etiquette_qr'] ?? 0) === 1) {
+                $j--;
+            }
+        }
+        $prev = $j >= 0 ? ($defs[$j] ?? null) : null;
+        if ($prev === null || entrepot_hierarchie_def_est_etage($prev)) {
             // Parent = Niveau (étage) : pas de nœud parent, seulement etage_id
             $parent_id = 0;
         } else {
+            // Niveaux acceptables comme parent : $prev, plus ses frères
+            // contenants s'il en est un (une position sous barre OU box).
+            $acceptables = [(int) $prev['id']];
+            if ((int) ($prev['est_etiquette_qr'] ?? 0) === 1) {
+                $t = $j;
+                while ($t >= 0 && (int) ($defs[$t]['est_etiquette_qr'] ?? 0) === 1) {
+                    $acceptables[] = (int) $defs[$t]['id'];
+                    $t--;
+                }
+                $t = $j + 1;
+                while ($t < count($defs) && (int) ($defs[$t]['est_etiquette_qr'] ?? 0) === 1) {
+                    $acceptables[] = (int) $defs[$t]['id'];
+                    $t++;
+                }
+            }
+            $acceptables = array_values(array_unique($acceptables));
             if ($parent_id <= 0) {
                 return ['success' => false, 'message' => 'Choisissez un élément parent.'];
             }
             $parent = entrepot_noeud_get($parent_id);
-            $prev_id = (int) ($prev['id'] ?? 0);
-            if ($parent === null || (int) ($parent['niveau_id'] ?? 0) !== $prev_id) {
+            if ($parent === null || !in_array((int) ($parent['niveau_id'] ?? 0), $acceptables, true)) {
                 return ['success' => false, 'message' => 'Le parent doit appartenir au niveau précédent.'];
             }
             if ((int) ($parent['etage_id'] ?? 0) !== $etage_id) {
@@ -1490,8 +1536,7 @@ function entrepot_hierarchie_arbre_etage($numero_etage)
     }
     $etage_id = (int) $etage['id'];
     $defs = entrepot_hierarchie_def_list_noeuds(true);
-    $etiq_def = entrepot_hierarchie_def_etiquette();
-    $etiq_niveau_id = $etiq_def ? (int) ($etiq_def['id'] ?? 0) : 0;
+    $etiq_ids = entrepot_hierarchie_defs_etiquette(); // id => def (barre, box…)
     $all = entrepot_noeud_liste($etage_id);
     $by_parent = [];
     foreach ($all as $n) {
@@ -1501,7 +1546,7 @@ function entrepot_hierarchie_arbre_etage($numero_etage)
         }
         $by_parent[$pid][] = $n;
     }
-    $build = function ($parent_id, $depth) use (&$build, $by_parent, $etiq_niveau_id) {
+    $build = function ($parent_id, $depth) use (&$build, $by_parent, $etiq_ids) {
         $nodes = $by_parent[$parent_id] ?? [];
         $out = [];
         foreach ($nodes as $n) {
@@ -1517,7 +1562,7 @@ function entrepot_hierarchie_arbre_etage($numero_etage)
                 'legacy_id' => (int) ($n['legacy_id'] ?? 0),
                 'enfants' => $build($nid, $depth + 1),
             ];
-            if ($etiq_niveau_id > 0 && $niveau_id === $etiq_niveau_id) {
+            if (isset($etiq_ids[$niveau_id])) {
                 $node['has_etiquette'] = true;
                 $node['etiquette_print_key'] = 'n' . $nid;
             }

@@ -230,21 +230,46 @@ if ($courant !== null) {
     }
 }
 
-// Le niveau des ENFANTS listés
+// Le(s) niveau(x) des ENFANTS listés. Quand le niveau suivant est un
+// contenant-feuille à QR (barre), ses FRÈRES contenants (box…) sont proposés
+// AU MÊME endroit : sous une étagère, on peut créer une barre OU une box.
+$def_enfants = null;   // le premier (compat des libellés)
+$defs_enfants = [];    // tous les niveaux enfants proposés à ce cran
 if ($courant !== null) {
     $idx = $indice_niveau((int) $courant['niveau_id']);
-    $def_enfants = ($idx >= 0 && isset($defs_noeuds[$idx + 1])) ? $defs_noeuds[$idx + 1] : null;
+    if ($idx >= 0 && isset($defs_noeuds[$idx + 1])) {
+        $suivant = $defs_noeuds[$idx + 1];
+        if ((int) ($suivant['est_etiquette_qr'] ?? 0) === 1) {
+            // tous les contenants frères contigus (barre, box…)
+            for ($t = $idx + 1; $t < count($defs_noeuds); $t++) {
+                if ((int) ($defs_noeuds[$t]['est_etiquette_qr'] ?? 0) === 1) {
+                    $defs_enfants[] = $defs_noeuds[$t];
+                } else {
+                    break;
+                }
+            }
+        } else {
+            $defs_enfants = [$suivant];
+        }
+    }
 } elseif ($etage_courant !== null) {
-    $def_enfants = $defs_noeuds[0] ?? null;
-} else {
-    $def_enfants = null;
+    if (isset($defs_noeuds[0])) {
+        $defs_enfants = [$defs_noeuds[0]];
+    }
 }
+$def_enfants = $defs_enfants[0] ?? null;
 
-// Les enfants eux-mêmes
+// Les enfants eux-mêmes (de TOUS les niveaux proposés à ce cran), triés par
+// niveau puis numéro pour un affichage stable.
 $enfants = [];
-if ($etage_courant !== null && $def_enfants !== null) {
-    $enfants = entrepot_noeud_liste((int) $etage_courant['id'], (int) $def_enfants['id'],
-        $courant !== null ? (int) $courant['id'] : 0);
+if ($etage_courant !== null && $defs_enfants !== []) {
+    foreach ($defs_enfants as $de) {
+        $lot = entrepot_noeud_liste((int) $etage_courant['id'], (int) $de['id'],
+            $courant !== null ? (int) $courant['id'] : 0);
+        foreach ($lot as $n) {
+            $enfants[] = $n;
+        }
+    }
 }
 
 /** Sous-arbre + pièces d'un nœud (pour les compteurs de lignes). */
@@ -652,10 +677,21 @@ if ($courant !== null) {
             <input type="hidden" name="csrf_token" value="<?php echo e($_SESSION['admin_csrf']); ?>">
             <input type="hidden" name="action" value="noeud_creer">
             <input type="hidden" name="etage_id" value="<?php echo (int) $etage_courant['id']; ?>">
-            <input type="hidden" name="niveau_id" value="<?php echo (int) $def_enfants['id']; ?>">
             <input type="hidden" name="parent_id" value="<?php echo $courant !== null ? (int) $courant['id'] : 0; ?>">
+            <?php if (count($defs_enfants) > 1) : ?>
+              <div class="cb-field" style="width:150px">
+                <label>Type</label>
+                <select name="niveau_id">
+                  <?php foreach ($defs_enfants as $de) : ?>
+                    <option value="<?php echo (int) $de['id']; ?>"><?php echo fpl_e($de['label']); ?></option>
+                  <?php endforeach; ?>
+                </select>
+              </div>
+            <?php else : ?>
+              <input type="hidden" name="niveau_id" value="<?php echo (int) $def_enfants['id']; ?>">
+            <?php endif; ?>
             <div class="cb-field" style="flex:2; min-width:170px">
-              <label>Nom du <?php echo fpl_e(mb_strtolower($def_enfants['label'])); ?> <span class="muted">(en série : « B » donne B1, B2…)</span></label>
+              <label>Nom <span class="muted">(en série : « B » donne B1, B2…)</span></label>
               <input type="text" name="nom" required placeholder="<?php echo fpl_e($def_enfants['label']); ?> 1">
             </div>
             <div class="cb-field" style="width:110px">
