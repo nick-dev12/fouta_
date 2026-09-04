@@ -1630,14 +1630,21 @@ function count_search_produits_with_filters($recherche = '', $prix_min = null, $
                 $params['ident_exact'] = strtoupper($tr);
             } else {
                 $or = ['nom LIKE :term', 'description LIKE :term'];
+                $params['term'] = '%' . $tr . '%';
+                $params['term_norm'] = '%' . produits_ref_normalise($tr) . '%';
                 if (produits_has_column('identifiant_interne')) {
                     $or[] = '(identifiant_interne IS NOT NULL AND TRIM(identifiant_interne) != \'\' AND UPPER(TRIM(identifiant_interne)) LIKE UPPER(:term))';
+                    $or[] = '(identifiant_interne IS NOT NULL AND ' . produits_ref_normalise_sql('identifiant_interne') . ' LIKE :term_norm)';
                 }
                 if (produits_has_column('reference_fournisseur')) {
                     $or[] = '(reference_fournisseur IS NOT NULL AND reference_fournisseur LIKE :term)';
+                    $or[] = '(reference_fournisseur IS NOT NULL AND ' . produits_ref_normalise_sql('reference_fournisseur') . ' LIKE :term_norm)';
+                }
+                if (produits_has_column('reference_oem')) {
+                    $or[] = '(reference_oem IS NOT NULL AND reference_oem LIKE :term)';
+                    $or[] = '(reference_oem IS NOT NULL AND ' . produits_ref_normalise_sql('reference_oem') . ' LIKE :term_norm)';
                 }
                 $conditions[] = '(' . implode(' OR ', $or) . ')';
-                $params['term'] = '%' . $tr . '%';
             }
         }
 
