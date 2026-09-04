@@ -238,9 +238,6 @@ function fpl_detourage_gd($src, $force = 45, &$motif = null)
     $profRive  = 60;  // profondeur (px) de la relaxation des franges — les ombres
                       // portées sont traitées à part (ombre d'une teinte du fond)
 
-    $profOmbre = 18;  // profondeur (px) des admissions « ombre d'une teinte
-                      // claire » dans la rive — une bande, jamais une invasion
-
     // sur une photo AGRANDIE, les seuils de pente se divisent par le facteur :
     // l'interpolation étire les gradients (un bord de 20/px natif devient 7/px
     // une fois agrandi ×3) — à pente 8 fixe, la rive traversait le bord ombré
@@ -248,7 +245,6 @@ function fpl_detourage_gd($src, $force = 45, &$motif = null)
     if ($ech > 1.0) {
         $pente = max(3, (int) round($pente / $ech));
         $sautMax = max(24, (int) round($sautMax / $ech));
-        $profOmbre = (int) round($profOmbre * $ech);
     }
 
     // ------------------------------------------------------------------
@@ -538,25 +534,6 @@ function fpl_detourage_gd($src, $force = 45, &$motif = null)
                     if ($e2 <= $tk) {
                         $e3 = $bb > $mB[$k] ? $bb - $mB[$k] : $mB[$k] - $bb;
                         if ($e3 <= $tk) {
-                            $pres = true;
-                            break;
-                        }
-                    }
-                }
-                if ($mSom[$k] >= 660 && $prof < $profOmbre) {
-                    // fenêtre 0,50-0,92 : l'ombre portée réelle est à
-                    // 0,55-0,80 du fond. À 0,40 le flanc ombré d'une coque
-                    // gris sombre se faisait mordre ; au-delà de 0,92 c'est le
-                    // corps ÉCLAIRÉ d'une pièce blanche (0,95-1,0) — et la
-                    // PROFONDEUR est bornée : l'ombre est une BANDE au ras du
-                    // contour, pas un droit d'entrer dans la pièce (le
-                    // pare-choc blanc #2779 s'est fait dévorer sans la borne)
-                    $ks = ($rr + $vv + $bb) / $mSom[$k];
-                    if ($ks >= 0.50 && $ks <= 0.92) {
-                        $o1 = $rr - $ks * $mR[$k];
-                        $o2 = $vv - $ks * $mV[$k];
-                        $o3 = $bb - $ks * $mB[$k];
-                        if ($o1 <= 12 && $o1 >= -12 && $o2 <= 12 && $o2 >= -12 && $o3 <= 12 && $o3 >= -12) {
                             $pres = true;
                             break;
                         }
@@ -1006,6 +983,84 @@ function fpl_detourage_gd($src, $force = 45, &$motif = null)
         $garde = $ero2;
     }
 
+    // PELAGE DE L'OMBRE AU CONTOUR (preuve par CONTRASTE) : un liseré NEUTRE
+    // (teinte claire du fond assombrie — rapport de canaux ±12, ks 0,30-0,92)
+    // n'est pelé que si la chair 5 px plus à l'intérieur est BEAUCOUP plus
+    // sombre (cadre noir de la glace), bien plus claire, ou COLORÉE (crème…).
+    // Le flanc gris d'une coque grise — chair semblable — est intouchable par
+    // construction. C'est l'arme contre les « parties grises au bas de la
+    // pièce » (paire de rétroviseurs #3632), sans le danger de l'admission en
+    // croissance qui rasait le coin CLAIR de la coque et a dévoré une fois le
+    // pare-choc blanc #2779.
+    $modeClair = -1;
+    $somClair = 0;
+    for ($k = 0; $k < $nbModes; $k++) {
+        if ($mSom[$k] >= 660 && $mSom[$k] > $somClair) {
+            $modeClair = $k;
+            $somClair = $mSom[$k];
+        }
+    }
+    if ($modeClair >= 0) {
+        for ($passe = 0; $passe < 12 * $morpho; $passe++) {
+            $peler = [];
+            for ($y = 0; $y < $H; $y++) {
+                $base = $y * $L;
+                for ($x = 0; $x < $L; $x++) {
+                    $p = $base + $x;
+                    if (!$garde[$p]) {
+                        continue;
+                    }
+                    $ddx = 0;
+                    $ddy = 0;
+                    if ($x > 0 && !$garde[$p - 1]) { $ddx = 1; }
+                    elseif ($x < $L - 1 && !$garde[$p + 1]) { $ddx = -1; }
+                    elseif ($y > 0 && !$garde[$p - $L]) { $ddy = 1; }
+                    elseif ($y < $H - 1 && !$garde[$p + $L]) { $ddy = -1; }
+                    else { continue; }
+                    $somP = $r[$p] + $v[$p] + $b[$p];
+                    $ksP = $somP / $mSom[$modeClair];
+                    if ($ksP < 0.30 || $ksP > 0.92) {
+                        continue;
+                    }
+                    $o1 = $r[$p] - $ksP * $mR[$modeClair];
+                    if ($o1 > 12 || $o1 < -12) { continue; }
+                    $o2 = $v[$p] - $ksP * $mV[$modeClair];
+                    if ($o2 > 12 || $o2 < -12) { continue; }
+                    $o3 = $b[$p] - $ksP * $mB[$modeClair];
+                    if ($o3 > 12 || $o3 < -12) { continue; }
+                    $ix = $x + 5 * $ddx;
+                    $iy = $y + 5 * $ddy;
+                    if ($ix < 0 || $iy < 0 || $ix >= $L || $iy >= $H) {
+                        continue;
+                    }
+                    $q = $iy * $L + $ix;
+                    if (!$garde[$q]) {
+                        continue; // partie fine : on ne touche pas
+                    }
+                    $ksQ = ($r[$q] + $v[$q] + $b[$q]) / $mSom[$modeClair];
+                    if ($ksQ > 0.60 * $ksP && $ksQ < 1.35 * $ksP) {
+                        // pas de contraste de valeur — la chair est-elle au
+                        // moins COLORÉE ? sinon c'est le flanc d'une pièce
+                        // grise : défense d'y toucher
+                        $c1 = $r[$q] - $ksQ * $mR[$modeClair];
+                        $c2 = $v[$q] - $ksQ * $mV[$modeClair];
+                        $c3 = $b[$q] - $ksQ * $mB[$modeClair];
+                        if ($c1 <= 14 && $c1 >= -14 && $c2 <= 14 && $c2 >= -14 && $c3 <= 14 && $c3 >= -14) {
+                            continue;
+                        }
+                    }
+                    $peler[] = $p;
+                }
+            }
+            if (!$peler) {
+                break;
+            }
+            foreach ($peler as $pp) {
+                $garde[$pp] = 0;
+            }
+        }
+    }
+
     // le lissage et l'érosion peuvent avoir DÉTACHÉ des miettes (fins ponts
     // coupés) : on les balaie, et on recompte les morceaux — un masque qui
     // s'émiette en une poignée de morceaux est un fond mal compris : on décline
@@ -1331,7 +1386,7 @@ function fpl_detourage_fichier($chemin)
     if (!is_dir($dir)) {
         @mkdir($dir, 0775, true);
     }
-    $cle = md5(realpath($chemin) . '|' . filemtime($chemin) . '|v7');
+    $cle = md5(realpath($chemin) . '|' . filemtime($chemin) . '|v8');
     $cache = $dir . '/' . $cle . '.png';
     $refus = $dir . '/' . $cle . '.non';
     if (is_file($cache)) {
