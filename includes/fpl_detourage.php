@@ -1001,15 +1001,30 @@ function fpl_detourage_gd($src, $force = 45, &$motif = null)
         }
     }
     if ($modeClair >= 0) {
-        for ($passe = 0; $passe < 12 * $morpho; $passe++) {
+        // FRONT DE BORD : le contour se relève une seule fois, puis chaque
+        // passe n'examine que les voisins des pixels pelés — rescanner toute
+        // l'image à chaque passe multipliait le temps par photo par cinq.
+        $front = [];
+        for ($p = 0; $p < $N; $p++) {
+            if (!$garde[$p]) {
+                continue;
+            }
+            $x = $p % $L;
+            $y = ($p - $x) / $L;
+            if (($x > 0 && !$garde[$p - 1]) || ($x < $L - 1 && !$garde[$p + 1])
+                || ($y > 0 && !$garde[$p - $L]) || ($y < $H - 1 && !$garde[$p + $L])) {
+                $front[] = $p;
+            }
+        }
+        for ($passe = 0; $passe < 12 * $morpho && $front; $passe++) {
             $peler = [];
-            for ($y = 0; $y < $H; $y++) {
-                $base = $y * $L;
-                for ($x = 0; $x < $L; $x++) {
-                    $p = $base + $x;
+            foreach ($front as $p) {
+                {
                     if (!$garde[$p]) {
                         continue;
                     }
+                    $x = $p % $L;
+                    $y = ($p - $x) / $L;
                     $ddx = 0;
                     $ddy = 0;
                     if ($x > 0 && !$garde[$p - 1]) { $ddx = 1; }
@@ -1057,6 +1072,18 @@ function fpl_detourage_gd($src, $force = 45, &$motif = null)
             }
             foreach ($peler as $pp) {
                 $garde[$pp] = 0;
+            }
+            // le nouveau front : les voisins encore gardés de ce qui vient
+            // de partir (un pixel écarté à cette passe peut devenir pelable
+            // maintenant que son voisin est parti)
+            $front = [];
+            foreach ($peler as $pp) {
+                $x = $pp % $L;
+                $y = ($pp - $x) / $L;
+                if ($x > 0 && $garde[$pp - 1]) { $front[] = $pp - 1; }
+                if ($x < $L - 1 && $garde[$pp + 1]) { $front[] = $pp + 1; }
+                if ($y > 0 && $garde[$pp - $L]) { $front[] = $pp - $L; }
+                if ($y < $H - 1 && $garde[$pp + $L]) { $front[] = $pp + $L; }
             }
         }
     }
