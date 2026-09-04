@@ -12,4 +12,10 @@ return [
     // Exemples : 'https://sugar-paper.com' | 'https://www.sugar-paper.com' | ''
     // Si vide, l'URL est déduite automatiquement de la requête HTTP
     'site_url' => 'https://sugar-paper.com',
+
+    // Adresse PUBLIQUE gravée dans les QR des étiquettes de pièce
+    // (vitrine client /p/{ean13}). Une étiquette imprimée est un engagement :
+    // mettre ici le domaine joignable par le téléphone d'un client — jamais
+    // une IP de réseau local. Vide = repli sur site_url.
+    'vitrine_url' => '',
 ];

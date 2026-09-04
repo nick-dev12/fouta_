@@ -824,6 +824,14 @@ function produit_emplacement_extraire_fpl_du_scan($raw) {
         $raw = trim((string) explode(';', $raw, 2)[0]);
     }
 
+    /* LE QR DE LA VITRINE CLIENT (04/09) : il encode /p/{ean13} — une
+       douchette 2D qui lit le QR reçoit l'URL entière. On en sort le code
+       pour que QR et code-barres rendent LE MÊME contenu au scan (décision
+       de la direction) ; le code extrait suit le circuit EAN ci-dessous. */
+    if (preg_match('#/P/([0-9A-Z]{1,20})#', $raw, $m)) {
+        $raw = $m[1];
+    }
+
     /* L'EAN-13 DE LA NOUVELLE ÉTIQUETTE (01/09) : 200 (plage GS1 réservée à
        l'usage interne) + les 9 chiffres de l'identifiant + la clé. La
        douchette tape ces 13 chiffres : on les rend comme l'identifiant FPL,

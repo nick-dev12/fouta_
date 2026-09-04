@@ -460,7 +460,9 @@ function etiquette70_ean12_pour_identifiant($identifiant, $produit_id = 0)
  *  - sous-titre = nom français (sauf s'il est déjà le grand titre) ;
  *  - référence FPL affichée en groupes de 3 (FPL 907 008 429) ;
  *  - OEM affiché tel quel, « — » si vide (le geste de l'atelier) ;
- *  - QR = la page stock-info (le même contenu que l'étiquette d'avant) ;
+ *  - QR = la vitrine client /p/{ean13} — LE MÊME CONTENU que le code-barres
+ *    (décision du 04/09 : les deux codes portent le numéro EAN-13, le QR
+ *    l'enveloppe dans le lien pour que le téléphone ouvre la page) ;
  *  - EAN = 200 + les 9 chiffres de l'identifiant.
  *
  * @param array<string, mixed> $produit
@@ -468,7 +470,7 @@ function etiquette70_ean12_pour_identifiant($identifiant, $produit_id = 0)
  */
 function etiquette70_donnees_pour_produit(array $produit)
 {
-    require_once __DIR__ . '/produit_emplacement_entrepot.php';
+    require_once __DIR__ . '/produit_vitrine.php';
 
     $produit_id = (int) ($produit['id'] ?? 0);
     $wolof = trim((string) ($produit['nom_wolof'] ?? ''));
@@ -517,7 +519,7 @@ function etiquette70_donnees_pour_produit(array $produit)
         'nom_francais' => $francais,
         'ref_affichee' => $ref_affichee,
         'oem' => trim((string) ($produit['reference_oem'] ?? '')),
-        'qr_texte' => produit_emplacement_stock_info_url($produit_id, $produit),
+        'qr_texte' => produit_vitrine_url($produit),
         'ean12' => etiquette70_ean12_pour_identifiant($identifiant, $produit_id),
         'photo_chemin' => $photo_chemin,
     ];
