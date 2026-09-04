@@ -984,14 +984,29 @@ function fpl_detourage_gd($src, $force = 45, &$motif = null)
     }
 
     // PELAGE DE L'OMBRE AU CONTOUR (preuve par CONTRASTE) : un liseré NEUTRE
-    // (teinte claire du fond assombrie — rapport de canaux ±12, ks 0,30-0,92)
-    // n'est pelé que si la chair 5 px plus à l'intérieur est BEAUCOUP plus
-    // sombre (cadre noir de la glace), bien plus claire, ou COLORÉE (crème…).
+    // (teinte claire du fond assombrie — rapport de canaux ±12) n'est pelé
+    // que si la chair 5 px plus à l'intérieur est BEAUCOUP plus sombre
+    // (cadre noir de la glace), bien plus claire, ou COLORÉE (crème…).
     // Le flanc gris d'une coque grise — chair semblable — est intouchable par
     // construction. C'est l'arme contre les « parties grises au bas de la
     // pièce » (paire de rétroviseurs #3632), sans le danger de l'admission en
     // croissance qui rasait le coin CLAIR de la coque et a dévoré une fois le
     // pare-choc blanc #2779.
+    //
+    // v9 (04/09) — LE PELAGE NE MORD PLUS LE BORD DE LA PIÈCE (#3634, coque
+    // noire sur vignette AGRANDIE : l'interpolation étire le dégradé du bord
+    // en une bande de gris neutres que les critères v8 prenaient pour de
+    // l'ombre → peigne de morsures). Trois gardes, tirées de la différence
+    // physique entre une OMBRE (bande PLATE posée sur le fond, jamais très
+    // sombre) et le DÉGRADÉ d'un bord (descente RAIDE vers la chair) :
+    //  - plancher ks 0,45 (v8 : 0,30) — une ombre portée sur fond clair
+    //    reste au-dessus de 45 % de la clarté du fond, le pied du dégradé
+    //    d'un bord noir est en dessous ;
+    //  - preuve de bande PLATE : 2 px plus à l'intérieur, l'ombre est encore
+    //    de l'ombre (ks semblable) ; si ça a déjà nettement chuté (< 0,72×),
+    //    c'est le dégradé du bord de la pièce — défense de peler ;
+    //  - profondeur totale 4×morpho (v8 : 12×) — un liseré d'ombre réel fait
+    //    1-3 px natifs, tout ce qui veut aller plus loin n'est pas une ombre.
     $modeClair = -1;
     $somClair = 0;
     for ($k = 0; $k < $nbModes; $k++) {
@@ -1016,7 +1031,7 @@ function fpl_detourage_gd($src, $force = 45, &$motif = null)
                 $front[] = $p;
             }
         }
-        for ($passe = 0; $passe < 12 * $morpho && $front; $passe++) {
+        for ($passe = 0; $passe < 4 * $morpho && $front; $passe++) {
             $peler = [];
             foreach ($front as $p) {
                 {
@@ -1034,7 +1049,7 @@ function fpl_detourage_gd($src, $force = 45, &$motif = null)
                     else { continue; }
                     $somP = $r[$p] + $v[$p] + $b[$p];
                     $ksP = $somP / $mSom[$modeClair];
-                    if ($ksP < 0.30 || $ksP > 0.92) {
+                    if ($ksP < 0.45 || $ksP > 0.92) {
                         continue;
                     }
                     $o1 = $r[$p] - $ksP * $mR[$modeClair];
@@ -1043,6 +1058,22 @@ function fpl_detourage_gd($src, $force = 45, &$motif = null)
                     if ($o2 > 12 || $o2 < -12) { continue; }
                     $o3 = $b[$p] - $ksP * $mB[$modeClair];
                     if ($o3 > 12 || $o3 < -12) { continue; }
+                    /* la bande PLATE : 2 px plus dedans, une ombre est encore
+                       de l'ombre — une chute déjà nette signe le dégradé du
+                       bord de la pièce (vignette agrandie #3634), pas une
+                       ombre posée sur le fond */
+                    $jx = $x + 2 * $ddx;
+                    $jy = $y + 2 * $ddy;
+                    if ($jx < 0 || $jy < 0 || $jx >= $L || $jy >= $H) {
+                        continue;
+                    }
+                    $j = $jy * $L + $jx;
+                    if ($garde[$j]) {
+                        $ksJ = ($r[$j] + $v[$j] + $b[$j]) / $mSom[$modeClair];
+                        if ($ksJ < 0.72 * $ksP) {
+                            continue;
+                        }
+                    }
                     $ix = $x + 5 * $ddx;
                     $iy = $y + 5 * $ddy;
                     if ($ix < 0 || $iy < 0 || $ix >= $L || $iy >= $H) {
@@ -1413,7 +1444,7 @@ function fpl_detourage_fichier($chemin)
     if (!is_dir($dir)) {
         @mkdir($dir, 0775, true);
     }
-    $cle = md5(realpath($chemin) . '|' . filemtime($chemin) . '|v8');
+    $cle = md5(realpath($chemin) . '|' . filemtime($chemin) . '|v9');
     $cache = $dir . '/' . $cle . '.png';
     $refus = $dir . '/' . $cle . '.non';
     if (is_file($cache)) {
