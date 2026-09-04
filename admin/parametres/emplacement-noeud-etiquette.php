@@ -63,7 +63,7 @@ if ($geo !== null) {
     $mm_decx = (float) $geo['decal_x'];
     $mm_decy = (float) $geo['decal_y'];
     $qr_a_gauche = ($geo['qr_position'] === 'gauche');
-    $pt_tx = round(entrepot_etiquette_mm_to_pt((float) $geo['code']), 2);
+    $mm_code = (float) $geo['code']; // porte déjà le réglage « Taille du code »
 } else {
     $dims = entrepot_etiquette_dims();
     $mm_w = (float) $dims['largeur_mm'];
@@ -71,7 +71,7 @@ if ($geo !== null) {
     $mm_qr = (float) $dims['qr_mm'];
     $mm_pad = 2.5;
     $mm_gap = 3.0;
-    $pt_tx = round(entrepot_etiquette_mm_to_pt((float) $dims['texte_mm']), 2);
+    $mm_code = (float) $dims['texte_mm'];
 }
 $qr_web = (string) ($payload['qr_url'] ?? '');
 $qr_path = '';
@@ -132,13 +132,70 @@ function ee_noeud_qr_data_uri_fond($path, array $bg) {
 }
 
 /**
- * Dessine l'étiquette de barre ENTIÈRE en PNG (fond jaune, libellé noir
- * auto-ajusté pour tenir, QR fondu sur le jaune) et renvoie un data:URI.
- * Vide si GD manque.
+ * LE QR EN GD, SANS ZONE BLANCHE (04/09) — comme le SVG de l'écran
+ * (addQuietzone=false) : les modules remplissent toute la boîte, au lieu du
+ * PNG stocké dont la marge blanche rétrécissait le QR dans le PDF. Modules
+ * sombres sur $fond [r,g,b] ; le clair prend la couleur du fond. Rendu à une
+ * résolution suffisante puis mis à l'échelle demandée. null si indisponible.
  *
+ * @param string $contenu  le texte encodé (le libellé de la barre)
+ * @param int    $taille_px côté carré voulu en pixels
+ * @param int[]  $fond      couleur de fond [r,g,b]
+ * @return resource|\GdImage|null
+ */
+function ee_barre_qr_gd($contenu, $taille_px, array $fond)
+{
+    $contenu = trim((string) $contenu);
+    if ($contenu === '' || !function_exists('imagecreatetruecolor')) {
+        return null;
+    }
+    $autoload = __DIR__ . '/../../vendor/autoload.php';
+    if (!is_file($autoload)) {
+        return null;
+    }
+    require_once $autoload;
+    try {
+        $png = (new \chillerlan\QRCode\QRCode(new \chillerlan\QRCode\QROptions([
+            'outputType' => \chillerlan\QRCode\Output\QROutputInterface::GDIMAGE_PNG,
+            'addQuietzone' => false,          // pas de marge blanche : le QR remplit la boîte
+            'scale' => 10,
+            'imageBase64' => false,
+        ])))->render($contenu);
+    } catch (Throwable $e) {
+        return null;
+    }
+    $src = @imagecreatefromstring($png);
+    if (!$src) {
+        return null;
+    }
+    $taille_px = max(1, (int) $taille_px);
+    $out = imagecreatetruecolor($taille_px, $taille_px);
+    $bg = imagecolorallocate($out, $fond[0], $fond[1], $fond[2]);
+    imagefilledrectangle($out, 0, 0, $taille_px, $taille_px, $bg);
+    imagecopyresampled($out, $src, 0, 0, 0, 0, $taille_px, $taille_px, imagesx($src), imagesy($src));
+    imagedestroy($src);
+    for ($y = 0; $y < $taille_px; $y++) {
+        for ($x = 0; $x < $taille_px; $x++) {
+            $c = imagecolorat($out, $x, $y);
+            $lum = 0.299 * (($c >> 16) & 255) + 0.587 * (($c >> 8) & 255) + 0.114 * ($c & 255);
+            if ($lum >= 128) {
+                imagesetpixel($out, $x, $y, $bg);
+            }
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * Dessine l'étiquette de barre ENTIÈRE en PNG (fond jaune, libellé noir à la
+ * taille demandée — bornée pour tenir —, QR fondu sur le jaune) et renvoie un
+ * data:URI. Vide si GD manque.
+ *
+ * @param float $mm_code taille de police du libellé en mm (0 = auto-ajuste)
  * @return string
  */
-function ee_noeud_etiquette_png_data_uri($libelle, $qr_path, $mm_w, $mm_h, $mm_qr, $mm_pad, $mm_gap, $qr_a_gauche, $decx, $decy)
+function ee_noeud_etiquette_png_data_uri($libelle, $qr_path, $mm_w, $mm_h, $mm_qr, $mm_pad, $mm_gap, $qr_a_gauche, $decx, $decy, $mm_code = 0.0)
 {
     if (!function_exists('imagecreatetruecolor')) {
         return '';
@@ -157,9 +214,11 @@ function ee_noeud_etiquette_png_data_uri($libelle, $qr_path, $mm_w, $mm_h, $mm_q
     $noir = imagecolorallocate($im, 0, 0, 0);
     imagefilledrectangle($im, 0, 0, $W, $H, $jaune);
 
-    // le QR (si présent) : redimensionné, blanc repeint en jaune, collé au bord
+    // le QR : généré SANS zone blanche (modules bord à bord, comme l'écran),
+    // fondu sur le jaune. Repli sur le PNG stocké si la génération échoue.
     $qr_pris = 0;
-    if ($qr_path !== '' && is_file($qr_path) && function_exists('imagecreatefrompng')) {
+    $qim = ee_barre_qr_gd($libelle, $qr, [255, 230, 0]);
+    if ($qim === null && $qr_path !== '' && is_file($qr_path) && function_exists('imagecreatefrompng')) {
         $src = @imagecreatefrompng($qr_path);
         if ($src) {
             $qim = imagecreatetruecolor($qr, $qr);
@@ -174,13 +233,15 @@ function ee_noeud_etiquette_png_data_uri($libelle, $qr_path, $mm_w, $mm_h, $mm_q
                     }
                 }
             }
-            $qy = (int) round(($H - $qr) / 2) + $dy;
-            $qx = $qr_a_gauche ? ($pad + $dx) : ($W - $pad - $qr + $dx);
-            imagecopy($im, $qim, $qx, $qy, 0, 0, $qr, $qr);
-            imagedestroy($qim);
             imagedestroy($src);
-            $qr_pris = $qr + $gap;
         }
+    }
+    if ($qim !== null) {
+        $qy = (int) round(($H - $qr) / 2) + $dy;
+        $qx = $qr_a_gauche ? ($pad + $dx) : ($W - $pad - $qr + $dx);
+        imagecopy($im, $qim, $qx, $qy, 0, 0, $qr, $qr);
+        imagedestroy($qim);
+        $qr_pris = $qr + $gap;
     }
 
     // le libellé : la plus grande taille qui tient dans la place restante
@@ -189,7 +250,14 @@ function ee_noeud_etiquette_png_data_uri($libelle, $qr_path, $mm_w, $mm_h, $mm_q
     $zone_h = $H - 2 * $pad;
     $libelle = trim((string) $libelle);
     if ($libelle !== '' && is_file($police) && function_exists('imagettfbbox')) {
-        $taille = (float) min($zone_h, 200);
+        // On part de la taille DEMANDÉE ($mm_code, qui porte déjà le réglage
+        // « Taille du code » de la disposition — comme l'écran) et on ne
+        // rétrécit QUE si le texte déborde de la place restante. À défaut de
+        // taille demandée, on prend la plus grande qui tient (ancien
+        // comportement). C'est ce qui manquait : le PDF ignorait code_echelle.
+        $ppp = 96.0 / 72.0; // la taille GD (points à 72 dpi) → px à ~96 dpi
+        $demande = $mm_code > 0 ? ($mm_code * $ppm) / $ppp : min($zone_h, 200);
+        $taille = (float) max(6, min($demande, $zone_h));
         while ($taille > 6) {
             $b = imagettfbbox($taille, 0, $police, $libelle);
             $tw = abs($b[2] - $b[0]);
@@ -222,15 +290,72 @@ function ee_noeud_etiquette_png_data_uri($libelle, $qr_path, $mm_w, $mm_h, $mm_q
  * noir dont la taille s'AJUSTE pour tenir dans la place restante, QR fondu sur
  * le jaune), et dompdf ne fait plus que poser cette unique image sur une page
  * aux mm exacts. Une seule page, aucun débordement, jaune fidèle à l'écran. */
-$img_uri = ee_noeud_etiquette_png_data_uri(
-    $libelle, $qr_path, (float) $mm_w, (float) $mm_h, (float) $mm_qr,
-    (float) $mm_pad, (float) $mm_gap, (bool) $qr_a_gauche, (float) $mm_decx, (float) $mm_decy
-);
+/* MODE « QR SEUL » (?qr=1) — imprimer uniquement le code QR de la barre, en
+ * grand, sur une page carrée blanche avec le libellé dessous. Utile pour coller
+ * le seul QR (sans l'étiquette jaune). Le QR y GARDE une petite marge blanche
+ * (quiet zone) : isolé, elle aide la lecture au téléphone. */
+if (!empty($_GET['qr'])) {
+    $cote_mm = 40.0;                 // QR de 40 mm : large et net à scanner
+    $cap_mm = 7.0;                   // bande du libellé sous le QR
+    $marge_mm = 4.0;
+    $page_w = $cote_mm + 2 * $marge_mm;
+    $page_h = $cote_mm + 2 * $marge_mm + $cap_mm;
+    $ppm = 12.0;
+    $Wpx = (int) round($page_w * $ppm);
+    $Hpx = (int) round($page_h * $ppm);
+    $im = imagecreatetruecolor($Wpx, $Hpx);
+    $blanc = imagecolorallocate($im, 255, 255, 255);
+    $noir = imagecolorallocate($im, 0, 0, 0);
+    imagefilledrectangle($im, 0, 0, $Wpx, $Hpx, $blanc);
+    $qpx = (int) round($cote_mm * $ppm);
+    $qim = ee_barre_qr_gd($libelle, $qpx, [255, 255, 255]); // modules noirs sur blanc
+    if ($qim === null && $qr_path !== '' && is_file($qr_path)) {
+        $src = @imagecreatefrompng($qr_path);
+        if ($src) {
+            $qim = imagecreatetruecolor($qpx, $qpx);
+            imagecopyresampled($qim, $src, 0, 0, 0, 0, $qpx, $qpx, imagesx($src), imagesy($src));
+            imagedestroy($src);
+        }
+    }
+    if ($qim !== null) {
+        imagecopy($im, $qim, (int) round(($Wpx - $qpx) / 2), (int) round($marge_mm * $ppm), 0, 0, $qpx, $qpx);
+        imagedestroy($qim);
+    }
+    $police = __DIR__ . '/../../fonts/etiquette70/barlow-condensed-700.ttf';
+    $lib = trim((string) $libelle);
+    if ($lib !== '' && is_file($police) && function_exists('imagettfbbox')) {
+        $taille = (float) ($cap_mm * $ppm) * 0.7;
+        $b = imagettfbbox($taille, 0, $police, $lib);
+        $tw = $b[2] - $b[0];
+        $cx = (int) round(($Wpx - $tw) / 2) - $b[0];
+        $cy = (int) round(($cote_mm + 2 * $marge_mm) * $ppm) + (int) round($cap_mm * $ppm * 0.72);
+        imagettftext($im, $taille, 0, $cx, $cy, $noir, $police, $lib);
+    }
+    ob_start();
+    imagepng($im);
+    $qr_only_png = (string) ob_get_clean();
+    imagedestroy($im);
+    $img_uri = 'data:image/png;base64,' . base64_encode($qr_only_png);
+    $mm_w = $page_w;
+    $mm_h = $page_h;
+} else {
+    $img_uri = ee_noeud_etiquette_png_data_uri(
+        $libelle, $qr_path, (float) $mm_w, (float) $mm_h, (float) $mm_qr,
+        (float) $mm_pad, (float) $mm_gap, (bool) $qr_a_gauche, (float) $mm_decx, (float) $mm_decy,
+        (float) $mm_code
+    );
+}
 
+/* UNE SEULE PAGE : l'image est fixée en POINTS, aux cotes exactes du paper
+ * dompdf (défini plus bas). Ni % (qui retombe sur la taille naturelle du PNG,
+ * ~1080 px → 3 pages), ni mm (mm→96 dpi vs paper→pt : arrondi qui débordait).
+ * font-size/line-height:0 tuent tout interligne qui pousserait une page vide. */
+$page_w_pt = round(entrepot_etiquette_mm_to_pt($mm_w), 2);
+$page_h_pt = round(entrepot_etiquette_mm_to_pt($mm_h), 2);
 $html = '<!DOCTYPE html><html><head><meta charset="utf-8"><style>'
-    . '@page { size: ' . $mm_w . 'mm ' . $mm_h . 'mm; margin: 0; }'
-    . 'html, body { margin: 0; padding: 0; }'
-    . 'img { display: block; width: ' . $mm_w . 'mm; height: ' . $mm_h . 'mm; }'
+    . '@page { margin: 0; }'
+    . 'html, body { margin: 0; padding: 0; font-size: 0; line-height: 0; }'
+    . 'img { position: absolute; top: 0; left: 0; width: ' . $page_w_pt . 'pt; height: ' . $page_h_pt . 'pt; }'
     . '</style></head><body>'
     . ($img_uri !== '' ? '<img src="' . $img_uri . '" alt="">' : '')
     . '</body></html>';
@@ -256,6 +381,7 @@ use Dompdf\Options;
 $options = new Options();
 $options->set('isRemoteEnabled', false);
 $options->set('defaultFont', 'DejaVu Sans');
+$options->set('dpi', 96);
 $dompdf = new Dompdf($options);
 $dompdf->loadHtml($html);
 $dompdf->setPaper([0, 0, entrepot_etiquette_mm_to_pt($mm_w), entrepot_etiquette_mm_to_pt($mm_h)]);

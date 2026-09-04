@@ -201,6 +201,7 @@ $pdf_url = '../parametres/emplacement-noeud-etiquette.php?id=' . $noeud_id
 <div class="toolbar">
   <button onclick="imprimerBarre()">Imprimer (<?php echo e((string) $format['nom']); ?>)</button>
   <a href="<?php echo e($pdf_url); ?>">Télécharger en PDF</a>
+  <a href="<?php echo e($pdf_url . (strpos($pdf_url, '?') !== false ? '&' : '?') . 'qr=1'); ?>" target="_blank" rel="noopener">Imprimer le QR seul</a>
   <?php foreach ($formats as $f) : ?>
     <a href="etiquette-barre.php?id=<?php echo (int) $noeud_id; ?>&format=<?php echo (int) $f['id']; ?>"
        class="<?php echo (int) ($format['id'] ?? 0) === (int) $f['id'] ? 'active' : ''; ?>"><?php echo e((string) $f['nom']); ?></a>
@@ -357,7 +358,11 @@ $pdf_url = '../parametres/emplacement-noeud-etiquette.php?id=' . $noeud_id
       }).then(r => {
         if (!r.ok) return;
         el('etat').classList.add('visible');
-        setTimeout(() => el('etat').classList.remove('visible'), 1800);
+        /* On RECHARGE : l'aperçu est alors redessiné par le serveur avec la
+           disposition enregistrée (bornes comprises) — donc EXACTEMENT ce que
+           sortira le PDF. Sans ça, l'aperçu restait sur l'approximation JS et
+           semblait ne pas correspondre au PDF. */
+        setTimeout(() => location.reload(), 700);
       }).catch(() => {});
     });
 
