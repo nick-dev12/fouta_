@@ -303,53 +303,6 @@ function etiquette70_photo_detouree($chemin)
     return ['img' => $out, 'detouree' => true];
 }
 
-/**
- * L'ombre portée d'une photo détourée : la silhouette (alpha) teintée marine à
- * 20 %, floutée. Calculée au quart pour rester légère, comme le canvas le fait
- * en une passe GPU.
- *
- * @param resource|GdImage $img la cible (plan de travail)
- * @param resource|GdImage $photo la photo détourée
- * @param int $dx, $dy, $dw, $dh la boîte de destination de la photo
- */
-function etiquette70_ombre_photo($img, $photo, $dx, $dy, $dw, $dh)
-{
-    $q = 4;
-    $ol = max(2, (int) ceil($dw / $q));
-    $oh = max(2, (int) ceil($dh / $q));
-    $marge = 14; // de la place pour le flou
-    $sil = imagecreatetruecolor($ol + 2 * $marge, $oh + 2 * $marge);
-    imagealphablending($sil, false);
-    imagesavealpha($sil, true);
-    imagefilledrectangle($sil, 0, 0, imagesx($sil), imagesy($sil), imagecolorallocatealpha($sil, 16, 49, 111, 127));
-    imagealphablending($sil, true);
-    imagecopyresampled($sil, $photo, $marge, $marge, 0, 0, $ol, $oh, imagesx($photo), imagesy($photo));
-
-    // silhouette : chaque pixel devient du marine, alpha = alpha × 0,20
-    imagealphablending($sil, false);
-    for ($y = 0; $y < imagesy($sil); $y++) {
-        for ($x = 0; $x < imagesx($sil); $x++) {
-            $a = (imagecolorat($sil, $x, $y) >> 24) & 127;
-            $na = 127 - (int) round((127 - $a) * 0.20);
-            imagesetpixel($sil, $x, $y, imagecolorallocatealpha($sil, 16, 49, 111, $na));
-        }
-    }
-    // flou : itérations du noyau gaussien 3×3 (σ ≈ 0,85 chacune)
-    for ($i = 0; $i < 22; $i++) {
-        imagefilter($sil, IMG_FILTER_GAUSSIAN_BLUR);
-    }
-
-    imagealphablending($img, true);
-    $ody = (int) round(12 * ETQ70_BASE / ETQ70_LOGIQUE); // shadowOffsetY 12
-    imagecopyresampled(
-        $img, $sil,
-        $dx - $marge * $q, $dy - $marge * $q + $ody,
-        0, 0,
-        ($ol + 2 * $marge) * $q, ($oh + 2 * $marge) * $q,
-        imagesx($sil), imagesy($sil)
-    );
-    imagedestroy($sil);
-}
 
 // ---------------------------------------------------------------------------
 // LE QR — la matrice depuis chillerlan (indépendant de la version : on relit
@@ -564,9 +517,11 @@ function etiquette70_rendu(array $donnees, $cote)
             $h = (int) round($phh * $e);
             $dx = $boite['x'] + (int) round(($boite['w'] - $w) / 2);
             $dy = $boite['y'] + (int) round(($boite['h'] - $h) / 2);
-            if ($ph['detouree']) {
-                etiquette70_ombre_photo($img, $ph['img'], $dx, $dy, $w, $h);
-            }
+            /* 04/09 — l'ombre portée sous la pièce détourée (marine à 20 %,
+               floutée, décalée vers le bas : le geste de l'atelier, porté ici
+               par etiquette70_ombre_photo) est RETIRÉE sur consigne de la
+               direction : « pas de contour gris au bas de la pièce », quel
+               que soit le fond de la photo. La pièce se pose nue sur le fond. */
             imagecopyresampled($img, $ph['img'], $dx, $dy, 0, 0, $w, $h, $pl, $phh);
             imagedestroy($ph['img']);
         }
