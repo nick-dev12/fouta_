@@ -88,6 +88,20 @@ function fpl_vitrine_code_vers_identifiant($brut) {
     if ($code === '') {
         return '';
     }
+    /* L'EAN-13 du code-barres (200 + 9 chiffres de l'identifiant + clé) —
+       décodé ICI directement, sans dépendre de produit_emplacement_extraire_
+       fpl_du_scan : la vitrine reste autonome (utile là où ce décodage n'a pas
+       encore été déployé). Clé vérifiée pour ne pas confondre avec un vrai EAN
+       du commerce. C'est CE numéro que le QR encode dans /p/{ean13}. */
+    if (preg_match('/^200(\d{9})(\d)$/', $code, $m)) {
+        $somme = 0;
+        for ($i = 0; $i < 12; $i++) {
+            $somme += ((int) $code[$i]) * ($i % 2 === 0 ? 1 : 3);
+        }
+        if ((int) $m[2] === (10 - $somme % 10) % 10) {
+            return 'FPL' . $m[1];
+        }
+    }
     $code = produit_emplacement_extraire_fpl_du_scan($code);
     if (preg_match('/^FPL\d{6}(\d{3})?$/', $code)) {
         return $code;
