@@ -14,8 +14,10 @@ function fpl_public_branding_coords() {
         'rc' => 'SN.DKR.2019.M.28414',
         'ninea' => '006705654/2A2',
         'adresse' => 'Rond-Point Zac Mbao, Dakar',
-        'telephone' => '+221 338700070',
+        'telephone' => '+221 33 870 00 70',
         'telephone_href' => 'tel:+221338700070',
+        'telephone2' => '+221 33 842 78 77',
+        'telephone2_href' => 'tel:+221338427877',
         'site' => 'https://www.foutapoidslourds.com',
         'email' => 'info@foutapoidslourds.com',
     ];

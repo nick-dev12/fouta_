@@ -15,6 +15,11 @@ RewriteCond %{HTTP:X-Forwarded-Proto} !https [NC]
 RewriteCond %{REQUEST_URI} !^/\.well-known/acme-challenge/
 RewriteRule ^ https://e.foutapoidslourds.com%{REQUEST_URI} [L,R=301]
 
+# LA VITRINE CLIENT : /p/2000010064632 (le numéro du code-barres) → p.php
+# C'est l'adresse gravée dans le QR de chaque étiquette de pièce : elle ne
+# changera JAMAIS (une étiquette imprimée est un engagement).
+RewriteRule ^p/(.+)$ p.php?code=$1 [L,QSA]
+
 RewriteRule ^robots\.txt$ robots.php [L]
 RewriteRule ^sitemap\.xml$ sitemap.php [L]
 </IfModule>
