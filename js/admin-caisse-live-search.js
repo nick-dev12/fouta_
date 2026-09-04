@@ -12,6 +12,13 @@
     return s.replace(/\s+/g, ' ').trim();
   }
 
+  // Forme normalisée d'une RÉFÉRENCE : majuscules, sans espaces/tirets/points,
+  // O ramené à 0 — pour retrouver une pièce en tapant sa réf quelle que soit
+  // la façon dont elle est écrite (« FCS-BZAX-O16-2 » = « FCS-BZAX-016-2 »).
+  function refNorm(str) {
+    return String(str || '').toUpperCase().replace(/O/g, '0').replace(/[\s._-]+/g, '');
+  }
+
   function identLast5(ident) {
     var digits = String(ident || '').replace(/\D/g, '');
     if (digits.length < 5) {
@@ -96,6 +103,14 @@
 
     if (text.indexOf(q) !== -1) {
       score += 380;
+    }
+
+    // Match par RÉFÉRENCE normalisée (O↔0, sans séparateurs) : la réf FPL, la
+    // réf OEM et la réf fournisseur sont dans p.search ; comparer en forme
+    // compacte rattrape le O/0 et les espaces/tirets que le fuzzy manque.
+    var qRef = refNorm(queryRaw);
+    if (qRef.length >= 3 && refNorm(p.search || '').indexOf(qRef) !== -1) {
+      score += 420;
     }
 
     tokens.forEach(function (token) {

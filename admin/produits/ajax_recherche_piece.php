@@ -33,6 +33,30 @@ if (mb_strlen($q) < 2) {
 
 $rows = [];
 try {
+    /* On cherche le nom, le code FPL, la réf OEM ET la RÉFÉRENCE FOURNISSEUR
+       (elle manquait — l'écran promettait pourtant « référence »). Les
+       références se comparent en forme NORMALISÉE (majuscules, sans espaces
+       ni tirets, O ramené à 0) pour retrouver la pièce quelle que soit la
+       façon dont on tape ou dont la base a stocké la référence. Le résultat
+       n'expose JAMAIS la valeur de la référence fournisseur : seulement la
+       pièce, son code FPL, sa réf OEM et son emplacement — la règle « le
+       stock simple ne voit pas le fournisseur » reste tenue. */
+    $like = '%' . $q . '%';
+    $norm = '%' . produits_ref_normalise($q) . '%';
+    $or = ['p.nom LIKE :q_like'];
+    $params = ['q_like' => $like, 'q_norm' => $norm];
+    if (produits_has_column('identifiant_interne')) {
+        $or[] = 'p.identifiant_interne LIKE :q_like';
+        $or[] = produits_ref_normalise_sql('p.identifiant_interne') . ' LIKE :q_norm';
+    }
+    if (produits_has_column('reference_oem')) {
+        $or[] = 'p.reference_oem LIKE :q_like';
+        $or[] = produits_ref_normalise_sql('p.reference_oem') . ' LIKE :q_norm';
+    }
+    if (produits_has_column('reference_fournisseur')) {
+        $or[] = 'p.reference_fournisseur LIKE :q_like';
+        $or[] = produits_ref_normalise_sql('p.reference_fournisseur') . ' LIKE :q_norm';
+    }
     $stmt = $db->prepare("SELECT p.id, p.nom, p.identifiant_interne, p.reference_oem, p.stock,
                                  p.image_principale, p.entrepot_noeud_id,
                                  c.nom AS categorie_nom, sc.nom AS sous_categorie_nom
@@ -40,10 +64,10 @@ try {
                           LEFT JOIN categories c ON c.id = p.categorie_id
                           LEFT JOIN sous_categories sc ON sc.id = p.sous_categorie_id
                           WHERE p.sync_deleted_at IS NULL
-                            AND (p.nom LIKE :q1 OR p.identifiant_interne LIKE :q2 OR p.reference_oem LIKE :q3)
+                            AND (" . implode(' OR ', $or) . ")
                           ORDER BY p.nom
                           LIMIT 8");
-    $stmt->execute(['q1' => '%' . $q . '%', 'q2' => '%' . $q . '%', 'q3' => '%' . $q . '%']);
+    $stmt->execute($params);
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
     $rows = [];

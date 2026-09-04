@@ -180,9 +180,13 @@ function caisse_prix_unitaire_produit(array $p)
     return $promo !== null ? $promo : $base;
 }
 
-/** Nombre max d’articles dans le catalogue live caisse */
+/** Nombre max d’articles dans le catalogue live caisse.
+ *  Relevé de 2500 à 10000 le 04/09 : à 2500 (ORDER BY nom ASC) les 741 pièces
+ *  en stock au-delà du rang alphabétique 2500 (noms après ~R) étaient
+ *  introuvables au clavier de la caisse. 10000 couvre tout le catalogue actif
+ *  (3241 en stock) avec de la marge ; le blob reste mis en cache 90 s. */
 if (!defined('CAISSE_CATALOG_LIVE_LIMIT')) {
-    define('CAISSE_CATALOG_LIVE_LIMIT', 2500);
+    define('CAISSE_CATALOG_LIVE_LIMIT', 10000);
 }
 
 /**

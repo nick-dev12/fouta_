@@ -191,6 +191,38 @@ function produits_recherche_normalize($text)
 }
 
 /**
+ * Normalise une RÉFÉRENCE (fournisseur, OEM, code) pour une comparaison
+ * tolérante : majuscules, sans espaces / tirets / points / soulignés, et la
+ * lettre O ramenée au chiffre 0. Ainsi « FCS-BZAX-O16-2 » (lettre O),
+ * « FCS-BZAX-016-2 » (zéro) et « 016 2 » désignent la même chose — les trois
+ * façons dont le staff tape ou lit une même référence, y compris les 124
+ * références qui portent un espace intérieur en base (« 801 870 » = « 801870 »).
+ *
+ * @param string $ref
+ * @return string
+ */
+function produits_ref_normalise($ref)
+{
+    $r = strtoupper(trim((string) $ref));
+    $r = str_replace(['O'], ['0'], $r);
+    $r = preg_replace('/[\s._\-]+/', '', $r);
+
+    return (string) $r;
+}
+
+/**
+ * L'expression SQL qui applique produits_ref_normalise() à une colonne, pour
+ * comparer une référence stockée à un terme lui-même normalisé côté PHP.
+ *
+ * @param string $colonne nom SQL déjà échappé/constant (ex. 'p.reference_fournisseur')
+ * @return string
+ */
+function produits_ref_normalise_sql($colonne)
+{
+    return "REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(UPPER($colonne),' ',''),'-',''),'.',''),'_',''),'O','0')";
+}
+
+/**
  * Indique si un produit correspond à la recherche de la liste admin (nom, description, codes…).
  *
  * @param array<string, mixed> $produit
@@ -456,6 +488,8 @@ function admin_produits_liste_recherche_sql($recherche, array &$params = [])
     if (produits_has_column('reference_fournisseur')) {
         $or[] = 'p.reference_fournisseur LIKE :adm_st_rf';
         $params['adm_st_rf'] = '%' . $tr . '%';
+        $or[] = produits_ref_normalise_sql('p.reference_fournisseur') . ' LIKE :adm_st_rf_norm';
+        $params['adm_st_rf_norm'] = '%' . produits_ref_normalise($tr) . '%';
     }
     if (produits_has_column('nom_fournisseur')) {
         $or[] = 'p.nom_fournisseur LIKE :adm_st_nf';
@@ -479,6 +513,8 @@ function admin_produits_liste_recherche_sql($recherche, array &$params = [])
         } else {
             $or[] = '(p.identifiant_interne IS NOT NULL AND TRIM(p.identifiant_interne) != \'\' AND p.identifiant_interne LIKE :adm_st_idlike)';
             $params['adm_st_idlike'] = '%' . $tr . '%';
+            $or[] = produits_ref_normalise_sql('p.identifiant_interne') . ' LIKE :adm_st_id_norm';
+            $params['adm_st_id_norm'] = '%' . produits_ref_normalise($tr) . '%';
         }
     }
 
@@ -487,6 +523,8 @@ function admin_produits_liste_recherche_sql($recherche, array &$params = [])
     if (produits_has_column('reference_oem')) {
         $or[] = 'p.reference_oem LIKE :adm_st_oem';
         $params['adm_st_oem'] = '%' . $tr . '%';
+        $or[] = produits_ref_normalise_sql('p.reference_oem') . ' LIKE :adm_st_oem_norm';
+        $params['adm_st_oem_norm'] = '%' . produits_ref_normalise($tr) . '%';
     }
 
     /* L'EMPLACEMENT. C'est la promesse du champ de recherche (« …marque,
@@ -1483,14 +1521,21 @@ function search_produits_with_filters($recherche = '', $prix_min = null, $prix_m
                 $params['ident_exact'] = strtoupper($tr);
             } else {
                 $or = ['p.nom LIKE :term', 'p.description LIKE :term'];
+                $params['term'] = '%' . $tr . '%';
+                $params['term_norm'] = '%' . produits_ref_normalise($tr) . '%';
                 if (produits_has_column('identifiant_interne')) {
                     $or[] = '(p.identifiant_interne IS NOT NULL AND TRIM(p.identifiant_interne) != \'\' AND UPPER(TRIM(p.identifiant_interne)) LIKE UPPER(:term))';
+                    $or[] = '(p.identifiant_interne IS NOT NULL AND ' . produits_ref_normalise_sql('p.identifiant_interne') . ' LIKE :term_norm)';
                 }
                 if (produits_has_column('reference_fournisseur')) {
                     $or[] = '(p.reference_fournisseur IS NOT NULL AND p.reference_fournisseur LIKE :term)';
+                    $or[] = '(p.reference_fournisseur IS NOT NULL AND ' . produits_ref_normalise_sql('p.reference_fournisseur') . ' LIKE :term_norm)';
+                }
+                if (produits_has_column('reference_oem')) {
+                    $or[] = '(p.reference_oem IS NOT NULL AND p.reference_oem LIKE :term)';
+                    $or[] = '(p.reference_oem IS NOT NULL AND ' . produits_ref_normalise_sql('p.reference_oem') . ' LIKE :term_norm)';
                 }
                 $conditions[] = '(' . implode(' OR ', $or) . ')';
-                $params['term'] = '%' . $tr . '%';
             }
         }
 

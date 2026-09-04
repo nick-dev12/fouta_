@@ -110,14 +110,30 @@ function stock_mouvements_build_where($categorie_id = null, $type = null, $searc
         $params['type'] = $type;
     }
     if ($search !== null && trim((string) $search) !== '') {
+        $terme = trim((string) $search);
+        /* On cherche aussi le CODE FPL, la réf OEM et la réf fournisseur de la
+           pièce (elles manquaient), sous forme normalisée (O↔0, sans espaces
+           ni tirets) : on retrouve les mouvements d'une pièce par sa
+           référence, comme dans le catalogue. */
+        require_once __DIR__ . '/model_produits.php';
+        $normSql = produits_ref_normalise_sql('p.identifiant_interne');
+        $normOem = produits_ref_normalise_sql('COALESCE(p.reference_oem, \'\')');
+        $normRf  = produits_ref_normalise_sql('COALESCE(p.reference_fournisseur, \'\')');
         $sql .= ' AND (
             p.nom LIKE :search OR
+            COALESCE(p.identifiant_interne, \'\') LIKE :search OR
+            COALESCE(p.reference_oem, \'\') LIKE :search OR
+            COALESCE(p.reference_fournisseur, \'\') LIKE :search OR
+            ' . $normSql . ' LIKE :search_norm OR
+            ' . $normOem . ' LIKE :search_norm OR
+            ' . $normRf . ' LIKE :search_norm OR
             COALESCE(m.reference_numero, \'\') LIKE :search OR
             COALESCE(m.notes, \'\') LIKE :search OR
             COALESCE(m.reference_type, \'\') LIKE :search OR
             CAST(COALESCE(m.reference_id, \'\') AS CHAR) LIKE :search
         )';
-        $params['search'] = '%' . trim((string) $search) . '%';
+        $params['search'] = '%' . $terme . '%';
+        $params['search_norm'] = '%' . produits_ref_normalise($terme) . '%';
     }
 
     return $sql;
