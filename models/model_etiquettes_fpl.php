@@ -123,13 +123,26 @@ function etiquettes_pieces_liste($q, $etat, $du, $au, $page, $par)
     $ou = ['p.sync_deleted_at IS NULL'];
     $params = [];
     if ($q !== '') {
+        /* Même recherche que le catalogue (elle cherchait la réf OEM mais PAS
+           la réf FOURNISSEUR, ni en forme normalisée) : on ajoute la référence
+           fournisseur et on compare les références en forme tolérante — O↔0,
+           sans espaces ni tirets — pour retrouver la pièce quelle que soit la
+           façon dont la référence est tapée ou stockée (FCS-BZAX-O16-2 =
+           FCS-BZAX-016-2, « 131 900 » = « 131900 »). */
+        require_once __DIR__ . '/model_produits.php';
+        $norm = produits_ref_normalise($q);
         $ou[] = "(p.nom LIKE :q1 OR p.identifiant_interne LIKE :q2 OR p.reference_oem LIKE :q3
                   OR ma.nom LIKE :q4
                   OR EXISTS (SELECT 1 FROM categories c2 WHERE c2.id = p.categorie_id AND c2.nom LIKE :q5)
-                  OR EXISTS (SELECT 1 FROM sous_categories sc2 WHERE sc2.id = p.sous_categorie_id AND sc2.nom LIKE :q6))";
-        for ($i = 1; $i <= 6; $i++) {
+                  OR EXISTS (SELECT 1 FROM sous_categories sc2 WHERE sc2.id = p.sous_categorie_id AND sc2.nom LIKE :q6)
+                  OR p.reference_fournisseur LIKE :q7
+                  OR " . produits_ref_normalise_sql('p.identifiant_interne') . " LIKE :qn
+                  OR " . produits_ref_normalise_sql('COALESCE(p.reference_oem, \'\')') . " LIKE :qn
+                  OR " . produits_ref_normalise_sql('COALESCE(p.reference_fournisseur, \'\')') . " LIKE :qn)";
+        for ($i = 1; $i <= 7; $i++) {
             $params['q' . $i] = '%' . $q . '%';
         }
+        $params['qn'] = '%' . $norm . '%';
     }
     if ($etat === 'a_imprimer' && etiquette_impressions_table_ok()) {
         $ou[] = "NOT EXISTS (SELECT 1 FROM etiquette_impressions ei
