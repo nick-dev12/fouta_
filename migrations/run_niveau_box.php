@@ -10,18 +10,26 @@
  *   Étage › Zone › Rayon › Étagère › Barre (QR, inchangé) › Box (sans QR)
  *
  * Le graphique du QR de barre NE CHANGE PAS (déjà imprimé) : cette migration
- * le PROUVE en comparant les libellés de barre avant / après.
+ * le PROUVE en comparant les libellés de barre avant / après — et ANNULE tout
+ * (rollback) si un seul libellé de barre bougeait.
  *
- * Ce que fait la migration, de façon idempotente et auto-réparante :
+ * Ce que fait la migration, de façon idempotente, transactionnelle et
+ * auto-réparante :
  *   1. garantit l'existence du niveau « box » ;
  *   2. le règle en contenant SANS QR (est_etiquette_qr = 0), juste APRÈS la
  *      barre dans l'ordre des niveaux (donc enfant direct de la barre) ;
- *   3. nettoie les niveaux parasites qui n'appartiennent pas au modèle propre
- *      (« position », doublons de slug…) : ceux qui sont VIDES sont désactivés,
- *      ceux qui contiennent encore des nœuds/pièces sont SIGNALÉS (jamais
- *      détruits — la direction tranche) ;
- *   4. re-rattache toute box existante à sa barre si besoin (signale l'ambigu) ;
- *   5. prouve que les étiquettes de barre sont INCHANGÉES.
+ *   3. nettoie UNIQUEMENT les niveaux parasites NOMMÉMENT connus
+ *      ($parasites_slugs = position/osition…) — jamais un niveau métier créé
+ *      par la direction : un nœud parasite-FEUILLE déjà posé sous une barre est
+ *      converti en box (les pièces restent sous leur barre) ; ce qui n'est pas
+ *      une feuille sous une barre est SIGNALÉ (jamais détruit) ; un niveau vidé
+ *      est désactivé. Tout niveau hors modèle NON listé comme parasite est
+ *      seulement SIGNALÉ, jamais touché ;
+ *   4. signale toute box qui ne serait pas enfant d'une barre ;
+ *   5. PROUVE (avant commit) que les étiquettes de barre sont INCHANGÉES.
+ *
+ * Codes de sortie : 0 = propre ; 1 = échec dur (barres changées / box encore à
+ * QR / rollback) ; 2 = fait mais ACTION REQUISE (des nœuds restent à trancher).
  *
  * Usage : php migrations/run_niveau_box.php
  */
@@ -31,6 +39,11 @@ require_once __DIR__ . '/../models/model_entrepot_hierarchie_libre.php';
 
 /** @var PDO $db */
 $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+// Les seuls slugs traités comme parasites (nettoyage). Tout autre niveau hors
+// modèle est un niveau MÉTIER potentiel : on ne le touche pas, on le signale.
+$parasites_slugs = ['position', 'positions', 'osition', 'ositions'];
+$modele = ['etage', 'zone', 'rayon', 'etagere', 'barre', 'box'];
 
 if (!entrepot_hierarchie_etiquette_ensure_schema()) {
     fwrite(STDERR, "Schema hierarchie/etiquette indisponible.\n");
@@ -43,6 +56,14 @@ $def_par_slug = function (string $slug) use ($db): ?array {
     $st->execute([':s' => $slug]);
     $r = $st->fetch(PDO::FETCH_ASSOC);
     return $r ?: null;
+};
+/** Une colonne existe-t-elle sur une table ? */
+$col_existe = function (string $table, string $col) use ($db): bool {
+    try {
+        return (bool) $db->query("SHOW COLUMNS FROM `$table` LIKE " . $db->quote($col))->fetch();
+    } catch (Throwable $e) {
+        return false;
+    }
 };
 
 // --- 0. baseline : libellés de barre AVANT (preuve d'invariance) --------------
@@ -63,7 +84,7 @@ foreach ($barres_noeuds as $bid) {
 }
 echo 'Baseline : ' . count($libelles_avant) . " libellé(s) de barre capturé(s).\n";
 
-// --- 1. garantir le niveau box ------------------------------------------------
+// --- 1. garantir le niveau box (hors transaction : def_ajouter peut faire du DDL) --
 $box = $def_par_slug('box');
 if ($box === null) {
     // Créé SANS QR (3e argument = 0), non lié à un niveau d'étiquette.
@@ -81,146 +102,204 @@ if ($box === null) {
 }
 $box_id = (int) $box['id'];
 
-// --- 2. box = contenant SANS QR, juste après la barre -------------------------
-$ordre_box = $ordre_barre + 1;
-$db->prepare(
-    // etiquette_lie_type est NOT NULL (défaut 'etage') : inerte quand
-    // est_etiquette_qr = 0, on le remet simplement à sa valeur par défaut.
-    'UPDATE entrepot_hierarchie_niveau
-        SET actif = 1,
-            est_etiquette_qr = 0,
-            etiquette_lie_type = \'etage\',
-            etiquette_lie_niveau_id = NULL,
-            ordre = :o
-      WHERE id = :id'
-)->execute([':o' => $ordre_box, ':id' => $box_id]);
-echo "Box réglée : SANS QR, ordre $ordre_box (juste après la barre).\n";
+// Tables synchronisées (foutasvr → VPS) : toute ligne modifiée doit bouger son
+// sync_updated_at, sinon le différentiel ne la pousse pas. Détecté par table.
+$bump_niv = $col_existe('entrepot_hierarchie_niveau', 'sync_updated_at') ? ', sync_updated_at = NOW()' : '';
+$bump_noe = $col_existe('entrepot_hierarchie_noeud', 'sync_updated_at') ? ', sync_updated_at = NOW()' : '';
 
-// --- 3. nettoyage des niveaux parasites (hors modèle propre) ------------------
-// Le modèle propre n'a PAS de « position ». Un contenant hors-modèle dont le
-// parent est DÉJÀ une barre EST, sémantiquement, une box : on le convertit
-// (les pièces qu'il porte restent sous la même barre, via une box). Ce qui
-// n'est pas rattaché à une barre est SIGNALÉ (jamais détruit). Un niveau vidé
-// de tous ses nœuds est désactivé.
-$modele = ['etage', 'zone', 'rayon', 'etagere', 'barre', 'box'];
-$tous = $db->query('SELECT id, slug, label, actif FROM entrepot_hierarchie_niveau ORDER BY ordre, id')
-           ->fetchAll(PDO::FETCH_ASSOC);
-$slug_etage = function_exists('entrepot_hierarchie_def_slug_etage')
-    ? entrepot_hierarchie_def_slug_etage() : 'etage';
-$desactives = 0;
+// ============================================================================
+// SECTIONS 2 à 4 + preuve 5a : TOUT-OU-RIEN dans une transaction. Un échec ou
+// une barre qui bougerait ⇒ rollback complet, rien n'est poussé au VPS.
+// ============================================================================
 $convertis = 0;
+$conversions_log = [];
+$desactives = 0;
 $signales = [];
-foreach ($tous as $d) {
-    $slug = (string) $d['slug'];
-    if (in_array($slug, $modele, true) || $slug === $slug_etage) {
-        continue; // niveau du modèle propre : on n'y touche pas
+$box_orphelines = [];
+$change = 0;
+
+$db->beginTransaction();
+try {
+    // --- 2. box = contenant SANS QR, juste après la barre --------------------
+    $ordre_box = $ordre_barre + 1;
+    $cur = $db->query(
+        'SELECT est_etiquette_qr, etiquette_lie_niveau_id, actif, ordre, etiquette_lie_type
+           FROM entrepot_hierarchie_niveau WHERE id = ' . $box_id . ' LIMIT 1'
+    )->fetch(PDO::FETCH_ASSOC);
+    $besoin_maj = ((int) $cur['est_etiquette_qr'] !== 0)
+        || ((int) $cur['actif'] !== 1)
+        || ((int) $cur['ordre'] !== $ordre_box)
+        || ($cur['etiquette_lie_niveau_id'] !== null)
+        || ((string) $cur['etiquette_lie_type'] !== 'etage');
+    if ($besoin_maj) {
+        $db->prepare(
+            'UPDATE entrepot_hierarchie_niveau
+                SET actif = 1, est_etiquette_qr = 0, etiquette_lie_type = \'etage\',
+                    etiquette_lie_niveau_id = NULL, ordre = :o' . $bump_niv . '
+              WHERE id = :id'
+        )->execute([':o' => $ordre_box, ':id' => $box_id]);
+        echo "Box réglée : SANS QR, ordre $ordre_box (juste après la barre).\n";
+    } else {
+        echo "Box déjà conforme (sans QR, ordre $ordre_box) — aucune écriture.\n";
     }
-    if ((int) $d['actif'] !== 1) {
-        continue; // déjà inactif
+
+    // --- 3. nettoyage des niveaux parasites NOMMÉMENT connus -----------------
+    $slug_etage = function_exists('entrepot_hierarchie_def_slug_etage')
+        ? entrepot_hierarchie_def_slug_etage() : 'etage';
+    $tous = $db->query('SELECT id, slug, label, actif FROM entrepot_hierarchie_niveau ORDER BY ordre, id')
+               ->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($tous as $d) {
+        $slug = (string) $d['slug'];
+        if (in_array($slug, $modele, true) || $slug === $slug_etage) {
+            continue; // niveau du modèle propre : on n'y touche pas
+        }
+        if ((int) $d['actif'] !== 1) {
+            continue; // déjà inactif
+        }
+        $nid = (int) $d['id'];
+        if (!in_array($slug, $parasites_slugs, true)) {
+            // Niveau hors modèle NON listé comme parasite = niveau métier possible.
+            // On ne le touche JAMAIS ; on le signale pour information.
+            $nb = (int) $db->query('SELECT COUNT(*) FROM entrepot_hierarchie_noeud WHERE niveau_id = ' . $nid . ' AND sync_deleted_at IS NULL')->fetchColumn();
+            $signales[] = "niveau hors modèle CONSERVÉ (non listé comme parasite) : « {$d['label']} » (slug $slug, $nb nœud[s]) — vérifier si voulu";
+            continue;
+        }
+        // Parasite connu : convertir les nœuds FEUILLES posés sous une barre.
+        $noeuds = $db->query(
+            'SELECT id, parent_id, numero, nom FROM entrepot_hierarchie_noeud
+              WHERE niveau_id = ' . $nid . ' AND sync_deleted_at IS NULL ORDER BY numero, id'
+        )->fetchAll(PDO::FETCH_ASSOC);
+        $orphelins = [];
+        foreach ($noeuds as $n) {
+            $node_id = (int) $n['id'];
+            $pid = (int) ($n['parent_id'] ?? 0);
+            $parent = $pid > 0
+                ? $db->query('SELECT niveau_id, etage_id FROM entrepot_hierarchie_noeud WHERE id = ' . $pid . ' AND sync_deleted_at IS NULL LIMIT 1')->fetch(PDO::FETCH_ASSOC)
+                : null;
+            $a_enfants = (int) $db->query('SELECT COUNT(*) FROM entrepot_hierarchie_noeud WHERE parent_id = ' . $node_id . ' AND sync_deleted_at IS NULL')->fetchColumn() > 0;
+            $parent_est_barre = $parent && (int) $parent['niveau_id'] === $barre_id;
+            if ($parent_est_barre && !$a_enfants) {
+                // Devient une box FEUILLE sous cette barre (numérotée à la suite).
+                $newnum = 1 + (int) $db->query(
+                    'SELECT COALESCE(MAX(numero), 0) FROM entrepot_hierarchie_noeud
+                      WHERE niveau_id = ' . $box_id . ' AND parent_id = ' . $pid . ' AND sync_deleted_at IS NULL'
+                )->fetchColumn();
+                // Nom : on garde un nom PARLANT ; on ne remplace par « Box N » que
+                // s'il est vide ou purement numérique (ancien numéro de position).
+                $ancien = trim((string) ($n['nom'] ?? ''));
+                $generique = ($ancien === '' || preg_match('/^0*\d+$/', $ancien) === 1);
+                $nouveau = $generique ? ('Box ' . $newnum) : $ancien;
+                $etage_barre = (int) ($parent['etage_id'] ?? 0);
+                $db->prepare(
+                    'UPDATE entrepot_hierarchie_noeud
+                        SET niveau_id = :box, numero = :num, nom = :nom, etage_id = :et,
+                            date_modification = NOW()' . $bump_noe . '
+                      WHERE id = :id'
+                )->execute([':box' => $box_id, ':num' => $newnum, ':nom' => $nouveau, ':et' => $etage_barre, ':id' => $node_id]);
+                $convertis++;
+                if (count($conversions_log) < 8) {
+                    $conversions_log[] = "#$node_id [$ancien] → box « $nouveau » sous barre #$pid";
+                }
+            } else {
+                $orphelins[] = $node_id . ($a_enfants ? '(a des enfants)' : '(hors barre)');
+            }
+        }
+        $reste = (int) $db->query(
+            'SELECT COUNT(*) FROM entrepot_hierarchie_noeud WHERE niveau_id = ' . $nid . ' AND sync_deleted_at IS NULL'
+        )->fetchColumn();
+        if ($reste === 0) {
+            $db->prepare('UPDATE entrepot_hierarchie_niveau SET actif = 0' . $bump_niv . ' WHERE id = :id')->execute([':id' => $nid]);
+            $desactives++;
+            echo "  Parasite « {$d['label']} » (slug $slug) → " . count($noeuds) . " nœud(s) traité(s), désactivé.\n";
+        } else {
+            $signales[] = "parasite « {$d['label']} » (slug $slug) : $reste nœud(s) non convertis (ids " . implode(',', $orphelins) . ')';
+        }
     }
-    $nid = (int) $d['id'];
-    $noeuds = $db->query(
-        'SELECT id, parent_id FROM entrepot_hierarchie_noeud WHERE niveau_id = ' . $nid . ' AND sync_deleted_at IS NULL ORDER BY numero, id'
+    if ($conversions_log !== []) {
+        echo "  Conversions (échantillon) :\n";
+        foreach ($conversions_log as $c) {
+            echo "    · $c\n";
+        }
+    }
+    echo "Nettoyage : $convertis nœud(s) converti(s) en box, $desactives niveau(x) parasite(s) désactivé(s), "
+        . count($signales) . " signalement(s).\n";
+
+    // --- 4. box qui ne seraient pas enfant d'une barre -----------------------
+    $box_noeuds = $db->query(
+        'SELECT id, parent_id FROM entrepot_hierarchie_noeud WHERE niveau_id = ' . $box_id . ' AND sync_deleted_at IS NULL'
     )->fetchAll(PDO::FETCH_ASSOC);
-    $orphelins = [];
-    foreach ($noeuds as $n) {
-        $pid = (int) ($n['parent_id'] ?? 0);
-        $parent = $pid > 0
+    foreach ($box_noeuds as $bn) {
+        $pid = (int) ($bn['parent_id'] ?? 0);
+        $pn = $pid > 0
             ? $db->query('SELECT niveau_id FROM entrepot_hierarchie_noeud WHERE id = ' . $pid . ' AND sync_deleted_at IS NULL LIMIT 1')->fetch(PDO::FETCH_ASSOC)
             : null;
-        if ($parent && (int) $parent['niveau_id'] === $barre_id) {
-            // Devient une box sous cette barre (numérotée après les box existantes).
-            $newnum = 1 + (int) $db->query(
-                'SELECT COALESCE(MAX(numero), 0) FROM entrepot_hierarchie_noeud
-                  WHERE niveau_id = ' . $box_id . ' AND parent_id = ' . $pid . ' AND sync_deleted_at IS NULL'
-            )->fetchColumn();
-            $db->prepare(
-                'UPDATE entrepot_hierarchie_noeud
-                    SET niveau_id = :box, numero = :num, nom = :nom,
-                        date_modification = NOW(), sync_updated_at = NOW()
-                  WHERE id = :id'
-            )->execute([':box' => $box_id, ':num' => $newnum, ':nom' => 'Box ' . $newnum, ':id' => (int) $n['id']]);
-            $convertis++;
-        } else {
-            $orphelins[] = (int) $n['id'];
+        if (!($pn && (int) $pn['niveau_id'] === $barre_id)) {
+            $box_orphelines[] = (int) $bn['id'];
         }
     }
-    $reste = (int) $db->query(
-        'SELECT COUNT(*) FROM entrepot_hierarchie_noeud WHERE niveau_id = ' . $nid . ' AND sync_deleted_at IS NULL'
-    )->fetchColumn();
-    if ($reste === 0) {
-        $db->prepare('UPDATE entrepot_hierarchie_niveau SET actif = 0 WHERE id = :id')->execute([':id' => $nid]);
-        $desactives++;
-        echo "  Niveau parasite « {$d['label']} » (slug $slug) → " . count($noeuds)
-            . " nœud(s) traité(s), désactivé.\n";
-    } else {
-        $signales[] = "« {$d['label']} » (slug $slug) : $reste nœud(s) hors barre (ids "
-            . implode(',', $orphelins) . ')';
-    }
-}
-if ($signales !== []) {
-    echo "  ATTENTION — nœuds parasites NON rattachés à une barre (conservés, à trancher) :\n";
-    foreach ($signales as $s) {
-        echo "    - $s\n";
-    }
-}
-echo "Nettoyage : $convertis nœud(s) converti(s) en box, $desactives niveau(x) parasite(s) désactivé(s), "
-    . count($signales) . " signalé(s).\n";
+    echo 'Box existantes : ' . count($box_noeuds) . ' — dont ' . count($box_orphelines) . " non enfant d'une barre.\n";
 
-// --- 4. re-rattacher les box existantes à une barre --------------------------
-$box_noeuds = $db->query(
-    'SELECT id, parent_id FROM entrepot_hierarchie_noeud WHERE niveau_id = ' . $box_id . ' AND sync_deleted_at IS NULL'
-)->fetchAll(PDO::FETCH_ASSOC);
-$box_orphelines = [];
-foreach ($box_noeuds as $bn) {
-    $pid = (int) ($bn['parent_id'] ?? 0);
-    $ok_parent = false;
-    if ($pid > 0) {
-        $pn = $db->query('SELECT niveau_id FROM entrepot_hierarchie_noeud WHERE id = ' . $pid . ' LIMIT 1')->fetch(PDO::FETCH_ASSOC);
-        $ok_parent = $pn && (int) $pn['niveau_id'] === $barre_id;
-    }
-    if (!$ok_parent) {
-        $box_orphelines[] = (int) $bn['id'];
-    }
-}
-if ($box_orphelines !== []) {
-    echo '  ATTENTION — ' . count($box_orphelines) . " box existante(s) ne sont pas enfant d'une barre "
-        . '(ids : ' . implode(',', $box_orphelines) . "). À rattacher manuellement à leur barre.\n";
-} else {
-    echo 'Box existantes : ' . count($box_noeuds) . " (toutes enfant d'une barre, ou aucune).\n";
-}
-
-// --- 5. PREUVES ---------------------------------------------------------------
-// 5a. les étiquettes de barre n'ont pas bougé
-$change = 0;
-foreach ($libelles_avant as $bid => $lib) {
-    $ap = entrepot_noeud_etiquette_libelle((int) $bid);
-    if ($ap !== $lib) {
-        if ($change < 5) {
-            echo "  CHANGÉ #$bid : [$lib] → [$ap]\n";
+    // --- 5a. PREUVE (avant commit) : les libellés de barre n'ont pas bougé ----
+    foreach ($libelles_avant as $bid => $lib) {
+        if (entrepot_noeud_etiquette_libelle((int) $bid) !== $lib) {
+            if ($change < 5) {
+                echo "  CHANGÉ #$bid : [$lib] → [" . entrepot_noeud_etiquette_libelle((int) $bid) . "]\n";
+            }
+            $change++;
         }
-        $change++;
     }
-}
-echo $change === 0
-    ? 'PREUVE ✓ Étiquettes de barre INCHANGÉES (' . count($libelles_avant) . ") — les QR imprimés restent valides.\n"
-    : "ÉCHEC : $change étiquette(s) de barre ont changé !\n";
+    if ($change !== 0) {
+        $db->rollBack();
+        fwrite(STDERR, "ÉCHEC : $change étiquette(s) de barre changée(s) → ROLLBACK, rien n'est écrit.\n");
+        exit(1);
+    }
 
-// 5b. les niveaux à QR = seulement la barre
+    $db->commit();
+} catch (Throwable $e) {
+    if ($db->inTransaction()) {
+        $db->rollBack();
+    }
+    fwrite(STDERR, 'ÉCHEC (rollback) : ' . $e->getMessage() . "\n");
+    exit(1);
+}
+
+echo 'PREUVE ✓ Étiquettes de barre INCHANGÉES (' . count($libelles_avant) . ") — les QR imprimés restent valides.\n";
+
+// --- 5b. les niveaux à QR = seulement la barre (après commit) -----------------
 $qr = entrepot_hierarchie_defs_etiquette();
 $noms = [];
-foreach ($qr as $d) {
-    $noms[] = $d['slug'] . '(#' . $d['id'] . ')';
-}
-echo 'Niveaux à QR : ' . (implode(', ', $noms) ?: '(aucun)') . "\n";
 $box_a_qr = false;
 foreach ($qr as $d) {
+    $noms[] = $d['slug'] . '(#' . $d['id'] . ')';
     if ((string) $d['slug'] === 'box') {
         $box_a_qr = true;
     }
 }
+echo 'Niveaux à QR : ' . (implode(', ', $noms) ?: '(aucun)') . "\n";
 echo $box_a_qr
     ? "ÉCHEC : la box porte encore un QR !\n"
     : "PREUVE ✓ La box NE porte PAS de QR (seule la barre en a un).\n";
 
-echo ($change === 0 && !$box_a_qr) ? "Terminé — modèle propre en place.\n" : "Terminé AVEC ANOMALIE (voir ci-dessus).\n";
+// --- 6. STATUT FINAL + code de sortie ----------------------------------------
+$action_requise = ($signales !== []) || ($box_orphelines !== []);
+if ($action_requise) {
+    echo "\n================= ACTION REQUISE =================\n";
+    foreach ($signales as $s) {
+        echo "  - $s\n";
+    }
+    if ($box_orphelines !== []) {
+        echo '  - box non rattachées à une barre (ids : ' . implode(',', $box_orphelines) . ") — à rattacher.\n";
+    }
+    echo "=================================================\n";
+}
+
+if ($box_a_qr) {
+    echo "Terminé AVEC ANOMALIE : la box porte encore un QR.\n";
+    exit(1);
+}
+if ($action_requise) {
+    echo "Terminé — box réglée + preuves OK, MAIS des nœuds restent à trancher (voir ACTION REQUISE).\n";
+    exit(2);
+}
+echo "Terminé — modèle propre en place.\n";
+exit(0);

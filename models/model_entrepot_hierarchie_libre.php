@@ -1573,6 +1573,12 @@ function entrepot_hierarchie_arbre_etage($numero_etage)
         return $out;
     };
 
+    // Niveaux à QR : $etiq_ids est la carte id=>def (multi-niveaux). Le modèle
+    // propre n'a qu'un seul niveau à QR (la barre) ; on expose son id pour les
+    // consommateurs qui attendent un entier unique (partial + JS), et la liste
+    // complète pour l'avenir. (Corrige un $etiq_niveau_id jadis non défini ici.)
+    $etiq_niveau_id = !empty($etiq_ids) ? (int) array_key_first($etiq_ids) : 0;
+
     $defs_out = [];
     foreach ($defs as $d) {
         $did = (int) ($d['id'] ?? 0);
@@ -1581,7 +1587,7 @@ function entrepot_hierarchie_arbre_etage($numero_etage)
             'label' => (string) ($d['label'] ?? ''),
             'icon' => (string) ($d['icon'] ?? 'fa-cube'),
             'slug' => (string) ($d['slug'] ?? ''),
-            'est_etiquette_qr' => ($etiq_niveau_id > 0 && $did === $etiq_niveau_id) ? 1 : 0,
+            'est_etiquette_qr' => isset($etiq_ids[$did]) ? 1 : 0,
         ];
     }
 
@@ -1591,6 +1597,7 @@ function entrepot_hierarchie_arbre_etage($numero_etage)
         'racines' => $build(0, 0),
         'mode' => 'libre',
         'etiquette_niveau_id' => $etiq_niveau_id,
+        'etiquette_niveau_ids' => array_map('intval', array_keys($etiq_ids)),
     ];
 }
 
