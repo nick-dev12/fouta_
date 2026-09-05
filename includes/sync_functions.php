@@ -1734,6 +1734,19 @@ if (!function_exists('sync_local_to_vps')) {
         $files_only = !empty($options['files_only']);
 
         if (!$files_only) {
+            /* CHAQUE nouvelle ligne doit avoir un sync_uuid pour partir au VPS.
+             * Le code de création des PRODUITS en pose un ; celui des NŒUDS
+             * D'ENTREPÔT (écran Structure : barres, étagères, box…) n'en posait
+             * pas — d'où des ajouts qui ne remontaient jamais. On pose ici les
+             * uuid manquants sur TOUTES les tables synchronisées avant le push :
+             * désormais tout ajout/modification sur foutasvr part au VPS. */
+            if (!$dry_run) {
+                try {
+                    sync_assign_missing_uuids($db, $config);
+                } catch (Throwable $e) {
+                    // non bloquant : le push continue avec ce qui a déjà un uuid
+                }
+            }
             try {
                 $result['push'] = sync_push($db, $config, $dry_run);
             } catch (Throwable $e) {
