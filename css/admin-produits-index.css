@@ -1861,7 +1861,11 @@
 .fpl-cell-stock--manque, .fpl-cell-stock--manque strong { color: #A32D24; }
 
 /* La case « ce qui manque », dans la barre des filtres. */
-.fc-manque { display: flex; align-items: flex-end; }
-.fc-manque__case { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--ink, #16203A); white-space: nowrap; cursor: pointer; }
+/* La case « Seulement ce qui manque » : elle doit pouvoir RÉTRÉCIR et passer à la
+   ligne. En nowrap dans un champ à largeur plancher, elle sortait de sa case et
+   poussait toute la page au-delà de l'écran sur tablette (1024 avec menu, 768, 600)
+   — mesuré le 05/09, seul débordement de page de l'admin. */
+.fc-manque { display: flex; align-items: flex-end; min-width: 0; }
+.fc-manque__case { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--ink, #16203A); white-space: normal; line-height: 1.3; cursor: pointer; }
 .fc-manque__case input { width: 16px; height: 16px; accent-color: var(--navy, #10316F); }
 .fc-manque__note { margin: 10px 0 0; font-size: 13px; color: var(--slate, #5C6A85); }
