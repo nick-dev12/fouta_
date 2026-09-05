@@ -176,6 +176,14 @@ $a_description = $piece && !empty($piece['description'])
 $a_details = $piece && ($modeles !== [] || !empty($piece['reference_oem']) || $a_description);
 
 header('Content-Type: text/html; charset=utf-8');
+/* Jamais mise en cache — ni par le navigateur du client, ni par un cache de
+   pages en façade du serveur (nginx devant Apache sur le VPS) : la page porte
+   des PRIX et suit le catalogue en direct ; un QR scanné doit toujours ouvrir
+   la version du moment. Sans cela, la vitrine redessinée du 05/09 restait
+   servie en ancienne version (X-Cache-Status: HIT) sur les adresses déjà vues. */
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
+header('Expires: 0');
 ?>
 <!doctype html>
 <html lang="fr">
