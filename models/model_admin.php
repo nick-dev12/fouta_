@@ -11,7 +11,7 @@ require_once __DIR__ . '/../conn/conn.php';
  * Rôles autorisés pour les comptes admin (alignés sur ENUM MySQL après migration B2B)
  */
 function admin_roles_valides() {
-    return ['admin', 'gestion_stock', 'gestion_stock_general', 'commercial', 'commercial_general', 'informaticien', 'developpeur', 'comptabilite', 'rh', 'caissier'];
+    return ['admin', 'gestion_stock', 'gestion_stock_general', 'commercial', 'commercial_general', 'informaticien', 'developpeur', 'comptabilite', 'rh', 'caissier', 'photographe'];
 }
 
 /**
@@ -45,6 +45,7 @@ function admin_role_label($role) {
         'comptabilite' => 'Comptabilité',
         'rh' => 'Ressources humaines',
         'caissier' => 'Caissier (caissière)',
+        'photographe' => 'Photographe',
     ];
     $r = (string) $role;
     if ($r === 'utilisateur') {

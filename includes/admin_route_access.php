@@ -121,6 +121,26 @@ if (!function_exists('admin_route_relative_path')) {
     }
 
     /**
+     * Routes autorisées pour le rôle « photographe » : SEULEMENT son espace
+     * photo et les aperçus. Aucune page qui montre prix/stock/fournisseur, ni
+     * la fiche complète, ni le wizard, ni la suppression de pièce.
+     */
+    function admin_route_photographe_allowed($p) {
+        return in_array($p, [
+            'produits/photo-travail.php',        // sa page d'accueil (files d'attente + recherche)
+            'produits/photo-editer.php',         // l'éditeur photo d'une pièce
+            'produits/ajax_photo_enregistrer.php', // enregistre UNIQUEMENT les photos
+            'produits/ajax_recherche_piece.php', // le picker (nom/réf, sans prix)
+            'produits/detourage-lot-apercu.php', // l'aperçu détouré d'une pièce
+            'produits/etiquette-piece-image.php', // l'aperçu de l'étiquette (montre le détourage)
+            'produits/detourage-lot.php',        // « Tout détourer » (ne touche que le cache)
+            'produits/detourage-lot-start.php',
+            'produits/detourage-lot-status.php',
+            'produits/detourage-lot-worker.php',
+        ], true);
+    }
+
+    /**
      * URL de secours (relative à admin/) si la route est interdite
      */
     function admin_role_default_redirect_path($role) {
@@ -147,6 +167,8 @@ if (!function_exists('admin_route_relative_path')) {
                 return 'produits/mon-travail.php';
             case 'gestion_stock_general':
                 return 'dashboard.php';
+            case 'photographe':
+                return 'produits/photo-travail.php';
             default:
                 return 'dashboard.php';
         }
@@ -195,9 +217,14 @@ if (!function_exists('admin_route_relative_path')) {
             return false;
         }
 
-        // Pages communes à tous les comptes connectés
-        if ($p === 'profil.php' || $p === 'logout.php' || $p === 'dashboard.php') {
+        // Pages communes à tous les comptes connectés. Le photographe est
+        // volontairement tenu à l'écart du tableau de bord (chiffres) : il est
+        // renvoyé vers son espace photo.
+        if ($p === 'profil.php' || $p === 'logout.php') {
             return true;
+        }
+        if ($p === 'dashboard.php') {
+            return $r !== 'photographe';
         }
 
         $starts = function ($prefix) use ($p) {
@@ -259,6 +286,9 @@ if (!function_exists('admin_route_relative_path')) {
             case 'gestion_stock_general':
                 return admin_route_gestion_stock_base_allowed($p)
                     || admin_route_gestion_stock_general_extra_allowed($p);
+
+            case 'photographe':
+                return admin_route_photographe_allowed($p);
 
             default:
                 return false;

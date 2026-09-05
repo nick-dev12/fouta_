@@ -386,6 +386,17 @@ include __DIR__ . '/../../includes/pwa_admin_boot.php';
                 <span class="menu-item-icon ico" aria-hidden="true"><?php echo fpl_icone('layers', 16); ?></span>
                 <span class="menu-item-text">Structure de l'entrepôt</span>
             </a>
+            <?php elseif ($admin_role === 'photographe'): ?>
+            <a href="<?php echo $admin_nav_base; ?>produits/photo-travail.php"
+                class="menu-item mi-photo<?php echo $current_page == 'photo-travail.php' || $current_page == 'photo-editer.php' ? ' active' : ''; ?>">
+                <span class="menu-item-icon ico" aria-hidden="true"><?php echo fpl_icone('image', 16); ?></span>
+                <span class="menu-item-text">Espace photo</span>
+            </a>
+            <a href="<?php echo $admin_nav_base; ?>produits/detourage-lot.php"
+                class="menu-item mi-detourage<?php echo $current_page == 'detourage-lot.php' ? ' active' : ''; ?>">
+                <span class="menu-item-icon ico" aria-hidden="true"><?php echo fpl_icone('layers', 16); ?></span>
+                <span class="menu-item-text">Tout détourer</span>
+            </a>
             <?php endif; ?>
             </div>
         </nav>
