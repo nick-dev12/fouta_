@@ -1,6 +1,6 @@
 <?php
 /**
- * /p/{code} — LA VITRINE CLIENT D'UNE PIÈCE (04/09/2026).
+ * /p/{code} — LA VITRINE CLIENT D'UNE PIÈCE (04/09/2026, redessinée le 05/09).
  *
  * La page qu'ouvre le QR de l'étiquette de pièce. Le {code} est le numéro
  * EAN-13 imprimé sous le code-barres (même contenu que le QR — décision de la
@@ -11,6 +11,10 @@
  * stock chiffré, ni emplacement, ni fournisseur, ni prix d'achat/grossiste/
  * entreprise. La requête est une LISTE BLANCHE de colonnes, jamais un SELECT *
  * imprimé. Aucune session n'est ouverte.
+ *
+ * DESSIN DU 05/09 (retour de la direction) : une seule colonne tournée vers le
+ * client — voir la pièce, la reconnaître, connaître le prix, joindre la maison
+ * avec de VRAIS boutons. Ni famille, ni disponibilité, ni phrases marketing.
  */
 
 require_once __DIR__ . '/conn/conn.php';
@@ -157,6 +161,17 @@ if (!$piece) {
     http_response_code(404);
 }
 
+/* Le seul texte du bouton WhatsApp qui change : sans prix, il demande le prix. */
+$wa_libelle = ($piece && $prix <= 0) ? 'Demander le prix sur WhatsApp' : 'WhatsApp';
+
+/* La carte « détails » n'existe que si elle a quelque chose à dire. La règle de
+   la description est inchangée : une description sans la moindre lettre
+   (« 131 900 »…) est une note du staff, pas du texte client — on ne la montre pas. */
+$a_description = $piece && !empty($piece['description'])
+    && trim((string) $piece['description']) !== trim((string) $piece['nom'])
+    && preg_match('/\p{L}/u', (string) $piece['description']);
+$a_details = $piece && ($modeles !== [] || !empty($piece['reference_oem']) || $a_description);
+
 header('Content-Type: text/html; charset=utf-8');
 ?>
 <!doctype html>
@@ -173,255 +188,256 @@ header('Content-Type: text/html; charset=utf-8');
 <meta property="og:image" content="<?= fpl_e($origine . $photos[0]) ?>">
 <?php endif; ?>
 <style>
-/* La langue visuelle de l'étiquette : outremer #10316F (le rendu de l'encre),
-   Anton pour le grand titre, Barlow Condensed pour les libellés. */
-@font-face { font-family: 'Anton'; src: url('/fonts/etiquette70/anton-400.ttf') format('truetype'); font-weight: 400; font-display: swap; }
+/* La boutique qui vous répond — une colonne, lumière chaude, l'outremer de
+   l'étiquette (#10316F) réservé à l'identité et aux appuis. Deux familles,
+   toutes deux servies depuis /fonts/etiquette70 (aucun appel externe) :
+   Barlow 500 pour lire, Barlow Condensed 700 pour montrer. */
+@font-face { font-family: 'Barlow'; src: url('/fonts/etiquette70/barlow-500.ttf') format('truetype'); font-weight: 500; font-display: swap; }
 @font-face { font-family: 'Barlow Condensed'; src: url('/fonts/etiquette70/barlow-condensed-700.ttf') format('truetype'); font-weight: 700; font-display: swap; }
 :root {
-    --navy: #10316F; --navy-deep: #0C2350; --navy-ink: #08193A;
-    --blue: #2957AE; --blue-600: #1D4590; --tint: #EDF1F8; --tint-2: #D8E0EE;
-    --ink: #16203A; --slate: #5C6A85; --line: #DFE4EC; --ground: #F4F6FA;
-    --ok: #12694A; --ok-bg: #E4F2EB; --wa: #1FAF54; --promo: #FF6B35;
-    --cond: 'Barlow Condensed', 'Arial Narrow', sans-serif;
-    --corps: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    --bleu: #10316F; --bleu-nuit: #0B2554; --bleu-voile: #E9EEF7;
+    --encre: #1B2437; --gris: #5A6478; --trait: #E6E2DA; --fond: #F7F5F0; --blanc: #FFFFFF;
+    --wa: #25D366; --promo: #C4381A;
+    --cond: 'Barlow Condensed', 'Arial Narrow', 'Roboto Condensed', sans-serif;
+    --corps: 'Barlow', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    --r: 18px;
 }
 * { box-sizing: border-box; margin: 0; }
-body { background: var(--ground); color: var(--ink); font-family: var(--corps); font-size: 15.5px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
-a { color: var(--blue-600); }
+html { -webkit-text-size-adjust: 100%; }
+body { background: var(--fond); color: var(--encre); font-family: var(--corps); font-weight: 500; font-size: 17px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+a { color: var(--bleu); }
+img { max-width: 100%; }
+a:focus-visible, button:focus-visible { outline: 3px solid var(--bleu); outline-offset: 3px; }
 
-.hero { background: radial-gradient(130% 130% at 50% -10%, #1D4590 0%, var(--navy) 52%, var(--navy-ink) 100%); color: #fff; text-align: center; padding: 34px 20px 86px; }
-.hero img.logo { height: 58px; width: auto; }
-.hero .nom-maison { font-family: var(--cond); font-size: 25px; letter-spacing: 2.5px; margin-top: 10px; }
-.hero .tagline { font-style: italic; font-size: 14.5px; color: #C4D1E9; margin-top: 2px; }
-.hero .accueil { max-width: 480px; margin: 16px auto 0; font-size: 14.5px; color: #DDE6F5; }
+/* ---- la maison, sur une ligne ---- */
+.haut { background: var(--bleu); color: var(--blanc); display: flex; align-items: center; justify-content: center; gap: 14px; padding: 14px 20px; }
+.haut .logo { height: 40px; width: auto; display: block; }
+.haut .nom-maison { font-family: var(--cond); font-size: 21px; letter-spacing: 2.5px; line-height: 1.1; display: block; }
+.haut .devise { display: block; font-size: 14px; color: #C9D5EC; letter-spacing: .3px; margin-top: 1px; }
 
-.wrap { max-width: 640px; margin: -58px auto 0; padding: 0 14px 30px; position: relative; }
-.camion { position: absolute; top: -120px; right: -40px; width: 300px; pointer-events: none; z-index: -1; display: none; }
-@media (min-width: 900px) { .camion { display: block; } }
+/* ---- la colonne ---- */
+.page { max-width: 560px; margin: 0 auto; padding: 14px 14px 36px; display: grid; gap: 14px; }
+.carte { background: var(--blanc); border-radius: var(--r); box-shadow: 0 1px 2px rgba(27, 36, 55, .06), 0 8px 28px rgba(27, 36, 55, .07); }
 
-.card { background: #fff; border-radius: 16px; box-shadow: 0 10px 34px rgba(8, 25, 58, .16); overflow: hidden; }
-.visuel { background: #F8F8F8; padding: 18px; text-align: center; }
-.visuel img { max-width: 100%; max-height: 300px; object-fit: contain; }
-.vignettes { display: flex; gap: 8px; justify-content: center; padding: 0 18px 14px; background: #F8F8F8; flex-wrap: wrap; }
-.vignettes button { border: 2px solid var(--line); border-radius: 8px; background: #fff; padding: 3px; cursor: pointer; }
-.vignettes button.active { border-color: var(--navy); }
-.vignettes img { width: 52px; height: 52px; object-fit: contain; display: block; }
-.sans-photo { padding: 44px 18px; color: var(--slate); background: #F8F8F8; }
+/* ---- voir la pièce ---- */
+.photo-carte { overflow: hidden; }
+.visuel { height: min(86vw, 400px); display: flex; align-items: center; justify-content: center; padding: 16px; background: #FBFAF7; }
+.visuel img { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; }
+.vignettes { display: flex; gap: 10px; padding: 4px 16px 16px; background: #FBFAF7; overflow-x: auto; scrollbar-width: none; }
+.vignettes::-webkit-scrollbar { display: none; }
+.vignettes button { flex: none; width: 60px; height: 60px; padding: 4px; border: 2px solid var(--trait); border-radius: 12px; background: var(--blanc); cursor: pointer; }
+.vignettes button.active { border-color: var(--bleu); }
+.vignettes img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.sans-photo { padding: 54px 20px; text-align: center; color: var(--gris); background: #FBFAF7; font-size: 16px; }
 .sans-photo svg { display: block; margin: 0 auto 10px; }
 
-.corps { padding: 20px 22px 24px; }
-.refbar { display: flex; align-items: center; gap: 10px; background: #ECF2FC; border: 1px solid var(--tint-2); border-radius: 10px; padding: 9px 13px; }
-.refbar .k { font-family: var(--cond); font-size: 12.5px; letter-spacing: 1.2px; color: var(--navy-ink); }
-.refbar .v { font-family: Consolas, SFMono-Regular, monospace; font-weight: 700; font-size: 16.5px; color: var(--navy); letter-spacing: .5px; }
-.code-article { margin-top: 6px; font-size: 12px; color: var(--slate); }
-.code-article code { font-family: Consolas, monospace; letter-spacing: 1px; }
+/* ---- la reconnaître, connaître le prix ---- */
+.identite { padding: 22px 22px 24px; }
+.sur-titre { font-family: var(--cond); font-size: 16px; letter-spacing: 2.5px; text-transform: uppercase; color: var(--bleu); }
+h1.piece { font-family: var(--cond); font-size: 32px; line-height: 1.1; color: var(--encre); margin-top: 6px; font-weight: 700; }
+.wolof { font-size: 20px; line-height: 1.3; color: var(--gris); margin-top: 8px; }
 
-h1.piece { font-family: var(--cond); font-size: 27px; line-height: 1.15; letter-spacing: .4px; color: var(--navy-ink); margin-top: 14px; text-transform: uppercase; }
-.wolof { font-family: 'Anton', var(--cond); font-size: 30px; letter-spacing: 1.5px; color: var(--navy-ink); margin-top: 14px; }
-.wolof + h1.piece { font-size: 19px; color: var(--slate); margin-top: 2px; }
+.prix { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--trait); display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.prix .montant { font-family: var(--cond); font-size: 44px; line-height: 1; color: var(--bleu); }
+.prix .ancien { font-size: 19px; color: var(--gris); text-decoration: line-through; }
+.prix .badge { align-self: center; background: var(--promo); color: var(--blanc); font-family: var(--cond); font-size: 17px; letter-spacing: .5px; border-radius: 8px; padding: 4px 10px; line-height: 1.2; }
+.prix .demande { font-family: var(--cond); font-size: 30px; line-height: 1.1; color: var(--encre); }
 
-.dispo { display: inline-flex; align-items: center; gap: 7px; margin-top: 11px; font-size: 13.5px; font-weight: 600; border-radius: 999px; padding: 4px 12px; }
-.dispo.oui { color: var(--ok); background: var(--ok-bg); }
-.dispo.non { color: var(--slate); background: var(--tint); }
-.dispo .pt { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+/* ---- contacter, venir : le cœur de la page ---- */
+.contact { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.bouton { display: flex; align-items: center; justify-content: center; gap: 12px; min-height: 60px; padding: 12px 16px; border-radius: 16px; font-family: var(--cond); font-size: 22px; letter-spacing: .4px; text-decoration: none; line-height: 1.1; text-align: center; -webkit-tap-highlight-color: transparent; }
+.bouton svg { flex: none; }
+.bouton:active { transform: translateY(1px); }
+.b-wa { grid-column: 1 / -1; background: var(--wa); color: var(--blanc); box-shadow: 0 6px 18px rgba(37, 211, 102, .30); }
+.b-tel { background: var(--bleu); color: var(--blanc); }
+.b-maps { background: var(--blanc); color: var(--bleu); border: 2px solid var(--bleu); }
 
-dl.details { margin-top: 16px; display: grid; gap: 9px; }
-dl.details > div { display: flex; gap: 12px; }
-dl.details dt { font-family: var(--cond); font-size: 13px; letter-spacing: 1px; color: var(--slate); min-width: 128px; text-transform: uppercase; padding-top: 2px; }
-dl.details dd { font-weight: 600; }
+/* ---- montrer au comptoir ---- */
+.comptoir { padding: 18px 22px 20px; }
+.comptoir .titre { font-family: var(--cond); font-size: 14px; letter-spacing: 2px; text-transform: uppercase; color: var(--gris); }
+.comptoir .ref { font-family: var(--cond); font-size: 24px; line-height: 1.1; color: var(--bleu); letter-spacing: .8px; margin-top: 4px; }
+.comptoir .barre { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--trait); }
+.comptoir .ean { font-family: var(--cond); font-size: 18px; line-height: 1.1; letter-spacing: 1.5px; color: var(--encre); margin-top: 4px; }
 
-.desc { margin-top: 16px; background: #F7F9FC; border-left: 3px solid var(--blue); border-radius: 0 8px 8px 0; padding: 11px 14px; font-size: 14.5px; }
+/* ---- les détails utiles ---- */
+.details { padding: 8px 22px 10px; }
+.details .rang { padding: 14px 0; border-bottom: 1px solid var(--trait); }
+.details .rang:last-child { border-bottom: 0; }
+.details .k { font-family: var(--cond); font-size: 14px; letter-spacing: 2px; text-transform: uppercase; color: var(--gris); }
+.details .v { font-size: 18px; line-height: 1.5; margin-top: 2px; overflow-wrap: anywhere; }
+.details .v.texte { font-size: 17px; color: #2A3448; }
 
-.prix-bloc { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 16px; display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
-.prix-bloc .montant { font-family: var(--cond); font-size: 30px; color: var(--navy); }
-.prix-bloc .ancien { color: var(--slate); text-decoration: line-through; }
-.prix-bloc .badge-promo { background: var(--promo); color: #fff; font-weight: 700; font-size: 13px; border-radius: 6px; padding: 3px 8px; }
-.prix-demande { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-.prix-demande .txt { font-family: var(--cond); font-size: 19px; color: var(--navy-ink); }
+/* ---- introuvable, mais accueilli ---- */
+.introuvable { padding: 30px 22px; text-align: center; }
+.introuvable h1 { font-family: var(--cond); font-size: 30px; line-height: 1.1; color: var(--encre); }
+.introuvable p { margin-top: 10px; color: var(--gris); font-size: 17px; }
 
-.engagements { margin-top: 22px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-.engagements .item { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 13px 10px; text-align: center; font-size: 12.5px; color: var(--ink); font-weight: 600; line-height: 1.35; }
-.engagements svg { display: block; margin: 0 auto 7px; }
-@media (max-width: 430px) { .engagements { grid-template-columns: 1fr; } .engagements .item { display: flex; align-items: center; gap: 10px; text-align: left; } .engagements svg { margin: 0; flex: none; } }
+/* ---- le geste de la maison ---- */
+.slogan { display: block; width: 68%; max-width: 300px; margin: 14px auto 0; }
 
-.slogan { display: block; max-width: 320px; width: 72%; margin: 26px auto 4px; }
+.liens { display: flex; justify-content: center; flex-wrap: wrap; gap: 4px 28px; font-size: 16px; }
+.liens a { display: inline-flex; align-items: center; min-height: 44px; color: var(--bleu); text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 1.5px; }
+.reseaux { display: flex; justify-content: center; gap: 8px; }
+.reseaux a { display: inline-flex; align-items: center; justify-content: center; width: 46px; height: 46px; border-radius: 50%; color: var(--gris); }
+.reseaux a:hover { background: var(--bleu-voile); color: var(--bleu); }
 
-.contact { margin-top: 20px; background: #fff; border-radius: 16px; box-shadow: 0 6px 22px rgba(8, 25, 58, .10); padding: 20px 22px; }
-.contact h2 { font-family: var(--cond); font-size: 21px; letter-spacing: .5px; color: var(--navy-ink); }
-.contact .sous { color: var(--slate); font-size: 13.5px; margin-top: 2px; }
-.actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
-.actions a { display: flex; align-items: center; justify-content: center; gap: 9px; border-radius: 11px; padding: 12px 10px; font-weight: 700; font-size: 14.5px; text-decoration: none; }
-.actions svg { flex: none; }
-.a-wa { background: var(--wa); color: #fff; grid-column: 1 / -1; }
-.a-tel { background: var(--navy); color: #fff; }
-.a-maps { background: var(--tint); color: var(--navy-ink); }
-.a-cat { background: var(--tint); color: var(--navy-ink); }
-.a-vcf { background: #fff; color: var(--navy-ink); border: 1.5px solid var(--tint-2); }
-.reseaux { display: flex; gap: 14px; justify-content: center; margin-top: 16px; }
-.reseaux a { color: var(--slate); display: inline-flex; }
+/* ---- pied ---- */
+.pied { background: var(--bleu-nuit); color: #C9D5EC; text-align: center; padding: 28px 20px 34px; font-size: 15px; line-height: 1.75; }
+.pied .maison { font-family: var(--cond); font-size: 20px; letter-spacing: 2px; color: var(--blanc); }
+.pied .devise { margin-bottom: 8px; }
+.pied a { color: var(--blanc); }
+.pied .legal { margin-top: 10px; font-size: 13px; color: #8FA3C8; }
 
-.pied { background: var(--navy-ink); color: #C4D1E9; text-align: center; padding: 26px 20px 30px; margin-top: 28px; font-size: 13px; line-height: 1.7; }
-.pied .maison { font-family: var(--cond); font-size: 17px; letter-spacing: 1.5px; color: #fff; }
-.pied .tagline { font-style: italic; }
-.pied a { color: #fff; }
-.pied .legal { margin-top: 8px; font-size: 11.5px; color: #8B9EC1; }
+@media (min-width: 640px) {
+    .page { padding: 24px 16px 44px; gap: 16px; }
+    .haut { padding: 18px 20px; }
+    .haut .logo { height: 48px; }
+    .visuel { height: 420px; }
+    h1.piece { font-size: 36px; }
+    .contact { grid-template-columns: 1.4fr 1fr 1fr; }
+    .b-wa { grid-column: auto; }
+    /* Libellé long (« Demander le prix sur WhatsApp ») : WhatsApp garde toute la
+       largeur, Appeler et Itinéraire se partagent la ligne du dessous. */
+    .contact.longue { grid-template-columns: 1fr 1fr; }
+    .contact.longue .b-wa { grid-column: 1 / -1; }
+}
 </style>
 </head>
 <body>
 
-<header class="hero">
-    <img class="logo" src="/image/logo-fpl-blanc.png" alt="FPL" onerror="this.style.display='none'">
-    <div class="nom-maison">FOUTA POIDS LOURDS</div>
-    <div class="tagline">The Solution</div>
-    <?php if ($piece): ?>
-    <p class="accueil">Merci de votre confiance ! Vous venez de scanner une pièce sélectionnée et contrôlée par nos équipes.</p>
-    <?php else: ?>
-    <p class="accueil">Cette référence ne correspond à aucune pièce de notre catalogue. Notre équipe reste à votre disposition.</p>
-    <?php endif; ?>
+<header class="haut">
+    <img class="logo" src="/image/logo-fpl-blanc.png" alt="FPL">
+    <div>
+        <span class="nom-maison">FOUTA POIDS LOURDS</span>
+        <span class="devise">The Solution</span>
+    </div>
 </header>
 
-<main class="wrap">
-    <img class="camion" src="/image/vitrine/camion-filigrane.png" alt="">
-
+<main class="page">
     <?php if ($piece): ?>
-    <article class="card">
+
+    <section class="carte photo-carte">
         <?php if ($photos !== []): ?>
         <div class="visuel"><img id="photo-principale" src="<?= fpl_e($photos[0]) ?>" alt="<?= fpl_e($piece['nom']) ?>"></div>
         <?php if (count($photos) > 1): ?>
         <div class="vignettes">
             <?php foreach ($photos as $i => $ph): ?>
-            <button type="button" class="<?= $i === 0 ? 'active' : '' ?>" data-src="<?= fpl_e($ph) ?>"><img src="<?= fpl_e($ph) ?>" alt=""></button>
+            <button type="button" class="<?= $i === 0 ? 'active' : '' ?>" data-src="<?= fpl_e($ph) ?>" aria-label="Photo <?= $i + 1 ?>"><img src="<?= fpl_e($ph) ?>" alt=""></button>
             <?php endforeach; ?>
         </div>
         <?php endif; ?>
         <?php else: ?>
         <div class="sans-photo">
-            <svg width="54" height="54" viewBox="0 0 24 24" fill="none" stroke="#8B9EC1" stroke-width="1.6"><path d="M14.7 6.3a5 5 0 1 0-6.9 6.9L3 18v3h3l4.8-4.8a5 5 0 0 0 6.9-6.9L14 12l-2-2 3.7-3.7z"/></svg>
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#9AA6BC" stroke-width="1.6" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="12" cy="12" r="3.2"/><path d="M8 5l1-2h6l1 2"/></svg>
             Photo en cours de préparation
         </div>
         <?php endif; ?>
+    </section>
 
-        <div class="corps">
-            <div class="refbar"><span class="k">RÉFÉRENCE FPL</span><span class="v"><?= fpl_e($ref_aeree) ?></span></div>
-            <div class="code-article">Code article (identique au code-barres de l'étiquette) : <code><?= fpl_e($ean13) ?></code></div>
+    <section class="carte identite">
+        <?php if (!empty($piece['marque_nom'])): ?>
+        <div class="sur-titre"><?= fpl_e($piece['marque_nom']) ?></div>
+        <?php endif; ?>
+        <h1 class="piece"><?= fpl_e($piece['nom']) ?></h1>
+        <?php if (!empty($piece['nom_wolof'])): ?>
+        <div class="wolof" lang="wo"><?= fpl_e($piece['nom_wolof']) ?></div>
+        <?php endif; ?>
 
-            <?php if (!empty($piece['nom_wolof'])): ?>
-            <div class="wolof"><?= fpl_e($piece['nom_wolof']) ?></div>
-            <?php endif; ?>
-            <h1 class="piece"><?= fpl_e($piece['nom']) ?></h1>
-
-            <?php if ($dispo): ?>
-            <span class="dispo oui"><span class="pt"></span>Disponible en magasin</span>
-            <?php else: ?>
-            <span class="dispo non"><span class="pt"></span>Nous consulter</span>
-            <?php endif; ?>
-
-            <dl class="details">
-                <?php if (!empty($piece['marque_nom'])): ?>
-                <div><dt>Marque</dt><dd><?= fpl_e($piece['marque_nom']) ?></dd></div>
-                <?php endif; ?>
-                <?php if ($modeles !== []): ?>
-                <div><dt>Compatible avec</dt><dd><?= fpl_e(implode(', ', $modeles)) ?></dd></div>
-                <?php endif; ?>
-                <?php if (!empty($piece['reference_oem'])): ?>
-                <div><dt>Référence OEM</dt><dd><?= fpl_e($piece['reference_oem']) ?></dd></div>
-                <?php endif; ?>
-                <?php if (!empty($piece['categorie_nom'])): ?>
-                <div><dt>Famille</dt><dd><?= fpl_e($piece['categorie_nom'] . (empty($piece['sous_categorie_nom']) ? '' : ' › ' . $piece['sous_categorie_nom'])) ?></dd></div>
-                <?php endif; ?>
-            </dl>
-
-            <?php /* Une description sans la moindre lettre (« 131 900 »…) est une
-                     note interne du staff, pas du texte client : 130 pièces en
-                     portent — on ne la montre pas. */ ?>
-            <?php if (!empty($piece['description'])
-                && trim((string) $piece['description']) !== trim((string) $piece['nom'])
-                && preg_match('/\p{L}/u', (string) $piece['description'])): ?>
-            <div class="desc"><?= fpl_e($piece['description']) ?></div>
-            <?php endif; ?>
-
+        <div class="prix">
             <?php if ($prix > 0 && $promo > 0 && $promo < $prix): ?>
-            <div class="prix-bloc">
-                <span class="montant"><?= fpl_e($fcfa($promo)) ?></span>
-                <span class="ancien"><?= fpl_e($fcfa($prix)) ?></span>
-                <span class="badge-promo">−<?= (int) round(100 * ($prix - $promo) / $prix) ?> %</span>
-            </div>
+            <span class="montant"><?= fpl_e($fcfa($promo)) ?></span>
+            <span class="ancien"><?= fpl_e($fcfa($prix)) ?></span>
+            <span class="badge">−<?= (int) round(100 * ($prix - $promo) / $prix) ?> %</span>
             <?php elseif ($prix > 0): ?>
-            <div class="prix-bloc"><span class="montant"><?= fpl_e($fcfa($prix)) ?></span></div>
+            <span class="montant"><?= fpl_e($fcfa($prix)) ?></span>
             <?php else: ?>
-            <div class="prix-demande">
-                <span class="txt">Prix sur demande</span>
-                <?php if ($wa_url !== ''): ?><a class="a-wa" style="display:inline-flex;align-items:center;gap:8px;border-radius:10px;padding:9px 14px;color:#fff;text-decoration:none;font-weight:700;font-size:13.5px;" href="<?= fpl_e($wa_url) ?>">Demander sur WhatsApp</a><?php endif; ?>
-            </div>
+            <span class="demande">Prix sur demande</span>
             <?php endif; ?>
-        </div>
-    </article>
-
-    <section class="engagements">
-        <div class="item">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#10316F" stroke-width="1.9"><path d="M12 2l8 3.5v5.2c0 5-3.4 9.4-8 10.8-4.6-1.4-8-5.8-8-10.8V5.5L12 2z"/><path d="M8.5 12l2.4 2.4 4.6-4.8"/></svg>
-            Pièce contrôlée par nos équipes
-        </div>
-        <div class="item">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#10316F" stroke-width="1.9"><circle cx="12" cy="8" r="3.4"/><path d="M4.5 20c.8-3.6 3.9-5.6 7.5-5.6s6.7 2 7.5 5.6"/></svg>
-            Conseil d'experts poids lourds
-        </div>
-        <div class="item">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#10316F" stroke-width="1.9"><path d="M3 7h11v10H3zM14 10h4l3 3v4h-7z"/><circle cx="7" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/></svg>
-            Un large choix à Dakar
         </div>
     </section>
+
+    <?php else: ?>
+
+    <section class="carte introuvable">
+        <h1>Pièce introuvable</h1>
+        <p>Cette référence ne correspond à aucune pièce de notre catalogue. Notre équipe reste à votre disposition.</p>
+    </section>
+
+    <?php endif; ?>
+
+    <nav class="contact<?= $wa_libelle === 'WhatsApp' ? '' : ' longue' ?>" aria-label="Nous joindre">
+        <?php if ($wa_url !== ''): ?>
+        <a class="bouton b-wa" href="<?= fpl_e($wa_url) ?>">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
+            <?= fpl_e($wa_libelle) ?>
+        </a>
+        <?php endif; ?>
+        <a class="bouton b-tel" href="<?= fpl_e($coords['telephone_href']) ?>">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
+            Appeler
+        </a>
+        <a class="bouton b-maps" href="<?= fpl_e($maps_url) ?>" target="_blank" rel="noopener">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"/></svg>
+            Itinéraire
+        </a>
+    </nav>
+
+    <?php if ($piece): ?>
+
+    <section class="carte comptoir">
+        <div class="titre">Référence FPL</div>
+        <div class="ref"><?= fpl_e($ref_aeree) ?></div>
+        <div class="barre">
+            <div class="titre">Code-barres</div>
+            <div class="ean"><?= fpl_e($ean13) ?></div>
+        </div>
+    </section>
+
+    <?php if ($a_details): ?>
+    <section class="carte details">
+        <?php if ($modeles !== []): ?>
+        <div class="rang"><div class="k">Compatible avec</div><div class="v"><?= fpl_e(implode(', ', $modeles)) ?></div></div>
+        <?php endif; ?>
+        <?php if (!empty($piece['reference_oem'])): ?>
+        <div class="rang"><div class="k">Référence OEM</div><div class="v"><?= fpl_e($piece['reference_oem']) ?></div></div>
+        <?php endif; ?>
+        <?php if ($a_description): ?>
+        <div class="rang"><div class="k">Description</div><div class="v texte"><?= fpl_e($piece['description']) ?></div></div>
+        <?php endif; ?>
+    </section>
+    <?php endif; ?>
+
     <?php endif; ?>
 
     <img class="slogan" src="/image/vitrine/slogan-manuscrit.png" alt="Conduire avec assurance — ndakh jombtukay you worr">
 
-    <section class="contact">
-        <h2>Une question sur cette pièce ?</h2>
-        <div class="sous">Notre équipe vous répond — <?= fpl_e($coords['nom']) ?>, <?= fpl_e($coords['tagline']) ?>.</div>
-        <div class="actions">
-            <?php if ($wa_url !== ''): ?>
-            <a class="a-wa" href="<?= fpl_e($wa_url) ?>">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.4 14.1c-.2.7-1.3 1.3-1.9 1.4-.5.1-1.1.2-3.4-.7-2.8-1.2-4.7-4-4.8-4.2-.1-.2-1.2-1.6-1.2-3s.7-2.1 1-2.4c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.9 2.1c.1.2.1.4 0 .6l-.4.6-.5.5c-.2.2-.3.4-.1.7.2.3.8 1.4 1.8 2.2 1.3 1.1 2.3 1.5 2.7 1.6.3.1.5.1.7-.1l1-1.2c.2-.3.4-.2.7-.1l2.1 1c.3.1.5.2.6.3 0 .2 0 .7-.2 1.4z"/></svg>
-                Écrire sur WhatsApp
-            </a>
-            <?php endif; ?>
-            <a class="a-tel" href="<?= fpl_e($coords['telephone_href']) ?>">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 4h4l2 5-2.5 1.5a12 12 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg>
-                Appeler
-            </a>
-            <a class="a-maps" href="<?= fpl_e($maps_url) ?>" target="_blank" rel="noopener">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-6-7-11a7 7 0 0 1 14 0c0 5-7 11-7 11z"/><circle cx="12" cy="10" r="2.6"/></svg>
-                Itinéraire
-            </a>
-            <a class="a-cat" href="/produits.php">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
-                Catalogue
-            </a>
-            <a class="a-vcf" href="?vcard=1" style="grid-column: 1 / -1;">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M6.5 16c.5-1.5 1.5-2.2 2.5-2.2s2 .7 2.5 2.2M14 9.5h4M14 13h4"/></svg>
-                Enregistrer notre contact
-            </a>
-        </div>
-        <div class="reseaux">
-            <?php if (!empty($social['facebook'])): ?>
-            <a href="<?= fpl_e($social['facebook']) ?>" target="_blank" rel="noopener" aria-label="Facebook"><svg width="21" height="21" viewBox="0 0 24 24" fill="currentColor"><path d="M13.5 21v-7h2.4l.4-2.9h-2.8V9.2c0-.8.3-1.4 1.5-1.4h1.4V5.2c-.2 0-1.1-.1-2.1-.1-2.1 0-3.6 1.3-3.6 3.7v2.3H8.3V14h2.4v7h2.8z"/></svg></a>
-            <?php endif; ?>
-            <?php if (!empty($social['linkedin'])): ?>
-            <a href="<?= fpl_e($social['linkedin']) ?>" target="_blank" rel="noopener" aria-label="LinkedIn"><svg width="21" height="21" viewBox="0 0 24 24" fill="currentColor"><path d="M6.5 8.5H3.8V21h2.7V8.5zM5.1 3.5a1.6 1.6 0 1 0 0 3.2 1.6 1.6 0 0 0 0-3.2zM21 13.4c0-3-1.6-4.4-3.8-4.4-1.7 0-2.5 1-2.9 1.6V8.5h-2.7V21h2.7v-6.8c0-1.2.8-2 1.9-2s1.8.8 1.8 2V21H21v-7.6z"/></svg></a>
-            <?php endif; ?>
-            <?php if (!empty($social['tiktok'])): ?>
-            <a href="<?= fpl_e($social['tiktok']) ?>" target="_blank" rel="noopener" aria-label="TikTok"><svg width="21" height="21" viewBox="0 0 24 24" fill="currentColor"><path d="M16.6 3c.4 2.1 1.8 3.6 3.9 3.9v2.8c-1.5 0-2.8-.5-3.9-1.3v6.1c0 3.4-2.4 5.5-5.4 5.5S5.8 17.9 5.8 15c0-3.1 2.5-5.2 5.6-5V13c-1.4-.4-2.8.4-2.8 2 0 1.4 1 2.3 2.3 2.3 1.4 0 2.4-1 2.4-2.7V3h3.3z"/></svg></a>
-            <?php endif; ?>
-        </div>
-    </section>
+    <nav class="liens" aria-label="Aller plus loin">
+        <a href="/produits.php">Voir le catalogue</a>
+        <a href="?vcard=1">Enregistrer notre contact</a>
+    </nav>
+
+    <?php if (!empty($social['facebook']) || !empty($social['linkedin']) || !empty($social['tiktok'])): ?>
+    <div class="reseaux">
+        <?php if (!empty($social['facebook'])): ?>
+        <a href="<?= fpl_e($social['facebook']) ?>" target="_blank" rel="noopener" aria-label="Facebook"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M13.5 21v-7h2.4l.4-2.9h-2.8V9.2c0-.8.3-1.4 1.5-1.4h1.4V5.2c-.2 0-1.1-.1-2.1-.1-2.1 0-3.6 1.3-3.6 3.7v2.3H8.3V14h2.4v7h2.8z"/></svg></a>
+        <?php endif; ?>
+        <?php if (!empty($social['linkedin'])): ?>
+        <a href="<?= fpl_e($social['linkedin']) ?>" target="_blank" rel="noopener" aria-label="LinkedIn"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M6.5 8.5H3.8V21h2.7V8.5zM5.1 3.5a1.6 1.6 0 1 0 0 3.2 1.6 1.6 0 0 0 0-3.2zM21 13.4c0-3-1.6-4.4-3.8-4.4-1.7 0-2.5 1-2.9 1.6V8.5h-2.7V21h2.7v-6.8c0-1.2.8-2 1.9-2s1.8.8 1.8 2V21H21v-7.6z"/></svg></a>
+        <?php endif; ?>
+        <?php if (!empty($social['tiktok'])): ?>
+        <a href="<?= fpl_e($social['tiktok']) ?>" target="_blank" rel="noopener" aria-label="TikTok"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M16.6 3c.4 2.1 1.8 3.6 3.9 3.9v2.8c-1.5 0-2.8-.5-3.9-1.3v6.1c0 3.4-2.4 5.5-5.4 5.5S5.8 17.9 5.8 15c0-3.1 2.5-5.2 5.6-5V13c-1.4-.4-2.8.4-2.8 2 0 1.4 1 2.3 2.3 2.3 1.4 0 2.4-1 2.4-2.7V3h3.3z"/></svg></a>
+        <?php endif; ?>
+    </div>
+    <?php endif; ?>
 </main>
 
 <footer class="pied">
     <div class="maison"><?= fpl_e($coords['nom']) ?></div>
-    <div class="tagline"><?= fpl_e($coords['tagline']) ?></div>
+    <div class="devise"><?= fpl_e($coords['tagline']) ?></div>
     <div><?= fpl_e($coords['adresse']) ?></div>
-    <div><?= fpl_e($coords['telephone']) ?><?= empty($coords['telephone2']) ? '' : fpl_e(' · ' . $coords['telephone2']) ?></div>
-    <div><a href="<?= fpl_e($coords['site']) ?>"><?= fpl_e(preg_replace('#^https?://#', '', $coords['site'])) ?></a> · <a href="mailto:<?= fpl_e($coords['email']) ?>"><?= fpl_e($coords['email']) ?></a></div>
+    <div><a href="<?= fpl_e($coords['telephone_href']) ?>"><?= fpl_e($coords['telephone']) ?></a><?= empty($coords['telephone2']) ? '' : fpl_e(' · ' . $coords['telephone2']) ?></div>
+    <div><a href="<?= fpl_e($coords['site']) ?>"><?= fpl_e(preg_replace('#^https?://#', '', $coords['site'])) ?></a></div>
+    <div><a href="mailto:<?= fpl_e($coords['email']) ?>"><?= fpl_e($coords['email']) ?></a></div>
     <div class="legal">RC <?= fpl_e($coords['rc']) ?> · NINEA <?= fpl_e($coords['ninea']) ?></div>
 </footer>
 
