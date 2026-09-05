@@ -268,7 +268,7 @@ h1.piece { font-family: var(--cond); font-size: 32px; line-height: 1.1; color: v
 .details .rang:last-child { border-bottom: 0; }
 .details .k { font-family: var(--cond); font-size: 14px; letter-spacing: 2px; text-transform: uppercase; color: var(--gris); }
 .details .v { font-size: 18px; line-height: 1.5; margin-top: 2px; overflow-wrap: anywhere; }
-.details .v.texte { font-size: 17px; color: #2A3448; }
+.details .v.texte { font-size: 17px; color: #2A3448; white-space: pre-line; }
 
 /* ---- introuvable, mais accueilli ---- */
 .introuvable { padding: 30px 22px; text-align: center; }
