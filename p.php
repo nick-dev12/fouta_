@@ -169,6 +169,9 @@ $wa_libelle = ($piece && $prix <= 0) ? 'Demander le prix sur WhatsApp' : 'WhatsA
    (« 131 900 »…) est une note du staff, pas du texte client — on ne la montre pas. */
 $a_description = $piece && !empty($piece['description'])
     && trim((string) $piece['description']) !== trim((string) $piece['nom'])
+    /* …ni une description qui ne fait que répéter la marque (« MERCEDES BENZ ») :
+       la marque est déjà en sur-titre, la redire n'apporte rien au client. */
+    && strcasecmp(trim((string) $piece['description']), trim((string) ($piece['marque_nom'] ?? ''))) !== 0
     && preg_match('/\p{L}/u', (string) $piece['description']);
 $a_details = $piece && ($modeles !== [] || !empty($piece['reference_oem']) || $a_description);
 
@@ -189,7 +192,7 @@ header('Content-Type: text/html; charset=utf-8');
 <?php endif; ?>
 <style>
 /* La boutique qui vous répond — une colonne, lumière chaude, l'outremer de
-   l'étiquette (#10316F) réservé à l'identité et aux appuis. Deux familles,
+   l'étiquette (#10316F) réservé à l'identité et aux appuis. Deux polices,
    toutes deux servies depuis /fonts/etiquette70 (aucun appel externe) :
    Barlow 500 pour lire, Barlow Condensed 700 pour montrer. */
 @font-face { font-family: 'Barlow'; src: url('/fonts/etiquette70/barlow-500.ttf') format('truetype'); font-weight: 500; font-display: swap; }
