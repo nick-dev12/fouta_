@@ -1247,11 +1247,12 @@ function entrepot_noeud_ajouter($etage_id, $niveau_id, $parent_id, $nom, $numero
     if ($idx === 0) {
         $parent_id = 0;
     } else {
-        // Les contenants-feuilles à QR (barre, box…) sont des FRÈRES : ils
-        // partagent le même parent (l'étagère). Un contenant saute donc ses
-        // frères contenants pour trouver son niveau parent. Réciproquement, une
-        // position (non-contenant après les contenants) accepte N'IMPORTE quel
-        // contenant frère (barre OU box) comme parent.
+        // Modèle propre : la BARRE (à QR) est enfant de l'étagère ; la BOX
+        // (sans QR) est enfant de la barre. Le parent d'un niveau est donc son
+        // prédécesseur dans la chaîne. La logique générale ci-dessous reste
+        // valable : un niveau à QR saute d'éventuels frères à QR (aucun
+        // aujourd'hui), et un niveau non-QR (la box) prend simplement le niveau
+        // précédent (la barre) comme parent.
         $cur_container = (int) ($defs[$idx]['est_etiquette_qr'] ?? 0) === 1;
         $j = $idx - 1;
         if ($cur_container) {

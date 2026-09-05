@@ -230,9 +230,10 @@ if ($courant !== null) {
     }
 }
 
-// Le(s) niveau(x) des ENFANTS listés. Quand le niveau suivant est un
-// contenant-feuille à QR (barre), ses FRÈRES contenants (box…) sont proposés
-// AU MÊME endroit : sous une étagère, on peut créer une barre OU une box.
+// Le(s) niveau(x) des ENFANTS listés. Modèle propre : sous une étagère on crée
+// des BARRES (seul niveau à QR) ; sous une barre on crée des BOX (sans QR). Le
+// balayage des « frères contenants à QR » ne retient donc que la barre (la box
+// n'étant plus à QR), et la box apparaît naturellement comme enfant de la barre.
 $def_enfants = null;   // le premier (compat des libellés)
 $defs_enfants = [];    // tous les niveaux enfants proposés à ce cran
 if ($courant !== null) {

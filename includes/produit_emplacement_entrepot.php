@@ -1010,12 +1010,16 @@ function produit_emplacement_render_form_fields_referentiel(array $values) {
             $ftype = (string) ($f['type'] ?? '');
             $champ_id = (int) ($f['champ_id'] ?? 0);
             $empty = '— Choisir ' . ($label !== '' ? $label : '') . ' —';
+            $fslug = (string) ($f['niveau'] ?? '');
             if ($ftype === 'positions') {
                 $empty = '— Choisissez d’abord une barre —';
             } elseif ($ftype === 'barres') {
                 $empty = '— Choisir un rayon ou une barre —';
             } elseif ($ftype === 'etage') {
                 $empty = '— Choisir ' . ($label !== '' ? $label : 'Niveau') . ' —';
+            } elseif ($fslug === 'box') {
+                // La box est FACULTATIVE : une pièce peut rester directement sur la barre.
+                $empty = '— Aucune box (pièce directement sur la barre) —';
             } elseif ($ftype === 'noeud') {
                 $empty = '— Choisir ' . ($label !== '' ? $label : '') . ' —';
             }

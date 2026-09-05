@@ -1782,13 +1782,13 @@ function produit_emplacement_cascade_fields_config() {
             $feuille_id = (int) ($def['id'] ?? 0);
             break;
         }
-        // Les contenants-feuilles à QR (barre, box…) sont des ALTERNATIVES au
-        // même cran, pas des niveaux successifs : la cascade linéaire ne sait
-        // pas encore présenter « barre OU box ». En attendant ce chantier, on
-        // ne garde dans la cascade de rangement que le PREMIER contenant (la
-        // barre) — placer une pièce reste EXACTEMENT comme avant (zéro
-        // régression), et un entrepot_noeud_id de box posté directement est de
-        // toute façon accepté par produit_emplacement_from_source_referentiel.
+        // Modèle propre (05/09/2026) : la BARRE est le seul niveau à QR ; la
+        // BOX est un contenant SANS QR, enfant direct de la barre. La cascade
+        // est donc linéaire : … → Barre → Box, et la box (feuille) est
+        // facultative (une pièce peut rester directement sur la barre — le
+        // résolveur prend le nœud le plus profond POSTÉ). Ce garde-fou ne
+        // saute que d'ÉVENTUELS seconds contenants à QR (aucun aujourd'hui) ;
+        // la box, non-QR, n'est jamais sautée.
         $conteneur_deja = false;
         foreach ($defs as $def) {
             $id = (int) ($def['id'] ?? 0);
