@@ -382,6 +382,13 @@ if (!function_exists('sync_resolve_fk_value')) {
 
 if (!function_exists('sync_store_id_map')) {
     function sync_store_id_map(PDO $db, $table, $sync_uuid, $local_id) {
+        // Cache uuid → id local. Auto-réparant : si cet id local est encore
+        // associé à un AUTRE uuid (entrée périmée), on la retire d'abord —
+        // sinon INSERT … ON DUPLICATE KEY se heurte à idx_sync_map_local.
+        $purge = $db->prepare(
+            'DELETE FROM sync_id_map WHERE table_name = ? AND local_id = ? AND sync_uuid <> ?'
+        );
+        $purge->execute([$table, (int) $local_id, $sync_uuid]);
         $stmt = $db->prepare(
             'INSERT INTO sync_id_map (table_name, sync_uuid, local_id) VALUES (?, ?, ?)
              ON DUPLICATE KEY UPDATE local_id = VALUES(local_id)'
@@ -640,12 +647,15 @@ if (!function_exists('sync_apply_record')) {
                 $stmt->execute([$existing_pk]);
                 $existing_row = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
             }
-            if (!$existing_row) {
-                $original_data = is_array($item['data'] ?? null) ? $item['data'] : [];
-                if ($original_data) {
-                    $existing_row = sync_find_local_by_primary_key($db, $table, $original_data);
-                }
-            }
+            // JAMAIS de fusion par la CLÉ PRIMAIRE de la source (05/09/2026).
+            // Depuis que foutasvr est la référence (02/09), les deux nœuds
+            // génèrent leurs id indépendamment : l'id 851 de foutasvr n'a
+            // AUCUN rapport avec la ligne 851 du VPS. Fusionner par id
+            // ÉCRASAIT une ligne étrangère (nœud d'entrepôt perdu, niveau
+            // changé, uuid remplacé → collision idx_sync_map_local). Un
+            // enregistrement inconnu par uuid ET par clé métier est donc
+            // INSÉRÉ (les FK sont résolues par uuid, les id n'ont pas à
+            // coïncider).
             if ($existing_row) {
                 $local = $existing_row;
                 $merged_by_unique = true;
@@ -763,15 +773,16 @@ if (!function_exists('sync_apply_record')) {
         } catch (PDOException $e) {
             $db->exec('SET @sync_applying = 0');
             if (stripos($e->getMessage(), 'Duplicate') !== false) {
-                $original_data = is_array($item['data'] ?? null) ? $item['data'] : $insert_data;
-                $existing_row = sync_find_local_by_primary_key($db, $table, $original_data);
-                if (!$existing_row) {
-                    $existing_pk = sync_find_local_by_unique_keys($db, $table, $insert_data, $pk_col);
-                    if ($existing_pk !== null) {
-                        $stmt = $db->prepare("SELECT * FROM `$table` WHERE `$pk_col` = ? LIMIT 1");
-                        $stmt->execute([$existing_pk]);
-                        $existing_row = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
-                    }
+                // Un doublon à l'INSERT = collision sur une clé MÉTIER unique
+                // (même étage/niveau/parent/numéro…) : on fusionne UNIQUEMENT
+                // par cette clé — JAMAIS par l'id de la source, qui désigne
+                // une ligne étrangère sur ce nœud (voir sync_apply_record).
+                $existing_row = null;
+                $existing_pk = sync_find_local_by_unique_keys($db, $table, $insert_data, $pk_col);
+                if ($existing_pk !== null) {
+                    $stmt = $db->prepare("SELECT * FROM `$table` WHERE `$pk_col` = ? LIMIT 1");
+                    $stmt->execute([$existing_pk]);
+                    $existing_row = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
                 }
                 if ($existing_row) {
                     list($pk_where, $pk_params) = sync_build_pk_where($db, $table, $existing_row);
