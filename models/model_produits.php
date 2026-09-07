@@ -2786,6 +2786,13 @@ function search_produits_en_stock_commande_manuelle($recherche = '', $limit = 30
         if (produits_has_column('prix_achat')) {
             $sql .= ', p.prix_achat';
         }
+        /* LE PRIX ENTREPRISE VOYAGE AVEC LA PIÈCE (07/09) : la colonne « Prix
+         * Entreprise » d'un devis ou d'un BL restait vide — le prix existait
+         * bien sur la fiche, mais la recherche qui alimente le tableau ne le
+         * rapportait pas. Constat de la direction sur un BL neuf. */
+        if (produits_has_column('prix_entreprise')) {
+            $sql .= ', p.prix_entreprise';
+        }
         if (produits_has_column('nom_fournisseur')) {
             $sql .= ', p.nom_fournisseur';
         }
@@ -2856,6 +2863,11 @@ function search_produits_en_stock_commande_manuelle($recherche = '', $limit = 30
             ];
             if (produits_has_column('prix_achat')) {
                 $item['prix_achat'] = $r['prix_achat'] ?? null;
+            }
+            /* le prix entreprise part avec la pièce, comme les autres prix :
+               sans lui, sa colonne restait vide dans les devis et les BL (07/09) */
+            if (produits_has_column('prix_entreprise')) {
+                $item['prix_entreprise'] = $r['prix_entreprise'] ?? null;
             }
             $out[] = $item;
         }

@@ -21,6 +21,14 @@ function produit_formulaire_champs_systeme_defaut() {
         ['slug' => 'reference_fournisseur', 'label' => 'Référence fournisseur', 'icon' => 'fa-barcode', 'section' => 'info', 'colonne_db' => 'reference_fournisseur', 'ordre' => 50, 'verrouille' => 0, 'obligatoire' => 0],
         ['slug' => 'prix', 'label' => 'Prix de vente', 'icon' => 'fa-coins', 'section' => 'prix', 'colonne_db' => 'prix', 'ordre' => 110, 'verrouille' => 0, 'obligatoire' => 0],
         ['slug' => 'prix_promotion', 'label' => 'Prix promotionnel', 'icon' => 'fa-percent', 'section' => 'prix', 'colonne_db' => 'prix_promotion', 'ordre' => 120, 'verrouille' => 0, 'obligatoire' => 0],
+        /* LE PRIX ENTREPRISE (07/09) : il existait en base (produits.prix_entreprise)
+         * et s'affichait sur la fiche, mais AUCUN champ système ne le portait —
+         * seul survivait le champ personnalisé au nom amputé « rix_ntreprise »,
+         * sans colonne réelle. D'où le constat de la direction : la colonne
+         * « Prix Entreprise » cochée dans un BL restait vide alors que le prix
+         * est bien saisi sur la pièce. Le voici à sa place, branché sur sa
+         * colonne, entre le promotionnel et le grossiste. */
+        ['slug' => 'prix_entreprise', 'label' => 'Prix Entreprise', 'icon' => 'fa-building', 'section' => 'prix', 'colonne_db' => 'prix_entreprise', 'ordre' => 125, 'verrouille' => 0, 'obligatoire' => 0],
         ['slug' => 'prix_achat', 'label' => 'Prix d\'achat', 'icon' => 'fa-receipt', 'section' => 'prix', 'colonne_db' => 'prix_achat', 'ordre' => 130, 'verrouille' => 0, 'obligatoire' => 0],
         ['slug' => 'stock', 'label' => 'Stock', 'icon' => 'fa-boxes-stacked', 'section' => 'stock', 'colonne_db' => 'stock', 'ordre' => 140, 'verrouille' => 1, 'obligatoire' => 1],
         /* LE SEUIL DE LA PIÈCE (31/08) : chaque pièce a le sien, et l'alerte
@@ -207,6 +215,7 @@ function produit_formulaire_champs_sync_sections_systeme() {
         'sous_categorie_id' => 'categorie',
         'prix' => 'prix',
         'prix_promotion' => 'prix',
+        'prix_entreprise' => 'prix',
         'prix_achat' => 'prix',
     ];
     try {
@@ -1397,6 +1406,11 @@ function produit_formulaire_sections_labels() {
  */
 function produit_formulaire_champs_prix_systeme_slugs() {
     $slugs = ['prix', 'prix_promotion'];
+    /* le prix entreprise est un prix de vente comme les autres : il a sa
+       colonne dans produits, donc sa colonne dans un devis ou un BL (07/09) */
+    if (function_exists('produits_has_column') && produits_has_column('prix_entreprise')) {
+        $slugs[] = 'prix_entreprise';
+    }
     if (function_exists('produits_has_column') && produits_has_column('prix_achat')) {
         $slugs[] = 'prix_achat';
     }

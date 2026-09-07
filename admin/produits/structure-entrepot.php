@@ -258,6 +258,22 @@ if ($courant !== null) {
         $defs_enfants = [$defs_noeuds[0]];
     }
 }
+/* LES NIVEAUX FACULTATIFS SE SAUTENT (07/09, décision de la direction) : si le
+   niveau proposé peut être sauté — la BOX —, on propose AUSSI celui d'après.
+   Sous une barre, on peut donc créer une box… ou aller droit à la position. */
+if ($defs_enfants !== []) {
+    $dernier = $defs_enfants[count($defs_enfants) - 1];
+    $j_saut = $indice_niveau((int) $dernier['id']);
+    $garde_saut = 0;
+    while ($j_saut >= 0 && $garde_saut < 10
+           && function_exists('entrepot_hierarchie_def_est_facultatif')
+           && entrepot_hierarchie_def_est_facultatif($defs_noeuds[$j_saut] ?? null)
+           && isset($defs_noeuds[$j_saut + 1])) {
+        $defs_enfants[] = $defs_noeuds[$j_saut + 1];
+        $j_saut++;
+        $garde_saut++;
+    }
+}
 $def_enfants = $defs_enfants[0] ?? null;
 
 // Les enfants eux-mêmes (de TOUS les niveaux proposés à ce cran), triés par

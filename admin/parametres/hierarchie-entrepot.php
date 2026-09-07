@@ -75,6 +75,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $lie_type,
             $lie_id
         );
+        /* NIVEAU FACULTATIF (07/09) : un niveau qu'on peut sauter dans la
+           structure — la BOX, à la demande de la direction. */
+        if (!empty($res['success']) && !empty($res['niveau']['id'])) {
+            entrepot_hierarchie_def_facultatif_maj((int) $res['niveau']['id'],
+                isset($_POST['facultatif']) && (string) $_POST['facultatif'] === '1');
+        }
         hc_redirect($res['success'], $res['message']);
     } elseif (isset($_POST['hierarchie_def_modifier']) || isset($_POST['hierarchie_def_renommer'])) {
         $lie_raw = isset($_POST['etiquette_lie_cible']) ? (string) $_POST['etiquette_lie_cible'] : 'etage';
@@ -92,6 +98,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $lie_type,
             $lie_id
         );
+        if (!empty($res['success'])) {
+            entrepot_hierarchie_def_facultatif_maj((int) ($_POST['def_id'] ?? 0),
+                isset($_POST['facultatif']) && (string) $_POST['facultatif'] === '1');
+        }
         hc_redirect($res['success'], $res['message']);
     } elseif (isset($_POST['hierarchie_def_actif'])) {
         $res = entrepot_hierarchie_def_set_actif(
@@ -311,6 +321,7 @@ function hc_options_lie_etiquette(array $defs, $exclude_id = 0) {
                     data-def-label="<?php echo htmlspecialchars((string) ($def['label'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
                     data-def-icon="<?php echo htmlspecialchars((string) ($def['icon'] ?? 'fa-cube'), ENT_QUOTES, 'UTF-8'); ?>"
                     data-def-etiq="<?php echo $is_etiq ? '1' : '0'; ?>"
+                    data-def-facultatif="<?php echo entrepot_hierarchie_def_est_facultatif($def) ? '1' : '0'; ?>"
                     data-def-lie="<?php echo htmlspecialchars($lie_cible_val, ENT_QUOTES, 'UTF-8'); ?>"
                     data-def-etage="<?php echo $is_etage ? '1' : '0'; ?>">
                     <div class="hc-niveau-card__order">
@@ -351,6 +362,9 @@ function hc_options_lie_etiquette(array $defs, $exclude_id = 0) {
                                 <?php endif; ?>
                                 <?php if ($is_feuille): ?>
                                 <span class="hc-badge hc-badge--leaf">Feuille produit</span>
+                                <?php endif; ?>
+                                <?php if (entrepot_hierarchie_def_est_facultatif($def)): ?>
+                                <span class="hc-badge">Facultatif — peut être sauté</span>
                                 <?php endif; ?>
                                 <?php if (!$actif): ?>
                                 <span class="hc-badge hc-badge--off">Inactif</span>
@@ -468,6 +482,15 @@ function hc_options_lie_etiquette(array $defs, $exclude_id = 0) {
                             </select>
                             <span class="hc-field__hint">Par défaut&nbsp;: <strong>Niveau</strong> (code abrégé). Les autres niveaux n’affichent que leur numéro sur l’étiquette.</span>
                         </div>
+                        <div class="hc-field">
+                            <label for="facultatif_new">Niveau facultatif *</label>
+                            <select id="facultatif_new" name="facultatif">
+                                <option value="0" selected>Non — il faut passer par ce niveau</option>
+                                <option value="1">Oui — on peut le sauter</option>
+                            </select>
+                            <span class="hc-field__hint">Un niveau facultatif se saute&nbsp;: dans la structure, le niveau suivant est proposé en même temps (une position directement sous une barre, sans passer par la box).</span>
+                        </div>
+
                         <div class="hc-modal__actions">
                             <button type="button" class="hc-btn hc-btn--ghost" data-hc-close>Annuler</button>
                             <button type="submit" class="hc-btn hc-btn--primary">
@@ -531,6 +554,15 @@ function hc_options_lie_etiquette(array $defs, $exclude_id = 0) {
                             </select>
                             <span class="hc-field__hint">Par défaut&nbsp;: Niveau (étages). Les autres hiérarchies n’apparaissent sur l’étiquette que par leur numéro.</span>
                         </div>
+                        <div class="hc-field">
+                            <label for="facultatif_edit">Niveau facultatif *</label>
+                            <select id="facultatif_edit" name="facultatif">
+                                <option value="0">Non — il faut passer par ce niveau</option>
+                                <option value="1">Oui — on peut le sauter</option>
+                            </select>
+                            <span class="hc-field__hint">Un niveau facultatif se saute&nbsp;: dans la structure, le niveau suivant est proposé en même temps (une position directement sous une barre, sans passer par la box).</span>
+                        </div>
+
                         <div class="hc-modal__actions">
                             <button type="button" class="hc-btn hc-btn--ghost" data-hc-close-edit>Annuler</button>
                             <button type="submit" class="hc-btn hc-btn--primary">
@@ -596,6 +628,10 @@ function hc_options_lie_etiquette(array $defs, $exclude_id = 0) {
             if (editLabel) editLabel.value = label;
             if (editIcon) editIcon.value = icon;
             if (etiqEdit) etiqEdit.value = etiq === '1' ? '1' : '0';
+            var facultatifEdit = document.getElementById('facultatif_edit');
+            if (facultatifEdit) {
+                facultatifEdit.value = (card.getAttribute('data-def-facultatif') || '0') === '1' ? '1' : '0';
+            }
             if (lieSelectEdit) {
                 Array.prototype.forEach.call(lieSelectEdit.options, function (opt) {
                     var ex = opt.getAttribute('data-exclude-self');

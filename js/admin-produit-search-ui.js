@@ -598,17 +598,34 @@
         updatePrixApercu(panelEl);
         buildLignesHeadHtml(headEl, container, panelEl);
 
+        /* UNE COLONNE AU MOINS DOIT RESTER — mais on ne DÉSACTIVE plus la
+           dernière case (07/09, constat direction). Une case désactivée paraît
+           DÉCOCHÉE : en décochant « Prix de vente », on croyait voir « Prix
+           promotionnel » se décocher tout seul ; elle ne répondait plus au
+           clic, et surtout le navigateur N'ENVOIE PAS une case désactivée —
+           le choix de colonnes se perdait à l'enregistrement, le serveur
+           reprenait ses colonnes par défaut. On refuse simplement le geste, en
+           le disant. */
+        var hintEl = panelEl.querySelector('.devis-prix-colonnes-hint');
+        var hintTexte = hintEl ? hintEl.textContent : '';
+        var hintMinuteur = null;
+        function direDerniereColonne() {
+            if (!hintEl) {
+                return;
+            }
+            hintEl.textContent = 'Au moins une colonne de prix doit rester affichée.';
+            window.clearTimeout(hintMinuteur);
+            hintMinuteur = window.setTimeout(function () {
+                hintEl.textContent = hintTexte;
+            }, 2600);
+        }
+
         function onPanelChange() {
-            var boxes = panelEl.querySelectorAll('input[data-prix-colonne]');
-            var checkedCount = panelEl.querySelectorAll('input[data-prix-colonne]:checked').length;
-            boxes.forEach(function (cb) {
-                if (checkedCount <= 1 && cb.checked) {
-                    cb.disabled = true;
-                } else {
-                    cb.disabled = false;
-                }
+            panelEl.querySelectorAll('input[data-prix-colonne]').forEach(function (cb) {
+                cb.disabled = false;
             });
             ensureCalcRadioValid(panelEl);
+            updatePrixApercu(panelEl);
             refreshLignesForPrixColumns(container, headEl, panelEl, updateRecapFn);
         }
 
@@ -621,6 +638,8 @@
                 var remaining = panelEl.querySelectorAll('input[data-prix-colonne]:checked').length;
                 if (remaining === 0) {
                     t.checked = true;
+                    direDerniereColonne();
+                    updatePrixApercu(panelEl);
                     return;
                 }
             }

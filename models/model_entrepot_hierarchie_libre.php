@@ -382,6 +382,76 @@ function entrepot_hierarchie_def_normaliser_etiquette($est_etiquette_qr, $lie_ty
     return ['ok' => true, 'message' => '', 'est' => 1, 'lie_type' => 'etage', 'lie_id' => null];
 }
 
+/* ================= NIVEAU FACULTATIF (07/09/2026) =================
+ * Décision de la direction : la BOX est un contenant qu'on doit pouvoir
+ * SAUTER. On range parfois une pièce dans une box de la barre, parfois
+ * directement à une position de la barre — l'écran de structure imposait de
+ * passer par la box dès qu'elle existait. Un niveau marqué « facultatif » se
+ * saute : l'écran propose alors AUSSI le niveau suivant.
+ * Le drapeau vit dans la colonne entrepot_hierarchie_niveau.facultatif, ajoutée
+ * par migrations/run_niveau_facultatif.php ; tant qu'elle manque, tout se
+ * comporte comme avant. */
+
+/**
+ * La colonne « facultatif » est-elle là ? (schéma progressif, comme le QR)
+ *
+ * @return bool
+ */
+function entrepot_hierarchie_facultatif_schema_ok()
+{
+    global $db;
+    static $ok = null;
+    if ($ok !== null) {
+        return $ok;
+    }
+    $ok = false;
+    if (!$db) {
+        return $ok;
+    }
+    try {
+        $st = $db->query("SHOW COLUMNS FROM entrepot_hierarchie_niveau LIKE 'facultatif'");
+        $ok = (bool) $st->fetch(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        $ok = false;
+    }
+
+    return $ok;
+}
+
+/**
+ * Ce niveau peut-il être sauté ?
+ *
+ * @param array<string, mixed>|null $def
+ * @return bool
+ */
+function entrepot_hierarchie_def_est_facultatif($def)
+{
+    return is_array($def) && (int) ($def['facultatif'] ?? 0) === 1;
+}
+
+/**
+ * Marque (ou démarque) un niveau comme facultatif.
+ *
+ * @param int $id
+ * @param mixed $facultatif
+ * @return bool
+ */
+function entrepot_hierarchie_def_facultatif_maj($id, $facultatif)
+{
+    global $db;
+    if (!$db || !entrepot_hierarchie_facultatif_schema_ok()) {
+        return false;
+    }
+    try {
+        $db->prepare('UPDATE entrepot_hierarchie_niveau SET facultatif = :f WHERE id = :id')
+           ->execute([':f' => !empty($facultatif) ? 1 : 0, ':id' => (int) $id]);
+
+        return true;
+    } catch (PDOException $e) {
+        return false;
+    }
+}
+
 /**
  * PLUSIEURS niveaux-feuilles peuvent porter l’étiquette / QR (les barres ET
  * les boxes, depuis le 04/09). Cette fonction NE force plus l’exclusivité :
@@ -1279,6 +1349,19 @@ function entrepot_noeud_ajouter($etage_id, $niveau_id, $parent_id, $nom, $numero
                     $acceptables[] = (int) $defs[$t]['id'];
                     $t++;
                 }
+            }
+            /* SAUTER UN NIVEAU FACULTATIF (07/09, décision de la direction) :
+               si le niveau qui précède est marqué facultatif — la BOX —, celui
+               d'avant est un parent tout aussi valable. C'est le geste demandé :
+               poser une position directement sous une barre, sans passer par la
+               box, quand on n'en veut pas. On remonte tant que les niveaux
+               traversés sont facultatifs ; on s'arrête à l'étage, qui a son
+               propre bouton. */
+            $k = $j;
+            while ($k >= 0 && entrepot_hierarchie_def_est_facultatif($defs[$k] ?? null)
+                   && isset($defs[$k - 1]) && !entrepot_hierarchie_def_est_etage($defs[$k - 1])) {
+                $acceptables[] = (int) $defs[$k - 1]['id'];
+                $k--;
             }
             $acceptables = array_values(array_unique($acceptables));
             if ($parent_id <= 0) {
