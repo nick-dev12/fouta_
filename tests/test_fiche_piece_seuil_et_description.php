@@ -73,5 +73,24 @@ foreach (['admin/produits/modifier.php', 'admin/produits/ajouter.php'] as $ecran
         (bool) preg_match('/if \(cle !== refsCourantes(Desc)?\(\)\)/', $src));
 }
 
+echo "— B bis. la recherche de description ne se répond plus à elle-même —\n";
+$point = file_get_contents($RACINE . '/admin/produits/ajax_description_auto.php');
+verifie('la pièce ouverte est exclue de la recherche (branche OEM)', true,
+    strpos($point, 'WHERE reference_oem = :v AND id <> :ex') !== false);
+verifie('la pièce ouverte est exclue du repli fournisseur', true,
+    strpos($point, 'WHERE reference_fournisseur = :v AND id <> :ex') !== false);
+verifie('une référence OEM saisie est souveraine : plus de repli sur le fournisseur', true,
+    strpos($point, "\$description === null && \$oem === '' && \$ref !== ''") !== false);
+
+$mod = file_get_contents($RACINE . '/admin/produits/modifier.php');
+verifie("l'écran de modification passe l'id de la pièce à la recherche", true,
+    strpos($mod, "&id=<?php echo (int) \$produit_id; ?>") !== false);
+verifie('la description est recomposée avant l\'envoi du formulaire', true,
+    strpos($mod, "formulaire.addEventListener('submit'") !== false);
+verifie('le seuil ne dépend plus de la permission du statut', true,
+    strpos($mod, "if (\$voit('statut') || \$voit_seuil)") !== false);
+verifie('la source du seuil est bornée à son énumération', true,
+    strpos(corps_fonction('update_produit'), "in_array(\$sas, ['manuel', 'suggestion'], true)") !== false);
+
 echo "\n$ok OK / $ko KO\n";
 exit($ko === 0 ? 0 : 1);

@@ -2271,8 +2271,11 @@ function update_produit($id, $data)
         }
         if (produits_has_column('seuil_alerte_source') && array_key_exists('seuil_alerte_source', $data)) {
             $sets .= ", seuil_alerte_source = :seuil_alerte_source";
-            $sas = $data['seuil_alerte_source'];
-            $params['seuil_alerte_source'] = ($sas === null || $sas === '') ? null : (string) $sas;
+            /* La colonne est un ENUM('manuel','suggestion') : une valeur hors
+               liste ferait échouer TOUT l'enregistrement de la fiche en mode
+               strict. On n'écrit donc que ce que l'énumération accepte. */
+            $sas = (string) ($data['seuil_alerte_source'] ?? '');
+            $params['seuil_alerte_source'] = in_array($sas, ['manuel', 'suggestion'], true) ? $sas : null;
         }
         if (produits_has_column('prix_entreprise') && array_key_exists('prix_entreprise', $data)) {
             $sets .= ", prix_entreprise = :prix_entreprise";

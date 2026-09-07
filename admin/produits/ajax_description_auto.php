@@ -25,27 +25,41 @@ header('Content-Type: application/json; charset=utf-8');
 
 $oem = isset($_GET['oem']) ? trim((string) $_GET['oem']) : '';
 $ref = isset($_GET['ref']) ? trim((string) $_GET['ref']) : '';
+/* LA PIÈCE QU'ON EST EN TRAIN DE MODIFIER NE SE RÉPOND PAS À ELLE-MÊME
+ * (07/09). Constat de la direction : « on change la réf. OEM et la
+ * description affiche encore les anciennes données. » Voici pourquoi :
+ * l'OEM neuf n'était connu de personne, la recherche se rabattait sur la
+ * RÉFÉRENCE FOURNISSEUR — restée la même — et retombait sur la pièce
+ * elle-même, qui se renvoyait sa PROPRE ancienne description, badgée
+ * « cette référence est déjà connue ». Sur cette base, 1 740 pièces sont
+ * dans ce cas. L'écran passe donc désormais l'id de la pièce ouverte, et
+ * elle est exclue de la recherche. */
+$exclure = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 $description = null;
 
 try {
     // La référence OEM prime : c'est celle du constructeur, la plus fiable.
     if ($oem !== '' && produits_has_column('reference_oem')) {
         $stmt = $db->prepare("SELECT description FROM produits
-                               WHERE reference_oem = :v
+                               WHERE reference_oem = :v AND id <> :ex
                                  AND description IS NOT NULL AND description <> ''
                                ORDER BY id DESC LIMIT 1");
-        $stmt->execute(['v' => $oem]);
+        $stmt->execute(['v' => $oem, 'ex' => $exclure]);
         $trouve = $stmt->fetchColumn();
         if ($trouve !== false) {
             $description = $trouve;
         }
     }
-    if ($description === null && $ref !== '' && produits_has_column('reference_fournisseur')) {
+    /* LE REPLI SUR LA RÉFÉRENCE FOURNISSEUR N'A LIEU QUE SANS OEM (07/09) :
+     * une référence constructeur saisie est SOUVERAINE. Si elle n'est connue
+     * de personne, la description se compose (marque — modèle — OEM) au lieu
+     * d'aller chercher celle d'une autre pièce du même fournisseur. */
+    if ($description === null && $oem === '' && $ref !== '' && produits_has_column('reference_fournisseur')) {
         $stmt = $db->prepare("SELECT description FROM produits
-                               WHERE reference_fournisseur = :v
+                               WHERE reference_fournisseur = :v AND id <> :ex
                                  AND description IS NOT NULL AND description <> ''
                                ORDER BY id DESC LIMIT 1");
-        $stmt->execute(['v' => $ref]);
+        $stmt->execute(['v' => $ref, 'ex' => $exclure]);
         $trouve = $stmt->fetchColumn();
         if ($trouve !== false) {
             $description = $trouve;

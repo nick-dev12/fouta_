@@ -1045,6 +1045,10 @@ function refreshDesc() {
   }
 
   ['reference_oem', 'reference_fournisseur'].forEach(id => el(id)?.addEventListener('input', lookup));
+  /* avant l'envoi, on recompose : un « Entrée » ou un clic rapide postait
+     l'ancien texte du champ caché (07/09) */
+  const formulaireAjout = document.querySelector('form[enctype], form');
+  if (formulaireAjout) { formulaireAjout.addEventListener('submit', () => { clearTimeout(timer); refreshDesc(); }); }
   refreshDesc();
 
   // Couleur → pastille, et la teinte JSON pour la base

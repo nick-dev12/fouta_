@@ -397,9 +397,18 @@ $affiche_prix = $voit('prix');
         </div>
       <?php endif; ?>
 
-      <?php if ($voit('statut')) : ?>
+      <?php /* LE SEUIL NE DÉPEND PLUS DE LA PERMISSION DU STATUT (07/09) : il
+               était imbriqué dans « si le statut est visible », donc un profil
+               autorisé à régler le seuil l'aurait perdu le jour où la direction
+               masque le statut pour lui — et le symptôme « le seuil ne se
+               conserve pas » serait revenu, sans rapport avec sa cause. La
+               ligne s'affiche maintenant dès que l'un OU l'autre est visible,
+               et chaque champ garde sa propre condition. */ ?>
+      <?php $voit_seuil = $voit('seuil_alerte') && produits_has_column('seuil_alerte'); ?>
+      <?php if ($voit('statut') || $voit_seuil) : ?>
         <!-- Retirer une pièce de la vente sans la supprimer -->
         <div class="field-row">
+          <?php if ($voit('statut')) : ?>
           <div class="field">
             <label for="statut">Statut</label>
             <?php $statut_courant = in_array(($produit['statut'] ?? ''), ['actif', 'inactif', 'rupture_stock'], true) ? $produit['statut'] : 'actif'; ?>
@@ -415,12 +424,13 @@ $affiche_prix = $voit('prix');
             <input type="number" id="stock" name="stock" min="0" step="1"
                    value="<?php echo (int) ($produit['stock'] ?? 0); ?>">
           </div>
+          <?php endif; ?>
           <?php /* LE SEUIL DE CETTE PIÈCE (31/08) : chaque pièce a le sien.
                    L'alerte parle dès que le stock lui est inférieur OU égal,
                    et tant qu'il n'est pas remonté au-dessus. Case vide : le
                    logiciel ne dit rien sur cette pièce. Zéro : préviens-moi
                    seulement quand il n'y en a plus du tout. */ ?>
-          <?php if ($voit('seuil_alerte') && produits_has_column('seuil_alerte')) : ?>
+          <?php if ($voit_seuil) : ?>
             <div class="field">
               <label for="seuil_alerte">Seuil d'alerte <span class="hint-inline">prévient sous ce nombre, ou à ce nombre</span> <?php echo $note_figee('seuil_alerte'); ?></label>
               <input type="number" id="seuil_alerte" name="seuil_alerte" min="0" step="1"
@@ -861,7 +871,7 @@ $affiche_prix = $voit('prix');
         let trouvee = null;
         if (oem || ref) {
           try {
-            const r = await fetch('ajax_description_auto.php?oem=' + encodeURIComponent(oem) + '&ref=' + encodeURIComponent(ref), { credentials: 'same-origin' });
+            const r = await fetch('ajax_description_auto.php?oem=' + encodeURIComponent(oem) + '&ref=' + encodeURIComponent(ref) + '&id=<?php echo (int) $produit_id; ?>', { credentials: 'same-origin' });
             if (r.ok) { const j = await r.json(); if (j.found) trouvee = j.description; }
           } catch (e) { /* hors ligne : la composition locale suffit */ }
         }
@@ -874,6 +884,12 @@ $affiche_prix = $voit('prix');
 
     // Elle ne se recompose QUE si l'identité change — pas au chargement.
     ['reference_oem', 'reference_fournisseur'].forEach(id => el(id)?.addEventListener('input', lookup));
+    /* AVANT L'ENVOI, ON RECOMPOSE (07/09) : « Entrée » dans la référence, ou un
+       clic sur Enregistrer dans la seconde qui suit la frappe, postait le champ
+       caché TEL QUE LA PAGE L'AVAIT CHARGÉ — l'ancienne description partait en
+       base sans que l'écran ait menti. */
+    const formulaire = document.getElementById('form-piece-modifier');
+    if (formulaire) { formulaire.addEventListener('submit', () => { clearTimeout(timer); refreshDesc(); }); }
     el('marque_id')?.addEventListener('change', refreshDesc);
     el('generation_id')?.addEventListener('change', refreshDesc);
     const panneauModeles = el('models-panel');
