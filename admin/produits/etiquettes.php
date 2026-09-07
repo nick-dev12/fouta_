@@ -121,12 +121,16 @@ $fpl_retour_page = 'index.php';
         </div>
         <span class="lab-tab-sub">Nomment les barres du rangement</span>
       </a>
+      <?php /* « Tout détourer » n'est pas dans le périmètre de l'infographiste (07/09) :
+               l'onglet ne lui est pas montré (la route lui est fermée de toute façon). */ ?>
+      <?php if (!(function_exists('admin_current_role') && admin_current_role() === 'photographe')) : ?>
       <a href="detourage-lot.php" class="lab-tab">
         <div class="lab-tab-title">
           <?php echo fpl_icone('image', 15); ?> Tout détourer
         </div>
         <span class="lab-tab-sub">Retirer le fond de toutes les photos</span>
       </a>
+      <?php endif; ?>
     </div>
 
     <div class="card">
