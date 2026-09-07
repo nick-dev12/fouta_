@@ -311,7 +311,60 @@ function etiquette_layout_barre_defauts()
         'decal_y' => 0.0,
         'marge' => null,
         'ecart' => null,
+        /* LES COTES EN MILLIMÈTRES (07/09, décision de la direction pour le
+         * 150×60 : QR 43 mm, écriture 80 × 20 mm, écart 0,8 mm). Les
+         * pourcentages ci-dessus ne savaient pas tenir une cote exacte — le QR
+         * était plafonné à 26 mm avant l'échelle, et l'écriture n'avait pas de
+         * hauteur réglable. Quand une de ces trois valeurs est donnée, elle
+         * PRIME sur le pourcentage correspondant ; à null, tout se calcule
+         * comme avant (aucun format existant ne bouge). */
+        'qr_mm' => null,
+        'texte_l_mm' => null,
+        'texte_h_mm' => null,
     ];
+}
+
+/**
+ * LA TAILLE DE POLICE QUI REMPLIT EXACTEMENT UNE BOÎTE (07/09).
+ * Mesurée sur LA police d'impression (Barlow Condensed 700, celle du PDF) :
+ * la boîte de texte grandit proportionnellement à la taille, une seule mesure
+ * suffit donc pour trouver la plus grande taille qui tient dans largeur × hauteur.
+ * Retourne des MILLIMÈTRES (l'unité de « code » dans la géométrie).
+ *
+ * @param string $libelle    le texte à poser (ex. « AR1-01 »)
+ * @param float  $largeur_mm largeur de la boîte
+ * @param float  $hauteur_mm hauteur de la boîte
+ * @return float|null la taille de police en mm, null si la mesure est impossible
+ */
+function etiquette_barre_taille_police($libelle, $largeur_mm, $hauteur_mm)
+{
+    $libelle = trim((string) $libelle);
+    $largeur_mm = (float) $largeur_mm;
+    $hauteur_mm = (float) $hauteur_mm;
+    if ($libelle === '' || $largeur_mm <= 0 || $hauteur_mm <= 0) {
+        return null;
+    }
+    $police = dirname(__DIR__) . '/fonts/etiquette70/barlow-condensed-700.ttf';
+    if (!is_file($police) || !function_exists('imagettfbbox')) {
+        return null;
+    }
+    $reference = 100.0;                       /* une mesure à 100 points */
+    $b = @imagettfbbox($reference, 0, $police, $libelle);
+    if (!is_array($b)) {
+        return null;
+    }
+    $larg = abs($b[2] - $b[0]);
+    $haut = abs($b[7] - $b[1]);
+    if ($larg <= 0 || $haut <= 0) {
+        return null;
+    }
+    /* Des points GD aux millimètres d'em : le dessin (PDF comme écran) prend
+     * « code » pour la taille d'em EN MILLIMÈTRES, alors qu'imagettfbbox rend
+     * des pixels pour une taille en points (96/72 px par point). Le nombre de
+     * pixels par mm, lui, se simplifie : il n'intervient pas ici. */
+    $facteur = min($largeur_mm / $larg, $hauteur_mm / $haut);
+
+    return round($reference * (96.0 / 72.0) * $facteur, 2);
 }
 
 /**
@@ -334,6 +387,10 @@ function etiquette_disposition_barre_normaliser(array $src)
         'decal_y' => max(-20, min(20, $num($src['decal_y'] ?? null) ? (float) $src['decal_y'] : 0.0)),
         'marge' => $num($src['marge'] ?? null) ? max(0, min(15, (float) $src['marge'])) : null,
         'ecart' => $num($src['ecart'] ?? null) ? max(0, min(20, (float) $src['ecart'])) : null,
+        /* les cotes absolues : vides = automatique (le format ne change pas) */
+        'qr_mm' => $num($src['qr_mm'] ?? null) ? max(5, min(200, round((float) $src['qr_mm'], 2))) : null,
+        'texte_l_mm' => $num($src['texte_l_mm'] ?? null) ? max(5, min(400, round((float) $src['texte_l_mm'], 2))) : null,
+        'texte_h_mm' => $num($src['texte_h_mm'] ?? null) ? max(2, min(200, round((float) $src['texte_h_mm'], 2))) : null,
     ];
 }
 
@@ -381,21 +438,43 @@ function etiquette_geometrie_barre($format, $code = '')
     $utileL = $largeur - 2 * $pad;
     $utileH = $hauteur - 2 * $pad;
 
-    // Le QR : dynamique selon la longueur du code et le format
-    $qrBase = min($utileH * 0.55, $utileL * 0.25);
     $n = max(1, mb_strlen(trim((string) $code)) ?: 6);
-    $depassement = max(0, $n - 6);
-    $qr = $qrBase - ($depassement * 1.0);
-    $qr = max($qr, min(14.5, $utileH));
-    $qr = min($qr, 26.0);
-    $qr = $qr * ((int) $l['qr_echelle']) / 100;
-    $qr = max(min(10.0, $utileH), min($qr, min($utileH, $utileL * 0.6)));
-    $qr = round($qr, 2);
 
-    // Le code : tout ce qui reste, à la taille que le contenu permet
-    $largeurCode = max(1.0, $utileL - $qr - $gap);
-    $taille = min($largeurCode / ($n * 0.62), $utileH * 0.92);
-    $taille = $taille * ((int) $l['code_echelle']) / 100;
+    // LE QR : la cote demandée si la direction en a fixé une (07/09), sinon le
+    // calcul d'origine (dynamique selon la longueur du code et le format).
+    if ($l['qr_mm'] !== null) {
+        $qr = round(max(1.0, min((float) $l['qr_mm'], $utileH, $utileL)), 2);
+    } else {
+        $qrBase = min($utileH * 0.55, $utileL * 0.25);
+        $depassement = max(0, $n - 6);
+        $qr = $qrBase - ($depassement * 1.0);
+        $qr = max($qr, min(14.5, $utileH));
+        $qr = min($qr, 26.0);
+        $qr = $qr * ((int) $l['qr_echelle']) / 100;
+        $qr = max(min(10.0, $utileH), min($qr, min($utileH, $utileL * 0.6)));
+        $qr = round($qr, 2);
+    }
+
+    // L'ÉCRITURE : sa boîte, puis la plus grande police qui la remplit.
+    // Boîte demandée en mm = elle prime ; sinon toute la place restante et la
+    // règle d'avant (largeur estimée au caractère, modulée par le pourcentage).
+    $restant = max(1.0, $utileL - $qr - $gap);
+    $largeurCode = $l['texte_l_mm'] !== null
+        ? round(min((float) $l['texte_l_mm'], $restant), 2)
+        : round($restant, 2);
+    $hauteurCode = $l['texte_h_mm'] !== null
+        ? round(min((float) $l['texte_h_mm'], $utileH), 2)
+        : null;
+
+    if ($l['texte_l_mm'] !== null || $l['texte_h_mm'] !== null) {
+        $mesure = etiquette_barre_taille_police($code, $largeurCode, $hauteurCode !== null ? $hauteurCode : $utileH * 0.92);
+        $taille = $mesure !== null
+            ? $mesure
+            : min($largeurCode / ($n * 0.62), $hauteurCode !== null ? $hauteurCode : $utileH * 0.92);
+    } else {
+        $taille = min($largeurCode / ($n * 0.62), $utileH * 0.92);
+        $taille = $taille * ((int) $l['code_echelle']) / 100;
+    }
 
     return [
         'largeur' => $largeur,
@@ -404,6 +483,7 @@ function etiquette_geometrie_barre($format, $code = '')
         'gap' => $gap,
         'qr' => $qr,
         'code_largeur' => round($largeurCode, 2),
+        'code_hauteur' => $hauteurCode,
         'caracteres' => $n,
         'code' => round($taille, 2),
         'qr_position' => $l['qr_position'],
@@ -413,6 +493,9 @@ function etiquette_geometrie_barre($format, $code = '')
         'qr_echelle' => (int) $l['qr_echelle'],
         'marge_auto' => $l['marge'] === null,
         'ecart_auto' => $l['ecart'] === null,
+        'qr_mm' => $l['qr_mm'],
+        'texte_l_mm' => $l['texte_l_mm'],
+        'texte_h_mm' => $l['texte_h_mm'],
     ];
 }
 

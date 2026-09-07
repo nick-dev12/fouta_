@@ -111,6 +111,15 @@ $pdf_url = '../parametres/emplacement-noeud-etiquette.php?id=' . $noeud_id
     --decx: <?php echo $g['decal_x']; ?>mm;
     --decy: <?php echo $g['decal_y']; ?>mm;
   }
+  /* LA POLICE DE L'IMPRESSION DANS L'APERÇU (07/09) : le PDF dessine le
+     libellé en Barlow Condensed 700 (GD), l'écran l'affichait en Arial Black —
+     deux largeurs différentes pour le même texte, donc un aperçu qui mentait
+     dès qu'on fixe une largeur en millimètres. Même fichier de police ici. */
+  @font-face {
+    font-family: 'BarlowCondensedFPL';
+    src: url('../../fonts/etiquette70/barlow-condensed-700.ttf') format('truetype');
+    font-weight: 700; font-style: normal; font-display: block;
+  }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: "Arial Black", Arial, sans-serif; background: #666;
     display: flex; flex-direction: column; align-items: center; padding: 20px; gap: 14px; }
@@ -151,7 +160,8 @@ $pdf_url = '../parametres/emplacement-noeud-etiquette.php?id=' . $noeud_id
   }
   .code {
     flex: 1; min-width: 0; text-align: center;
-    font-weight: 900; font-size: var(--code); color: #000;
+    font-family: 'BarlowCondensedFPL', "Arial Black", Arial, sans-serif;
+    font-weight: 700; font-size: var(--code); color: #000;
     line-height: .95; letter-spacing: .02em; white-space: nowrap;
   }
   .qr { width: var(--qr); height: var(--qr); flex-shrink: 0; }
@@ -277,6 +287,30 @@ $pdf_url = '../parametres/emplacement-noeud-etiquette.php?id=' . $noeud_id
     </div>
   </div>
 
+  <?php /* LES COTES EXACTES (07/09, demande de la direction) : un pourcentage
+           ne tient pas une mesure — le QR était plafonné à 26 mm avant échelle
+           et l'écriture n'avait pas de hauteur. Rempli, un champ PRIME sur le
+           pourcentage correspondant ; vidé, tout revient au calcul automatique. */ ?>
+  <h2 style="margin-top:16px">Cotes exactes (millimètres)</h2>
+  <div class="qui">Laissez vide pour laisser l'atelier calculer. Une valeur ici l'emporte sur le pourcentage du dessus.</div>
+  <div class="grille">
+    <div class="ligne">
+      <label for="n-qrmm">Côté du QR</label>
+      <input type="number" id="n-qrmm" min="5" max="200" step="0.1" placeholder="auto" value="<?php echo $g['qr_mm'] !== null ? e((string) $g['qr_mm']) : ''; ?>">
+      <output>mm</output>
+    </div>
+    <div class="ligne">
+      <label for="n-txtl">Écriture — longueur</label>
+      <input type="number" id="n-txtl" min="5" max="400" step="0.1" placeholder="auto" value="<?php echo $g['texte_l_mm'] !== null ? e((string) $g['texte_l_mm']) : ''; ?>">
+      <output>mm</output>
+    </div>
+    <div class="ligne">
+      <label for="n-txth">Écriture — hauteur</label>
+      <input type="number" id="n-txth" min="2" max="200" step="0.1" placeholder="auto" value="<?php echo $g['texte_h_mm'] !== null ? e((string) $g['texte_h_mm']) : ''; ?>">
+      <output>mm</output>
+    </div>
+  </div>
+
   <div class="alerte" id="alerte-qr">Sous 14,5 mm, un QR thermique devient difficile à scanner — testez avant d'imprimer en série.</div>
 
   <div class="actions">
@@ -325,13 +359,45 @@ $pdf_url = '../parametres/emplacement-noeud-etiquette.php?id=' . $noeud_id
         marge: el('r-marge').value,
         ecart: el('r-ecart').value,
       });
+      /* les cotes exactes ne voyagent que si elles sont remplies : vides, le
+         PDF retrouve le calcul automatique, comme l'aperçu */
+      [['qr_mm', 'n-qrmm'], ['texte_l_mm', 'n-txtl'], ['texte_h_mm', 'n-txth']].forEach(([clef, id]) => {
+        const v = el(id).value.trim();
+        if (v !== '') q.set(clef, v);
+      });
       a.href = a.dataset.base + (a.dataset.base.indexOf('?') !== -1 ? '&' : '?') + q.toString();
+    }
+
+    /* LA TAILLE DE POLICE QUI REMPLIT LA BOÎTE DEMANDÉE — le même calcul que
+       le serveur (models/model_etiquettes_fpl.php), mesuré ici dans le
+       navigateur sur LA police d'impression : une mesure à 100 px, puis une
+       règle de trois. Retourne des millimètres d'em, comme « --code ». */
+    const libelleMesure = <?php echo json_encode($libelle); ?>;
+    function policePourBoite(largeurMm, hauteurMm) {
+      if (!largeurMm && !hauteurMm) return null;
+      try {
+        const ctx = document.createElement('canvas').getContext('2d');
+        ctx.font = '700 100px BarlowCondensedFPL, "Arial Black", Arial, sans-serif';
+        const m = ctx.measureText(libelleMesure);
+        const l = m.width;
+        const h = (m.actualBoundingBoxAscent || 0) + (m.actualBoundingBoxDescent || 0);
+        if (!(l > 0) || !(h > 0)) return null;
+        const bornes = [];
+        if (largeurMm) bornes.push(largeurMm * 100 / l);
+        if (hauteurMm) bornes.push(hauteurMm * 100 / h);
+        return Math.min.apply(null, bornes);
+      } catch (e) { return null; }
     }
 
     function majApercu() {
       majLienPdf();
-      racine.style.setProperty('--code', (codeBrut * (+el('r-code').value) / 100).toFixed(2) + 'mm');
-      const qrMm = qrBrut * (+el('r-qr').value) / 100;
+      const qrExact = parseFloat(el('n-qrmm').value);
+      const txtL = parseFloat(el('n-txtl').value);
+      const txtH = parseFloat(el('n-txth').value);
+      const policeExacte = policePourBoite(txtL > 0 ? txtL : 0, txtH > 0 ? txtH : 0);
+      racine.style.setProperty('--code',
+        (policeExacte !== null ? policeExacte : codeBrut * (+el('r-code').value) / 100).toFixed(2) + 'mm');
+      const qrMm = qrExact > 0 ? qrExact : qrBrut * (+el('r-qr').value) / 100;
       racine.style.setProperty('--qr', qrMm.toFixed(2) + 'mm');
       racine.style.setProperty('--gap', (+el('r-ecart').value).toFixed(1) + 'mm');
       racine.style.setProperty('--decx', (+el('r-decx').value).toFixed(1) + 'mm');
@@ -345,7 +411,10 @@ $pdf_url = '../parametres/emplacement-noeud-etiquette.php?id=' . $noeud_id
       el('o-marge').textContent = (+el('r-marge').value).toFixed(1) + ' mm';
       el('alerte-qr').classList.toggle('visible', qrMm < 14.5);
     }
-    ['r-code', 'r-qr', 'r-ecart', 'r-decx', 'r-decy', 'r-marge'].forEach(id => el(id).addEventListener('input', majApercu));
+    ['r-code', 'r-qr', 'r-ecart', 'r-decx', 'r-decy', 'r-marge', 'n-qrmm', 'n-txtl', 'n-txth']
+      .forEach(id => el(id).addEventListener('input', majApercu));
+    /* la police met un instant à arriver : on remesure quand elle est prête */
+    if (document.fonts && document.fonts.ready) { document.fonts.ready.then(majApercu); }
 
     function majPosition(pos) {
       qrPosition = pos;
@@ -378,6 +447,10 @@ $pdf_url = '../parametres/emplacement-noeud-etiquette.php?id=' . $noeud_id
         decal_y: +el('r-decy').value,
         marge: +el('r-marge').value,
         ecart: +el('r-ecart').value,
+        /* vide = on ne fixe pas la cote : le serveur revient à l'automatique */
+        qr_mm: el('n-qrmm').value.trim(),
+        texte_l_mm: el('n-txtl').value.trim(),
+        texte_h_mm: el('n-txth').value.trim(),
       }).then(r => {
         if (!r.ok) return;
         el('etat').classList.add('visible');
