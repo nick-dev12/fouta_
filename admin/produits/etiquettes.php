@@ -257,7 +257,9 @@ $fpl_retour_page = 'index.php';
                     <?php endif; ?>
                     <td>
                       <div class="row-actions">
-                        <a href="ajuster-stock.php?id=<?php echo (int) $p['id']; ?>" class="btn btn-outline btn-sm" title="Voir la fiche de la pièce">
+                        <?php /* L'infographiste (07/09) : « Détails » = son éditeur d'images (la fiche
+                                 de la pièce, toutes ses images) — l'ajustement de stock lui est fermé. */ ?>
+                        <a href="<?php echo (function_exists('admin_current_role') && admin_current_role() === 'photographe') ? 'photo-editer.php' : 'ajuster-stock.php'; ?>?id=<?php echo (int) $p['id']; ?>" class="btn btn-outline btn-sm" title="Voir la fiche de la pièce">
                           Détails
                         </a>
                         <?php /* L'ŒIL A ÉTÉ RETIRÉ (31/08) : chez FPL natif il ouvre

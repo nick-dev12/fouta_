@@ -38,7 +38,7 @@ if ($id > 0) {
     try {
         $st = $db->prepare(
             "SELECT p.id, p.identifiant_interne, p.nom, p.nom_wolof, p.reference_oem, p.description,
-                    p.images, p.image_principale,
+                    p.images, p.image_principale, p.image_etiquette_fpl,
                     c.nom AS categorie_nom, sc.nom AS sous_categorie_nom, m.nom AS marque_nom
                FROM produits p
           LEFT JOIN categories c ON c.id = p.categorie_id
@@ -79,6 +79,17 @@ if (!empty($piece['sous_categorie_nom'])) {
 }
 $description = trim((string) ($piece['description'] ?? ''));
 $nb_faces = count($photos);
+/* TOUTES LES IMAGES (07/09) : la galerie ci-dessus, PLUS l'image dédiée à
+ * l'étiquette héritée de l'ancien modèle (colonne image_etiquette_fpl) quand
+ * elle existe et n'est pas déjà dans la galerie — il doit la voir, même si
+ * son éditeur ne la modifie pas (l'étiquette prend la principale d'abord). */
+$image_etiquette = trim(str_replace('\\', '/', (string) ($piece['image_etiquette_fpl'] ?? '')));
+if ($image_etiquette !== '' && in_array($image_etiquette, array_map(function ($r) { return str_replace('\\', '/', (string) $r); }, $photos), true)) {
+    $image_etiquette = '';
+}
+if ($image_etiquette !== '' && !is_file(__DIR__ . '/../../upload/' . ltrim($image_etiquette, '/'))) {
+    $image_etiquette = '';
+}
 
 /* LES RECHERCHES TOUTES PRÊTES : la référence OEM d'abord (la plus sûre), puis
  * la marque et le nom, puis le nom seul. Chacune s'ouvre dans un nouvel onglet ;
@@ -141,6 +152,8 @@ $fpl_titre_page = 'Images de la pièce';
     .pe-chip.oem button { border: 0; background: var(--navy, #10316F); color: #fff; border-radius: 6px; font-size: 11px; padding: 2px 8px; cursor: pointer; font-family: inherit; }
     .pe-ref { font-family: Consolas, monospace; background: #ECF2FC; color: var(--navy, #10316F); border-radius: 8px; padding: 3px 10px; font-weight: 700; letter-spacing: .5px; }
     .pe-desc { margin-top: 10px; font-size: 13.5px; color: #33415A; white-space: pre-line; max-height: 4.6em; overflow: hidden; }
+    .pe-heritee { display: flex; align-items: center; gap: 12px; margin-top: 12px; background: #FFF8E6; border: 1px solid #F1E1B3; border-radius: 10px; padding: 8px 12px; font-size: 12.5px; color: #5C4A1A; }
+    .pe-heritee img { width: 64px; height: 64px; object-fit: contain; background: #fff; border-radius: 8px; border: 1px solid #F1E1B3; }
     .pe-faces { text-align: right; }
     .pe-faces .n { font-size: 34px; font-weight: 800; color: var(--navy, #10316F); line-height: 1; }
     .pe-faces .l { font-size: 12.5px; color: #5C6A85; }
@@ -226,6 +239,12 @@ $fpl_titre_page = 'Images de la pièce';
                     <?php endif; ?>
                 </div>
                 <?php if ($description !== ''): ?><div class="pe-desc"><?php echo fpl_e($description); ?></div><?php endif; ?>
+                <?php if ($image_etiquette !== ''): ?>
+                <div class="pe-heritee">
+                    <img src="<?php echo fpl_e($upload_base . ltrim($image_etiquette, '/')); ?>" alt="">
+                    <div><b>Image dédiée à l'étiquette</b> (héritée de l'ancien modèle). L'étiquette prend d'abord l'image principale ci-dessous ; celle-ci sert de repli.</div>
+                </div>
+                <?php endif; ?>
             </div>
             <div class="pe-faces">
                 <div class="n" id="pe-nb-faces"><?php echo (int) $nb_faces; ?></div>
