@@ -6,7 +6,7 @@
  * (FPL-100-ME105116-70x70.pdf) : panneau marine en pentagone avec le camion
  * FPL, filigrane camion fondu, grand nom wolof (Anton), nom français
  * (Barlow Condensed), slogan manuscrit, carte des deux références, trame de
- * points, bloc « SCANNEZ », QR encadré et code-barres EAN.
+ * points, bloc « SCANNEZ », QR (sans cadre depuis le 07/09) et code-barres EAN.
  *
  * CE FICHIER EST UN PORT AU PIXEL du dessin de l'atelier (dessinerEtiquette,
  * canvas 1080×1080) :
@@ -571,7 +571,8 @@ function etiquette70_rendu(array $donnees, $cote)
     $corps = etiquette70_ajuster_corps('barlow_condensed_700', $vo, 38.5, 268);
     etiquette70_texte($img, 183 * $s, 838 * $s, $vo, 'barlow_condensed_700', $corps * $s, $noir_valeur);
 
-    // --- le QR dans son cadre (déjà dessiné dans la couche statique) ---
+    // --- le QR, posé nu (07/09 : le cadre bleu qui l'entourait dans la couche
+    //     statique dessus-1654.png a été effacé sur consigne de la direction) ---
     $mq = etiquette70_qr_matrice((string) ($donnees['qr_texte'] ?? ''));
     if ($mq !== null) {
         $qx = 381 * $s;
