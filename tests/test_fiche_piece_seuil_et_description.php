@@ -92,5 +92,19 @@ verifie('le seuil ne dépend plus de la permission du statut', true,
 verifie('la source du seuil est bornée à son énumération', true,
     strpos(corps_fonction('update_produit'), "in_array(\$sas, ['manuel', 'suggestion'], true)") !== false);
 
+echo "— C. une colonne de prix qu'on recoche retrouve sa valeur —\n";
+$js = file_get_contents($RACINE . '/js/admin-produit-search-ui.js');
+verifie('la ligne porte la mémoire de tous les prix de sa pièce', true,
+    strpos($js, "class=\"ligne-prix-memoire\"") !== false);
+verifie('cette mémoire ne part jamais au serveur (champ sans name)', true,
+    strpos($js, '<input type="hidden" class="ligne-prix-memoire" value="') !== false
+    && strpos($js, 'name="ligne-prix-memoire"') === false);
+verifie('la collecte part de la mémoire avant de lire les cases visibles', true,
+    strpos($js, 'var memoire = memoirePrixLire(row);') !== false);
+verifie('la reconstruction met la mémoire à jour (un montant corrigé survit)', true,
+    strpos($js, 'memoirePrixEcrire(row, vals);') !== false);
+verifie('les guillemets du JSON sont échappés dans l\'attribut', true,
+    strpos($js, "replace(/\"/g, '&quot;')") !== false);
+
 echo "\n$ok OK / $ko KO\n";
 exit($ko === 0 ? 0 : 1);

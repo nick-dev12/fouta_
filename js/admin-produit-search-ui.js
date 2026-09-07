@@ -425,11 +425,57 @@
         return html;
     }
 
+    /* LA MÉMOIRE DES PRIX D'UNE LIGNE (07/09, constat de la direction).
+       « Je décoche puis je recoche la case Prix Entreprise et je ne vois plus
+       le prix. » Décocher une colonne SUPPRIME la case du tableau — et la
+       valeur avec elle ; en recochant, la case revenait vide, alors que le
+       prix est bien saisi sur la pièce. La ligne garde donc désormais TOUS les
+       prix de sa pièce dans un champ caché sans nom (donc jamais envoyé au
+       serveur), mis à jour à chaque reconstruction : une colonne qu'on remet
+       retrouve sa valeur, y compris un montant corrigé à la main. */
+    function memoirePrixLire(row) {
+        if (!row) {
+            return {};
+        }
+        var champ = row.querySelector('.ligne-prix-memoire');
+        if (!champ || !champ.value) {
+            return {};
+        }
+        try {
+            var lu = JSON.parse(champ.value);
+            return (lu && typeof lu === 'object') ? lu : {};
+        } catch (e) {
+            return {};
+        }
+    }
+
+    function memoirePrixEcrire(row, vals) {
+        if (!row) {
+            return;
+        }
+        var champ = row.querySelector('.ligne-prix-memoire');
+        if (!champ) {
+            return;
+        }
+        try {
+            champ.value = JSON.stringify(vals || {});
+        } catch (e) { /* une ligne sans mémoire vaut mieux qu'une page cassée */ }
+    }
+
     function collectRowPrixValues(row) {
         var vals = {};
         if (!row) {
             return vals;
         }
+        /* on part de la mémoire — elle porte les colonnes actuellement retirées */
+        var memoire = memoirePrixLire(row);
+        for (var k in memoire) {
+            if (Object.prototype.hasOwnProperty.call(memoire, k)) {
+                vals[k] = memoire[k];
+            }
+        }
+        /* puis les cases visibles, qui font foi : un montant corrigé à la main
+           l'emporte, et un champ vidé volontairement reste vide */
         row.querySelectorAll('.ligne-prix-champ').forEach(function (inp) {
             if (inp.dataset.slug) {
                 vals[inp.dataset.slug] = inp.value;
@@ -445,6 +491,7 @@
         panelEl = getPrixPanel(panelEl);
         calcSlug = calcSlug || getChampCalculSlug(panelEl);
         var vals = collectRowPrixValues(row);
+        memoirePrixEcrire(row, vals);   /* ce qu'on retire maintenant reviendra intact */
         var idxMatch = null;
         var hiddenPu = row.querySelector('.ligne-prix-unitaire-calc');
         if (hiddenPu && hiddenPu.name) {
@@ -508,8 +555,24 @@
         var cellDes = buildLigneBlDesignationCellHtml(produit, idx, lignesKey);
         var prixCells = buildLignePrixChampsHtml(produit, idx, lignesKey, calcSlug, panelEl);
         var unit = getProduitPrixValue(produit, findChampBySlug(calcSlug) || getVisiblePrixChamps(panelEl)[0]);
+        /* LA LIGNE EMPORTE TOUS LES PRIX DE SA PIÈCE (07/09), même ceux dont la
+           colonne n'est pas affichée : c'est ce qui permet de retrouver un prix
+           quand on recoche sa colonne. Champ SANS nom : il ne part jamais au
+           serveur, il ne sert qu'à l'écran. */
+        var memoire = {};
+        getDevisPrixChamps().forEach(function (ch) {
+            var v = getProduitPrixValue(produit, ch);
+            if (v > 0) {
+                memoire[ch.slug] = String(v);
+            }
+        });
+        /* esc() n'échappe pas les guillemets : le JSON en porte, et l'attribut
+           est entre guillemets — on les remplace explicitement. */
+        var champMemoire = '<input type="hidden" class="ligne-prix-memoire" value="' +
+            esc(JSON.stringify(memoire)).replace(/"/g, '&quot;') + '">';
 
         return (
+            champMemoire +
             cellDes +
             '<div class="ligne-bl-cell">' +
             '<span class="ligne-bl-label">Quantité</span>' +
