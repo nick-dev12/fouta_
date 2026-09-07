@@ -32,8 +32,12 @@ require_once __DIR__ . '/../../models/model_entrepot_hierarchie_libre.php';
 require_once __DIR__ . '/../../models/model_entrepot_etiquette_parametres.php';
 require_once __DIR__ . '/../../models/model_etiquettes_fpl.php';
 
-if (!admin_can_gestion_stock()) {
-    header('Location: ../dashboard.php');
+/* VOIR une étiquette suffit ici (07/09) : la page ne fait que montrer et
+ * imprimer. L'infographiste y a droit — la liste « Toutes les étiquettes » lui
+ * est ouverte depuis le 07/09, mais cette garde le renvoyait sur un tableau de
+ * bord qui lui est fermé : il retombait chez lui sans explication. */
+if (!admin_can_voir_etiquettes()) {
+    header('Location: ../' . admin_role_default_redirect_path(admin_current_role()));
     exit;
 }
 if (empty($_SESSION['admin_csrf'])) {

@@ -136,7 +136,9 @@ if (!function_exists('admin_route_relative_path')) {
             /* TOUTES LES ÉTIQUETTES (07/09, demande de la direction) : l'infographiste
              * voit la liste des étiquettes et leur rendu, pièces et barres. */
             'produits/etiquettes.php',
-            'produits/etiquette-piece.php',
+            'produits/etiquette-piece-voir.php',   // l'étiquette d'une pièce en grand (sans prix ni stock)
+            'produits/etiquette-piece-pdf.php',    // la même, imprimable
+            'produits/ajax_etiquette_imprimee.php',// la trace « imprimée le … par … »
             'produits/etiquette-barre.php',
             'parametres/emplacement-noeud-etiquette.php',
             /* HISTORIQUE DES MOUVEMENTS + RAPPORT JOURNALIER (07/09, demande de la

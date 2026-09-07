@@ -18,8 +18,8 @@ require_once __DIR__ . '/../../includes/admin_permissions.php';
 /* Voir et IMPRIMER une étiquette de barre est le travail du rayonniste
  * (24/08) : la page ne fait que lire — l'accès de base suffit, comme le
  * `stock.etiquettes` du même rôle chez FPL natif. */
-if (!admin_can_gestion_stock()) {
-    header('Location: ../dashboard.php');
+if (!admin_can_voir_etiquettes()) {
+    header('Location: ../' . admin_role_default_redirect_path(admin_current_role()));
     exit;
 }
 

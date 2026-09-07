@@ -316,6 +316,10 @@ $fpl_titre_page = 'Images de la pièce';
                 </div>
                 <div class="pe-bar" style="justify-content:center">
                     <button id="pe-refresh" class="pe-btn pe-btn-ghost" type="button">Rafraîchir l'aperçu</button>
+                    <?php /* VOIR L'ÉTIQUETTE EN GRAND (07/09) : l'aperçu ci-dessus tient
+                             dans la colonne ; la page d'étiquette la montre à sa taille
+                             réelle, avec les autres tailles et le PDF. */ ?>
+                    <a class="pe-btn pe-btn-ghost" href="etiquette-piece-voir.php?id=<?php echo (int) $piece['id']; ?>">Voir l'étiquette en grand</a>
                 </div>
             </div>
         </div>

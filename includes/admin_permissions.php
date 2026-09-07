@@ -114,6 +114,18 @@ if (!function_exists('admin_current_role')) {
         return in_array($r, ['gestion_stock', 'gestion_stock_general', 'admin', 'informaticien', 'developpeur'], true);
     }
 
+    /**
+     * VOIR les étiquettes (pièces et barres) — lecture et impression seulement.
+     * Les profils du stock, plus l'INFOGRAPHISTE (rôle « photographe ») : la
+     * direction veut qu'il voie le rendu de l'étiquette de n'importe quelle
+     * pièce, puisque c'est son image qui s'y imprime. Ces écrans ne montrent ni
+     * prix, ni stock, ni fournisseur, et ne changent rien : régler la
+     * disposition reste à admin_can_gestion_stock_etendue().
+     */
+    function admin_can_voir_etiquettes() {
+        return admin_can_gestion_stock() || admin_current_role() === 'photographe';
+    }
+
     /** Périmètre étendu stocks : catégories complètes, paramètres stock, entrepôt, alertes. */
     function admin_can_gestion_stock_etendue() {
         $r = admin_current_role();

@@ -202,7 +202,16 @@ $fpl_retour_page = 'index.php';
                   <?php $trace = etiquette_derniere_impression('produit', (int) $p['id']); ?>
                   <?php /* D'abord le CHOIX DE LA TAILLE, puis l'étiquette —
                            le parcours de FPL natif (24/08). */ ?>
-                  <?php $cible_etiquette = 'etiquette-piece-choisir.php?id=' . (int) $p['id']; ?>
+                  <?php
+                    /* OÙ MÈNE « VOIR L'ÉTIQUETTE » (07/09) : l'infographiste ne
+                       peut pas ouvrir la fiche de la pièce (prix, stock,
+                       fournisseur) — or « choisir la taille » finit justement
+                       par la fiche. On l'envoie sur la page qui montre
+                       l'étiquette SEULE, à la taille choisie. */
+                    $cible_etiquette = (function_exists('admin_current_role') && admin_current_role() === 'photographe')
+                        ? 'etiquette-piece-voir.php?id=' . (int) $p['id']
+                        : 'etiquette-piece-choisir.php?id=' . (int) $p['id'];
+                  ?>
                   <tr>
                     <td>
                       <?php if (!empty($p['image_principale'])) : ?>
