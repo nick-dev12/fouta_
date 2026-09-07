@@ -133,7 +133,9 @@ $return_url_form = '../stock/sous-categories/index.php';
         .sc-a-del { background: var(--error-bg); color: var(--orange-fonce); border: 1px solid var(--error-border); }
         .sc-a-del:hover { background: var(--orange); color: var(--texte-clair); border-color: var(--orange); }
         .sc-empty { text-align: center; padding: 2.5rem 1rem; background: var(--fond-secondaire); border-radius: 12px; border: 1px dashed var(--border-input); }
-    </style>
+        .sc-code { display: inline-block; font-family: Consolas, monospace; font-weight: 700; font-size: 12px; background: #ECF2FC; color: var(--navy, #10316F); border-radius: 6px; padding: 1px 7px; vertical-align: 1px; }
+    .sc-code--sous { font-size: 13px; }
+</style>
 </head>
 <body>
     <?php include __DIR__ . '/../../includes/nav.php'; ?>
@@ -209,8 +211,10 @@ $return_url_form = '../stock/sous-categories/index.php';
                     $nom_esc = htmlspecialchars((string) ($sc['nom'] ?? ''), ENT_QUOTES, 'UTF-8');
                     ?>
                     <article class="sc-card">
-                        <span class="sc-card__parent"><?php echo htmlspecialchars((string) ($sc['categorie_nom'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></span>
-                        <h3 class="sc-card__title"><?php echo $nom_esc; ?></h3>
+                        <?php /* LES CODES FPL (07/09) : le code de la famille devant son nom, le numéro de
+                                 la sous-catégorie devant le sien — un 15x appartient à Carrosserie. */ ?>
+                        <span class="sc-card__parent"><?php if (!empty($sc['categorie_code'])): ?><b class="sc-code"><?php echo (int) $sc['categorie_code']; ?></b> <?php endif; ?><?php echo htmlspecialchars((string) ($sc['categorie_nom'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></span>
+                        <h3 class="sc-card__title"><?php if (!empty($sc['code'])): ?><b class="sc-code sc-code--sous"><?php echo (int) $sc['code']; ?></b> <?php endif; ?><?php echo $nom_esc; ?></h3>
                         <p class="sc-card__desc"><?php echo htmlspecialchars((string) ($sc['description'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></p>
                         <p class="sc-card__meta"><i class="fas fa-box" aria-hidden="true"></i> <?php echo (int) $nbp; ?> produit<?php echo $nbp > 1 ? 's' : ''; ?></p>
                         <div class="sc-card__actions">

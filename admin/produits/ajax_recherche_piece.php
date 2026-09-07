@@ -19,6 +19,7 @@ if (!isset($_SESSION['admin_id'])) {
 
 require_once __DIR__ . '/../includes/require_access.php';
 require_once __DIR__ . '/../../includes/admin_permissions.php';
+require_once __DIR__ . '/../../includes/fpl_ui.php';
 require_once __DIR__ . '/../../includes/fpl_texte.php';
 require_once __DIR__ . '/../../models/model_produits.php';
 require_once __DIR__ . '/../../models/model_entrepot_hierarchie_libre.php';
@@ -48,6 +49,9 @@ try {
     $params = ['q_like' => $like, 'q_norm' => $norm];
     if (produits_has_column('identifiant_interne')) {
         $or[] = 'p.identifiant_interne LIKE :q_like';
+        if (produits_has_column('reference_fpl')) {
+            $or[] = 'p.reference_fpl LIKE :q_like';
+        }
         $or[] = produits_ref_normalise_sql('p.identifiant_interne') . ' LIKE :q_norm';
     }
     if (produits_has_column('reference_oem')) {
@@ -58,7 +62,8 @@ try {
         $or[] = 'p.reference_fournisseur LIKE :q_like';
         $or[] = produits_ref_normalise_sql('p.reference_fournisseur') . ' LIKE :q_norm';
     }
-    $stmt = $db->prepare("SELECT p.id, p.nom, p.identifiant_interne, p.reference_oem, p.stock,
+    $col_ref_fpl = produits_has_column('reference_fpl') ? 'p.reference_fpl' : 'NULL AS reference_fpl';
+    $stmt = $db->prepare("SELECT p.id, p.nom, p.identifiant_interne, $col_ref_fpl, p.reference_oem, p.stock,
                                  p.image_principale, p.entrepot_noeud_id,
                                  c.nom AS categorie_nom, sc.nom AS sous_categorie_nom
                           FROM produits p
@@ -83,7 +88,7 @@ foreach ($rows as $r) {
     $products[] = [
         'id' => (int) $r['id'],
         'name' => fpl_texte((string) $r['nom']),
-        'code' => (string) $r['identifiant_interne'],
+        'code' => function_exists('fpl_reference_piece') ? fpl_reference_piece($r) : (string) $r['identifiant_interne'],
         'oem' => fpl_texte((string) ($r['reference_oem'] ?? '')),
         'categorie' => fpl_texte(trim((string) ($r['categorie_nom'] ?? '')
             . ((!empty($r['categorie_nom']) && !empty($r['sous_categorie_nom'])) ? ' › ' : '')

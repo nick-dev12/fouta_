@@ -284,7 +284,7 @@ $affiche_prix = $voit('prix');
     <div class="form-block">
       <h3>
         <?php echo fpl_icone('tool', 14); ?> Identité
-        <span class="hint-inline"><span class="chip-code"><?php echo e(fpl_code_afficher((string) ($produit['identifiant_interne'] ?? ''))); ?></span></span>
+        <span class="hint-inline"><span class="chip-code"><?php echo e(fpl_code_afficher(fpl_reference_piece($produit))); ?></span></span>
       </h3>
 
       <div class="field">

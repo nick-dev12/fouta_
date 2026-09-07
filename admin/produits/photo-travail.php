@@ -81,7 +81,7 @@ try {
 
     $pages = max(1, (int) ceil($compte[$file] / $PAR_PAGE));
     $page = min($page, $pages);
-    $st = $db->prepare("SELECT p.id, p.identifiant_interne, p.nom, p.reference_oem, p.image_principale, p.images,
+    $st = $db->prepare("SELECT p.id, p.identifiant_interne, p.reference_fpl, p.nom, p.reference_oem, p.image_principale, p.images,
                                m.nom AS marque_nom, $NB_FACES AS nb_faces
                           FROM produits p LEFT JOIN marques m ON m.id = p.marque_id
                          WHERE p.sync_deleted_at IS NULL AND {$FILES[$file]['ou']} $filtre_sql
@@ -145,7 +145,7 @@ $carte = function ($row, $cta) use ($vignette, $requete_images, $lien_images, $r
             <div class="pt-marque"><?php echo !empty($row['marque_nom']) ? fpl_e($row['marque_nom']) : '<span class="pt-sans-marque">Marque non renseignée</span>'; ?></div>
             <div class="pt-nom"><?php echo fpl_e($row['nom']); ?></div>
             <div class="pt-refs">
-                <span class="pt-ref"><?php echo fpl_e($ref_aeree($row['identifiant_interne'])); ?></span>
+                <span class="pt-ref"><?php echo fpl_e(!empty($row['reference_fpl']) ? fpl_code_afficher($row['reference_fpl']) : $ref_aeree($row['identifiant_interne'])); ?></span>
                 <?php if ($oem !== ''): ?><span class="pt-oem" title="Référence OEM">OEM <?php echo fpl_e($oem); ?></span><?php endif; ?>
             </div>
         </div>

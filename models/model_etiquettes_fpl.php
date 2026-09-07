@@ -131,7 +131,7 @@ function etiquettes_pieces_liste($q, $etat, $du, $au, $page, $par)
            FCS-BZAX-016-2, « 131 900 » = « 131900 »). */
         require_once __DIR__ . '/model_produits.php';
         $norm = produits_ref_normalise($q);
-        $ou[] = "(p.nom LIKE :q1 OR p.identifiant_interne LIKE :q2 OR p.reference_oem LIKE :q3
+        $ou[] = "(p.nom LIKE :q1 OR p.identifiant_interne LIKE :q2 OR COALESCE(p.reference_fpl, '') LIKE :q8 OR p.reference_oem LIKE :q3
                   OR ma.nom LIKE :q4
                   OR EXISTS (SELECT 1 FROM categories c2 WHERE c2.id = p.categorie_id AND c2.nom LIKE :q5)
                   OR EXISTS (SELECT 1 FROM sous_categories sc2 WHERE sc2.id = p.sous_categorie_id AND sc2.nom LIKE :q6)
@@ -139,7 +139,7 @@ function etiquettes_pieces_liste($q, $etat, $du, $au, $page, $par)
                   OR " . produits_ref_normalise_sql('p.identifiant_interne') . " LIKE :qn
                   OR " . produits_ref_normalise_sql('COALESCE(p.reference_oem, \'\')') . " LIKE :qn
                   OR " . produits_ref_normalise_sql('COALESCE(p.reference_fournisseur, \'\')') . " LIKE :qn)";
-        for ($i = 1; $i <= 7; $i++) {
+        for ($i = 1; $i <= 8; $i++) {
             $params['q' . $i] = '%' . $q . '%';
         }
         $params['qn'] = '%' . $norm . '%';
@@ -170,7 +170,7 @@ function etiquettes_pieces_liste($q, $etat, $du, $au, $page, $par)
         $derniere = max(1, (int) ceil($total / $par));
         $page = min(max(1, $page), $derniere);
 
-        $stmt = $db->prepare("SELECT p.id, p.nom, p.identifiant_interne, p.reference_oem,
+        $stmt = $db->prepare("SELECT p.id, p.nom, p.identifiant_interne, p.reference_fpl, p.reference_oem,
                                      p.reference_fournisseur, p.image_principale,
                                      c.nom AS categorie_nom, sc.nom AS sous_categorie_nom
                               FROM produits p

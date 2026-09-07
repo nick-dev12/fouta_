@@ -157,8 +157,13 @@ $fv_mq_nom = '';
 if ($active_tab === 'marques' && $_SERVER['REQUEST_METHOD'] === 'POST'
     && (!empty($_POST['add_marque']) || !empty($_POST['update_marque']))) {
     $fv_mq_nom = (string) ($_POST['marque_nom'] ?? '');
+    $fv_mq_abr = (string) ($_POST['marque_abreviation'] ?? '');
 } elseif ($marque_to_edit) {
     $fv_mq_nom = (string) ($marque_to_edit['nom'] ?? '');
+    $fv_mq_abr = (string) ($marque_to_edit['abreviation'] ?? '');
+}
+if (!isset($fv_mq_abr)) {
+    $fv_mq_abr = '';
 }
 ?>
 <!DOCTYPE html>
@@ -353,6 +358,7 @@ if ($active_tab === 'marques' && $_SERVER['REQUEST_METHOD'] === 'POST'
                     <thead>
                         <tr>
                             <th>Nom</th>
+                            <th style="width:140px;" title="Dans la référence FPL : FPL150MER105116">Abréviation</th>
                             <th>Créé le</th>
                             <th style="width:120px;">Actions</th>
                         </tr>
@@ -361,6 +367,7 @@ if ($active_tab === 'marques' && $_SERVER['REQUEST_METHOD'] === 'POST'
                         <?php foreach ($marques as $m): ?>
                         <tr>
                             <td><?php echo htmlspecialchars($m['nom']); ?></td>
+                            <td><?php if (!empty($m['abreviation'])): ?><span style="font-family:Consolas,monospace;font-weight:700;background:#ECF2FC;color:#10316F;border-radius:6px;padding:2px 8px;"><?php echo htmlspecialchars($m['abreviation']); ?></span><?php else: ?><span style="color:#8894A8;">—</span><?php endif; ?></td>
                             <td><?php echo htmlspecialchars($m['date_creation'] ?? ''); ?></td>
                             <td><a href="logos.php?tab=marques&amp;edit_marque=<?php echo (int) $m['id']; ?>" class="btn-edit" style="text-decoration:none;"><i class="fas fa-edit"></i> Modifier</a></td>
                         </tr>
@@ -582,6 +589,13 @@ if ($active_tab === 'marques' && $_SERVER['REQUEST_METHOD'] === 'POST'
                         <input type="text" id="marque_nom" name="marque_nom" required maxlength="255"
                             placeholder="Nom commercial de la marque"
                             value="<?php echo htmlspecialchars($fv_mq_nom); ?>">
+                    </div>
+                    <div class="form-group">
+                        <label for="marque_abreviation">Abréviation dans la référence FPL</label>
+                        <input type="text" id="marque_abreviation" name="marque_abreviation" maxlength="4" pattern="[A-Za-z0-9]{2,4}"
+                            placeholder="ex. MER, RVI, HW — vide : proposée automatiquement" style="text-transform:uppercase;"
+                            value="<?php echo htmlspecialchars($fv_mq_abr); ?>">
+                        <small style="color:#5C6A85;display:block;margin-top:4px;">2 à 4 lettres ou chiffres, unique. La changer recalcule la référence FPL des pièces de la marque.</small>
                     </div>
                     <div class="form-actions" style="margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
                         <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Enregistrer</button>

@@ -123,7 +123,7 @@ $nom_produit = (string) ($produit['nom'] ?? '');
         <span class="page-produits-table__nom"><?php echo e($nom_produit); ?></span>
         <?php endif; ?>
         <?php if ($fpl_colonnes_piece): ?>
-        <?php $fpl_code = trim((string) ($produit['identifiant_interne'] ?? '')); ?>
+        <?php $fpl_code = function_exists('fpl_reference_piece') ? fpl_reference_piece($produit) : trim((string) ($produit['identifiant_interne'] ?? '')); ?>
         <?php if ($fpl_code !== '' && $show_ident): ?>
         <div class="fpl-cell-sub"><span class="fpl-chip-code"><?php
             echo e(function_exists('fpl_code_afficher') ? fpl_code_afficher($fpl_code) : $fpl_code);

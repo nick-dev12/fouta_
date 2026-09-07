@@ -37,7 +37,7 @@ $piece = null;
 if ($id > 0) {
     try {
         $st = $db->prepare(
-            "SELECT p.id, p.identifiant_interne, p.nom, p.nom_wolof, p.reference_oem, p.description,
+            "SELECT p.id, p.identifiant_interne, p.reference_fpl, p.nom, p.nom_wolof, p.reference_oem, p.description,
                     p.images, p.image_principale, p.image_etiquette_fpl,
                     c.nom AS categorie_nom, sc.nom AS sous_categorie_nom, m.nom AS marque_nom
                FROM produits p
@@ -70,6 +70,9 @@ $upload_base = '../../upload/';
 $ref = strtoupper(trim((string) $piece['identifiant_interne']));
 if (preg_match('/^FPL(\d{9})$/', $ref, $mref)) {
     $ref = 'FPL ' . implode(' ', str_split($mref[1], 3));
+}
+if (!empty($piece['reference_fpl'])) {
+    $ref = fpl_code_afficher(strtoupper(trim((string) $piece['reference_fpl'])));
 }
 $oem = trim((string) ($piece['reference_oem'] ?? ''));
 $marque = trim((string) ($piece['marque_nom'] ?? ''));

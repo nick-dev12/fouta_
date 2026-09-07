@@ -216,7 +216,7 @@ $fpl_retour_page = 'index.php';
                     </td>
                     <td>
                       <a class="cell-title" href="<?php echo (function_exists('admin_current_role') && admin_current_role() === 'photographe') ? 'photo-editer.php' : 'ajuster-stock.php'; ?>?id=<?php echo (int) $p['id']; ?>" style="color:var(--ink)"><?php echo fpl_e($p['nom']); ?></a>
-                      <div class="cell-sub"><span class="chip-code"><?php echo e(fpl_code_afficher((string) $p['identifiant_interne'])); ?></span></div>
+                      <div class="cell-sub"><span class="chip-code"><?php echo e(fpl_code_afficher(fpl_reference_piece($p))); ?></span></div>
                     </td>
                     <?php /* LA RÉFÉRENCE QU'ON A (31/08) : la référence d'origine
                              (OEM) n'est renseignée que sur 1 pièce du catalogue,

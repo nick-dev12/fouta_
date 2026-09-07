@@ -19,6 +19,7 @@
 
 require_once __DIR__ . '/conn/conn.php';
 require_once __DIR__ . '/includes/produit_vitrine.php';
+require_once __DIR__ . '/includes/fpl_ui.php';
 require_once __DIR__ . '/includes/fpl_public_branding.php';
 require_once __DIR__ . '/includes/fpl_texte.php';
 
@@ -55,8 +56,15 @@ $piece = null;
 $modeles = [];
 if ($identifiant !== '') {
     try {
+        $col_ref_fpl = 'NULL AS reference_fpl';
+        try {
+            if ((int) $db->query("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'produits' AND COLUMN_NAME = 'reference_fpl'")->fetchColumn() > 0) {
+                $col_ref_fpl = 'p.reference_fpl';
+            }
+        } catch (PDOException $e) {
+        }
         $st = $db->prepare(
-            "SELECT p.id, p.identifiant_interne, p.nom, p.nom_wolof, p.description,
+            "SELECT p.id, p.identifiant_interne, $col_ref_fpl, p.nom, p.nom_wolof, p.description,
                     p.statut, p.stock, p.prix, p.prix_promotion, p.reference_oem,
                     p.image_principale, p.images, p.image_etiquette_fpl,
                     c.nom AS categorie_nom, sc.nom AS sous_categorie_nom,
@@ -104,7 +112,10 @@ if ($piece) {
     $ean13 = fpl_vitrine_ean13_pour_produit($piece);
     /* FPL 001 006 463 — la référence aérée en groupes de 3, le geste de l'étiquette */
     $ref_aeree = trim((string) $piece['identifiant_interne']);
-    if (preg_match('/^FPL(\d{9})$/', strtoupper($ref_aeree), $m)) {
+    if (trim((string) ($piece['reference_fpl'] ?? '')) !== '') {
+        /* la référence FPL de la direction (07/09) : « FPL150MER 105116 » */
+        $ref_aeree = fpl_code_afficher(strtoupper(trim((string) $piece['reference_fpl'])));
+    } elseif (preg_match('/^FPL(\d{9})$/', strtoupper($ref_aeree), $m)) {
         $ref_aeree = 'FPL ' . implode(' ', str_split($m[1], 3));
     }
 

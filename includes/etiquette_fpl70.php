@@ -434,7 +434,15 @@ function etiquette70_donnees_pour_produit(array $produit)
     }
 
     $identifiant = strtoupper(trim((string) ($produit['identifiant_interne'] ?? '')));
+    /* LA RÉFÉRENCE AFFICHÉE (07/09) : la référence FPL selon la règle de la
+     * direction (FPL150MER 105116) quand elle est posée ; sinon l'identifiant
+     * aéré. Le code-barres et le QR restent tirés de l'identifiant. */
     $ref_affichee = $identifiant;
+    $ref_fpl = strtoupper(trim((string) ($produit['reference_fpl'] ?? '')));
+    if ($ref_fpl !== '') {
+        require_once __DIR__ . '/fpl_ui.php';
+        $ref_affichee = function_exists('fpl_code_afficher') ? fpl_code_afficher($ref_fpl) : $ref_fpl;
+    } else
     if (preg_match('/^FPL(\d{9})$/', $identifiant, $m)) {
         $ref_affichee = 'FPL ' . substr($m[1], 0, 3) . ' ' . substr($m[1], 3, 3) . ' ' . substr($m[1], 6, 3);
     } elseif (preg_match('/^FPL(\d{6})$/', $identifiant, $m)) {

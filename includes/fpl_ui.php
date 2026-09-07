@@ -37,6 +37,21 @@ function fpl_montant($valeur)
  * le bloc FPL + catégorie + initiales reste collé, le suffixe s'en détache
  * (traduction du service CodeFpl::afficher du Laravel)
  */
+/**
+ * LA RÉFÉRENCE D'UNE PIÈCE À AFFICHER (07/09) : la référence FPL selon la
+ * règle de la direction (produits.reference_fpl, ex. FPL150MER105116) si elle
+ * est posée, sinon l'ancien identifiant interne (FPL001002384). À passer à
+ * fpl_code_afficher() pour l'aérer. Le code-barres, lui, reste l'identifiant.
+ */
+function fpl_reference_piece($row)
+{
+    if (!is_array($row)) {
+        return trim((string) $row);
+    }
+    $r = trim((string) ($row['reference_fpl'] ?? ''));
+    return $r !== '' ? $r : trim((string) ($row['identifiant_interne'] ?? ''));
+}
+
 function fpl_code_afficher($code)
 {
     $code = (string) $code;

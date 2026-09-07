@@ -226,7 +226,7 @@ $fiche_sous_categorie_id = (int) ($produit['sous_categorie_id'] ?? 0);
 $fiche_sous_categorie_nom = pf_champ_visible('sous_categorie_id')
     ? produit_fiche_sous_categorie_nom($fiche_sous_categorie_id) : '';
 $fiche_code = pf_champ_visible('identifiant_interne')
-    ? trim((string) ($produit['identifiant_interne'] ?? '')) : '';
+    ? (function_exists('fpl_reference_piece') ? fpl_reference_piece($produit) : trim((string) ($produit['identifiant_interne'] ?? ''))) : '';
 $fiche_statut = pf_champ_visible('statut') ? trim((string) ($produit['statut'] ?? '')) : '';
 ?>
 <!DOCTYPE html>

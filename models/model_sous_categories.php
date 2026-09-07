@@ -35,7 +35,7 @@ function get_all_sous_categories_with_categorie_nom()
     }
     try {
         $stmt = $db->query('
-            SELECT s.*, c.nom AS categorie_nom
+            SELECT s.*, c.nom AS categorie_nom, c.code AS categorie_code
             FROM sous_categories s
             INNER JOIN categories c ON c.id = s.categorie_id
             ORDER BY c.nom ASC, s.nom ASC
@@ -125,6 +125,18 @@ function create_sous_categorie($data)
             $vals .= ', :mots_cles';
             $mc = trim((string) $data['mots_cles']);
             $params['mots_cles'] = $mc !== '' ? mb_substr($mc, 0, 500) : null;
+        }
+        /* Le numéro dans le bloc de la famille (07/09) : le premier libre après le
+         * code de la catégorie (151, 152…). Refus si le bloc est plein. */
+        if (sous_categories_has_column('code') && is_file(__DIR__ . '/model_reference_fpl.php')) {
+            require_once __DIR__ . '/model_reference_fpl.php';
+            $code = sous_categorie_code_prochain($cid);
+            if ($code === null) {
+                return false;
+            }
+            $cols .= ', code';
+            $vals .= ', :code';
+            $params['code'] = $code;
         }
         $stmt = $db->prepare("INSERT INTO sous_categories ($cols) VALUES ($vals)");
         $stmt->execute($params);

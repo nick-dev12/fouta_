@@ -60,7 +60,7 @@ $fpl_modeles_noms = isset($fpl_modeles_noms) && is_array($fpl_modeles_noms) ? $f
 $pid = (int) ($produit['id'] ?? 0);
 $nom = (string) ($produit['nom'] ?? '');
 $img = trim((string) ($produit['image_principale'] ?? ''));
-$code = trim((string) ($produit['identifiant_interne'] ?? ''));
+$code = function_exists('fpl_reference_piece') ? fpl_reference_piece($produit) : trim((string) ($produit['identifiant_interne'] ?? ''));
 $marque = trim((string) ($produit['marque_libelle_catalogue'] ?? ''));
 $oem = trim((string) ($produit['reference_oem'] ?? ''));
 

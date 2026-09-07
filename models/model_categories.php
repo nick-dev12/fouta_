@@ -135,6 +135,18 @@ function create_categorie($nom, $description = null, $image = null, $admin_creat
             $vals .= ', :admin_createur_id';
             $params['admin_createur_id'] = (int) $admin_createur_id;
         }
+        /* Le code FPL de la famille (07/09) : le bloc libre suivant (multiples de 50,
+         * jamais au-delà de 999). Refus si plus aucun bloc n'est libre. */
+        if (categories_has_column('code') && is_file(__DIR__ . '/model_reference_fpl.php')) {
+            require_once __DIR__ . '/model_reference_fpl.php';
+            $code = categorie_code_prochain();
+            if ($code === null) {
+                return false;
+            }
+            $cols .= ', code';
+            $vals .= ', :code';
+            $params['code'] = $code;
+        }
         $stmt = $db->prepare("INSERT INTO categories ($cols) VALUES ($vals)");
 
         $result = $stmt->execute($params);

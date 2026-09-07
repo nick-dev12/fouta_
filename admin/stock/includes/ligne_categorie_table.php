@@ -42,6 +42,8 @@ $can_edit = !function_exists('admin_is_restricted_admin_account') || !admin_is_r
         <?php endif; ?>
     </td>
     <td data-label="Catégorie">
+        <?php /* le code FPL de la famille (07/09) devant son nom : un 15x appartient à Carrosserie */ ?>
+        <?php if (!empty($categorie['code'])): ?><b class="stock-cat-table__code" style="display:inline-block;font-family:Consolas,monospace;font-weight:700;font-size:12px;background:#ECF2FC;color:#10316F;border-radius:6px;padding:1px 7px;margin-right:6px;vertical-align:1px;" title="Code FPL de la famille"><?php echo (int) $categorie['code']; ?></b><?php endif; ?>
         <span class="stock-cat-table__nom"><?php echo e($categorie['nom'] ?? ''); ?></span>
     </td>
     <td class="col-num" data-label="Produits"><?php echo $nb_produits; ?></td>

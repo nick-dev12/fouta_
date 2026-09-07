@@ -21,7 +21,8 @@ function process_admin_add_marque() {
         return ['success' => false, 'message' => 'Session expirée ou jeton invalide. Rechargez la page.'];
     }
     $nom = isset($_POST['marque_nom']) ? (string) $_POST['marque_nom'] : '';
-    $r = create_marque_row($nom);
+    $abr = isset($_POST['marque_abreviation']) ? (string) $_POST['marque_abreviation'] : null;
+    $r = create_marque_row($nom, $abr);
     if (!$r['success']) {
         return ['success' => false, 'message' => $r['message']];
     }
@@ -40,6 +41,7 @@ function process_admin_update_marque() {
     }
     $id = isset($_POST['marque_id']) ? (int) $_POST['marque_id'] : 0;
     $nom = isset($_POST['marque_nom']) ? (string) $_POST['marque_nom'] : '';
-    $r = update_marque_row($id, $nom);
+    $abr = isset($_POST['marque_abreviation']) ? (string) $_POST['marque_abreviation'] : null;
+    $r = update_marque_row($id, $nom, $abr);
     return ['success' => $r['success'], 'message' => $r['message']];
 }

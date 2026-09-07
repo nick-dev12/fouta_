@@ -512,6 +512,9 @@ function admin_produits_liste_recherche_sql($recherche, array &$params = [])
             $params['adm_st_suf5'] = $tr;
         } else {
             $or[] = '(p.identifiant_interne IS NOT NULL AND TRIM(p.identifiant_interne) != \'\' AND p.identifiant_interne LIKE :adm_st_idlike)';
+            if (produits_has_column('reference_fpl')) {
+                $or[] = 'p.reference_fpl LIKE :adm_st_idlike'; // la référence FPL de la direction (07/09)
+            }
             $params['adm_st_idlike'] = '%' . $tr . '%';
             $or[] = produits_ref_normalise_sql('p.identifiant_interne') . ' LIKE :adm_st_id_norm';
             $params['adm_st_id_norm'] = '%' . produits_ref_normalise($tr) . '%';
@@ -2084,7 +2087,11 @@ function create_produit($data)
         }
 
         if ($result) {
-            return $db->lastInsertId();
+            $nouvel_id = $db->lastInsertId();
+            /* La référence FPL (07/09) : calculée dès la création, à partir de la
+             * catégorie, de la marque et de l'OEM (voir model_reference_fpl.php). */
+            produit_reference_fpl_apres_maj((int) $nouvel_id);
+            return $nouvel_id;
         }
 
         return false;
@@ -2102,6 +2109,20 @@ function create_produit($data)
  * @param array $data Les nouvelles données du produit
  * @return bool True en cas de succès, False sinon
  */
+/** Recalcule la référence FPL d'une pièce après une création / modification (jamais bloquant). */
+function produit_reference_fpl_apres_maj($id)
+{
+    if (!is_file(__DIR__ . '/model_reference_fpl.php')) {
+        return;
+    }
+    require_once __DIR__ . '/model_reference_fpl.php';
+    try {
+        produit_reference_fpl_maj((int) $id);
+    } catch (Throwable $e) {
+        // l'écriture de la pièce a réussi ; la référence sera reprise au prochain recalcul
+    }
+}
+
 function update_produit($id, $data)
 {
     global $db;
@@ -2248,7 +2269,9 @@ function update_produit($id, $data)
         }
         try {
             $stmt = $db->prepare("UPDATE produits SET $sets WHERE id = :id");
-            return $stmt->execute($params);
+            $ok = $stmt->execute($params);
+            produit_reference_fpl_apres_maj((int) $id);
+            return $ok;
         } catch (PDOException $e) {
             if ($with_extras && (strpos($e->getMessage(), 'couleurs') !== false || strpos($e->getMessage(), 'taille') !== false)) {
                 $sets = "nom = :nom, description = :description, prix = :prix, prix_promotion = :prix_promotion, stock = :stock, categorie_id = :categorie_id, image_principale = :image_principale, images = :images, poids = :poids, unite = :unite, statut = :statut, date_modification = NOW()";
@@ -2257,7 +2280,9 @@ function update_produit($id, $data)
                     $sets .= ", admin_dernier_modificateur_id = :admin_dernier_modificateur_id";
                 }
                 $stmt = $db->prepare("UPDATE produits SET $sets WHERE id = :id");
-                return $stmt->execute($params);
+                $ok = $stmt->execute($params);
+                produit_reference_fpl_apres_maj((int) $id);
+                return $ok;
             }
             throw $e;
         }
@@ -2796,6 +2821,9 @@ function search_produits_en_stock_commande_manuelle($recherche = '', $limit = 30
                     $params['st_suf5'] = $tr;
                 } else {
                     $or[] = '(p.identifiant_interne IS NOT NULL AND TRIM(p.identifiant_interne) != \'\' AND p.identifiant_interne LIKE :st_idlike)';
+                    if (produits_has_column('reference_fpl')) {
+                        $or[] = 'p.reference_fpl LIKE :st_idlike';
+                    }
                     $params['st_idlike'] = '%' . $tr . '%';
                 }
             }
@@ -3306,7 +3334,7 @@ function export_valeur_colonne_fpl($cle, array $p)
 {
     switch ($cle) {
         case 'reference':
-            $c = trim((string) ($p['identifiant_interne'] ?? ''));
+            $c = function_exists('fpl_reference_piece') ? fpl_reference_piece($p) : trim((string) ($p['identifiant_interne'] ?? ''));
             return $c !== '' && function_exists('fpl_code_afficher') ? fpl_code_afficher($c) : $c;
         case 'nom':                   return (string) ($p['nom'] ?? '');
         case 'categorie':             return (string) ($p['categorie_nom'] ?? '');
@@ -3578,9 +3606,10 @@ function placement_recherche($q)
     $products = [];
     try {
         $col_oem = produits_has_column('reference_oem') ? 'p.reference_oem' : 'NULL';
+        $col_ref_fpl = produits_has_column('reference_fpl') ? 'p.reference_fpl' : 'NULL AS reference_fpl';
         $ou_oem = produits_has_column('reference_oem') ? ' OR p.reference_oem LIKE :q2' : '';
         $st = $db->prepare("
-            SELECT p.id, p.nom, p.identifiant_interne, $col_oem AS reference_oem,
+            SELECT p.id, p.nom, p.identifiant_interne, $col_ref_fpl, $col_oem AS reference_oem,
                    sc.nom AS sous_categorie_nom, c.nom AS categorie_nom
             FROM produits p
             LEFT JOIN sous_categories sc ON sc.id = p.sous_categorie_id
@@ -3598,7 +3627,7 @@ function placement_recherche($q)
                 'id' => (int) $p['id'],
                 'name' => function_exists('fpl_texte') ? fpl_texte($p['nom']) : $p['nom'],
                 'code' => function_exists('fpl_code_afficher')
-                    ? fpl_code_afficher((string) $p['identifiant_interne'])
+                    ? fpl_code_afficher(function_exists('fpl_reference_piece') ? fpl_reference_piece($p) : (string) $p['identifiant_interne'])
                     : (string) $p['identifiant_interne'],
                 'oem' => (string) ($p['reference_oem'] ?? ''),
                 'path' => function_exists('fpl_texte') ? fpl_texte($chemin) : $chemin,
