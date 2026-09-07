@@ -1470,7 +1470,12 @@ function produit_formulaire_champs_prix_devis() {
  * @return array<int, string>
  */
 function produit_formulaire_devis_prix_colonnes_defaut() {
-    $candidats = ['prix', 'prix_promotion'];
+    /* LE PRIX ENTREPRISE EST VISIBLE D'OFFICE (07/09) : un BL ou un devis part
+     * chez un professionnel — c'est le prix qu'on y cherche. Il fallait le
+     * cocher à chaque nouveau document, et un document se prépare vite : on
+     * repartait au prix de vente sans y penser. Les cases restent libres, seul
+     * le point de départ change. */
+    $candidats = ['prix', 'prix_promotion', 'prix_entreprise'];
     $out = [];
     foreach ($candidats as $slug) {
         if (produit_formulaire_champ_visible($slug)) {
