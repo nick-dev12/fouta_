@@ -582,8 +582,27 @@ td.num, th.num { font-variant-numeric: tabular-nums; }
   background: #FBFCFE; border: 1px solid var(--line-soft); border-radius: var(--r);
   padding: var(--s3) var(--s4); margin-bottom: var(--s3);
 }
-.cb-field { display: flex; flex-direction: column; gap: 4px; }
+.cb-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .cb-field label { font-size: 13px; font-weight: 600; color: var(--slate); }
+/* LE CHOIX DU TYPE, EN CLAIR (07/09) : quand plusieurs niveaux sont possibles
+   sous l'élément ouvert — une box OU une position sous une barre —, ils étaient
+   enfermés dans une liste déroulante qui, en plus, chevauchait le champ « Nom »
+   d'à côté. On les montre : une pastille par choix, celle qui est prise se
+   détache. Rien à ouvrir, rien à deviner. */
+.cb-choix { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.cb-choix__item {
+  display: inline-flex; align-items: center; gap: 7px;
+  border: 1.5px solid var(--line); border-radius: 999px;
+  padding: 7px 14px; background: #fff; cursor: pointer;
+  font-size: 14px; font-weight: 600; color: var(--ink);
+  transition: border-color .12s ease, background .12s ease, color .12s ease;
+}
+.cb-choix__item:hover { border-color: var(--blue); }
+.cb-choix__item input { accent-color: var(--navy); margin: 0; }
+.cb-choix__item.is-on,
+.cb-choix__item:has(input:checked) { border-color: var(--navy); background: var(--blue-tint, #eef3fd); color: var(--navy); }
+.cb-astuce { flex-basis: 100%; font-size: 13px; color: var(--slate); margin-top: 2px; }
+.cb-astuce strong { color: var(--navy); }
 .cb-field input, .cb-field select {
   padding: 8px 11px; border: 1px solid var(--line); border-radius: var(--r-sm);
   font-family: inherit; font-size: 15px; color: var(--ink); background: #fff; width: 100%;

@@ -696,13 +696,22 @@ if ($courant !== null) {
             <input type="hidden" name="etage_id" value="<?php echo (int) $etage_courant['id']; ?>">
             <input type="hidden" name="parent_id" value="<?php echo $courant !== null ? (int) $courant['id'] : 0; ?>">
             <?php if (count($defs_enfants) > 1) : ?>
-              <div class="cb-field" style="width:150px">
+              <?php /* LE CHOIX SE VOIT (07/09, retour de la direction : « je n'ai
+                       pas vu la possibilité de dépasser la box pour aller à la
+                       position »). La liste déroulante cachait le second choix —
+                       et chevauchait le champ « Nom ». Une pastille par niveau,
+                       et une phrase qui dit que le niveau facultatif se saute. */ ?>
+              <div class="cb-field" style="min-width:230px">
                 <label>Type</label>
-                <select name="niveau_id">
-                  <?php foreach ($defs_enfants as $de) : ?>
-                    <option value="<?php echo (int) $de['id']; ?>"><?php echo fpl_e($de['label']); ?></option>
+                <div class="cb-choix" id="cb-choix-niveau">
+                  <?php foreach ($defs_enfants as $i => $de) : ?>
+                    <label class="cb-choix__item<?php echo $i === 0 ? ' is-on' : ''; ?>">
+                      <input type="radio" name="niveau_id" value="<?php echo (int) $de['id']; ?>"
+                             data-label="<?php echo fpl_e($de['label']); ?>"<?php echo $i === 0 ? ' checked' : ''; ?>>
+                      <?php echo fpl_e($de['label']); ?>
+                    </label>
                   <?php endforeach; ?>
-                </select>
+                </div>
               </div>
             <?php else : ?>
               <input type="hidden" name="niveau_id" value="<?php echo (int) $def_enfants['id']; ?>">
@@ -716,7 +725,47 @@ if ($courant !== null) {
               <input type="number" name="combien" value="1" min="1" max="50" step="1">
             </div>
             <button type="submit" class="btn btn-primary"><?php echo fpl_icone('plus', 14); ?> Créer</button>
+            <?php /* LA PHRASE QUI DIT LE SAUT (07/09) : sans elle, personne ne
+                     devine qu'on peut se passer d'un niveau. */ ?>
+            <?php
+            $facultatifs = [];
+            $apres_facultatif = '';
+            foreach ($defs_enfants as $i => $de) {
+                if (function_exists('entrepot_hierarchie_def_est_facultatif') && entrepot_hierarchie_def_est_facultatif($de)) {
+                    $facultatifs[] = (string) $de['label'];
+                    if (isset($defs_enfants[$i + 1])) {
+                        $apres_facultatif = (string) $defs_enfants[$i + 1]['label'];
+                    }
+                }
+            }
+            ?>
+            <?php if ($facultatifs !== [] && $apres_facultatif !== '') : ?>
+              <div class="cb-astuce">
+                <?php echo fpl_e(implode(' et ', $facultatifs)); ?> est facultatif :
+                choisissez <strong><?php echo fpl_e($apres_facultatif); ?></strong> pour ranger directement
+                dans <?php echo $courant !== null ? '« ' . fpl_e($courant['nom']) . ' »' : 'cet emplacement'; ?>,
+                sans passer par <?php echo fpl_e(implode(' ni ', $facultatifs)); ?>.
+              </div>
+            <?php endif; ?>
           </form>
+
+          <?php /* la pastille choisie se marque, et le nom proposé suit le type */ ?>
+          <script>
+          (function () {
+            var choix = document.getElementById('cb-choix-niveau');
+            if (!choix) { return; }
+            var nom = choix.closest('form').querySelector('input[name="nom"]');
+            choix.addEventListener('change', function (ev) {
+              choix.querySelectorAll('.cb-choix__item').forEach(function (el) {
+                el.classList.toggle('is-on', !!el.querySelector('input:checked'));
+              });
+              var r = ev.target;
+              if (nom && r && r.dataset && r.dataset.label) {
+                nom.placeholder = r.dataset.label + ' 1';
+              }
+            });
+          })();
+          </script>
 
           <?php if ($enfants === []) : ?>
             <div class="empty" style="margin-top:var(--s3)">
