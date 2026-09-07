@@ -298,6 +298,14 @@ saisie_encours_retenir('produits/ajouter.php');
               </button>
               <div class="mm-panel" id="models-panel" hidden></div>
             </div>
+            <?php /* CRÉER UN MODÈLE MANQUANT ICI (07/09, direction) : il n'y a pas d'écran des
+                     modèles et il en manque ; la gestion de stock simple peut en ajouter un
+                     à la volée, pour la marque choisie — il est aussitôt coché. */ ?>
+            <div class="mm-nouveau" id="modele-nouveau" hidden>
+              <input type="text" id="modele-nouveau-nom" maxlength="100" placeholder="Modèle manquant ? Tapez son nom (ex. Actros MP4)" autocomplete="off">
+              <button type="button" id="modele-nouveau-btn"><?php echo fpl_icone('plus', 13); ?> Créer le modèle</button>
+              <span class="mm-nouveau-msg" id="modele-nouveau-msg"></span>
+            </div>
             <div class="wiz-help">Cochez tous les modèles sur lesquels la pièce se monte.</div>
           </div>
         </div>
@@ -921,8 +929,46 @@ window.FPL_DRAFT_URLS = { show: 'ajax_brouillon.php', save: 'ajax_brouillon.php'
     }
   }
 
-  el('marque_id').addEventListener('change', () => { refreshModels(); refreshDesc(); });
+  // ----- Créer un modèle manquant, à la volée (07/09) -----
+  const nouveau = el('modele-nouveau'), nouveauNom = el('modele-nouveau-nom'),
+        nouveauBtn = el('modele-nouveau-btn'), nouveauMsg = el('modele-nouveau-msg');
+  function refreshNouveau() {
+    nouveau.hidden = !el('marque_id').value;
+  }
+  function creerModele() {
+    const marque = el('marque_id').value, nom = nouveauNom.value.trim();
+    if (!marque || nom.length < 2) { nouveauMsg.className = 'mm-nouveau-msg ko'; nouveauMsg.textContent = 'Tapez le nom du modèle.'; return; }
+    nouveauBtn.disabled = true; nouveauMsg.className = 'mm-nouveau-msg'; nouveauMsg.textContent = 'Enregistrement…';
+    const corps = new FormData();
+    corps.append('marque_id', marque); corps.append('nom', nom);
+    corps.append('_jeton', (document.querySelector('meta[name="csrf-token"]') || {}).content || '');
+    fetch('ajax_modele_creer.php', { method: 'POST', body: corps, credentials: 'same-origin' })
+      .then(r => r.json())
+      .then(d => {
+        if (!d || !d.ok) { nouveauMsg.className = 'mm-nouveau-msg ko'; nouveauMsg.textContent = (d && d.message) || 'Échec.'; return; }
+        // les modèles déjà cochés restent cochés ; le nouveau s'ajoute, coché
+        const deja = coches().map(c => c.value);
+        if (!(brandModels[marque] || []).some(m => String(m.id) === String(d.id))) {
+          (brandModels[marque] = brandModels[marque] || []).push({ id: d.id, name: d.nom });
+          brandModels[marque].sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+        }
+        deja.push(String(d.id));
+        oldModels.length = 0; deja.forEach(v => oldModels.push(v));
+        refreshModels();
+        panneau.hidden = false; boite.classList.add('open');
+        nouveauNom.value = '';
+        nouveauMsg.textContent = d.existait ? ('« ' + d.nom + ' » existait déjà : coché.') : ('Modèle « ' + d.nom + ' » créé et coché.');
+        refreshDesc();
+      })
+      .catch(() => { nouveauMsg.className = 'mm-nouveau-msg ko'; nouveauMsg.textContent = 'Échec réseau.'; })
+      .finally(() => { nouveauBtn.disabled = false; });
+  }
+  nouveauBtn.addEventListener('click', creerModele);
+  nouveauNom.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); creerModele(); } });
+
+  el('marque_id').addEventListener('change', () => { refreshModels(); refreshNouveau(); refreshDesc(); });
   panneau.addEventListener('change', () => { refreshResume(); refreshGenerations(); refreshDesc(); });
+  refreshNouveau();
   el('generation_id').addEventListener('change', refreshAnnee);
   refreshModels();
 
@@ -1321,6 +1367,14 @@ function refreshDesc() {
 @media print {
   .wiz-header, .wiz-nav { display: none !important; }
 }
+    .mm-nouveau { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+    .mm-nouveau input { flex: 1 1 220px; border: 1.5px dashed #C4D1E9; border-radius: 10px; padding: 9px 12px; font-size: 14px; background: #FBFCFE; }
+    .mm-nouveau input:focus { outline: none; border-style: solid; border-color: var(--navy, #10316F); }
+    .mm-nouveau button { border: 0; border-radius: 10px; padding: 9px 14px; font-weight: 700; font-size: 13.5px; cursor: pointer; background: #ECF2FC; color: var(--navy, #10316F); display: inline-flex; align-items: center; gap: 6px; }
+    .mm-nouveau button:hover { background: var(--navy, #10316F); color: #fff; }
+    .mm-nouveau button[disabled] { opacity: .5; cursor: default; }
+    .mm-nouveau-msg { font-size: 12.5px; font-weight: 600; color: #12694A; }
+    .mm-nouveau-msg.ko { color: #A32D24; }
 </style>
 
     <?php include '../includes/footer.php'; ?>
