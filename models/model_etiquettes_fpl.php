@@ -314,6 +314,41 @@ function etiquette_layout_barre_defauts()
     ];
 }
 
+/**
+ * Normalise une disposition de barre venue de l'extérieur (corps JSON du
+ * panneau « Régler la disposition », ou paramètres d'URL du PDF) : mêmes
+ * bornes partout, une seule source de vérité (07/09).
+ *
+ * @param array<string, mixed> $src
+ * @return array{qr_position:string,qr_echelle:int,code_echelle:int,decal_x:float,decal_y:float,marge:float|null,ecart:float|null}
+ */
+function etiquette_disposition_barre_normaliser(array $src)
+{
+    $num = static function ($v) { return $v !== null && $v !== '' && is_numeric($v); };
+
+    return [
+        'qr_position' => isset($src['qr_position']) && $src['qr_position'] === 'gauche' ? 'gauche' : 'droite',
+        'qr_echelle' => max(40, min(170, $num($src['qr_echelle'] ?? null) ? (int) $src['qr_echelle'] : 100)),
+        'code_echelle' => max(40, min(170, $num($src['code_echelle'] ?? null) ? (int) $src['code_echelle'] : 100)),
+        'decal_x' => max(-20, min(20, $num($src['decal_x'] ?? null) ? (float) $src['decal_x'] : 0.0)),
+        'decal_y' => max(-20, min(20, $num($src['decal_y'] ?? null) ? (float) $src['decal_y'] : 0.0)),
+        'marge' => $num($src['marge'] ?? null) ? max(0, min(15, (float) $src['marge'])) : null,
+        'ecart' => $num($src['ecart'] ?? null) ? max(0, min(20, (float) $src['ecart'])) : null,
+    ];
+}
+
+/** Une requête porte-t-elle une disposition de barre (au moins une clé) ? */
+function etiquette_disposition_barre_dans_requete(array $src)
+{
+    foreach (array_keys(etiquette_layout_barre_defauts()) as $k) {
+        if (isset($src[$k]) && $src[$k] !== '') {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 /** Les réglages effectifs d'un format de barre : défauts + écarts enregistrés. */
 function etiquette_layout_barre($format)
 {

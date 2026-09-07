@@ -50,6 +50,15 @@ if (function_exists('etiquette_geometrie_barre')) {
     if ($format_pdf === false) {
         $format_pdf = etiquette_format_barre_defaut();
     }
+    /* CE QUE L'ÉCRAN MONTRE EST CE QUE LE PDF SORT (07/09) : le panneau
+     * « Régler la disposition » bouge l'aperçu en direct, mais le PDF ne lisait
+     * que la disposition ENREGISTRÉE — un curseur déplacé sans « Enregistrer »
+     * n'y paraissait jamais (« mes changements ne se voient pas dans le PDF »).
+     * L'écran passe désormais ses réglages COURANTS dans l'URL ; s'ils sont
+     * là, ils priment sur l'enregistré (mêmes bornes que l'enregistrement). */
+    if ($format_pdf !== false && etiquette_disposition_barre_dans_requete($_GET)) {
+        $format_pdf['disposition_barre'] = json_encode(etiquette_disposition_barre_normaliser($_GET), JSON_UNESCAPED_UNICODE);
+    }
     if ($format_pdf !== false) {
         $geo = etiquette_geometrie_barre($format_pdf, $libelle);
     }
@@ -386,4 +395,7 @@ $dompdf = new Dompdf($options);
 $dompdf->loadHtml($html);
 $dompdf->setPaper([0, 0, entrepot_etiquette_mm_to_pt($mm_w), entrepot_etiquette_mm_to_pt($mm_h)]);
 $dompdf->render();
-$dompdf->stream('etiquette-noeud-' . $noeud_id . '.pdf', ['Attachment' => true]);
+/* Envoi par le canal commun des PDF : en-têtes « no-cache » (aucun cache de
+ * navigateur ni de mandataire ne peut resservir un PDF d'AVANT un réglage —
+ * le nginx du VPS garde 60 min tout 200 sans ces en-têtes). */
+admin_pdf_send_binary($dompdf->output(), 'etiquette-noeud-' . $noeud_id);

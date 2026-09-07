@@ -200,7 +200,7 @@ $pdf_url = '../parametres/emplacement-noeud-etiquette.php?id=' . $noeud_id
 
 <div class="toolbar">
   <button onclick="imprimerBarre()">Imprimer (<?php echo e((string) $format['nom']); ?>)</button>
-  <a href="<?php echo e($pdf_url); ?>">Télécharger en PDF</a>
+  <a href="<?php echo e($pdf_url); ?>" id="lien-pdf" data-base="<?php echo e($pdf_url); ?>">Télécharger en PDF</a>
   <a href="<?php echo e($pdf_url . (strpos($pdf_url, '?') !== false ? '&' : '?') . 'qr=1'); ?>" target="_blank" rel="noopener">Imprimer le QR seul</a>
   <?php foreach ($formats as $f) : ?>
     <a href="etiquette-barre.php?id=<?php echo (int) $noeud_id; ?>&format=<?php echo (int) $f['id']; ?>"
@@ -303,10 +303,29 @@ $pdf_url = '../parametres/emplacement-noeud-etiquette.php?id=' . $noeud_id
   (function () {
     const el = (id) => document.getElementById(id);
     const racine = document.documentElement;
+    let qrPosition = <?php echo json_encode($g['qr_position']); ?>;
     const qrBrut = <?php echo json_encode(round($g['qr'] / max(1, $g['qr_echelle'] / 100), 2)); ?>;
     const codeBrut = <?php echo json_encode(round($g['code'] / max(1, $g['code_echelle'] / 100), 2)); ?>;
 
+    /* Le lien « Télécharger en PDF » porte les réglages COURANTS du panneau
+       (enregistrés ou non) : le PDF sort exactement l'aperçu qu'on regarde. */
+    function majLienPdf() {
+      const a = el('lien-pdf');
+      if (!a) return;
+      const q = new URLSearchParams({
+        qr_position: qrPosition,
+        qr_echelle: el('r-qr').value,
+        code_echelle: el('r-code').value,
+        decal_x: el('r-decx').value,
+        decal_y: el('r-decy').value,
+        marge: el('r-marge').value,
+        ecart: el('r-ecart').value,
+      });
+      a.href = a.dataset.base + (a.dataset.base.indexOf('?') !== -1 ? '&' : '?') + q.toString();
+    }
+
     function majApercu() {
+      majLienPdf();
       racine.style.setProperty('--code', (codeBrut * (+el('r-code').value) / 100).toFixed(2) + 'mm');
       const qrMm = qrBrut * (+el('r-qr').value) / 100;
       racine.style.setProperty('--qr', qrMm.toFixed(2) + 'mm');
@@ -324,9 +343,9 @@ $pdf_url = '../parametres/emplacement-noeud-etiquette.php?id=' . $noeud_id
     }
     ['r-code', 'r-qr', 'r-ecart', 'r-decx', 'r-decy', 'r-marge'].forEach(id => el(id).addEventListener('input', majApercu));
 
-    let qrPosition = <?php echo json_encode($g['qr_position']); ?>;
     function majPosition(pos) {
       qrPosition = pos;
+      majLienPdf();
       document.getElementById('pose').classList.toggle('qr-gauche', pos === 'gauche');
       el('p-gauche').classList.toggle('actif', pos === 'gauche');
       el('p-droite').classList.toggle('actif', pos === 'droite');

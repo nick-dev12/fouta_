@@ -44,15 +44,8 @@ if (!empty($charge['reinitialiser'])) {
     exit;
 }
 
-$disposition = [
-    'qr_position' => isset($charge['qr_position']) && $charge['qr_position'] === 'gauche' ? 'gauche' : 'droite',
-    'qr_echelle' => max(40, min(170, (int) (isset($charge['qr_echelle']) ? $charge['qr_echelle'] : 100))),
-    'code_echelle' => max(40, min(170, (int) (isset($charge['code_echelle']) ? $charge['code_echelle'] : 100))),
-    'decal_x' => max(-20, min(20, (float) (isset($charge['decal_x']) ? $charge['decal_x'] : 0))),
-    'decal_y' => max(-20, min(20, (float) (isset($charge['decal_y']) ? $charge['decal_y'] : 0))),
-    'marge' => isset($charge['marge']) && $charge['marge'] !== null ? max(0, min(15, (float) $charge['marge'])) : null,
-    'ecart' => isset($charge['ecart']) && $charge['ecart'] !== null ? max(0, min(20, (float) $charge['ecart'])) : null,
-];
+// Mêmes bornes que le PDF (etiquette_disposition_barre_normaliser) : une seule source de vérité.
+$disposition = etiquette_disposition_barre_normaliser($charge);
 
 etiquette_maj_disposition_barre($format['id'], $disposition);
 
