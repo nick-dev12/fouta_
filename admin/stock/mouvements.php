@@ -189,7 +189,7 @@ $fpl_retour_page = '../produits/mon-travail.php';
                   </td>
                   <td>
                     <?php if (!empty($m['produit_id'])) : ?>
-                      <a class="cell-title" href="../produits/ajuster-stock.php?id=<?php echo (int) $m['produit_id']; ?>" style="color:var(--ink)">
+                      <a class="cell-title" href="../produits/<?php echo (function_exists('admin_current_role') && admin_current_role() === 'photographe') ? 'photo-editer.php' : 'ajuster-stock.php'; ?>?id=<?php echo (int) $m['produit_id']; ?>" style="color:var(--ink)">
                         <?php echo $m['produit_nom'] !== null ? fpl_e($m['produit_nom']) : 'Pièce supprimée'; ?>
                       </a>
                     <?php else : ?>

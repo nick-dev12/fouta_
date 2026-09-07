@@ -204,7 +204,7 @@ $user_q = $cible_id !== (int) $_SESSION['admin_id'] ? '&user=' . $cible_id : '';
 <div class="report">
 
   <div class="no-print">
-    <a class="btn btn-outline btn-sm" href="entree.php" title="Revenir à l'entrée en stock">
+    <a class="btn btn-outline btn-sm" href="<?php echo (function_exists('admin_current_role') && admin_current_role() === 'photographe') ? 'photo-travail.php' : 'entree.php'; ?>" title="Retour">
       <?php echo fpl_icone('arrow-left', 14); ?> Retour
     </a>
     <button class="btn btn-primary" onclick="window.print()"><?php echo fpl_icone('printer', 14); ?> Imprimer / PDF</button>
