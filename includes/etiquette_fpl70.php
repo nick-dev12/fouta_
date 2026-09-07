@@ -504,11 +504,12 @@ function etiquette70_rendu(array $donnees, $cote)
             /* L'atelier posait la pièce dans une boîte de 650 ; la direction
                l'a ajustée à l'œil sur les vraies photos (01/09 : 520 puis
                420 ; 04/09 : « diminue un peu » puis « augmente un peu » →
-               400), même centre (755, 647) — la pièce reste à sa place, en
-               plus discret. Écart assumé avec le dessin de l'atelier. */
+               400 ; 07/09 : « agrandir un peu » → 440), même centre
+               (755, 647) — la pièce reste à sa place. Écart assumé avec le
+               dessin de l'atelier. */
             $boite = [
-                'x' => (int) round(555 * $s), 'y' => (int) round(447 * $s),
-                'w' => (int) round(400 * $s), 'h' => (int) round(400 * $s),
+                'x' => (int) round(535 * $s), 'y' => (int) round(427 * $s),
+                'w' => (int) round(440 * $s), 'h' => (int) round(440 * $s),
             ];
             $pl = imagesx($ph['img']);
             $phh = imagesy($ph['img']);
