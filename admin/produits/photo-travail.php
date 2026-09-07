@@ -6,9 +6,8 @@
  * CHERCHE SUR INTERNET les bonnes images des pièces — et d'autres faces d'une
  * pièce déjà illustrée — pour faire avancer l'informaticien plus vite.
  *
- * L'écran (redessiné le 07/09 sur retour « plus jolie ») : un bandeau outremer
- * qui dit où en est le catalogue (part illustrée, faces à ajouter, travail du
- * jour), trois files cliquables, une recherche, et pour chaque pièce une carte
+ * L'écran (07/09, sur retour de la direction : pas de bandeau ni de texte
+ * d'explication) : trois files cliquables, une recherche, et pour chaque pièce une carte
  * avec marque, OEM, nombre de faces et le raccourci « Chercher des images » qui
  * ouvre la recherche d'images avec la référence OEM (sinon marque + nom).
  * Il ne voit ni prix, ni stock, ni fournisseur.
@@ -59,8 +58,6 @@ try {
 } catch (PDOException $e) {
     // la page reste utilisable (recherche) même si une requête échoue
 }
-$part_illustree = $compte['total'] > 0 ? (int) round(100 * ($compte['une'] + $compte['ok']) / $compte['total']) : 0;
-$part_complete = $compte['total'] > 0 ? (int) round(100 * $compte['ok'] / $compte['total']) : 0;
 
 $vignette = function ($row) {
     $imgs = json_decode((string) ($row['images'] ?? ''), true);
@@ -120,29 +117,8 @@ $fpl_titre_page = 'Espace infographiste';
     <style>
     .pt-wrap { max-width: 1240px; margin: 0 auto; padding: 18px 16px 48px; }
 
-    /* ---- le bandeau : où en est le catalogue ---- */
-    .pt-hero { position: relative; overflow: hidden; border-radius: 20px; padding: 26px 28px 22px; color: #fff;
-               background: linear-gradient(118deg, #0B2455 0%, #10316F 55%, #1E4A9A 100%); box-shadow: 0 10px 30px rgba(16,49,111,.22); }
-    .pt-hero::before { content: ''; position: absolute; right: -80px; top: -90px; width: 320px; height: 320px; border-radius: 50%; background: rgba(255,255,255,.06); }
-    .pt-hero::after { content: ''; position: absolute; right: 120px; bottom: -140px; width: 260px; height: 260px; border-radius: 50%; background: rgba(255,255,255,.05); }
-    .pt-hero > * { position: relative; z-index: 1; }
-    .pt-hero-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; flex-wrap: wrap; }
-    .pt-hero h1 { font-size: 26px; margin: 0 0 4px; letter-spacing: .2px; }
-    .pt-hero .pt-lead { color: rgba(255,255,255,.82); font-size: 14px; line-height: 1.5; max-width: 700px; margin: 0; }
-    .pt-jour { background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.22); border-radius: 14px; padding: 10px 16px; text-align: center; min-width: 130px; }
-    .pt-jour .n { font-size: 28px; font-weight: 800; line-height: 1; }
-    .pt-jour .l { font-size: 12px; color: rgba(255,255,255,.8); margin-top: 3px; }
-    .pt-progress { margin-top: 18px; }
-    .pt-progress .pt-pl { display: flex; justify-content: space-between; font-size: 12.5px; color: rgba(255,255,255,.85); margin-bottom: 6px; }
-    .pt-progress .pt-pb { height: 10px; border-radius: 999px; background: rgba(255,255,255,.18); overflow: hidden; display: flex; }
-    .pt-progress .pt-pb i { display: block; height: 100%; }
-    .pt-progress .pt-pb .ok { background: #7BE3B4; }
-    .pt-progress .pt-pb .une { background: #FFD666; }
-    .pt-legende { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 8px; font-size: 12px; color: rgba(255,255,255,.85); }
-    .pt-legende b { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
-
     /* ---- les trois files ---- */
-    .pt-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin: -26px 14px 0; position: relative; z-index: 2; }
+    .pt-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin: 4px 0 0; }
     .pt-kpi { background: #fff; border: 1px solid #E5EAF2; border-radius: 16px; padding: 16px 18px; text-align: left; cursor: pointer; font: inherit; box-shadow: 0 6px 18px rgba(15,32,64,.08); display: flex; gap: 14px; align-items: center; transition: .15s; }
     .pt-kpi:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(15,32,64,.12); }
     .pt-kpi.on { border-color: var(--navy, #10316F); box-shadow: 0 0 0 3px rgba(16,49,111,.12), 0 10px 24px rgba(15,32,64,.10); }
@@ -193,8 +169,6 @@ $fpl_titre_page = 'Espace infographiste';
     .pt-more { color: #8894A8; font-size: 13px; padding: 10px 2px; }
     .pt-file[hidden] { display: none; }
     @media (max-width: 700px) {
-        .pt-hero { padding: 20px 18px 18px; border-radius: 16px; }
-        .pt-kpis { margin: 12px 0 0; }
         .pt-kpi { padding: 12px 14px; }
     }
     </style>
@@ -203,23 +177,6 @@ $fpl_titre_page = 'Espace infographiste';
     <?php include '../includes/nav.php'; ?>
 
     <div class="pt-wrap">
-        <section class="pt-hero">
-            <div class="pt-hero-top">
-                <div>
-                    <h1>Espace infographiste</h1>
-                    <p class="pt-lead">Trouvez sur internet les bonnes images de chaque pièce, ajoutez d'autres faces à celles qui n'en ont qu'une, et vérifiez le rendu sur l'étiquette. « Chercher des images » ouvre la recherche avec la référence OEM ; copiez l'image trouvée, puis collez-la (Ctrl+V) dans la fiche de la pièce.</p>
-                </div>
-                <div class="pt-jour">
-                    <div class="n"><?php echo (int) $compte['jour']; ?></div>
-                    <div class="l">pièce<?php echo $compte['jour'] > 1 ? 's' : ''; ?> illustrée<?php echo $compte['jour'] > 1 ? 's' : ''; ?> aujourd'hui</div>
-                </div>
-            </div>
-            <div class="pt-progress">
-                <div class="pt-pl"><span>Catalogue illustré : <strong><?php echo $part_illustree; ?> %</strong> des <?php echo number_format($compte['total'], 0, ',', ' '); ?> pièces ont au moins une image</span><span><?php echo $part_complete; ?> % avec 2 faces et plus</span></div>
-                <div class="pt-pb"><i class="ok" style="width:<?php echo $part_complete; ?>%"></i><i class="une" style="width:<?php echo max(0, $part_illustree - $part_complete); ?>%"></i></div>
-                <div class="pt-legende"><span><b style="background:#7BE3B4"></b>2 faces et plus</span><span><b style="background:#FFD666"></b>une seule face</span><span><b style="background:rgba(255,255,255,.35)"></b>sans image</span></div>
-            </div>
-        </section>
 
         <div class="pt-kpis" role="tablist">
             <button type="button" class="pt-kpi k-sans on" data-file="sans" role="tab"><span class="ico"><?php echo fpl_icone('image', 20); ?></span><span><div class="n"><?php echo number_format($compte['sans'], 0, ',', ' '); ?></div><div class="l">Sans image</div><div class="h">à illustrer en priorité</div></span></button>
