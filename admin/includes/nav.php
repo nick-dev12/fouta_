@@ -387,15 +387,18 @@ include __DIR__ . '/../../includes/pwa_admin_boot.php';
                 <span class="menu-item-text">Structure de l'entrepôt</span>
             </a>
             <?php elseif ($admin_role === 'photographe'): ?>
+            <?php /* L'INFOGRAPHISTE (07/09) : il ne photographie pas, il cherche sur internet
+                     les bonnes images des pièces (autres faces…) pour aider l'informaticien.
+                     Deux entrées : son espace, et toutes les étiquettes. */ ?>
             <a href="<?php echo $admin_nav_base; ?>produits/photo-travail.php"
                 class="menu-item mi-photo<?php echo $current_page == 'photo-travail.php' || $current_page == 'photo-editer.php' ? ' active' : ''; ?>">
                 <span class="menu-item-icon ico" aria-hidden="true"><?php echo fpl_icone('image', 16); ?></span>
-                <span class="menu-item-text">Espace photo</span>
+                <span class="menu-item-text">Espace infographiste</span>
             </a>
-            <a href="<?php echo $admin_nav_base; ?>produits/detourage-lot.php"
-                class="menu-item mi-detourage<?php echo $current_page == 'detourage-lot.php' ? ' active' : ''; ?>">
-                <span class="menu-item-icon ico" aria-hidden="true"><?php echo fpl_icone('layers', 16); ?></span>
-                <span class="menu-item-text">Tout détourer</span>
+            <a href="<?php echo $admin_nav_base; ?>produits/etiquettes.php"
+                class="menu-item mi-etiquettes<?php echo $current_page == 'etiquettes.php' || $current_page == 'etiquette-barre.php' ? ' active' : ''; ?>">
+                <span class="menu-item-icon ico" aria-hidden="true"><?php echo fpl_icone('tag', 16); ?></span>
+                <span class="menu-item-text">Toutes les étiquettes</span>
             </a>
             <?php endif; ?>
             </div>
@@ -405,7 +408,8 @@ include __DIR__ . '/../../includes/pwa_admin_boot.php';
             <div class="avatar" aria-hidden="true"><?php echo e($admin_nav_initials); ?></div>
             <div class="who">
                 <strong><?php echo e($admin_nav_display); ?></strong>
-                <span><?php echo e(ucfirst(str_replace('_', ' ', $admin_role))); ?></span>
+                <?php if (!function_exists('admin_role_label') && is_file(__DIR__ . '/../../models/model_admin.php')) { require_once __DIR__ . '/../../models/model_admin.php'; } ?>
+                <span><?php echo e(function_exists('admin_role_label') ? admin_role_label($admin_role) : ucfirst(str_replace('_', ' ', $admin_role))); ?></span>
                 <a href="<?php echo $admin_nav_base; ?>profil.php">Mon profil</a>
                 ·
                 <a href="<?php echo $admin_nav_base; ?>logout.php">Déconnexion</a>

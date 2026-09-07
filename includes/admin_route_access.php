@@ -121,23 +121,27 @@ if (!function_exists('admin_route_relative_path')) {
     }
 
     /**
-     * Routes autorisées pour le rôle « photographe » : SEULEMENT son espace
+     * Routes autorisées pour le rôle « photographe » (libellé : Infographiste) : SEULEMENT son espace
      * photo et les aperçus. Aucune page qui montre prix/stock/fournisseur, ni
      * la fiche complète, ni le wizard, ni la suppression de pièce.
      */
     function admin_route_photographe_allowed($p) {
         return in_array($p, [
-            'produits/photo-travail.php',        // sa page d'accueil (files d'attente + recherche)
-            'produits/photo-editer.php',         // l'éditeur photo d'une pièce
+            'produits/photo-travail.php',        // son accueil : files « sans image » / « une seule face », recherche
+            'produits/photo-editer.php',         // l'éditeur d'images d'une pièce (recherche internet, coller, ordre)
             'produits/ajax_photo_enregistrer.php', // enregistre UNIQUEMENT les photos
-            'produits/ajax_recherche_piece.php', // le picker (nom/réf, sans prix)
+            'produits/ajax_recherche_piece.php', // le picker (nom/réf, sans prix ni stock pour ce rôle)
             'produits/detourage-lot-apercu.php', // l'aperçu détouré d'une pièce
             'produits/etiquette-piece-image.php', // l'aperçu de l'étiquette (montre le détourage)
-            'produits/detourage-lot.php',        // « Tout détourer » (ne touche que le cache)
-            'produits/detourage-lot-start.php',
-            'produits/detourage-lot-status.php',
-            'produits/detourage-lot-worker.php',
+            /* TOUTES LES ÉTIQUETTES (07/09, demande de la direction) : l'infographiste
+             * voit la liste des étiquettes et leur rendu, pièces et barres. */
+            'produits/etiquettes.php',
+            'produits/etiquette-piece.php',
+            'produits/etiquette-barre.php',
+            'parametres/emplacement-noeud-etiquette.php',
         ], true);
+        /* « Tout détourer » (detourage-lot*) lui a été RETIRÉ (07/09) : c'est un
+         * outil de lot de l'informaticien, sans rapport avec son travail. */
     }
 
     /**

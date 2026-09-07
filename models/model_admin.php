@@ -45,7 +45,7 @@ function admin_role_label($role) {
         'comptabilite' => 'Comptabilité',
         'rh' => 'Ressources humaines',
         'caissier' => 'Caissier (caissière)',
-        'photographe' => 'Photographe',
+        'photographe' => 'Infographiste',
     ];
     $r = (string) $role;
     if ($r === 'utilisateur') {

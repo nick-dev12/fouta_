@@ -41,6 +41,8 @@
 
     var dragIndex = null;
     function rendrePhotos() {
+        var nb = document.getElementById('pe-nb-faces');
+        if (nb) { nb.textContent = String(photos.length); }
         elPhotos.innerHTML = '';
         if (photos.length === 0) {
             var v = document.createElement('div');

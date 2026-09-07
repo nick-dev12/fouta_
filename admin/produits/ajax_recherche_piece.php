@@ -18,6 +18,7 @@ if (!isset($_SESSION['admin_id'])) {
 }
 
 require_once __DIR__ . '/../includes/require_access.php';
+require_once __DIR__ . '/../../includes/admin_permissions.php';
 require_once __DIR__ . '/../../includes/fpl_texte.php';
 require_once __DIR__ . '/../../models/model_produits.php';
 require_once __DIR__ . '/../../models/model_entrepot_hierarchie_libre.php';
@@ -93,4 +94,12 @@ foreach ($rows as $r) {
     ];
 }
 
+/* L'infographiste (rôle photographe) ne voit ni stock ni emplacement : on les
+ * retire de la réponse pour lui (07/09) — son écran n'en a pas l'usage. */
+if (function_exists('admin_current_role') && admin_current_role() === 'photographe') {
+    foreach ($products as &$pp) {
+        unset($pp['stock'], $pp['emplacement']);
+    }
+    unset($pp);
+}
 echo json_encode(['products' => $products], JSON_UNESCAPED_UNICODE);
