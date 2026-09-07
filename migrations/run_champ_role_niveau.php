@@ -65,6 +65,14 @@ if ($col === 0) {
 /* « developpeur » ne se sème plus (31/08 au soir) : le profil technique
  * contourne de toute façon ces règles — produit_formulaire_acces_bypass_role()
  * couvre informaticien ET developpeur — et le rôle n'est plus proposé. */
+/* SEMIS INITIAL SEULEMENT (07/09) : cette migration est rejouée à CHAQUE
+ * déploiement (migrations_core du script de mise à jour). Elle ne pose la
+ * matrice que sur un champ qui n'a encore AUCUNE ligne de droit ; un champ
+ * déjà réglé — par elle hier, ou par un informaticien à l'écran « Champs du
+ * formulaire pièce » — n'est plus touché. Avant, chaque mise à jour effaçait
+ * les réglages faits à l'écran (mesuré : lignes toutes re-datées 03/09 14:21,
+ * l'heure d'un déploiement). */
+$deja_regle = $db->prepare('SELECT COUNT(*) FROM produit_formulaire_champ_role WHERE champ_id = :c');
 $technique = ['admin', 'informaticien'];
 
 $matrice = [
@@ -96,6 +104,12 @@ foreach ($matrice as $slug => $niveaux) {
     $cid = (int) $champ_id->fetchColumn();
     if ($cid <= 0) {
         echo "  $slug : champ introuvable — ignoré\n";
+        continue;
+    }
+    $deja_regle->execute([':c' => $cid]);
+    if ((int) $deja_regle->fetchColumn() > 0) {
+        echo "  $slug : déjà réglé (à l'écran ou par un passage précédent) — conservé tel quel
+";
         continue;
     }
     $db->beginTransaction();

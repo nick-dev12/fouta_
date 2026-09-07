@@ -57,6 +57,15 @@ echo "champ « ", $champ['label'], " » : id $cid, section ", $champ['section'],
 $modifier = ['gestion_stock_general', 'admin', 'informaticien'];
 $voir = ['gestion_stock', 'commercial', 'commercial_general', 'caissier', 'comptabilite', 'rh'];
 
+/* SEMIS INITIAL SEULEMENT (07/09) : rejouée à chaque déploiement, cette
+ * migration ne doit jamais écraser un réglage fait à l'écran « Champs du
+ * formulaire pièce ». Si le champ porte déjà des droits, on n'y touche pas. */
+$deja = $db->prepare('SELECT COUNT(*) FROM produit_formulaire_champ_role WHERE champ_id = :c');
+$deja->execute([':c' => $cid]);
+if ((int) $deja->fetchColumn() > 0) {
+    echo "accès déjà réglés sur ce champ (à l'écran ou par un passage précédent) — conservés tels quels
+";
+} else {
 $db->prepare('DELETE FROM produit_formulaire_champ_role WHERE champ_id = :c')->execute([':c' => $cid]);
 $poser = $db->prepare('INSERT INTO produit_formulaire_champ_role (champ_id, role, niveau, date_modification)
                        VALUES (:c, :r, :n, NOW())');
@@ -68,6 +77,7 @@ foreach ($voir as $r) {
 }
 produit_formulaire_champ_roles_map_reset();
 printf("accès posés : %d en modifier, %d en lecture seule\n", count($modifier), count($voir));
+}
 
 /* 3. Relecture. */
 $lu = $db->prepare("SELECT niveau, GROUP_CONCAT(role ORDER BY role SEPARATOR ', ') roles
