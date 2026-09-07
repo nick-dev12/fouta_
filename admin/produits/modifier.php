@@ -805,9 +805,27 @@ $affiche_prix = $voit('prix');
     if (!preview || !cache) { return; }
 
     let foundDescription = null;
+    let foundPour = '';
     let timer = null;
 
     function selText(id) { const s = el(id); return s && s.value ? s.options[s.selectedIndex].text.trim() : ''; }
+
+    /* LA REPRISE NE VAUT QUE POUR LA RÉFÉRENCE QUI L'A PRODUITE (07/09).
+       Constat de la direction : « une fois générée, même si on change un champ —
+       la réf. OEM par exemple — la génération affiche les données anciennes. »
+       Deux causes : (1) une description reprise de la base restait affichée quoi
+       qu'on change ensuite (marque, modèle, référence) — le drapeau ne retombait
+       jamais ; (2) après une frappe dans la référence, l'aperçu gardait l'ancien
+       texte pendant toute la recherche (350 ms + le serveur), sans rien dire.
+       Désormais : la reprise est mémorisée AVEC les références qui l'ont produite
+       et n'est réaffichée que si elles n'ont pas bougé ; l'aperçu se recompose
+       immédiatement à la frappe ; et une réponse arrivée en retard, pour une
+       référence qu'on a déjà quittée, est ignorée. */
+    function refsCourantes() {
+      const oem = el('reference_oem') ? el('reference_oem').value.trim() : '';
+      const ref = el('reference_fournisseur') ? el('reference_fournisseur').value.trim() : '';
+      return oem + ' ' + ref;
+    }
 
     function composer() {
       const principal = (window._modelesNoms ? window._modelesNoms() : [])[0] || '';
@@ -816,7 +834,7 @@ $affiche_prix = $voit('prix');
     }
 
     function refreshDesc() {
-      if (foundDescription) {
+      if (foundDescription && foundPour === refsCourantes()) {
         preview.textContent = foundDescription;
         preview.className = 'desc-preview found';
         badgeTxt.textContent = 'Reprise de la base : cette référence est déjà connue.';
@@ -832,16 +850,24 @@ $affiche_prix = $voit('prix');
 
     function lookup() {
       clearTimeout(timer);
+      /* tout de suite : l'aperçu suit la frappe, il ne garde plus l'ancien texte */
+      foundDescription = null;
+      foundPour = '';
+      refreshDesc();
       timer = setTimeout(async () => {
+        const cle = refsCourantes();
         const oem = el('reference_oem') ? el('reference_oem').value.trim() : '';
         const ref = el('reference_fournisseur') ? el('reference_fournisseur').value.trim() : '';
-        foundDescription = null;
+        let trouvee = null;
         if (oem || ref) {
           try {
             const r = await fetch('ajax_description_auto.php?oem=' + encodeURIComponent(oem) + '&ref=' + encodeURIComponent(ref), { credentials: 'same-origin' });
-            if (r.ok) { const j = await r.json(); if (j.found) foundDescription = j.description; }
+            if (r.ok) { const j = await r.json(); if (j.found) trouvee = j.description; }
           } catch (e) { /* hors ligne : la composition locale suffit */ }
         }
+        if (cle !== refsCourantes()) { return; }   /* réponse périmée : on a déjà changé de référence */
+        foundDescription = trouvee;
+        foundPour = trouvee ? cle : '';
         refreshDesc();
       }, 350);
     }

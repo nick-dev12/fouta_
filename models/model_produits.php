@@ -2256,6 +2256,24 @@ function update_produit($id, $data)
             $nw = $data['nom_wolof'] ?? null;
             $params['nom_wolof'] = ($nw !== null && trim((string) $nw) !== '') ? trim((string) $nw) : null;
         }
+        /* LE SEUIL D'ALERTE DE LA PIÈCE (07/09) : la fiche l'affiche depuis le
+         * 31/08 et le contrôleur le prépare soigneusement — mais AUCUNE requête
+         * ne l'écrivait. On saisissait le seuil, l'écran répondait « Pièce
+         * modifiée avec succès », et la case revenait vide : la valeur n'était
+         * jamais partie en base (constat de la direction). Le seuil s'écrit
+         * maintenant comme les autres colonnes, avec sa source « manuel »
+         * quand la colonne existe — un seuil posé à la main ne doit pas être
+         * écrasé par le calcul des suggestions. */
+        if (produits_has_column('seuil_alerte') && array_key_exists('seuil_alerte', $data)) {
+            $sets .= ", seuil_alerte = :seuil_alerte";
+            $sa = $data['seuil_alerte'];
+            $params['seuil_alerte'] = ($sa === null || $sa === '') ? null : max(0, (int) $sa);
+        }
+        if (produits_has_column('seuil_alerte_source') && array_key_exists('seuil_alerte_source', $data)) {
+            $sets .= ", seuil_alerte_source = :seuil_alerte_source";
+            $sas = $data['seuil_alerte_source'];
+            $params['seuil_alerte_source'] = ($sas === null || $sas === '') ? null : (string) $sas;
+        }
         if (produits_has_column('prix_entreprise') && array_key_exists('prix_entreprise', $data)) {
             $sets .= ", prix_entreprise = :prix_entreprise";
             $pe = $data['prix_entreprise'] ?? null;

@@ -982,6 +982,16 @@ window.FPL_DRAFT_URLS = { show: 'ajax_brouillon.php', save: 'ajax_brouillon.php'
 // caché `description` : c'est ce que le contrôleur enregistre.
 // =====================================================================
 let foundDescription = null;
+let foundPour = '';
+/* LA REPRISE NE VAUT QUE POUR LA RÉFÉRENCE QUI L'A PRODUITE (07/09) — même
+   correctif que l'écran de modification : une description reprise de la base
+   restait affichée quoi qu'on change ensuite, et l'aperçu gardait l'ancien
+   texte pendant toute la recherche. Voir modifier.php pour le détail. */
+function refsCourantesDesc() {
+  const o = document.getElementById('reference_oem');
+  const f = document.getElementById('reference_fournisseur');
+  return (o ? o.value.trim() : '') + ' ' + (f ? f.value.trim() : '');
+}
 function refreshDesc() {
   const preview = document.getElementById('desc-preview');
   const badgeTxt = document.getElementById('desc-badge-txt');
@@ -989,7 +999,7 @@ function refreshDesc() {
   const el = (id) => document.getElementById(id);
   const selText = (id) => { const s = el(id); return s && s.value ? s.options[s.selectedIndex].text.trim() : ''; };
 
-  if (foundDescription) {
+  if (foundDescription && foundPour === refsCourantesDesc()) {
     preview.textContent = foundDescription;
     preview.className = 'desc-preview found';
     badgeTxt.textContent = 'Reprise de la base : cette référence est déjà connue.';
@@ -1012,16 +1022,24 @@ function refreshDesc() {
 
   function lookup() {
     clearTimeout(timer);
+    /* tout de suite : l'aperçu suit la frappe */
+    foundDescription = null;
+    foundPour = '';
+    refreshDesc();
     timer = setTimeout(async () => {
+      const cle = refsCourantesDesc();
       const oem = el('reference_oem')?.value.trim();
       const ref = el('reference_fournisseur')?.value.trim();
-      foundDescription = null;
+      let trouvee = null;
       if (oem || ref) {
         try {
           const r = await fetch('ajax_description_auto.php?oem=' + encodeURIComponent(oem || '') + '&ref=' + encodeURIComponent(ref || ''), { credentials: 'same-origin' });
-          if (r.ok) { const j = await r.json(); if (j.found) foundDescription = j.description; }
+          if (r.ok) { const j = await r.json(); if (j.found) trouvee = j.description; }
         } catch (e) { /* hors ligne */ }
       }
+      if (cle !== refsCourantesDesc()) { return; }   /* réponse périmée */
+      foundDescription = trouvee;
+      foundPour = trouvee ? cle : '';
       refreshDesc();
     }, 350);
   }
