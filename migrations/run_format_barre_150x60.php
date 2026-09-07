@@ -25,6 +25,11 @@ require_once dirname(__DIR__) . '/models/model_etiquettes_fpl.php';
 
 $L = 150.0;
 $H = 60.0;
+/* Un uuid FIXE pour ce format : la migration se joue sur chaque serveur
+ * (foutasvr, VPS, PC) et la sync rapproche les lignes par uuid — avec un
+ * UUID() aléatoire, chaque serveur aurait « son » 150 × 60 et la sync en
+ * aurait fabriqué un doublon. Même uuid partout = même ligne partout. */
+$UUID_150x60 = '7f0e5a2c-8b1d-4c3e-9a6f-150060000001';
 
 /** @var PDO $db */
 if (!fpl_etiquette_formats_table_ok()) {
@@ -46,11 +51,17 @@ try {
     if ($existant) {
         $id150 = (int) $existant['id'];
         echo "Format 150 × 60 mm déjà présent (id $id150).\n";
+        $uuidActuel = (string) $db->query("SELECT sync_uuid FROM etiquette_formats WHERE id = $id150")->fetchColumn();
+        if ($uuidActuel !== $UUID_150x60) {
+            $db->prepare("UPDATE etiquette_formats SET sync_uuid = :u, sync_updated_at = NOW() WHERE id = :id")
+               ->execute([':u' => $UUID_150x60, ':id' => $id150]);
+            echo "  uuid aligné sur l'uuid commun (était " . ($uuidActuel ?: 'vide') . ").\n";
+        }
     } else {
         $db->prepare("INSERT INTO etiquette_formats
-            (nom, type, largeur_mm, hauteur_mm, est_systeme, ordre, date_creation, date_modification, sync_uuid)
-            VALUES ('150 × 60 mm', 'barre', :l, :h, 1, 0, NOW(), NOW(), UUID())")
-           ->execute([':l' => $L, ':h' => $H]);
+            (nom, type, largeur_mm, hauteur_mm, est_systeme, ordre, date_creation, date_modification, sync_uuid, sync_updated_at)
+            VALUES ('150 × 60 mm', 'barre', :l, :h, 1, 0, NOW(), NOW(), :u, NOW())")
+           ->execute([':l' => $L, ':h' => $H, ':u' => $UUID_150x60]);
         $id150 = (int) $db->lastInsertId();
         echo "Format 150 × 60 mm créé (id $id150).\n";
     }
