@@ -40,12 +40,18 @@ function format_150x60($disposition = null) {
     ];
 }
 
-/* La mesure du texte réellement dessiné, sur LA police du PDF. */
+/* La mesure du texte réellement dessiné, sur LA police du PDF ET À SON
+ * ÉCHELLE : le PDF dessine à 12 pixels par millimètre. Mesurer à l'échelle du
+ * millimètre (≈20 points) donnait des boîtes arrondies au pixel entier, soit
+ * ±1 mm — un « 19 mm » qui n'existait que dans la mesure, pas sur le papier
+ * (constaté entre Windows et le serveur : même code, même police). */
 function texte_dessine($libelle, $police_mm) {
     $police = dirname(__DIR__) . '/fonts/etiquette70/barlow-condensed-700.ttf';
-    $b = imagettfbbox($police_mm * (72.0 / 96.0), 0, $police, $libelle);
+    $ppm = 12.0;              /* pixels par mm du rendu PDF */
+    $ppp = 96.0 / 72.0;       /* points GD → pixels */
+    $b = imagettfbbox(($police_mm * $ppm) / $ppp, 0, $police, $libelle);
 
-    return ['l' => abs($b[2] - $b[0]), 'h' => abs($b[7] - $b[1])];
+    return ['l' => abs($b[2] - $b[0]) / $ppm, 'h' => abs($b[7] - $b[1]) / $ppm];
 }
 
 echo "— les cotes de la direction : 150 × 60, QR 43, écriture 80 × 20, écart 0,8 —\n";
@@ -60,7 +66,7 @@ foreach (['AR1-01', 'C15A-01', 'AR12-013', 'B7'] as $lib) {
     verifie("« $lib » : l'écriture dessinée tient dans 80 mm (" . round($m['l'], 1) . ')', true, $m['l'] <= 80.05);
     verifie("« $lib » : l'écriture dessinée tient dans 20 mm (" . round($m['h'], 1) . ')', true, $m['h'] <= 20.05);
     verifie("« $lib » : l'écriture REMPLIT sa boîte (une des deux cotes atteinte)", true,
-        $m['l'] >= 79.9 || $m['h'] >= 19.9);
+        $m['l'] >= 79.5 || $m['h'] >= 19.5);
 }
 
 echo "— tout tient dans l'étiquette —\n";

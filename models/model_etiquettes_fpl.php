@@ -326,9 +326,15 @@ function etiquette_layout_barre_defauts()
 
 /**
  * LA TAILLE DE POLICE QUI REMPLIT EXACTEMENT UNE BOÎTE (07/09).
- * Mesurée sur LA police d'impression (Barlow Condensed 700, celle du PDF) :
- * la boîte de texte grandit proportionnellement à la taille, une seule mesure
- * suffit donc pour trouver la plus grande taille qui tient dans largeur × hauteur.
+ *
+ * Mesurée sur LA police d'impression (Barlow Condensed 700, celle du PDF) et
+ * À L'ÉCHELLE DU RENDU (12 pixels par millimètre) : mesurer à l'échelle du
+ * millimètre arrondissait la boîte au pixel entier, soit ±1 mm d'erreur — et
+ * pas la même d'une machine à l'autre (Windows et le serveur ne rendaient pas
+ * le même « 20 mm »). On cherche donc par dichotomie la plus grande taille
+ * dont la boîte MESURÉE tient dans largeur × hauteur, et on arrondit VERS LE
+ * BAS : l'écriture ne déborde jamais de la cote demandée.
+ *
  * Retourne des MILLIMÈTRES (l'unité de « code » dans la géométrie).
  *
  * @param string $libelle    le texte à poser (ex. « AR1-01 »)
@@ -348,23 +354,37 @@ function etiquette_barre_taille_police($libelle, $largeur_mm, $hauteur_mm)
     if (!is_file($police) || !function_exists('imagettfbbox')) {
         return null;
     }
-    $reference = 100.0;                       /* une mesure à 100 points */
-    $b = @imagettfbbox($reference, 0, $police, $libelle);
-    if (!is_array($b)) {
-        return null;
-    }
-    $larg = abs($b[2] - $b[0]);
-    $haut = abs($b[7] - $b[1]);
-    if ($larg <= 0 || $haut <= 0) {
-        return null;
-    }
-    /* Des points GD aux millimètres d'em : le dessin (PDF comme écran) prend
-     * « code » pour la taille d'em EN MILLIMÈTRES, alors qu'imagettfbbox rend
-     * des pixels pour une taille en points (96/72 px par point). Le nombre de
-     * pixels par mm, lui, se simplifie : il n'intervient pas ici. */
-    $facteur = min($largeur_mm / $larg, $hauteur_mm / $haut);
 
-    return round($reference * (96.0 / 72.0) * $facteur, 2);
+    $ppm = 12.0;              /* pixels par mm — l'échelle du dessin du PDF */
+    $ppp = 96.0 / 72.0;       /* points GD → pixels */
+    $mesure = static function ($mm) use ($police, $libelle, $ppm, $ppp) {
+        $b = @imagettfbbox(($mm * $ppm) / $ppp, 0, $police, $libelle);
+        if (!is_array($b)) {
+            return null;
+        }
+
+        return ['l' => abs($b[2] - $b[0]) / $ppm, 'h' => abs($b[7] - $b[1]) / $ppm];
+    };
+
+    if ($mesure(10.0) === null) {
+        return null;
+    }
+    $bas = 0.0;
+    $haut = max($largeur_mm, $hauteur_mm) * 4.0;   /* aucune police ne tient au-delà */
+    for ($i = 0; $i < 24; $i++) {
+        $milieu = ($bas + $haut) / 2;
+        $m = $mesure($milieu);
+        if ($m !== null && $m['l'] <= $largeur_mm && $m['h'] <= $hauteur_mm) {
+            $bas = $milieu;
+        } else {
+            $haut = $milieu;
+        }
+    }
+    if ($bas <= 0) {
+        return null;
+    }
+
+    return floor($bas * 100) / 100;   /* jamais au-dessus de la cote demandée */
 }
 
 /**
