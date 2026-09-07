@@ -699,6 +699,12 @@ td.num, th.num { font-variant-numeric: tabular-nums; }
 .cascade-path.done { color: var(--ok); font-weight: 600; }
 .field .error { font-size: 13.5px; color: var(--danger); margin-top: 4px; font-weight: 600; }
 .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s3); }
+/* Un champ posé dans une grille ne doit jamais imposer sa largeur de contenu
+   à la colonne : sans ce min-width, un sélecteur maison dont le libellé choisi
+   est long (« Rangement » sur la fiche pièce) élargit la colonne au-delà de
+   l'écran d'un téléphone (mesuré : 6 px hors cadre à 375 px) au lieu de couper
+   le texte par des points de suspension. */
+.field-row > .field { min-width: 0; }
 .field-row.three { grid-template-columns: repeat(3, 1fr); }
 @media (max-width: 820px) { .field-row, .field-row.three { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 560px) { .field-row, .field-row.three { grid-template-columns: 1fr; } }

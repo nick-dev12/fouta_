@@ -93,6 +93,7 @@ $user_q = $cible_id !== (int) $_SESSION['admin_id'] ? '&user=' . $cible_id : '';
 <head>
 <?php include __DIR__ . '/../../includes/favicon.php'; ?>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Rapport journalier — <?php echo date('d/m/Y', strtotime($date)); ?> — Administration</title>
 <?php require_once __DIR__ . '/../../includes/asset_version.php'; ?>
 <?php require_once __DIR__ . '/../../includes/fpl_assets.php'; ?>

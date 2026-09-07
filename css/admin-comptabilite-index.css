@@ -116,6 +116,23 @@
     border-radius: 8px;
   }
 
+  /* Les menus des filtres sont remplacés au chargement par le sélecteur maison
+     (.fs-wrap, minimum 190 px dans fpl.css). Sous 1024 px ces filtres sont des
+     grilles (2 colonnes pour la période, 3 pour jour/mois/année) : le sélecteur
+     doit prendre la largeur de SA cellule, jamais imposer ses 190 px — sinon il
+     sort de l'écran (mesuré : 49 px hors cadre à 375 px sur « année »). */
+  .page-compta-admin .compta-ventes-filter .fs-wrap {
+    min-width: 0;
+    max-width: 100%;
+    width: 100%;
+  }
+
+  /* … et celui de la période occupe les deux colonnes, comme le <select>
+     qu'il remplace. */
+  .page-compta-admin .compta-ventes-filter__controls .fs-wrap {
+    grid-column: 1 / -1;
+  }
+
   .page-compta-admin .compta-ventes-filter__btn,
   .page-compta-admin .compta-ventes-filter__reset {
     min-height: 32px;
