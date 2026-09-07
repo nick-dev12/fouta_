@@ -400,6 +400,16 @@ include __DIR__ . '/../../includes/pwa_admin_boot.php';
                 <span class="menu-item-icon ico" aria-hidden="true"><?php echo fpl_icone('tag', 16); ?></span>
                 <span class="menu-item-text">Toutes les étiquettes</span>
             </a>
+            <a href="<?php echo $admin_nav_base; ?>stock/mouvements.php"
+                class="menu-item mi-mouvements<?php echo $current_page == 'mouvements.php' ? ' active' : ''; ?>">
+                <span class="menu-item-icon ico" aria-hidden="true"><?php echo fpl_icone('clock', 16); ?></span>
+                <span class="menu-item-text">Historique des mouvements</span>
+            </a>
+            <a href="<?php echo $admin_nav_base; ?>produits/rapport-jour.php"
+                class="menu-item mi-rapport<?php echo $current_page == 'rapport-jour.php' ? ' active' : ''; ?>">
+                <span class="menu-item-icon ico" aria-hidden="true"><?php echo fpl_icone('file-text', 16); ?></span>
+                <span class="menu-item-text">Rapport journalier</span>
+            </a>
             <?php endif; ?>
             </div>
         </nav>

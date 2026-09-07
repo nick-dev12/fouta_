@@ -139,6 +139,10 @@ if (!function_exists('admin_route_relative_path')) {
             'produits/etiquette-piece.php',
             'produits/etiquette-barre.php',
             'parametres/emplacement-noeud-etiquette.php',
+            /* HISTORIQUE DES MOUVEMENTS + RAPPORT JOURNALIER (07/09, demande de la
+             * direction) : il suit ce qui entre et bouge, pour savoir quoi illustrer. */
+            'stock/mouvements.php',
+            'produits/rapport-jour.php',
         ], true);
         /* « Tout détourer » (detourage-lot*) lui a été RETIRÉ (07/09) : c'est un
          * outil de lot de l'informaticien, sans rapport avec son travail. */
