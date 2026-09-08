@@ -144,6 +144,87 @@ if ($def_barre === null) {
     }
 }
 
+echo "— 4 bis. les blocs se suivent d'une étagère à l'autre —\n";
+/* La règle, dite par la direction : « si l'étagère 1 a quatre barres, 1 à 4,
+   l'étagère 2 doit commencer par 5, 6, 7, 8 et continuer ». Chaque étagère
+   occupe donc un BLOC de numéros à la suite de la précédente. On le vérifie
+   sur les données, rayon par rayon, et on nomme ceux qui s'en écartent. */
+$conformes = [];
+$casses = [];
+if (!empty($nid) && !empty($lie_niveau)) {
+    foreach ($db->query("SELECT id, nom FROM entrepot_hierarchie_noeud WHERE niveau_id = $lie_niveau ORDER BY etage_id, numero") as $r_) {
+        $blocs = [];
+        foreach ($db->query('SELECT id, nom, etage_id FROM entrepot_hierarchie_noeud WHERE parent_id = ' . (int) $r_['id'] . ' ORDER BY numero, id') as $e_) {
+            $nums = $db->query('SELECT numero FROM entrepot_hierarchie_noeud WHERE parent_id = ' . (int) $e_['id'] . " AND niveau_id = $nid ORDER BY numero")->fetchAll(PDO::FETCH_COLUMN);
+            if ($nums) {
+                $blocs[] = ['etagere' => $e_, 'nums' => array_map('intval', $nums)];
+            }
+        }
+        if (count($blocs) < 2) {
+            continue;
+        }
+        $attendu = 1;
+        $ok_rayon = true;
+        foreach ($blocs as $b) {
+            if ($b['nums'][0] !== $attendu) {
+                $ok_rayon = false;
+            }
+            for ($k = 1; $k < count($b['nums']); $k++) {
+                if ($b['nums'][$k] !== $b['nums'][$k - 1] + 1) {
+                    $ok_rayon = false;
+                }
+            }
+            $attendu = max($b['nums']) + 1;
+        }
+        if ($ok_rayon) {
+            $conformes[(string) $r_['nom']] = $blocs;
+        } else {
+            $casses[] = (string) $r_['nom'];
+        }
+    }
+}
+verifie('des rayons suivent la règle sur plusieurs étagères', true, $conformes !== []);
+verifie('les seuls rayons qui s\'en écartent sont ceux de test (1 et 2A)', ['1', '2A'], $casses);
+
+if ($conformes !== []) {
+    /* le plus grand des rayons conformes : ses blocs se suivent vraiment */
+    $noms_conf = array_keys($conformes);
+    usort($noms_conf, function ($a, $b) use ($conformes) { return count($conformes[$b]) <=> count($conformes[$a]); });
+    $sain = $conformes[$noms_conf[0]];
+    $suite_blocs = [];
+    foreach ($sain as $b) {
+        $suite_blocs[] = $b['nums'][0] . '→' . max($b['nums']);
+    }
+    $attendu_suite = [];
+    $n_ = 1;
+    foreach ($sain as $b) {
+        $attendu_suite[] = $n_ . '→' . ($n_ + count($b['nums']) - 1);
+        $n_ += count($b['nums']);
+    }
+    verifie('rayon « ' . $noms_conf[0] . ' » : chaque étagère reprend là où la précédente s\'arrête', $attendu_suite, $suite_blocs);
+
+    echo "— 4 ter. l'écran annonce le numéro, et prévient si on insère au milieu —\n";
+    $etats = [];
+    foreach ($sain as $b) {
+        $etats[] = entrepot_noeud_suite_etat((int) $b['etagere']['etage_id'], $nid, (int) $b['etagere']['id']);
+    }
+    $premiere = $etats[0];
+    $derniere = $etats[count($etats) - 1];
+    verifie('la dernière étagère peuplée prolonge la suite sans rien réimprimer', [true, 0],
+        [$derniere['est_dernier_bloc'], $derniere['a_reimprimer']]);
+    verifie("une étagère du milieu sait qu'elle sortirait de sa série", false, $premiere['est_dernier_bloc']);
+    verifie("…et chiffre les étiquettes à réimprimer pour l'ordre strict", true, $premiere['a_reimprimer'] > 0);
+    verifie('toutes annoncent le même prochain numéro (celui du rayon)', 1,
+        count(array_unique(array_map(function ($x) { return $x['prochain']; }, $etats))));
+}
+$ecran_suite = file_get_contents($RACINE . '/admin/produits/structure-entrepot.php');
+verifie("l'écran annonce le numéro avant de cliquer", true,
+    strpos($ecran_suite, 'entrepot_noeud_suite_etat(') !== false);
+verifie("…en disant « à la suite du rayon » quand c'est le cas", true,
+    strpos($ecran_suite, 'à la suite du rayon') !== false);
+verifie('…et en chiffrant les réimpressions sinon', true,
+    strpos($ecran_suite, 'a_reimprimer') !== false && strpos($ecran_suite, 'réimprimer') !== false);
+
 echo "— 5. un niveau SANS étiquette garde la portée du parent —\n";
 $sans_etiq = null;
 foreach (entrepot_hierarchie_def_list(true) as $d) {

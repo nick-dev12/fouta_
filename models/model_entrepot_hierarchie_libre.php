@@ -1424,6 +1424,61 @@ function entrepot_noeud_portee_numero($etage_id, $niveau_id, $parent_id)
 }
 
 /**
+ * OÙ EN EST LA SUITE, VUE DE CET EMPLACEMENT (08/09/2026).
+ *
+ * La direction a énoncé la règle des étiquettes déjà imprimées : « si l'étagère
+ * 1 a quatre barres, 1 à 4, l'étagère 2 doit commencer par 5, 6, 7, 8 et
+ * continuer ». Vérifié sur les données : tous les rayons en service la
+ * respectent (15A → 1-7, 8-14, 15-21 ; 21A → 1-10, 11-19, 20-27, 28-33).
+ *
+ * Chaque étagère occupe donc un BLOC de numéros à la suite de la précédente.
+ * Conséquence, qu'il faut dire à l'écran plutôt que la subir : ajouter une
+ * barre à la DERNIÈRE étagère peuplée prolonge naturellement la suite ; en
+ * ajouter une à une étagère du MILIEU ne peut pas entrer dans son bloc, déjà
+ * fermé par le bloc suivant. Le numéro suivant du rayon lui est alors donné —
+ * aucune étiquette existante ne bouge — et l'écran prévient combien
+ * d'étiquettes il faudrait réimprimer pour rétablir l'ordre strict.
+ *
+ * @param int $etage_id
+ * @param int $niveau_id
+ * @param int $parent_id
+ * @return array{prochain: int, bloc_dernier: int, est_dernier_bloc: bool, a_reimprimer: int, portee: string}
+ */
+function entrepot_noeud_suite_etat($etage_id, $niveau_id, $parent_id)
+{
+    global $db;
+    $portee = entrepot_noeud_portee_numero($etage_id, $niveau_id, $parent_id);
+    $etat = [
+        'prochain' => $portee['max'] + 1,
+        'bloc_dernier' => 0,
+        'est_dernier_bloc' => true,
+        'a_reimprimer' => 0,
+        'portee' => $portee['portee'],
+    ];
+    if ($portee['portee'] !== 'rayon' || $portee['ids'] === [] || (int) $parent_id <= 0 || !$db) {
+        return $etat;
+    }
+    try {
+        /* le bloc de CET emplacement : les numéros de ses propres enfants du niveau */
+        $st = $db->prepare('SELECT COALESCE(MAX(numero), 0) FROM entrepot_hierarchie_noeud WHERE parent_id = :p AND niveau_id = :n');
+        $st->execute([':p' => (int) $parent_id, ':n' => (int) $niveau_id]);
+        $etat['bloc_dernier'] = (int) $st->fetchColumn();
+        if ($etat['bloc_dernier'] === 0) {
+            return $etat; // étagère encore vide : elle ouvrira le prochain bloc
+        }
+        $places = implode(',', array_fill(0, count($portee['ids']), '?'));
+        $ap = $db->prepare("SELECT COUNT(*) FROM entrepot_hierarchie_noeud WHERE numero > ? AND id IN ($places)");
+        $ap->execute(array_merge([$etat['bloc_dernier']], $portee['ids']));
+        $etat['a_reimprimer'] = (int) $ap->fetchColumn();
+        $etat['est_dernier_bloc'] = ($etat['a_reimprimer'] === 0);
+    } catch (PDOException $e) {
+        // au pire, l'écran n'affiche pas l'avertissement
+    }
+
+    return $etat;
+}
+
+/**
  * @param int $etage_id
  * @param int $niveau_id
  * @param int $parent_id

@@ -742,6 +742,35 @@ if ($courant !== null) {
               <input type="number" name="combien" value="1" min="1" max="50" step="1">
             </div>
             <button type="submit" class="btn btn-primary"><?php echo fpl_icone('plus', 14); ?> Créer</button>
+            <?php
+            /* DIRE LE NUMÉRO AVANT DE CLIQUER (08/09/2026). La direction a
+               énoncé la règle : « si l'étagère 1 a quatre barres, 1 à 4,
+               l'étagère 2 doit commencer par 5, 6, 7, 8 ». Chaque étagère
+               occupe donc un bloc à la suite de la précédente — et une barre
+               ajoutée à une étagère du MILIEU ne peut pas entrer dans son
+               bloc, déjà fermé. Plutôt que de le subir en silence, on annonce
+               le numéro qui sera donné et, s'il sort du bloc, combien
+               d'étiquettes il faudrait réimprimer pour rétablir l'ordre. */
+            $suite_etat = null;
+            if ($courant !== null && count($defs_enfants) >= 1 && function_exists('entrepot_noeud_suite_etat')) {
+                $niveau_annonce = (int) $defs_enfants[0]['id'];
+                $suite_etat = entrepot_noeud_suite_etat((int) $etage_courant['id'], $niveau_annonce, (int) $courant['id']);
+            }
+            ?>
+            <?php if ($suite_etat !== null && $suite_etat['portee'] === 'rayon') : ?>
+              <div class="cb-astuce" style="flex-basis:100%">
+                <?php if ($suite_etat['est_dernier_bloc']) : ?>
+                  La prochaine portera le numéro <strong><?php echo (int) $suite_etat['prochain']; ?></strong>,
+                  à la suite du rayon — c'est aussi ce que dira son étiquette.
+                <?php else : ?>
+                  Cette étagère s'arrête au numéro <strong><?php echo (int) $suite_etat['bloc_dernier']; ?></strong>,
+                  et la suite du rayon est déjà prise par les étagères suivantes.
+                  Une barre ajoutée ici recevra donc le numéro <strong><?php echo (int) $suite_etat['prochain']; ?></strong>,
+                  hors de la série de cette étagère. Pour garder l'ordre strict, il faudrait renuméroter
+                  — donc réimprimer — <strong><?php echo (int) $suite_etat['a_reimprimer']; ?></strong> étiquette<?php echo $suite_etat['a_reimprimer'] > 1 ? 's' : ''; ?>.
+                <?php endif; ?>
+              </div>
+            <?php endif; ?>
             <?php /* LA PHRASE QUI DIT LE SAUT (07/09) : sans elle, personne ne
                      devine qu'on peut se passer d'un niveau. */ ?>
             <?php
