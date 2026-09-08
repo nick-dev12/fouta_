@@ -117,7 +117,15 @@ if ($finale === []) {
 $principale = $finale[0];
 
 try {
-    $up = $db->prepare("UPDATE produits SET image_principale = :p, images = :j, date_modification = NOW() WHERE id = :id");
+    /* LA SYNCHRO DOIT VOIR CE CHANGEMENT (08/09) : la ligne n'est poussée vers le
+       site public que si sync_updated_at avance. Ce sont les déclencheurs MySQL
+       qui s'en chargent d'ordinaire — mais foutasvr les a perdus à l'import du
+       01/09 (et ne peut pas les recréer sans le droit SUPER : erreur 1419).
+       Résultat vu par la direction : les anciennes photos restaient sur la
+       page du QR. On marque donc la ligne nous-mêmes, déclencheurs ou pas. */
+    $up = $db->prepare("UPDATE produits SET image_principale = :p, images = :j, date_modification = NOW()"
+        . (produits_has_column('sync_updated_at') ? ", sync_updated_at = NOW()" : '')
+        . " WHERE id = :id");
     $up->execute([':p' => $principale, ':j' => json_encode($finale, JSON_UNESCAPED_UNICODE), ':id' => $id]);
 } catch (PDOException $e) {
     $repondre(['ok' => false, 'error' => 'Enregistrement impossible.']);

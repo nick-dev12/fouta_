@@ -2144,6 +2144,13 @@ function update_produit($id, $data)
 
     try {
         $sets = "nom = :nom, description = :description, prix = :prix, prix_promotion = :prix_promotion, stock = :stock, categorie_id = :categorie_id, image_principale = :image_principale, images = :images, poids = :poids, unite = :unite, statut = :statut, date_modification = NOW()";
+        /* LA SYNCHRO DOIT VOIR CHAQUE MODIFICATION (08/09) : voir la note dans
+           ajax_photo_enregistrer.php — sans déclencheurs MySQL (perdus sur
+           foutasvr le 01/09), une ligne modifiée ici n'était jamais poussée
+           vers le site public. On avance la marque nous-mêmes. */
+        if (produits_has_column('sync_updated_at')) {
+            $sets .= ", sync_updated_at = NOW()";
+        }
         $params = [
             'id' => $id,
             'nom' => $data['nom'],
@@ -2311,6 +2318,9 @@ function update_produit($id, $data)
         } catch (PDOException $e) {
             if ($with_extras && (strpos($e->getMessage(), 'couleurs') !== false || strpos($e->getMessage(), 'taille') !== false)) {
                 $sets = "nom = :nom, description = :description, prix = :prix, prix_promotion = :prix_promotion, stock = :stock, categorie_id = :categorie_id, image_principale = :image_principale, images = :images, poids = :poids, unite = :unite, statut = :statut, date_modification = NOW()";
+                if (produits_has_column('sync_updated_at')) {
+                    $sets .= ", sync_updated_at = NOW()"; /* même marque de synchro (08/09) */
+                }
                 unset($params['couleurs'], $params['taille']);
                 if (produits_has_column('admin_dernier_modificateur_id') && !empty($params['admin_dernier_modificateur_id'])) {
                     $sets .= ", admin_dernier_modificateur_id = :admin_dernier_modificateur_id";

@@ -551,14 +551,29 @@ if (!function_exists('sync_filter_batch_unresolved_fk')) {
 }
 
 if (!function_exists('sync_get_pending_records')) {
-    function sync_get_pending_records(PDO $db, $table, $since, $limit = 500, $only_local_origin = false) {
+    function sync_get_pending_records(PDO $db, $table, $since, $limit = 500, $only_local_origin = false, $since_pk = null) {
         if (!sync_registry_has_sync_columns($db, $table)) {
             return [];
         }
 
+        $pk_col = sync_table_primary_key($db, $table);
+        $order_col = sync_table_has_column($db, $table, 'id') ? 'id' : $pk_col;
+
         $sql = "SELECT * FROM `$table` WHERE sync_updated_at IS NOT NULL";
         $params = [];
-        if ($since) {
+        if ($since && $since_pk !== null && $since_pk !== '') {
+            /* CURSEUR À DEUX CLÉS (08/09/2026). Le curseur « sync_updated_at > ? »
+               seul PERDAIT des lignes : quand plus de $limit lignes portent la
+               même seconde (un marquage en masse : 3 338 pièces en 4 s), le lot
+               suivant repartait STRICTEMENT après cette seconde et sautait tout
+               ce qui la partageait — 445 pièces poussées sur 3 338. On reprend
+               donc APRÈS la dernière ligne envoyée : même seconde comprise,
+               id plus grand. */
+            $sql .= " AND (sync_updated_at > ? OR (sync_updated_at = ? AND `$order_col` > ?))";
+            $params[] = $since;
+            $params[] = $since;
+            $params[] = $since_pk;
+        } elseif ($since) {
             $sql .= ' AND sync_updated_at > ?';
             $params[] = $since;
         }
@@ -569,8 +584,6 @@ if (!function_exists('sync_get_pending_records')) {
                 $params[] = $node_id;
             }
         }
-        $pk_col = sync_table_primary_key($db, $table);
-        $order_col = sync_table_has_column($db, $table, 'id') ? 'id' : $pk_col;
         $sql .= " ORDER BY sync_updated_at ASC, `$order_col` ASC LIMIT " . (int) $limit;
 
         $stmt = $db->prepare($sql);
@@ -1037,13 +1050,15 @@ if (!function_exists('sync_push_table')) {
     function sync_push_table(PDO $db, $table, array $config, $since = null) {
         $limit = (int) ($config['batch_limit'] ?? 500);
         $cursor = $since ?: sync_get_state($db, 'last_push_since', '1970-01-01 00:00:00');
+        $cursor_pk = null; /* la clé de la dernière ligne du lot précédent (curseur à deux clés, 08/09) */
+        $order_col = sync_table_has_column($db, $table, 'id') ? 'id' : sync_table_primary_key($db, $table);
         $total = 0;
         $conflicts = 0;
         $skipped = 0;
         $max_seen = $cursor;
 
         do {
-            $raw_batch = sync_get_pending_records($db, $table, $cursor, $limit, true);
+            $raw_batch = sync_get_pending_records($db, $table, $cursor, $limit, true, $cursor_pk);
             if (!$raw_batch) {
                 break;
             }
@@ -1054,6 +1069,11 @@ if (!function_exists('sync_push_table')) {
                     $max_seen = $ts;
                 }
             }
+            /* le lot est trié (sync_updated_at, id) : sa dernière ligne est le
+               point de reprise exact du lot suivant */
+            $derniere = $raw_batch[count($raw_batch) - 1];
+            $suite_ts = $derniere['sync_updated_at'] ?? $max_seen;
+            $suite_pk = $derniere['data'][$order_col] ?? null;
 
             $valid = [];
             foreach ($raw_batch as $item) {
@@ -1071,7 +1091,8 @@ if (!function_exists('sync_push_table')) {
                 if (count($raw_batch) < $limit) {
                     break;
                 }
-                $cursor = $max_seen;
+                $cursor = $suite_ts;
+                $cursor_pk = $suite_pk;
                 continue;
             }
 
@@ -1088,7 +1109,8 @@ if (!function_exists('sync_push_table')) {
             if (count($raw_batch) < $limit) {
                 break;
             }
-            $cursor = $max_seen;
+            $cursor = $suite_ts;
+            $cursor_pk = $suite_pk;
         } while (true);
 
         return ['records' => $total, 'conflicts' => $conflicts, 'skipped' => $skipped, 'max_seen' => $max_seen];
