@@ -24,6 +24,10 @@ return [
     // - pull_only      : VPS → local uniquement
     // - bidirectional  : pull puis push
     'sync_direction' => 'push_only',
+    /* NŒUD MIROIR (08/09/2026) : true sur le VPS, copie de foutasvr. Il accepte
+       alors TOUT ce que la référence lui envoie, même si sa propre ligne porte
+       une marque plus récente (migration jouée sur place). false ailleurs. */
+    'noeud_miroir' => false,
 
     // Priorité en cas d'égalité de sync_updated_at (true = ce nœud gagne)
     'node_priority_on_tie' => false,

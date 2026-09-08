@@ -219,8 +219,43 @@ if (!function_exists('sync_assign_missing_uuids')) {
     }
 }
 
+if (!function_exists('sync_triggers_creation_possible')) {
+    /**
+     * MySQL refuse CREATE TRIGGER (erreur 1419) quand le journal binaire est
+     * actif, que log_bin_trust_function_creators vaut 0 et que l'utilisateur
+     * n'a pas SUPER. C'est le cas de foutasvr depuis l'import du 01/09/2026.
+     */
+    function sync_triggers_creation_possible(PDO $db) {
+        try {
+            $r = $db->query('SELECT @@global.log_bin AS b, @@global.log_bin_trust_function_creators AS t')->fetch(PDO::FETCH_ASSOC);
+        } catch (Throwable $e) {
+            return true; // variable inconnue (autre moteur) : on laisse MySQL trancher
+        }
+        if (!(int) ($r['b'] ?? 0) || (int) ($r['t'] ?? 0)) {
+            return true;
+        }
+        try {
+            foreach ($db->query('SHOW GRANTS')->fetchAll(PDO::FETCH_COLUMN) as $g) {
+                if (preg_match('/^GRANT (ALL PRIVILEGES|.*\bSUPER\b).* ON \*\.\*/i', (string) $g)) {
+                    return true;
+                }
+            }
+        } catch (Throwable $e) {
+            return true;
+        }
+        return false;
+    }
+}
+
 if (!function_exists('sync_create_triggers_for_table')) {
     function sync_create_triggers_for_table(PDO $db, $table) {
+        /* NE JAMAIS DÉTRUIRE CE QU'ON NE PEUT PAS RECRÉER (08/09/2026). Cette
+           fonction faisait DROP puis CREATE ; sur foutasvr le CREATE meurt en
+           1419 — et le déploiement la rejoue à chaque fois : des déclencheurs
+           recréés à la main auraient été redétruits au déploiement suivant. */
+        if (!sync_triggers_creation_possible($db)) {
+            throw new RuntimeException("création de déclencheurs impossible sur `$table` (journal binaire actif sans log_bin_trust_function_creators ni SUPER : erreur 1419) — les déclencheurs existants sont laissés en place ; voir scripts/reparer_declencheurs_sync.sh");
+        }
         $db->exec("DROP TRIGGER IF EXISTS `tr_{$table}_sync_insert`");
         $db->exec("DROP TRIGGER IF EXISTS `tr_{$table}_sync_update`");
 
@@ -636,8 +671,16 @@ if (!function_exists('sync_apply_record')) {
 
         $pk_cols = sync_table_primary_key_columns($db, $table);
         $pk_col = $pk_cols[0];
-        foreach ($pk_cols as $col) {
-            unset($data[$col]);
+        /* CLÉ PRIMAIRE COMPOSÉE (08/09/2026). On ne retire de la ligne que la
+           clé TECHNIQUE — un seul `id` propre à chaque nœud. Une clé composée
+           (champ_id + role dans produit_formulaire_champ_role) est une clé
+           MÉTIER : ses colonnes SONT la ligne. Les retirer laissait un INSERT
+           sans champ_id ni role, refusé en silence (« errors ») : les droits
+           par rôle réglés par la direction sur foutasvr n'arrivaient jamais
+           sur le VPS. */
+        $pk_composee = count($pk_cols) > 1;
+        if (!$pk_composee) {
+            unset($data[$pk_col]);
         }
         if ($pk_col !== 'id') {
             unset($data['id']);
@@ -647,14 +690,21 @@ if (!function_exists('sync_apply_record')) {
             return false;
         }
 
-        $stmt = $db->prepare("SELECT `$pk_col`, sync_updated_at FROM `$table` WHERE sync_uuid = ? LIMIT 1");
+        $select_pk = implode(', ', array_map(function ($c) { return "`$c`"; }, $pk_cols));
+        $stmt = $db->prepare("SELECT $select_pk, sync_updated_at FROM `$table` WHERE sync_uuid = ? LIMIT 1");
         $stmt->execute([$sync_uuid]);
         $local = $stmt->fetch(PDO::FETCH_ASSOC);
         $merged_by_unique = false;
 
         if (!$local) {
-            $existing_pk = sync_find_local_by_unique_keys($db, $table, $data, $pk_col);
             $existing_row = null;
+            if ($pk_composee) {
+                /* la même ligne métier existe-t-elle déjà ici, semée sur ce
+                   nœud avec son propre uuid ? alors on la FUSIONNE (elle prend
+                   l'uuid et le contenu reçus) au lieu d'échouer à l'INSERT */
+                $existing_row = sync_find_local_by_primary_key($db, $table, $data);
+            }
+            $existing_pk = $existing_row ? null : sync_find_local_by_unique_keys($db, $table, $data, $pk_col);
             if ($existing_pk !== null) {
                 $stmt = $db->prepare("SELECT * FROM `$table` WHERE `$pk_col` = ? LIMIT 1");
                 $stmt->execute([$existing_pk]);
@@ -684,11 +734,19 @@ if (!function_exists('sync_apply_record')) {
                     $stats['skipped'] = ($stats['skipped'] ?? 0) + 1;
                     return true;
                 }
-                if ($local_updated && $remote_updated && strtotime($local_updated) > strtotime($remote_updated)) {
+                /* NŒUD MIROIR (08/09/2026). Depuis le 02/09 foutasvr est LA
+                   référence et le VPS sa copie : une ligne du VPS « plus
+                   récente » n'est jamais une saisie légitime — c'est une
+                   migration jouée là-bas qui a re-marqué ses lignes (Mercedes
+                   « ME » le 08/09 : 428 pièces, 81 refus). Sur un nœud déclaré
+                   miroir (config/sync.php : 'noeud_miroir' => true), l'émetteur
+                   gagne toujours ; ailleurs, la règle du plus récent reste. */
+                $miroir = !empty($config['noeud_miroir']);
+                if (!$miroir && $local_updated && $remote_updated && strtotime($local_updated) > strtotime($remote_updated)) {
                     $stats['conflicts']++;
                     return false;
                 }
-                if ($local_updated && $remote_updated && strtotime($local_updated) === strtotime($remote_updated)) {
+                if (!$miroir && $local_updated && $remote_updated && strtotime($local_updated) === strtotime($remote_updated)) {
                     $local_node_wins = !empty($config['node_priority_on_tie']);
                     if ($local_node_wins) {
                         $stats['conflicts']++;
@@ -729,6 +787,9 @@ if (!function_exists('sync_apply_record')) {
                 $upd->execute($values);
             } catch (PDOException $e) {
                 $db->exec('SET @sync_applying = 0');
+                /* UNE ERREUR MUETTE N'EST PAS UNE ERREUR TRAITÉE (08/09/2026) :
+                   on la journalise, le compteur seul ne disait rien. */
+                error_log('sync ' . $table . ' (' . $sync_uuid . ') : mise à jour refusée : ' . $e->getMessage());
                 $stats['errors']++;
                 return false;
             }
@@ -790,8 +851,8 @@ if (!function_exists('sync_apply_record')) {
                 // (même étage/niveau/parent/numéro…) : on fusionne UNIQUEMENT
                 // par cette clé — JAMAIS par l'id de la source, qui désigne
                 // une ligne étrangère sur ce nœud (voir sync_apply_record).
-                $existing_row = null;
-                $existing_pk = sync_find_local_by_unique_keys($db, $table, $insert_data, $pk_col);
+                $existing_row = $pk_composee ? sync_find_local_by_primary_key($db, $table, $insert_data) : null;
+                $existing_pk = $existing_row ? null : sync_find_local_by_unique_keys($db, $table, $insert_data, $pk_col);
                 if ($existing_pk !== null) {
                     $stmt = $db->prepare("SELECT * FROM `$table` WHERE `$pk_col` = ? LIMIT 1");
                     $stmt->execute([$existing_pk]);
@@ -823,12 +884,15 @@ if (!function_exists('sync_apply_record')) {
                     }
                 }
             }
+            error_log('sync ' . $table . ' (' . $sync_uuid . ') : insertion refusée : ' . $e->getMessage());
             $stats['errors']++;
             return false;
         }
         $db->exec('SET @sync_applying = 0');
 
-        sync_store_id_map($db, $table, $sync_uuid, $new_id);
+        if (count($pk_cols) === 1 && $new_id > 0) { /* une clé composée n'a pas d'id à cartographier */
+            sync_store_id_map($db, $table, $sync_uuid, $new_id);
+        }
         $stats['inserted']++;
         return true;
     }
@@ -1055,6 +1119,7 @@ if (!function_exists('sync_push_table')) {
         $total = 0;
         $conflicts = 0;
         $skipped = 0;
+        $errors = 0;
         $max_seen = $cursor;
 
         do {
@@ -1105,6 +1170,10 @@ if (!function_exists('sync_push_table')) {
             $total += (int) (($stats['inserted'] ?? 0) + ($stats['updated'] ?? 0) + ($stats['merged'] ?? 0));
             $conflicts += (int) ($stats['conflicts'] ?? 0);
             $skipped += (int) ($stats['skipped'] ?? 0);
+            /* LES ERREURS DU NŒUD DISTANT ÉTAIENT AVALÉES (08/09/2026) : une
+               ligne refusée à l'INSERT (clé primaire composée, colonne
+               absente…) comptait pour rien — ni journal, ni compte rendu. */
+            $errors += (int) ($stats['errors'] ?? 0);
 
             if (count($raw_batch) < $limit) {
                 break;
@@ -1113,7 +1182,7 @@ if (!function_exists('sync_push_table')) {
             $cursor_pk = $suite_pk;
         } while (true);
 
-        return ['records' => $total, 'conflicts' => $conflicts, 'skipped' => $skipped, 'max_seen' => $max_seen];
+        return ['records' => $total, 'conflicts' => $conflicts, 'skipped' => $skipped, 'errors' => $errors, 'max_seen' => $max_seen];
     }
 }
 
@@ -1132,6 +1201,7 @@ if (!function_exists('sync_push')) {
         $total_records = 0;
         $total_conflicts = 0;
         $total_skipped = 0;
+        $total_errors = 0;
         $max_seen = $since;
 
         foreach ($tables as $table) {
@@ -1139,16 +1209,18 @@ if (!function_exists('sync_push')) {
             $total_records += $result['records'];
             $total_conflicts += $result['conflicts'];
             $total_skipped += (int) ($result['skipped'] ?? 0);
+            $total_errors += (int) ($result['errors'] ?? 0);
             if ($result['max_seen'] && strtotime($result['max_seen']) > strtotime($max_seen)) {
                 $max_seen = $result['max_seen'];
             }
-            if ($result['records'] > 0) {
+            if ($result['records'] > 0 || !empty($result['errors'])) {
                 sync_log_entry($db, [
                     'direction' => 'push',
                     'table_name' => $table,
                     'records_count' => $result['records'],
                     'conflicts_count' => $result['conflicts'],
-                    'status' => $result['conflicts'] > 0 ? 'partial' : 'success',
+                    'status' => !empty($result['errors']) ? 'error' : ($result['conflicts'] > 0 ? 'partial' : 'success'),
+                    'message' => !empty($result['errors']) ? (int) $result['errors'] . ' enregistrement(s) refusé(s) par le nœud distant' : null,
                     'node_id' => $config['node_id'],
                 ]);
             }
@@ -1765,6 +1837,13 @@ if (!function_exists('sync_local_to_vps')) {
         }
 
         $files_only = !empty($options['files_only']);
+        /* LE CURSEUR D'AVANT LE PUSH (08/09/2026). La passe « fichiers
+           prioritaires » cherche les images des lignes modifiées depuis
+           last_push_since — mais le push ci-dessous AVANCE ce curseur, si bien
+           que la passe ne voyait jamais les fichiers des lignes qu'elle venait
+           d'envoyer (la photo du 10:26 de la pièce #2189 : ligne arrivée,
+           fichier jamais parti). On retient le curseur d'avant. */
+        $curseur_avant_push = sync_get_state($db, 'last_push_since', '1970-01-01 00:00:00');
 
         if (!$files_only) {
             /* CHAQUE nouvelle ligne doit avoir un sync_uuid pour partir au VPS.
@@ -1796,6 +1875,7 @@ if (!function_exists('sync_local_to_vps')) {
             $file_options = [
                 'cli_progress' => true,
                 'db_referenced_only' => !empty($options['files_priority_db']),
+                'since' => $curseur_avant_push,
             ];
             if (!empty($options['files_max_per_run'])) {
                 $file_options['max_per_run'] = (int) $options['files_max_per_run'];
