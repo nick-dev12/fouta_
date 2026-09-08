@@ -92,6 +92,25 @@ verifie('le seuil ne dépend plus de la permission du statut', true,
 verifie('la source du seuil est bornée à son énumération', true,
     strpos(corps_fonction('update_produit'), "in_array(\$sas, ['manuel', 'suggestion'], true)") !== false);
 
+echo "— A bis. le seuil existe aussi à la CRÉATION (wizard) —\n";
+$creation = corps_fonction('create_produit');
+verifie('create_produit() écrit la colonne seuil_alerte', true,
+    strpos($creation, '$cols .= ", seuil_alerte"') !== false && strpos($creation, '$vals .= ", :seuil_alerte"') !== false);
+verifie("create_produit() n'écrit le seuil que si le formulaire l'a envoyé", true,
+    strpos($creation, "array_key_exists('seuil_alerte', \$data)") !== false);
+verifie('create_produit() borne la source à son énumération', true,
+    strpos($creation, "in_array(\$sas, ['manuel', 'suggestion'], true)") !== false);
+$ajout = substr($ctrl, strpos($ctrl, 'function process_add_produit'), strpos($ctrl, 'function process_update_produit') - strpos($ctrl, 'function process_add_produit'));
+verifie('le contrôleur prépare le seuil à la création', true,
+    strpos($ajout, "\$data['seuil_alerte'] = ") !== false && strpos($ajout, "array_key_exists('seuil_alerte', \$_POST)") !== false);
+$wizard = file_get_contents($RACINE . '/admin/produits/ajouter.php');
+verifie('le wizard affiche le champ Seuil d\'alerte', true,
+    strpos($wizard, 'name="seuil_alerte"') !== false);
+verifie('le champ a sa propre condition, indépendante du stock', true,
+    strpos($wizard, "if (\$voit('stock') || \$voit_seuil_creation)") !== false);
+verifie('sa valeur est rejouée après un formulaire refusé', true,
+    strpos($wizard, "'seuil_alerte' => isset(\$_POST['seuil_alerte'])") !== false);
+
 echo "— C. une colonne de prix qu'on recoche retrouve sa valeur —\n";
 $js = file_get_contents($RACINE . '/js/admin-produit-search-ui.js');
 verifie('la ligne porte la mémoire de tous les prix de sa pièce', true,

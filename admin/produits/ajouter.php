@@ -163,6 +163,7 @@ $old = [
     'prix_promotion' => isset($_POST['prix_promotion']) ? (string) $_POST['prix_promotion'] : '',
     'prix_entreprise' => isset($_POST['prix_entreprise']) ? (string) $_POST['prix_entreprise'] : '',
     'stock' => isset($_POST['stock']) ? (string) $_POST['stock'] : '0',
+    'seuil_alerte' => isset($_POST['seuil_alerte']) ? (string) $_POST['seuil_alerte'] : '',
     'description' => isset($_POST['description']) ? (string) $_POST['description'] : '',
 ];
 
@@ -583,8 +584,15 @@ saisie_encours_retenir('produits/ajouter.php');
       </div>
 
       <div class="wiz-fields">
-        <?php if ($voit('stock')) : ?>
+        <?php /* LE SEUIL DÈS LA CRÉATION (07/09, demande de la direction) : le
+                 champ n'existait que sur la fiche de modification — une pièce
+                 neuve naissait sans seuil, il fallait la rouvrir. Il a sa propre
+                 condition, à côté de celle du stock : masquer l'un ne cache pas
+                 l'autre. */ ?>
+        <?php $voit_seuil_creation = $voit('seuil_alerte') && $a_col('seuil_alerte'); ?>
+        <?php if ($voit('stock') || $voit_seuil_creation) : ?>
         <div class="wiz-field-group">
+          <?php if ($voit('stock')) : ?>
           <div class="wiz-field" style="max-width:180px">
             <label for="stock">
               <?php echo fpl_icone('layers', 13); ?> Quantité initiale
@@ -593,6 +601,17 @@ saisie_encours_retenir('produits/ajouter.php');
                    value="<?php echo e($old['stock']); ?>" min="0" step="1" class="wiz-input">
             <div class="wiz-help">0 = pièce créée, stock à saisir plus tard.</div>
           </div>
+          <?php endif; ?>
+          <?php if ($voit_seuil_creation) : ?>
+          <div class="wiz-field" style="max-width:220px">
+            <label for="seuil_alerte">
+              <?php echo fpl_icone('layers', 13); ?> Seuil d'alerte
+            </label>
+            <input type="number" id="seuil_alerte" name="seuil_alerte"
+                   value="<?php echo e($old['seuil_alerte']); ?>" min="0" step="1" class="wiz-input" placeholder="aucun">
+            <div class="wiz-help">Prévient dès que le stock tombe à ce nombre ou en dessous. Vide = pas d'alerte ; 0 = seulement à l'épuisement.</div>
+          </div>
+          <?php endif; ?>
         </div>
         <?php endif; ?>
 

@@ -638,6 +638,20 @@ function process_add_produit()
         foreach ($emplacement as $col => $val) {
             $data[$col] = $val;
         }
+        /* LE SEUIL DÈS LA CRÉATION (07/09, demande de la direction) — mêmes
+         * règles qu'à la modification : seulement si le formulaire l'a envoyé,
+         * vide = pas de seuil, posé « à la main » (le calcul des suggestions ne
+         * l'écrasera pas). */
+        if (produit_formulaire_champ_modifiable('seuil_alerte')
+            && produits_has_column('seuil_alerte')
+            && array_key_exists('seuil_alerte', $_POST)) {
+            $seuil_saisi = trim((string) $_POST['seuil_alerte']);
+            $data['seuil_alerte'] = ($seuil_saisi === '' || !is_numeric($seuil_saisi) || (int) $seuil_saisi < 0)
+                ? null : (int) $seuil_saisi;
+            if (produits_has_column('seuil_alerte_source')) {
+                $data['seuil_alerte_source'] = $data['seuil_alerte'] === null ? null : 'manuel';
+            }
+        }
         if (produits_has_column('prix_achat')) {
             $data['prix_achat'] = $prix_achat;
         }

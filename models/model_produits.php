@@ -2060,6 +2060,21 @@ function create_produit($data)
             $pe = $data['prix_entreprise'] ?? null;
             $params['prix_entreprise'] = ($pe !== null && $pe !== '' && is_numeric($pe)) ? (float) $pe : null;
         }
+        /* LE SEUIL D'ALERTE À LA CRÉATION (07/09) : même patron qu'à la mise à
+         * jour — la clé absente = on n'écrit rien, la source est bornée à son
+         * énumération ('manuel', 'suggestion'). */
+        if (produits_has_column('seuil_alerte') && array_key_exists('seuil_alerte', $data)) {
+            $cols .= ", seuil_alerte";
+            $vals .= ", :seuil_alerte";
+            $sa = $data['seuil_alerte'];
+            $params['seuil_alerte'] = ($sa === null || $sa === '') ? null : max(0, (int) $sa);
+        }
+        if (produits_has_column('seuil_alerte_source') && array_key_exists('seuil_alerte_source', $data)) {
+            $cols .= ", seuil_alerte_source";
+            $vals .= ", :seuil_alerte_source";
+            $sas = (string) ($data['seuil_alerte_source'] ?? '');
+            $params['seuil_alerte_source'] = in_array($sas, ['manuel', 'suggestion'], true) ? $sas : null;
+        }
         $with_extras = isset($data['couleurs']) || isset($data['taille']);
         if ($with_extras) {
             $cols .= ", couleurs, taille";
