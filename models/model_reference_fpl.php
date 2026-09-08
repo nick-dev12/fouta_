@@ -222,7 +222,7 @@ function reference_fpl_abreviations_direction()
         'deutz' => 'DEU', 'dongfeng' => 'DON', 'faw' => 'FAW', 'ford' => 'FRD', 'foton' => 'FTN',
         'fruehauf' => 'FRU', 'hino' => 'HIN', 'howo' => 'HW', 'isuzu' => 'ISU', 'iveco' => 'IVC',
         'john deere' => 'JD', 'kamaz' => 'KMZ', 'kassbohrer' => 'KAS', 'mack' => 'MAC', 'man' => 'MN',
-        'mercedes' => 'MER', 'mercedes benz' => 'MER', 'perkins' => 'PER', 'renault rvi' => 'RVI',
+        'mercedes' => 'ME', 'mercedes benz' => 'ME',   /* ME, pas MER (direction, 08/09) */ 'perkins' => 'PER', 'renault rvi' => 'RVI',
         'rvi renault' => 'RVI', 'rvi' => 'RVI', 'renault' => 'RVI', 'saf' => 'SAF', 'scania' => 'SCA',
         'shacman' => 'SHA', 'smb' => 'SMB', 'tata' => 'TAT', 'trailor' => 'TRA', 'volvo' => 'VOL',
         'weichai' => 'WEI', 'yuchai' => 'YUC', 'yutong' => 'YUT',
