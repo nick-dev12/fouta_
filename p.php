@@ -13,8 +13,10 @@
  * imprimé. Aucune session n'est ouverte.
  *
  * DESSIN DU 05/09 (retour de la direction) : une seule colonne tournée vers le
- * client — voir la pièce, la reconnaître, connaître le prix, joindre la maison
- * avec de VRAIS boutons. Ni famille, ni disponibilité, ni phrases marketing.
+ * client — voir la pièce, la reconnaître, joindre la maison avec de VRAIS
+ * boutons. Ni famille, ni disponibilité, ni phrases marketing.
+ * PLUS DE PRIX (08/09, décision de la direction) : le montant ne s'affiche plus
+ * et ne transite même plus par la page — le prix se discute au comptoir.
  */
 
 require_once __DIR__ . '/conn/conn.php';
@@ -65,7 +67,7 @@ if ($identifiant !== '') {
         }
         $st = $db->prepare(
             "SELECT p.id, p.identifiant_interne, $col_ref_fpl, p.nom, p.nom_wolof, p.description,
-                    p.statut, p.stock, p.prix, p.prix_promotion, p.reference_oem,
+                    p.statut, p.stock, p.reference_oem,
                     p.image_principale, p.images, p.image_etiquette_fpl,
                     c.nom AS categorie_nom, sc.nom AS sous_categorie_nom,
                     m.nom AS marque_nom
@@ -105,8 +107,6 @@ $photos = [];
 $ean13 = '';
 $ref_aeree = '';
 $dispo = false;
-$prix = 0.0;
-$promo = 0.0;
 
 if ($piece) {
     $ean13 = fpl_vitrine_ean13_pour_produit($piece);
@@ -142,13 +142,8 @@ if ($piece) {
     }
 
     $dispo = ($piece['statut'] === 'actif' && (int) $piece['stock'] > 0);
-    $prix = (float) $piece['prix'];
-    $promo = (float) $piece['prix_promotion'];
 }
 
-$fcfa = function ($v) {
-    return number_format((float) $v, 0, ',', ' ') . ' FCFA';
-};
 
 $wa_num = preg_replace('/\D/', '', (string) ($social['whatsapp'] ?? ''));
 $wa_msg = $piece
@@ -219,7 +214,7 @@ header('Expires: 0');
 :root {
     --bleu: #10316F; --bleu-nuit: #0B2554; --bleu-voile: #E9EEF7;
     --encre: #1B2437; --gris: #5A6478; --trait: #E6E2DA; --fond: #F7F5F0; --blanc: #FFFFFF;
-    --wa: #25D366; --promo: #C4381A;
+    --wa: #25D366;
     --cond: 'Barlow Condensed', 'Arial Narrow', 'Roboto Condensed', sans-serif;
     --corps: 'Barlow', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
     --r: 18px;
@@ -256,16 +251,11 @@ a:focus-visible, button:focus-visible { outline: 3px solid var(--bleu); outline-
 .sans-photo { padding: 54px 20px; text-align: center; color: var(--gris); background: #FBFAF7; font-size: 16px; }
 .sans-photo svg { display: block; margin: 0 auto 10px; }
 
-/* ---- la reconnaître, connaître le prix ---- */
+/* ---- la reconnaître ---- */
 .identite { padding: 22px 22px 24px; }
 .sur-titre { font-family: var(--cond); font-size: 16px; letter-spacing: 2.5px; text-transform: uppercase; color: var(--bleu); }
 h1.piece { font-family: var(--cond); font-size: 32px; line-height: 1.1; color: var(--encre); margin-top: 6px; font-weight: 700; }
 .wolof { font-size: 20px; line-height: 1.3; color: var(--gris); margin-top: 8px; }
-
-.prix { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--trait); display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
-.prix .montant { font-family: var(--cond); font-size: 44px; line-height: 1; color: var(--bleu); }
-.prix .ancien { font-size: 19px; color: var(--gris); text-decoration: line-through; }
-.prix .badge { align-self: center; background: var(--promo); color: var(--blanc); font-family: var(--cond); font-size: 17px; letter-spacing: .5px; border-radius: 8px; padding: 4px 10px; line-height: 1.2; }
 
 /* ---- contacter, venir : le cœur de la page ---- */
 .contact { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -368,17 +358,9 @@ h1.piece { font-family: var(--cond); font-size: 32px; line-height: 1.1; color: v
         <div class="wolof" lang="wo"><?= fpl_e($piece['nom_wolof']) ?></div>
         <?php endif; ?>
 
-        <?php /* Le prix s'affiche dès qu'il existe ; une pièce sans prix en base
-                 n'affiche rien ici (jamais « prix sur demande » — direction, 05/09). */ ?>
-        <?php if ($prix > 0 && $promo > 0 && $promo < $prix): ?>
-        <div class="prix">
-            <span class="montant"><?= fpl_e($fcfa($promo)) ?></span>
-            <span class="ancien"><?= fpl_e($fcfa($prix)) ?></span>
-            <span class="badge">−<?= (int) round(100 * ($prix - $promo) / $prix) ?> %</span>
-        </div>
-        <?php elseif ($prix > 0): ?>
-        <div class="prix"><span class="montant"><?= fpl_e($fcfa($prix)) ?></span></div>
-        <?php endif; ?>
+        <?php /* PLUS DE PRIX ICI (08/09, décision de la direction) : le client voit
+                 la pièce et joint la maison ; le montant se discute au comptoir.
+                 Le bloc « prix / ancien prix / badge » du 05/09 a été retiré. */ ?>
     </section>
 
     <?php else: ?>

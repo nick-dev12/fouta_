@@ -35,8 +35,10 @@ verifie "la référence aérée s'affiche (FPL 001 004 648)" grep -q "FPL 001 00
 verifie "le numéro du code-barres s'affiche ($EAN)" grep -q "$EAN" <<<"$PAGE"
 verifie "l'identité maison est là" grep -q "FOUTA POIDS LOURDS" <<<"$PAGE"
 verifie "le slogan manuscrit est posé" grep -q "slogan-manuscrit.png" <<<"$PAGE"
-verifie "le prix promo s'affiche (1 500 FCFA)" grep -q "1 500 FCFA" <<<"$PAGE"
-verifie "l'ancien prix barré s'affiche (1 999 FCFA)" grep -q "1 999 FCFA" <<<"$PAGE"
+# PLUS DE PRIX SUR LA PAGE DU QR (08/09, décision de la direction) : le client
+# voit la pièce et joint la maison ; le prix se discute au comptoir.
+verifie "AUCUN prix ne s'affiche (pas de FCFA sur la page)" test "$(grep -c "FCFA" <<<"$PAGE")" = 0
+verifie "ni le prix promo (1 500), ni l'ancien (1 999)" bash -c '! grep -qE "1 500|1 999" <<<"$1"' _ "$PAGE"
 verifie "WhatsApp est branché (wa.me)" grep -q "wa.me/221773938484" <<<"$PAGE"
 verifie "le canonique pointe /p/{ean13}" grep -q "canonical\" href=\".*/p/$EAN" <<<"$PAGE"
 
