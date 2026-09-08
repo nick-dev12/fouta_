@@ -454,15 +454,26 @@ function etiquette70_donnees_pour_produit(array $produit)
        pièces en portent une DIFFÉRENTE de la principale, toutes d'anciennes
        images figées (celle de la pièce #2 est même une image parasite),
        pendant que l'équipe entretient la photo principale. L'étiquette
-       montre donc la photo vivante ; la dédiée puis la galerie restent des
-       replis quand la principale manque ou que son fichier est absent. */
+       montre donc la photo vivante.
+       08/09 : « les images ajoutées auparavant s'affichent même après avoir
+       changé les photos » — la dédiée venait ENCORE avant la galerie : dès
+       que le fichier de la principale manquait (sur le VPS avant l'arrivée
+       du fichier, par exemple), l'ancienne image figée ressortait alors que
+       la galerie, elle, est entretenue par l'éditeur photo (la dédiée ne
+       l'est jamais). Ordre désormais : la principale, puis TOUTE la galerie
+       dans son ordre, et la dédiée en DERNIER repli — jamais retirée : 8
+       pièces n'ont qu'elle. */
     $photo_chemin = null;
     $imgs = json_decode((string) ($produit['images'] ?? ''), true);
-    $candidates = [
-        (string) ($produit['image_principale'] ?? ''),
-        (string) ($produit['image_etiquette_fpl'] ?? ''),
-        is_array($imgs) && !empty($imgs[0]) ? (string) $imgs[0] : '',
-    ];
+    $candidates = [(string) ($produit['image_principale'] ?? '')];
+    if (is_array($imgs)) {
+        foreach ($imgs as $img_rel) {
+            if (is_scalar($img_rel)) {
+                $candidates[] = (string) $img_rel;
+            }
+        }
+    }
+    $candidates[] = (string) ($produit['image_etiquette_fpl'] ?? '');
     foreach ($candidates as $photo_rel) {
         $photo_rel = trim($photo_rel);
         if ($photo_rel === '') {

@@ -11,6 +11,9 @@
 
     var pieceId = wrap.getAttribute('data-piece-id');
     var jeton = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+    // l'empreinte de la galerie chargée (08/09) : renvoyée à chaque enregistrement,
+    // le serveur refuse (409) si un autre poste ou onglet a enregistré entre-temps
+    var empreinte = wrap.getAttribute('data-empreinte') || '';
     var UPLOAD = '../../upload/';
 
     // état
@@ -205,20 +208,28 @@
         var fd = new FormData();
         fd.append('id', pieceId);
         fd.append('_jeton', jeton);
+        fd.append('empreinte', empreinte);
         fd.append('ordre', JSON.stringify(photos.map(function (p) { return p.rel; })));
         pending.forEach(function (item, i) {
             fd.append('images_supplementaires[]', item.blob, 'collee_' + i + '.jpg');
         });
         fetch('ajax_photo_enregistrer.php', { method: 'POST', body: fd, credentials: 'same-origin' })
-            .then(function (r) { return r.json().catch(function () { return { ok: false, error: 'Réponse invalide.' }; }); })
-            .then(function (res) {
+            .then(function (r) {
+                return r.json().catch(function () { return { ok: false, error: 'Réponse invalide.' }; })
+                    .then(function (res) { return { statut: r.status, res: res }; });
+            })
+            .then(function (rep) {
+                var res = rep.res;
                 if (!res || !res.ok) {
                     message((res && res.error) ? res.error : 'Échec de l’enregistrement.', false);
-                    elSave.disabled = false;
+                    // 409 : la galerie a bougé ailleurs — réessayer ne peut que re-échouer,
+                    // seul un rechargement de la page remet l'écran d'aplomb
+                    elSave.disabled = (rep.statut === 409);
                     return;
                 }
-                // reconstruire l'état depuis la galerie renvoyée
+                // reconstruire l'état depuis la galerie renvoyée (et sa nouvelle empreinte)
                 photos = (res.photos || []).map(function (p) { return { rel: p.rel, url: p.url }; });
+                empreinte = res.empreinte || empreinte;
                 pending = [];
                 dirty = false;
                 rendrePhotos(); rendreAttente();

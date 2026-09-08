@@ -10,10 +10,17 @@
  * POST (multipart) :
  *   id                       : la pièce
  *   ordre                    : JSON, chemins relatifs GARDÉS dans l'ordre voulu
- *                              (le 1er devient la photo principale)
+ *                              (une NOUVELLE photo devient la principale, sauf si
+ *                              l'ordre désigne une autre gardée que l'ancienne
+ *                              principale — voir includes/photo_editeur.php)
  *   images_supplementaires[] : nouveaux fichiers téléversés (multipart)
  *   collee                   : (optionnel) une image collée, en data:URL
+ *   empreinte                : OBLIGATOIRE — l'empreinte de la galerie chargée par
+ *                              l'écran (data-empreinte) ; refus 409 si la base a
+ *                              bougé entre-temps, ou si elle manque
  *   _jeton / X-CSRF-TOKEN     : jeton de session (admin_csrf)
+ *
+ * Seul appelant connu : js/admin-photo-editer.js (vérifié le 08/09/2026).
  */
 
 session_start();
@@ -23,6 +30,7 @@ require_once __DIR__ . '/../../conn/conn.php';
 require_once __DIR__ . '/../../models/model_produits.php';
 require_once __DIR__ . '/../../controllers/controller_produits.php';
 require_once __DIR__ . '/../../includes/image_optimizer.php';
+require_once __DIR__ . '/../../includes/photo_editeur.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -54,6 +62,20 @@ try {
 }
 if ($piece === null) {
     $repondre(['ok' => false, 'error' => 'Pièce introuvable.']);
+}
+
+/* CONTRE LA COURSE ENTRE DEUX ENREGISTREMENTS (08/09/2026) : un onglet ouvert
+   AVANT un autre enregistrement (autre poste, autre onglet, « pièce suivante »)
+   qui enregistre APRÈS remettait l'ancien ordre et effaçait du disque, plus bas,
+   les photos ajoutées entre-temps. L'écran emporte l'empreinte de la galerie
+   qu'il a chargée ; si la ligne actuelle n'a plus la même, on refuse TOUT —
+   avant d'avoir écrit un seul fichier (les téléversements viennent après).
+   Une empreinte absente est refusée aussi : pas de contournement silencieux. */
+$empreinte_client = isset($_POST['empreinte']) ? trim((string) $_POST['empreinte']) : '';
+$empreinte_base = photo_editeur_empreinte($piece['image_principale'], $piece['images']);
+if ($empreinte_client === '' || !hash_equals($empreinte_base, $empreinte_client)) {
+    http_response_code(409);
+    $repondre(['ok' => false, 'error' => 'La galerie a été modifiée entre-temps (autre poste ou onglet) : rechargez la page. Les images collées non enregistrées seront à recoller.']);
 }
 
 /* Les photos ACTUELLES (pour repérer les retirées à supprimer du disque). */
@@ -108,9 +130,17 @@ if (!empty($_POST['collee']) && is_string($_POST['collee'])
     }
 }
 
-/* La galerie finale = gardées (ordre) + nouvelles (à la fin), sans doublon.
-   La 1re EST la principale. Refus si tout serait vide. */
-$finale = array_values(array_unique(array_merge($gardees, $nouvelles)));
+/* La galerie finale (08/09/2026) : les NOUVELLES d'abord — jusqu'ici elles
+   arrivaient à la fin et l'ancienne photo restait principale (étiquette, page
+   du QR, catalogue) tant qu'on ne cliquait pas « Principale » puis Enregistrer
+   une seconde fois. Sauf si l'ordre envoyé désigne lui-même une autre gardée
+   que l'ancienne principale : ce choix-là est respecté. Sans doublon ; la 1re
+   EST la principale. Refus si tout serait vide. */
+$finale = photo_editeur_composer_galerie(
+    $gardees,
+    $nouvelles,
+    photo_editeur_principale_choisie($gardees, $piece['image_principale'], $actuelles)
+);
 if ($finale === []) {
     $repondre(['ok' => false, 'error' => 'Il faut au moins une photo.']);
 }
@@ -139,9 +169,22 @@ foreach (array_diff($actuelles, $finale) as $retiree) {
     }
 }
 
-/* On renvoie la galerie relue (URLs prêtes à afficher) pour rafraîchir l'écran. */
+/* On renvoie la galerie relue (URLs prêtes à afficher) pour rafraîchir l'écran,
+   et la NOUVELLE empreinte, relue en base (08/09) : sans elle, le second
+   enregistrement du même onglet serait refusé comme une course. */
 $urls = [];
 foreach ($finale as $rel) {
     $urls[] = ['rel' => $rel, 'url' => '../../upload/' . ltrim(str_replace('\\', '/', $rel), '/')];
 }
-$repondre(['ok' => true, 'principale' => $principale, 'photos' => $urls]);
+$empreinte_neuve = photo_editeur_empreinte($principale, json_encode($finale, JSON_UNESCAPED_UNICODE));
+try {
+    $st = $db->prepare("SELECT images, image_principale FROM produits WHERE id = :id");
+    $st->execute([':id' => $id]);
+    $relue = $st->fetch(PDO::FETCH_ASSOC);
+    if (is_array($relue)) {
+        $empreinte_neuve = photo_editeur_empreinte($relue['image_principale'], $relue['images']);
+    }
+} catch (PDOException $e) {
+    // on garde l'empreinte calculée sur ce qu'on vient d'écrire
+}
+$repondre(['ok' => true, 'principale' => $principale, 'photos' => $urls, 'empreinte' => $empreinte_neuve]);

@@ -43,7 +43,11 @@ if (empty($_SESSION['admin_csrf'])) {
     $_SESSION['admin_csrf'] = bin2hex(random_bytes(32));
 }
 
-$produit = get_produit_by_id(isset($_GET['id']) ? (int) $_GET['id'] : 0);
+/* SANS FILTRE D'ACCÈS (08/09) : la page ne montre que l'identité de la pièce
+   (nom, références) — rien de commercial — et son image passe par
+   etiquette-piece-image.php, lui aussi sans filtre : le rôle qui ne voit pas
+   la « Galerie photos » recevait sinon une pièce amputée de ses photos. */
+$produit = get_produit_by_id_sans_filtre_acces(isset($_GET['id']) ? (int) $_GET['id'] : 0);
 if ($produit === false) {
     $_SESSION['success_message'] = 'Cette pièce n\'existe pas.';
     header('Location: etiquettes.php?type=pieces');

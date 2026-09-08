@@ -27,6 +27,7 @@ require_once __DIR__ . '/../../includes/admin_permissions.php';
 require_once __DIR__ . '/../../includes/fpl_texte.php';
 require_once __DIR__ . '/../../includes/fpl_ui.php';
 require_once __DIR__ . '/../../models/model_produits.php';
+require_once __DIR__ . '/../../includes/photo_editeur.php';
 
 if (empty($_SESSION['admin_csrf'])) {
     $_SESSION['admin_csrf'] = bin2hex(random_bytes(32));
@@ -66,6 +67,22 @@ if (!is_array($photos)) {
     }
 }
 $upload_base = '../../upload/';
+
+/* L'EMPREINTE DE LA GALERIE CHARGÉE (08/09/2026) : l'enregistrement la
+ * recalcule sur la ligne du moment et refuse si elle a bougé — un autre poste
+ * ou un autre onglet ne peut plus écraser (ni effacer du disque) ce qui a été
+ * enregistré entre-temps. Calculée sur les colonnes BRUTES, comme là-bas. */
+$empreinte = photo_editeur_empreinte($piece['image_principale'], $piece['images']);
+
+/* L'APERÇU DU DÉTOURAGE (08/09/2026) : l'URL portait « t=0 », fixe, et
+ * l'aperçu se laissait garder 24 h — à chaque ouverture, l'infographiste
+ * revoyait l'ANCIEN détourage. La clé est désormais la date du fichier de la
+ * photo principale : elle change dès que la photo change, et pas avant. */
+$t_photo = 0;
+$chemin_principale = trim(str_replace('\\', '/', (string) ($piece['image_principale'] ?? '')));
+if ($chemin_principale !== '' && is_file(__DIR__ . '/../../upload/' . ltrim($chemin_principale, '/'))) {
+    $t_photo = (int) filemtime(__DIR__ . '/../../upload/' . ltrim($chemin_principale, '/'));
+}
 
 $ref = strtoupper(trim((string) $piece['identifiant_interne']));
 if (preg_match('/^FPL(\d{9})$/', $ref, $mref)) {
@@ -215,6 +232,7 @@ $fpl_titre_page = 'Images de la pièce';
 
     <div class="pe-wrap"
          data-piece-id="<?php echo (int) $piece['id']; ?>"
+         data-empreinte="<?php echo htmlspecialchars($empreinte, ENT_QUOTES); ?>"
          data-photos='<?php echo htmlspecialchars(json_encode($photos, JSON_UNESCAPED_SLASHES), ENT_QUOTES); ?>'>
 
         <div class="pe-top">
@@ -304,7 +322,7 @@ $fpl_titre_page = 'Images de la pièce';
                 </div>
                 <div id="pe-vue-detour">
                     <div class="pe-apercu-det pe-apercu-img">
-                        <img id="pe-detour" alt="Aperçu du détourage" src="detourage-lot-apercu.php?id=<?php echo (int) $piece['id']; ?>&t=0"
+                        <img id="pe-detour" alt="Aperçu du détourage" src="detourage-lot-apercu.php?id=<?php echo (int) $piece['id']; ?>&t=<?php echo (int) $t_photo; ?>"
                              onerror="this.style.display='none';this.insertAdjacentHTML('afterend','<div class=\'pe-hint\'>Aperçu indisponible — ajoutez d\'abord une image.</div>');this.onerror=null;">
                     </div>
                     <div class="pe-hint">Fond à damier = transparent (détourage réussi). Si le fond de l'image est chargé, la pièce reste sur son image d'origine : préférez une image sur fond uni.</div>

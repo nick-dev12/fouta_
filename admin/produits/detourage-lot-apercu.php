@@ -41,7 +41,13 @@ $chemin = $root . '/upload/' . ltrim($rel, '/');
 $res = fpl_detourage_fichier($chemin);
 
 header('Content-Type: image/png');
-header('Cache-Control: private, max-age=86400');
+/* 08/09/2026 : plus de « max-age=86400 » — l'éditeur photo appelait cette
+   image avec une URL FIXE (t=0) et l'infographiste revoyait l'ANCIEN détourage
+   pendant 24 h après avoir changé la photo. Les appelants portent désormais
+   une clé « t » qui change avec la photo (date du fichier) ; ici on demande
+   au navigateur de toujours revalider. Le cache disque du détourage rend la
+   réponse instantanée de toute façon. */
+header('Cache-Control: private, no-cache');
 
 if ($res === null) {
     // fond chargé (non détouré) : on renvoie la photo d'origine telle quelle

@@ -17,7 +17,8 @@
  * plus court, centré — le geste exact de l'atelier de la direction.
  *
  * Ce qui vient de CE dépôt : le QR (la page stock-info du produit), la photo
- * (image_etiquette_fpl puis la principale, sous upload/), les gardes
+ * (la principale, puis la galerie, la dédiée en dernier repli — sous
+ * upload/, voir etiquette70_donnees_pour_produit), les gardes
  * (require_access + compte restreint écarté), la trace d'impression.
  * L'EAN encode 200 + les 9 chiffres de l'identifiant FPL : le scan de la
  * douchette retombe sur la pièce (produit_emplacement_extraire_fpl_du_scan).
@@ -44,7 +45,10 @@ if (admin_is_restricted_admin_account()) {
     exit;
 }
 
-$produit = get_produit_by_id(isset($_GET['id']) ? (int) $_GET['id'] : 0);
+/* SANS FILTRE D'ACCÈS (08/09) : même raison que etiquette-piece-image.php —
+   le filtre par rôle retirait image_principale et images de la ligne, et le
+   PDF de ce compte ne portait plus que l'ancienne photo dédiée. */
+$produit = get_produit_by_id_sans_filtre_acces(isset($_GET['id']) ? (int) $_GET['id'] : 0);
 if ($produit === false) {
     $_SESSION['success_message'] = 'Cette pièce n\'existe pas.';
     header('Location: etiquettes.php');

@@ -50,13 +50,48 @@ function image_db_apply_path_mapping($db, $old_rel, $new_rel) {
 }
 
 /**
+ * Fragment « , sync_updated_at = NOW() » à coller dans chaque UPDATE produits
+ * de ce fichier — vide si la base n'a pas la colonne.
+ *
+ * LA SYNCHRO DOIT VOIR CES RÉÉCRITURES (08/09/2026) : une ligne de produits ne
+ * part vers le site public que si sync_updated_at avance. Les déclencheurs
+ * MySQL s'en chargeaient ; foutasvr les a perdus à l'import du 01/09 (erreur
+ * 1419 à chaque recréation). Un chemin d'image réécrit ici (.jpg → .webp)
+ * restait donc invisible du VPS : la page du QR montrait l'ancienne photo.
+ * Même remède que l'éditeur photo et update_produit() : on marque nous-mêmes.
+ * produits_has_column() n'est PAS chargée dans le lot d'optimisation (les
+ * migrations n'incluent que conn.php + image_optimizer_batch.php) : on s'en
+ * sert quand elle est là, sinon information_schema — une seule fois par base.
+ *
+ * @param PDO|null $db
+ * @return string
+ */
+function image_db_produits_marque_sync($db) {
+    static $cache = [];
+    if (!($db instanceof PDO)) {
+        return '';
+    }
+    $cle = spl_object_id($db);
+    if (!array_key_exists($cle, $cache)) {
+        $existe = function_exists('produits_has_column')
+            ? produits_has_column('sync_updated_at')
+            : image_db_table_has_column($db, 'produits', 'sync_updated_at');
+        $cache[$cle] = $existe ? ', sync_updated_at = NOW()' : '';
+    }
+
+    return $cache[$cle];
+}
+
+/**
  * @param PDO $db
  */
 function image_db_replace_column_exact($db, $table, $column, $old_val, $new_val) {
     if (!image_db_table_has_column($db, $table, $column)) {
         return 0;
     }
-    $sql = "UPDATE `{$table}` SET `{$column}` = :new WHERE `{$column}` = :old";
+    $sql = "UPDATE `{$table}` SET `{$column}` = :new"
+        . ($table === 'produits' ? image_db_produits_marque_sync($db) : '') /* marque de synchro (08/09) */
+        . " WHERE `{$column}` = :old";
     $stmt = $db->prepare($sql);
     $stmt->execute(['new' => $new_val, 'old' => $old_val]);
 
@@ -90,7 +125,7 @@ function image_db_replace_in_produits_images_json($db, $old_rel, $new_rel) {
         if (!$changed) {
             continue;
         }
-        $up = $db->prepare('UPDATE produits SET images = :images WHERE id = :id');
+        $up = $db->prepare('UPDATE produits SET images = :images' . image_db_produits_marque_sync($db) . ' WHERE id = :id');
         $up->execute([
             'images' => json_encode(array_values($decoded), JSON_UNESCAPED_UNICODE),
             'id' => (int) $row['id'],
@@ -172,7 +207,9 @@ function image_db_sync_table_column($db, $table, $column, &$details) {
     }
 
     $count = 0;
-    $update = $db->prepare("UPDATE `{$table}` SET `{$column}` = :new WHERE id = :id");
+    $update = $db->prepare("UPDATE `{$table}` SET `{$column}` = :new"
+        . ($table === 'produits' ? image_db_produits_marque_sync($db) : '') /* marque de synchro (08/09) */
+        . " WHERE id = :id");
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $old = trim(str_replace('\\', '/', (string) ($row['img'] ?? '')));
         if ($old === '') {
@@ -206,7 +243,7 @@ function image_db_sync_produits_images_json($db, &$details) {
     }
 
     $count = 0;
-    $update = $db->prepare('UPDATE produits SET images = :images WHERE id = :id');
+    $update = $db->prepare('UPDATE produits SET images = :images' . image_db_produits_marque_sync($db) . ' WHERE id = :id');
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $decoded = json_decode((string) ($row['images'] ?? ''), true);
         if (!is_array($decoded)) {

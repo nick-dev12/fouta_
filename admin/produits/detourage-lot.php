@@ -166,7 +166,8 @@ $csrf = (string) $_SESSION['admin_csrf'];
           var img = document.createElement('img');
           img.loading = 'lazy';
           img.alt = 'Pièce ' + id + ' détourée';
-          img.src = 'detourage-lot-apercu.php?id=' + id;
+          // 08/09/2026 : clé « t » = début du lot (la date du fichier n'est pas connue ici) — jamais l'aperçu d'un lot précédent
+          img.src = 'detourage-lot-apercu.php?id=' + id + '&t=' + (etat.demarre || 0);
           cell.appendChild(img);
           planche.appendChild(cell);
         });

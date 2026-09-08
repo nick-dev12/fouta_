@@ -40,7 +40,12 @@ if (admin_is_restricted_admin_account()) {
     exit;
 }
 
-$produit = get_produit_by_id(isset($_GET['id']) ? (int) $_GET['id'] : 0);
+/* SANS FILTRE D'ACCÈS (08/09) : get_produit_by_id() retire de la ligne les
+   colonnes des champs que le rôle ne voit pas — la « Galerie photos » masquée,
+   image_principale et images disparaissaient pendant que image_etiquette_fpl
+   restait, et l'étiquette rendue par ce compte ne montrait plus que l'ancienne
+   photo dédiée. La photo d'une étiquette n'est pas une donnée à masquer. */
+$produit = get_produit_by_id_sans_filtre_acces(isset($_GET['id']) ? (int) $_GET['id'] : 0);
 if ($produit === false) {
     http_response_code(404);
     header('Content-Type: text/plain; charset=utf-8');
