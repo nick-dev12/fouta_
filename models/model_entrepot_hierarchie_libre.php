@@ -1277,6 +1277,153 @@ function entrepot_noeud_liste($etage_id, $niveau_id = 0, $parent_id = -1)
 }
 
 /**
+ * L'ANCÊTRE D'UN NŒUD À UN NIVEAU DONNÉ (08/09/2026) — le rayon d'une barre,
+ * par exemple. Même remontée de chemin que entrepot_noeud_etiquette_libelle().
+ *
+ * @param int $noeud_id
+ * @param int $niveau_id
+ * @return array<string, mixed>|null
+ */
+function entrepot_noeud_ancetre_de_niveau($noeud_id, $niveau_id)
+{
+    $noeud_id = (int) $noeud_id;
+    $niveau_id = (int) $niveau_id;
+    $garde = 0;
+    while ($noeud_id > 0 && $garde++ < 40) {
+        $n = entrepot_noeud_get($noeud_id);
+        if ($n === null) {
+            return null;
+        }
+        if ((int) ($n['niveau_id'] ?? 0) === $niveau_id) {
+            return $n;
+        }
+        $noeud_id = (int) ($n['parent_id'] ?? 0);
+    }
+
+    return null;
+}
+
+/**
+ * LA PORTÉE DU NUMÉRO D'UN EMPLACEMENT (08/09/2026, décision de la direction :
+ * « on doit suivre la même logique que les étiquettes déjà imprimées »).
+ *
+ * Le libellé d'une barre est {étage}{rayon}-{numéro} : le numéro n'y est
+ * accompagné NI de l'étagère, NI de rien d'autre. Il doit donc être unique
+ * DANS LE RAYON — et c'est bien ce que montrent les étiquettes déjà collées :
+ * le rayon 15A va de 1 à 21 et le 21A de 1 à 33, en une seule suite continue
+ * à travers toutes les étagères.
+ *
+ * Or le numéro était calculé sous le PARENT (l'étagère) : chaque nouvelle
+ * étagère repartait de 1, et deux barres d'un même rayon recevaient le même
+ * libellé — mesuré le 08/09 : 62 barres partageaient 9 libellés, « C1-01 »
+ * en désignant sept à elle seule. Un scan devenait ambigu.
+ *
+ * La portée est donc :
+ *   — un niveau qui PORTE l'étiquette et se dit « lié à un niveau » (la barre,
+ *     liée au rayon) : tous les nœuds de ce niveau sous le MÊME nœud rayon ;
+ *   — un niveau qui porte l'étiquette et se dit « lié à l'étage » : l'étage ;
+ *   — un niveau SANS étiquette (la box, la position) : le parent, comme avant.
+ * Les libellés déjà imprimés ne bougent pas : rien n'est recalculé ici, seuls
+ * les numéros À VENIR changent de portée.
+ *
+ * @param int $etage_id
+ * @param int $niveau_id
+ * @param int $parent_id
+ * @return array{ids: int[], noms: string[], max: int, portee: string, racine_id: int}
+ */
+function entrepot_noeud_portee_numero($etage_id, $niveau_id, $parent_id)
+{
+    global $db;
+    $etage_id = (int) $etage_id;
+    $niveau_id = (int) $niveau_id;
+    $parent_id = (int) $parent_id;
+    $vide = ['ids' => [], 'noms' => [], 'max' => 0, 'portee' => 'parent', 'racine_id' => 0];
+    if (!entrepot_hierarchie_libre_schema_ok() || !$db) {
+        return $vide;
+    }
+
+    $etiq_defs = function_exists('entrepot_hierarchie_defs_etiquette') ? entrepot_hierarchie_defs_etiquette() : [];
+    $def = $etiq_defs[$niveau_id] ?? null;
+
+    $racine = null;
+    $portee = 'parent';
+    if ($def !== null) {
+        $lie_type = (string) ($def['etiquette_lie_type'] ?? 'etage');
+        $lie_niveau_id = (int) ($def['etiquette_lie_niveau_id'] ?? 0);
+        if ($lie_type === 'niveau' && $lie_niveau_id > 0 && $parent_id > 0) {
+            $racine = entrepot_noeud_ancetre_de_niveau($parent_id, $lie_niveau_id);
+            if ($racine !== null) {
+                $portee = 'racine';
+            }
+        }
+        if ($portee === 'parent') {
+            /* lié à l'étage — ou rayon introuvable (chemin incomplet) : l'étage
+               entier reste la bonne portée, jamais l'étagère seule. */
+            $portee = 'etage';
+        }
+    }
+
+    try {
+        if ($portee === 'racine') {
+            /* les descendants du rayon qui sont à ce niveau, quelles que soient
+               les étagères traversées (parcours en largeur : la hiérarchie est
+               courte et compte quelques centaines de nœuds) */
+            $ids = [];
+            $noms = [];
+            $max = 0;
+            $file = [(int) $racine['id']];
+            $vus = [];
+            $st = $db->prepare('SELECT id, niveau_id, numero, nom FROM entrepot_hierarchie_noeud WHERE parent_id = :p');
+            $garde = 0;
+            while ($file !== [] && $garde++ < 5000) {
+                $courant = array_shift($file);
+                if (isset($vus[$courant])) {
+                    continue;
+                }
+                $vus[$courant] = true;
+                $st->execute([':p' => $courant]);
+                foreach ($st->fetchAll(PDO::FETCH_ASSOC) ?: [] as $enfant) {
+                    if ((int) $enfant['niveau_id'] === $niveau_id) {
+                        $ids[] = (int) $enfant['id'];
+                        $noms[] = (string) $enfant['nom'];
+                        $max = max($max, (int) $enfant['numero']);
+                        continue; // un nœud du niveau visé n'a pas d'autre nœud du même niveau dessous
+                    }
+                    $file[] = (int) $enfant['id'];
+                }
+            }
+
+            return ['ids' => $ids, 'noms' => $noms, 'max' => $max, 'portee' => 'rayon', 'racine_id' => (int) $racine['id']];
+        }
+
+        $sql = 'SELECT id, numero, nom FROM entrepot_hierarchie_noeud WHERE etage_id = :e AND niveau_id = :n';
+        $params = [':e' => $etage_id, ':n' => $niveau_id];
+        if ($portee === 'parent') {
+            if ($parent_id > 0) {
+                $sql .= ' AND parent_id = :p';
+                $params[':p'] = $parent_id;
+            } else {
+                $sql .= ' AND parent_id IS NULL';
+            }
+        }
+        $st = $db->prepare($sql);
+        $st->execute($params);
+        $ids = [];
+        $noms = [];
+        $max = 0;
+        foreach ($st->fetchAll(PDO::FETCH_ASSOC) ?: [] as $r) {
+            $ids[] = (int) $r['id'];
+            $noms[] = (string) $r['nom'];
+            $max = max($max, (int) $r['numero']);
+        }
+
+        return ['ids' => $ids, 'noms' => $noms, 'max' => $max, 'portee' => $portee, 'racine_id' => 0];
+    } catch (PDOException $e) {
+        return $vide;
+    }
+}
+
+/**
  * @param int $etage_id
  * @param int $niveau_id
  * @param int $parent_id
@@ -1376,37 +1523,32 @@ function entrepot_noeud_ajouter($etage_id, $niveau_id, $parent_id, $nom, $numero
             }
         }
     }
+    /* LE NUMÉRO SE COMPTE DANS LA PORTÉE DE L'ÉTIQUETTE (08/09/2026) : le
+       rayon pour une barre, le parent pour une box. Voir la note de
+       entrepot_noeud_portee_numero(). */
+    $portee = entrepot_noeud_portee_numero($etage_id, $niveau_id, $parent_id);
     if ($numero <= 0) {
-        $sql = 'SELECT COALESCE(MAX(numero), 0) FROM entrepot_hierarchie_noeud WHERE etage_id = :e AND niveau_id = :n';
-        $params = [':e' => $etage_id, ':n' => $niveau_id];
-        if ($parent_id > 0) {
-            $sql .= ' AND parent_id = :p';
-            $params[':p'] = $parent_id;
-        } else {
-            $sql .= ' AND parent_id IS NULL';
-        }
-        $st = $db->prepare($sql);
-        $st->execute($params);
-        $numero = (int) $st->fetchColumn() + 1;
-    } else {
-        // Doublon uniquement parmi les éléments du même type (niveau_id) sous le même parent / étage
-        $dup_sql = 'SELECT id FROM entrepot_hierarchie_noeud
-                    WHERE etage_id = :e AND niveau_id = :n AND numero = :num';
-        $dup_params = [':e' => $etage_id, ':n' => $niveau_id, ':num' => $numero];
-        if ($parent_id > 0) {
-            $dup_sql .= ' AND parent_id = :p';
-            $dup_params[':p'] = $parent_id;
-        } else {
-            $dup_sql .= ' AND parent_id IS NULL';
-        }
-        $dup_sql .= ' LIMIT 1';
-        $dup = $db->prepare($dup_sql);
-        $dup->execute($dup_params);
-        if ($dup->fetchColumn()) {
+        $numero = $portee['max'] + 1;
+    } elseif ($portee['ids'] !== []) {
+        $places = implode(',', array_fill(0, count($portee['ids']), '?'));
+        $dup = $db->prepare("SELECT nom FROM entrepot_hierarchie_noeud WHERE numero = ? AND id IN ($places) LIMIT 1");
+        $dup->execute(array_merge([$numero], $portee['ids']));
+        $pris = $dup->fetchColumn();
+        if ($pris !== false) {
+            $ou = $portee['portee'] === 'rayon' ? 'dans ce rayon' : ($portee['portee'] === 'etage' ? 'à cet étage' : 'sous ce parent');
             return [
                 'success' => false,
-                'message' => 'Ce numéro existe déjà parmi les éléments du même type sous le même parent (pas de contrôle global).',
+                'message' => 'Le numéro ' . $numero . ' est déjà pris ' . $ou . ' par « ' . $pris . ' » : deux emplacements porteraient la même étiquette.',
             ];
+        }
+    }
+    /* UN NOM NE SE PORTE PAS À DEUX (08/09) : c'est ainsi que « B1 » et « B3 »
+       s'étaient retrouvés en double sous une même étagère, la série repartant
+       de 1 sans regarder l'existant. */
+    foreach ($portee['noms'] as $deja) {
+        if (function_exists('entrepot_nom_meme') ? entrepot_nom_meme($deja, $nom) : (mb_strtolower(trim($deja)) === mb_strtolower(trim($nom)))) {
+            $ou = $portee['portee'] === 'rayon' ? 'dans ce rayon' : ($portee['portee'] === 'etage' ? 'à cet étage' : 'sous ce parent');
+            return ['success' => false, 'message' => 'Un emplacement « ' . $nom . ' » existe déjà ' . $ou . '.'];
         }
     }
     try {
@@ -1459,24 +1601,30 @@ function entrepot_noeud_modifier($id, $nom, $numero)
     $etage_id = (int) ($noeud['etage_id'] ?? 0);
     $niveau_id = (int) ($noeud['niveau_id'] ?? 0);
     $parent_id = (int) ($noeud['parent_id'] ?? 0);
-    $dup_sql = 'SELECT id FROM entrepot_hierarchie_noeud
-                WHERE etage_id = :e AND niveau_id = :n AND numero = :num AND id != :id';
-    $dup_params = [':e' => $etage_id, ':n' => $niveau_id, ':num' => $numero, ':id' => $id];
-    if ($parent_id > 0) {
-        $dup_sql .= ' AND parent_id = :p';
-        $dup_params[':p'] = $parent_id;
-    } else {
-        $dup_sql .= ' AND parent_id IS NULL';
-    }
-    $dup_sql .= ' LIMIT 1';
+    /* MÊME PORTÉE QU'À LA CRÉATION (08/09/2026) : le contrôle ne regardait que
+       les frères sous le PARENT, si bien qu'un simple renommage pouvait donner
+       à deux barres d'un même rayon le même numéro — donc la même étiquette.
+       Voir la note de entrepot_noeud_portee_numero(). */
+    $portee = entrepot_noeud_portee_numero($etage_id, $niveau_id, $parent_id);
+    $ou = $portee['portee'] === 'rayon' ? 'dans ce rayon' : ($portee['portee'] === 'etage' ? 'à cet étage' : 'sous ce parent');
+    $voisins = array_values(array_filter($portee['ids'], function ($autre) use ($id) { return (int) $autre !== $id; }));
     try {
-        $dup = $db->prepare($dup_sql);
-        $dup->execute($dup_params);
-        if ($dup->fetchColumn()) {
-            return [
-                'success' => false,
-                'message' => 'Ce numéro existe déjà parmi les éléments du même type sous le même parent.',
-            ];
+        if ($voisins !== []) {
+            $places = implode(',', array_fill(0, count($voisins), '?'));
+            $dup = $db->prepare("SELECT nom FROM entrepot_hierarchie_noeud WHERE numero = ? AND id IN ($places) LIMIT 1");
+            $dup->execute(array_merge([$numero], $voisins));
+            $pris = $dup->fetchColumn();
+            if ($pris !== false) {
+                return [
+                    'success' => false,
+                    'message' => 'Le numéro ' . $numero . ' est déjà pris ' . $ou . ' par « ' . $pris . ' » : deux emplacements porteraient la même étiquette.',
+                ];
+            }
+            $dupn = $db->prepare("SELECT id FROM entrepot_hierarchie_noeud WHERE LOWER(TRIM(nom)) = ? AND id IN ($places) LIMIT 1");
+            $dupn->execute(array_merge([mb_strtolower(trim($nom))], $voisins));
+            if ($dupn->fetchColumn()) {
+                return ['success' => false, 'message' => 'Un emplacement « ' . $nom . ' » existe déjà ' . $ou . '.'];
+            }
         }
         $db->prepare(
             'UPDATE entrepot_hierarchie_noeud
@@ -1487,7 +1635,7 @@ function entrepot_noeud_modifier($id, $nom, $numero)
         return ['success' => true, 'message' => 'Élément modifié.'];
     } catch (PDOException $e) {
         if (strpos($e->getMessage(), '1062') !== false) {
-            return ['success' => false, 'message' => 'Ce numéro existe déjà parmi les éléments du même type sous le même parent.'];
+            return ['success' => false, 'message' => 'Ce numéro est déjà pris ' . $ou . '.'];
         }
 
         return ['success' => false, 'message' => 'Erreur : ' . $e->getMessage()];

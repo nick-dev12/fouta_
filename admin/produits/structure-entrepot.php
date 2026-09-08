@@ -29,6 +29,7 @@ require_once __DIR__ . '/../../includes/fpl_texte.php';
 require_once __DIR__ . '/../../includes/fpl_ui.php';
 require_once __DIR__ . '/../../models/model_entrepot_hierarchie.php';
 require_once __DIR__ . '/../../models/model_entrepot_hierarchie_libre.php';
+require_once __DIR__ . '/../../includes/entrepot_nommage.php';
 
 if (!admin_can_gestion_stock()) {
     header('Location: ../dashboard.php');
@@ -138,14 +139,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($nom === '' || mb_strlen($nom) > 120) {
                 $erreurs_page[] = 'Donnez un nom à l\'emplacement.';
             } else {
+                /* LA SÉRIE CONTINUE LA SUITE, ELLE NE LA RECOMMENCE PAS
+                   (08/09/2026, constat de la direction : « on s'était arrêté à
+                   B4 ; quand j'ajoute une barre, ça devrait afficher B5, mais
+                   ça recommence 1, 2, 3, 4, 5 »). Le nom repartait de 1 sans
+                   regarder l'existant — d'où des B1 et des B3 en double, et un
+                   nom qui ne disait plus le numéro porté par l'étiquette.
+                   Désormais le NUMÉRO décide et le NOM suit : la base attribue
+                   le rang dans la portée de l'étiquette (le rayon pour une
+                   barre), et les noms se composent avec ces rangs. */
+                $portee = entrepot_noeud_portee_numero($etage_id, $niveau_id, $parent_id);
+                $serie = entrepot_noms_serie($nom, $combien, $portee['max'] + 1, $portee['noms']);
                 $crees = 0;
+                $noms_crees = [];
                 $dernier_message = '';
-                for ($i = 0; $i < $combien; $i++) {
-                    // En série : « B » → B1, B2, B3… ; à l'unité : le nom tel quel.
-                    $nom_i = $combien > 1 ? ($nom . ($i + 1)) : $nom;
-                    $res = entrepot_noeud_ajouter($etage_id, $niveau_id, $parent_id, $nom_i, 0);
+                foreach ($serie['noms'] as $i => $nom_i) {
+                    // un nom posé tel quel (« Zone A ») laisse la base numéroter
+                    $num_i = $serie['suit_le_numero'] ? (int) $serie['numeros'][$i] : 0;
+                    $res = entrepot_noeud_ajouter($etage_id, $niveau_id, $parent_id, $nom_i, $num_i);
                     if (!empty($res['success'])) {
                         $crees++;
+                        $noms_crees[] = $nom_i;
                     } else {
                         $dernier_message = (string) ($res['message'] ?? 'La création a échoué.');
                         break;
@@ -153,8 +167,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 if ($crees > 0) {
                     $_SESSION['success_message'] = $crees > 1
-                        ? $crees . ' emplacements créés (' . $nom . '1 → ' . $nom . $crees . ').'
-                        : 'Emplacement « ' . $nom . ' » créé.';
+                        ? $crees . ' emplacements créés : ' . $noms_crees[0] . ' → ' . $noms_crees[$crees - 1] . '.'
+                        : 'Emplacement « ' . $noms_crees[0] . ' » créé.';
                     if ($dernier_message !== '') {
                         $_SESSION['success_message'] .= ' Puis : ' . $dernier_message;
                     }
@@ -717,7 +731,10 @@ if ($courant !== null) {
               <input type="hidden" name="niveau_id" value="<?php echo (int) $def_enfants['id']; ?>">
             <?php endif; ?>
             <div class="cb-field" style="flex:2; min-width:170px">
-              <label>Nom <span class="muted">(en série : « B » donne B1, B2…)</span></label>
+              <?php /* L'AIDE DIT LA RÈGLE VRAIE (08/09) : elle annonçait « B1, B2 »
+                       alors que la suite reprend désormais après les emplacements
+                       déjà là — c'est ce que la direction attendait. */ ?>
+              <label>Nom <span class="muted">(« B » continue la suite : après B4 vient B5)</span></label>
               <input type="text" name="nom" required placeholder="<?php echo fpl_e($def_enfants['label']); ?> 1">
             </div>
             <div class="cb-field" style="width:110px">
