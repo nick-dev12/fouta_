@@ -170,6 +170,13 @@ function produit_formulaire_champs_ensure_schema() {
 /**
  * Étend l'ENUM section (prix / stock / catégorie séparés).
  *
+ * ON REGARDE AVANT DE MODIFIER (09/09/2026). Cette fonction est appelée par le
+ * pied de page, donc à CHAQUE écran d'administration, et elle lançait un
+ * ALTER TABLE à chaque fois — même quand l'ENUM avait déjà ses huit valeurs.
+ * MySQL reconstruit la table pour un MODIFY COLUMN : sur le disque mécanique
+ * de foutasvr, deux secondes par page, pour rien. Une lecture de SHOW COLUMNS
+ * coûte une milliseconde et répond à la seule question qui compte.
+ *
  * @return bool
  */
 function produit_formulaire_champs_sections_split_ensure() {
@@ -181,10 +188,30 @@ function produit_formulaire_champs_sections_split_ensure() {
     if ($done) {
         return true;
     }
+    $valeurs = ['info', 'prix', 'stock', 'categorie', 'ref', 'variantes', 'options', 'media'];
     try {
+        $col = $db->query("SHOW COLUMNS FROM produit_formulaire_champ LIKE 'section'")
+            ->fetch(PDO::FETCH_ASSOC);
+        if ($col) {
+            $type = (string) ($col['Type'] ?? '');
+            $manque = false;
+            foreach ($valeurs as $v) {
+                if (strpos($type, "'" . $v . "'") === false) {
+                    $manque = true;
+                    break;
+                }
+            }
+            if (!$manque) {
+                // L'ENUM est déjà complet : rien à reconstruire.
+                $done = true;
+
+                return true;
+            }
+        }
+
         $db->exec(
             "ALTER TABLE produit_formulaire_champ
-             MODIFY COLUMN section ENUM('info','prix','stock','categorie','ref','variantes','options','media') NOT NULL DEFAULT 'info'"
+             MODIFY COLUMN section ENUM('" . implode("','", $valeurs) . "') NOT NULL DEFAULT 'info'"
         );
         $done = true;
 
@@ -196,6 +223,16 @@ function produit_formulaire_champs_sections_split_ensure() {
 
 /**
  * Réaligne les sections des champs système (stock, catégorie, statut).
+ *
+ * ON LIT D'ABORD (09/09/2026). Le pied de page appelle cette fonction à CHAQUE
+ * écran : elle lançait ses huit UPDATE même quand les huit lignes étaient déjà
+ * à leur place. Chaque écriture est une transaction, chaque transaction est un
+ * aller-retour sur le disque — 0,42 s pièce sur le disque mécanique de
+ * foutasvr, soit plus de trois secondes par page pour ne rien changer.
+ *
+ * Désormais : une lecture dit qui est décalé ; s'il n'y a personne — le cas de
+ * tous les jours — on n'écrit pas une ligne. Et quand il y a du travail, les
+ * corrections partent dans UNE seule transaction au lieu de huit.
  *
  * @return void
  */
@@ -219,15 +256,48 @@ function produit_formulaire_champs_sync_sections_systeme() {
         'prix_achat' => 'prix',
     ];
     try {
+        // QUI est décalé ? Une seule lecture, sur huit slugs.
+        $trous = str_repeat('?,', count($map) - 1) . '?';
+        $lire = $db->prepare(
+            'SELECT slug, section FROM produit_formulaire_champ
+             WHERE est_systeme = 1 AND slug IN (' . $trous . ')'
+        );
+        $lire->execute(array_keys($map));
+
+        $a_corriger = [];
+        foreach ($lire->fetchAll(PDO::FETCH_ASSOC) as $ligne) {
+            $slug = (string) $ligne['slug'];
+            if (isset($map[$slug]) && (string) $ligne['section'] !== $map[$slug]) {
+                $a_corriger[$slug] = $map[$slug];
+            }
+        }
+
+        if ($a_corriger === []) {
+            // Le cas de tous les jours : rien à écrire, donc rien n'est écrit.
+            $synced = true;
+
+            return;
+        }
+
+        // Une seule transaction pour toutes les corrections, pas une par ligne.
+        $dedans = $db->inTransaction();
+        if (!$dedans) {
+            $db->beginTransaction();
+        }
         $st = $db->prepare(
             'UPDATE produit_formulaire_champ SET section = :sec WHERE slug = :slug AND est_systeme = 1'
         );
-        foreach ($map as $slug => $sec) {
+        foreach ($a_corriger as $slug => $sec) {
             $st->execute([':sec' => $sec, ':slug' => $slug]);
+        }
+        if (!$dedans) {
+            $db->commit();
         }
         $synced = true;
     } catch (PDOException $e) {
-        // ignore
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
     }
 }
 
