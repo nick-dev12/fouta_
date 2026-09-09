@@ -268,8 +268,21 @@ imagedestroy($rendu);
 
 echo "— la boîte photo et le cache —\n";
 $moteur = (string) file_get_contents($RACINE . '/includes/etiquette_fpl70.php');
-vrai('la boîte photo fait 360 (elle faisait 440)', strpos($moteur, "'w' => (int) round(360 * \$s), 'h' => (int) round(360 * \$s)") !== false);
+vrai('la case photo fait 360 (elle faisait 440)', strpos($moteur, "'w' => (int) round(360 * \$s), 'h' => (int) round(360 * \$s)") !== false);
 vrai('… au même centre (785, 647) : x = 605, y = 467', strpos($moteur, "'x' => (int) round(605 * \$s), 'y' => (int) round(467 * \$s)") !== false);
+/* La taille se lit sur la DIAGONALE de la matière (troisième retour de la
+   direction : les bras de rétroviseur, allongés, paraissaient petits). */
+list($wc, $hc) = etiquette70_photo_taille(620, 635);   // la coque 750903736
+vrai("une pièce presque carrée garde ses 360 (obtenu {$wc} × {$hc})", abs(max($wc, $hc) - 360) <= 4);
+list($wb, $hb) = etiquette70_photo_taille(674, 414);   // le bras 9408107516
+vrai("un bras allongé dépasse la case en largeur (obtenu {$wb} × {$hb}, il faisait 360 × 221)", $wb > 400 && $wb <= 420);
+vrai('… et grandit d\'environ 17 %', $wb >= 1.15 * 360 && $wb <= 1.20 * 360);
+list($wb2, $hb2) = etiquette70_photo_taille(528, 310); // le bras A9438105116
+vrai("l'autre bras aussi (obtenu {$wb2} × {$hb2})", $wb2 > 400 && $wb2 <= 420);
+list($wt, $ht) = etiquette70_photo_taille(310, 720);   // une pièce haute
+vrai("une pièce haute s'arrête à 400 de haut, sous la barre bleue (obtenu {$wt} × {$ht})", $ht <= 400 && $ht >= 396);
+list($wl2, $hl2) = etiquette70_photo_taille(720, 100); // une courroie posée à plat
+vrai("une pièce très allongée s'arrête à 420 de large (obtenu {$wl2} × {$hl2})", $wl2 === 420);
 vrai('la photo est recadrée sur sa matière avant d\'être posée', strpos($moteur, '$vis = etiquette70_boite_visible($ph[\'img\']);') !== false);
 $detour = (string) file_get_contents($RACINE . '/includes/fpl_detourage.php');
 vrai('le cache du détourage est reparti (clé v13)', strpos($detour, "'|v13'") !== false);

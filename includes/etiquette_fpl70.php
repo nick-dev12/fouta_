@@ -167,6 +167,53 @@ function etiquette70_texte($img, $x, $y, $texte, $nom_police, $corps, $couleur, 
 // ---------------------------------------------------------------------------
 
 /**
+ * LA TAILLE DE LA PIÈCE SUR L'ÉTIQUETTE — en unités logiques, à partir de la
+ * boîte de sa matière visible.
+ *
+ * LA TAILLE QUI COMPTE POUR L'ŒIL EST LA DIAGONALE, PAS LE PLUS GRAND CÔTÉ
+ * (09/09/2026, troisième retour de la direction : « pour 9408107516 et
+ * A9438105116, augmente un peu la taille de leur image »). Avec l'ajustement
+ * sur le plus grand côté, une coque presque carrée remplissait toute la case
+ * de 360, tandis qu'un bras de rétroviseur, large et bas (674 × 414 de
+ * matière), n'en remplissait que la largeur : 360 × 221, et paraissait
+ * petit à côté. Or les deux ont été jugés l'un « un peu grand », l'autre
+ * « à agrandir un peu » — c'est la même remarque, vue de deux formes.
+ *
+ * On ajuste donc sur la DIAGONALE : toutes les pièces reçoivent la diagonale
+ * de la case de 360 (509). Une pièce carrée fait toujours 360 ; une pièce
+ * allongée s'étire un peu au-delà de la case dans sa longueur et se resserre
+ * dans sa hauteur — la coque 750903736 ne bouge pas d'un pour cent, les deux
+ * bras gagnent 17 %.
+ *
+ * Deux plafonds tiennent la pièce dans la place libre, autour du centre
+ * (785, 647) : 420 de large (le bord gauche reste à droite de la fin du
+ * slogan manuscrit, 562), 400 de haut (le haut reste sous la barre bleue,
+ * qui finit vers 440 pour des titres à 40 px).
+ *
+ * @param int $pl largeur de la matière visible, en pixels de la photo
+ * @param int $phh hauteur de la matière visible
+ * @return array{0: int, 1: int} largeur et hauteur à l'étiquette, en unités logiques
+ */
+function etiquette70_photo_taille($pl, $phh)
+{
+    $pl = max(1, (int) $pl);
+    $phh = max(1, (int) $phh);
+    $DIAG = 360.0 * M_SQRT2;   // la diagonale de la case de 360
+    $LARG_MAX = 420.0;
+    $HAUT_MAX = 400.0;
+    $e = $DIAG / sqrt($pl * $pl + $phh * $phh);
+    if ($pl * $e > $LARG_MAX) {
+        $e = $LARG_MAX / $pl;
+    }
+    if ($phh * $e > $HAUT_MAX) {
+        $e = $HAUT_MAX / $phh;
+    }
+
+    return [(int) round($pl * $e), (int) round($phh * $e)];
+}
+
+/**
+ * LA BOÎTE DE LA MATIÈRE VISIBLE d'une image détourée./**
  * LA BOÎTE DE LA MATIÈRE VISIBLE d'une image détourée.
  *
  * POURQUOI (09/09/2026) : le détourage rend une image de la TAILLE DE LA
@@ -711,15 +758,17 @@ function etiquette70_rendu(array $donnees, $cote)
                400 ; 07/09 : « agrandir un peu » → 440), même centre
                (755, 647). 08/09 : « décale un peu plus à droite » → la boîte
                glisse de 30 px (≈ 1,3 mm), centre (785, 647), même hauteur.
-               09/09 : « l'image de la pièce est un peu grande » → la boîte
+               09/09 : « l'image de la pièce est un peu grande » → la case
                passe à 360, MÊME CENTRE (785, 647) : la pièce maigrit sur
                place, elle ne se déplace pas. Pourquoi 360 et pas 410 : depuis
                le même jour la pièce est RECADRÉE sur sa matière avant d'être
-               posée (etiquette70_boite_visible), donc elle remplit la boîte
+               posée (etiquette70_boite_visible), donc elle remplit la case
                entière au lieu d'y nager — la coque 750903736, que la direction
-               trouvait un peu grande, mesurait 388 px d'apparent avec la boîte
-               de 440 ; 360 la fait 7 % plus petite, et toutes les pièces ont
-               désormais la même taille apparente, cadrage de la photo ou pas.
+               trouvait un peu grande, mesurait 388 px d'apparent avec la case
+               de 440 ; 360 la fait 7 % plus petite.
+               Puis, le même jour : la case donne son CENTRE et sa DIAGONALE,
+               plus son côté — les pièces allongées y paraissaient petites
+               (voir etiquette70_photo_taille).
                Écart assumé avec le dessin de l'atelier. */
             $boite = [
                 'x' => (int) round(605 * $s), 'y' => (int) round(467 * $s),
@@ -742,9 +791,11 @@ function etiquette70_rendu(array $donnees, $cote)
                 $pl = $vis['x1'] - $vis['x0'] + 1;
                 $phh = $vis['y1'] - $vis['y0'] + 1;
             }
-            $e = min($boite['w'] / $pl, $boite['h'] / $phh);
-            $w = (int) round($pl * $e);
-            $h = (int) round($phh * $e);
+            /* La taille se calcule sur la DIAGONALE de la matière (voir
+               etiquette70_photo_taille), le centre reste celui de la case. */
+            list($wl, $hl) = etiquette70_photo_taille($pl, $phh);
+            $w = (int) round($wl * $s);
+            $h = (int) round($hl * $s);
             $dx = $boite['x'] + (int) round(($boite['w'] - $w) / 2);
             $dy = $boite['y'] + (int) round(($boite['h'] - $h) / 2);
             /* 04/09 — l'ombre portée sous la pièce détourée (marine à 20 %,
