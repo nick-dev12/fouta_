@@ -153,6 +153,50 @@ if (!$d['refus']) {
     echo "  (photo refusée : le cas ne s'applique pas)\n";
 }
 
+echo "— 4 bis. le BORD est doux et fidèle (09/09) : ni marche, ni rognage, ni halo —\n";
+/* Un carré noir, bordé d'UN pixel gris (le mélange à 50 % que fait tout capteur
+   au bord d'une pièce) : ce pixel doit ressortir à moitié transparent — c'est
+   l'anti-crénelage de la photo — et le fond au-delà doit rester entièrement
+   transparent (aucun halo). */
+/* toile de 720 px : à cette taille le moteur n'agrandit pas, et le liseré
+   reste large d'UN pixel comme sur une vraie photo (agrandi ×3, il ferait
+   trois pixels de gris et le mélange n'aurait plus de sens) */
+$im = toile(720, 720, function ($im) {
+    imagefilledrectangle($im, 180, 180, 539, 539, imagecolorallocate($im, 140, 140, 142)); // le liseré mêlé
+    imagefilledrectangle($im, 181, 181, 538, 538, imagecolorallocate($im, 28, 28, 32));    // la pièce
+});
+$d = detourer($im);
+imagedestroy($im);
+verifie('la photo est acceptée', false, $d['refus']);
+if (!$d['refus']) {
+    $o = $d['img'];
+    $e = imagesx($o) / 720;
+    $alpha = function ($x, $y) use ($o, $e) {
+        return (imagecolorat($o, min(imagesx($o) - 1, (int) round($x * $e)), min(imagesy($o) - 1, (int) round($y * $e))) >> 24) & 0x7F;
+    };
+    verifie('le cœur de la pièce est opaque', 0, $alpha(360, 360));
+    $bord = $alpha(180, 360); // le pixel gris, mélange à 50 %
+    verifie('le pixel de bord mêlé est À MOITIÉ transparent, ni coupé ni plein (alpha entre 25 et 100)', true, $bord >= 25 && $bord <= 100);
+    verifie('quatre pixels dehors, le fond est entièrement transparent : pas de halo', 127, $alpha(176, 360));
+    /* la largeur du dégradé : sur le contour, il y a des pixels intermédiaires */
+    $inter = 0; $perim = 0;
+    for ($y = 1; $y < imagesy($o) - 1; $y++) {
+        for ($x = 1; $x < imagesx($o) - 1; $x++) {
+            $av = (imagecolorat($o, $x, $y) >> 24) & 0x7F;
+            if ($av > 2 && $av < 125) { $inter++; }
+            if ($av < 64 && ((((imagecolorat($o, $x - 1, $y)) >> 24) & 0x7F) >= 64 || (((imagecolorat($o, $x + 1, $y)) >> 24) & 0x7F) >= 64
+                || (((imagecolorat($o, $x, $y - 1)) >> 24) & 0x7F) >= 64 || (((imagecolorat($o, $x, $y + 1)) >> 24) & 0x7F) >= 64)) { $perim++; }
+        }
+    }
+    verifie('le contour porte un dégradé (au moins 0,8 pixel intermédiaire par pixel de contour)', true, $perim > 0 && $inter / $perim >= 0.8);
+    imagedestroy($o);
+}
+$src_bord = file_get_contents($RACINE . '/includes/fpl_detourage.php');
+verifie('la carte de distance existe aussi DEHORS', true, strpos($src_bord, '8 bis) LA MÊME CARTE, DEHORS') !== false);
+verifie("l'opacité du bord se calcule par mélange linéaire fond → pièce", true, strpos($src_bord, 'PAR MÉLANGE LINÉAIRE') !== false);
+verifie("l'ombre du fond (même teinte, assombrie) compte comme du fond", true, strpos($src_bord, '$ks >= 0.45 && $ks <= 1.05') !== false);
+verifie("un pixel dehors n'est repris que s'il a la couleur de la pièce", true, strpos($src_bord, '$ap = $go * $c;') !== false);
+
 echo "— 5. la mécanique du correctif —\n";
 $src = file_get_contents($RACINE . '/includes/fpl_detourage.php');
 verifie('la fonction d\'ouverture des trous existe', true, function_exists('fpl_detour_ouvrir_trous'));
@@ -166,8 +210,8 @@ verifie('elle exige un pourtour franc sur au moins 90 % du tour', true,
     strpos($src, '($francs / $nb_saut) < 0.90') !== false);
 verifie('la porte du « centre vide » compte les trous voulus comme de la matière', true,
     strpos($src, '$trous_ouverts[$base + $x]') !== false);
-verifie('la clé du cache est passée à v10 (les anciens calculs sont refaits)', true,
-    strpos($src, "'|v10'") !== false && strpos($src, "'|v9'") === false);
+verifie('la clé du cache est passée à v11 (les anciens calculs sont refaits)', true,
+    strpos($src, "'|v11'") !== false && strpos($src, "'|v9'") === false && strpos($src, "'|v10'") === false);
 
 echo "\n$ok OK / $ko KO\n";
 exit($ko === 0 ? 0 : 1);

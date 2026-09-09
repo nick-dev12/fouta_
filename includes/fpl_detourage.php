@@ -1529,38 +1529,94 @@ function fpl_detourage_gd($src, $force = 45, &$motif = null)
     }
 
     // ------------------------------------------------------------------
-    // 9) APPLICATION + DÉCONTAMINATION du bord (le fondu retire la part de
-    //    couleur du fond encore mêlée au pixel : fini le halo)
+    // 8 bis) LA MÊME CARTE, DEHORS : distance du fond au masque (09/09/2026).
+    //    Le bord se dessine désormais des DEUX côtés du contour.
+    // ------------------------------------------------------------------
+    $dout = new SplFixedArray($N);
+    for ($p = 0; $p < $N; $p++) {
+        $dout[$p] = $garde[$p] ? 0 : $INF;
+    }
+    for ($y = 0; $y < $H; $y++) {
+        $base = $y * $L;
+        for ($x = 0; $x < $L; $x++) {
+            $p = $base + $x;
+            $d = $dout[$p];
+            if ($d === 0) {
+                continue;
+            }
+            if ($x > 0 && $dout[$p - 1] + 3 < $d) { $d = $dout[$p - 1] + 3; }
+            if ($y > 0) {
+                if ($dout[$p - $L] + 3 < $d) { $d = $dout[$p - $L] + 3; }
+                if ($x > 0 && $dout[$p - $L - 1] + 4 < $d) { $d = $dout[$p - $L - 1] + 4; }
+                if ($x < $L - 1 && $dout[$p - $L + 1] + 4 < $d) { $d = $dout[$p - $L + 1] + 4; }
+            }
+            $dout[$p] = $d;
+        }
+    }
+    for ($y = $H - 1; $y >= 0; $y--) {
+        $base = $y * $L;
+        for ($x = $L - 1; $x >= 0; $x--) {
+            $p = $base + $x;
+            $d = $dout[$p];
+            if ($d === 0) {
+                continue;
+            }
+            if ($x < $L - 1 && $dout[$p + 1] + 3 < $d) { $d = $dout[$p + 1] + 3; }
+            if ($y < $H - 1) {
+                if ($dout[$p + $L] + 3 < $d) { $d = $dout[$p + $L] + 3; }
+                if ($x < $L - 1 && $dout[$p + $L + 1] + 4 < $d) { $d = $dout[$p + $L + 1] + 4; }
+                if ($x > 0 && $dout[$p + $L - 1] + 4 < $d) { $d = $dout[$p + $L - 1] + 4; }
+            }
+            $dout[$p] = $d;
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // 9) APPLICATION : UN BORD DOUX, GUIDÉ PAR LA COULEUR (09/09/2026)
+    //
+    //    Constat de la direction : « ça coupe un peu les bordures, ça réduit
+    //    une partie de l'image ; les bordures détourées doivent être lisses,
+    //    comme sur l'image d'origine ». Mesuré : le fondu ne couvrait qu'UN
+    //    pixel, d'un seul côté (dedans), au pied d'un masque tout-ou-rien —
+    //    d'où des marches d'escalier, et un contour qui s'arrête un pixel ou
+    //    deux AVANT le vrai bord (le pixel de bord n'était qu'à 33 %).
+    //
+    //    Désormais, dans une bande de deux pixels de chaque côté du contour,
+    //    l'opacité se décide avec la COULEUR du pixel, pas seulement sa place :
+    //      - un pixel de la couleur de la PIÈCE reste opaque dedans, et est
+    //        REPRIS dehors (c'est la chair que le masque avait rognée) ;
+    //      - un pixel de la couleur du FOND — ou de son OMBRE (même teinte,
+    //        assombrie) — s'efface dehors, et garde dedans le fondu d'avant ;
+    //      - entre les deux, l'opacité suit la couleur : le bord devient un
+    //        dégradé fidèle à la photo, sans marche.
+    //    La décontamination du bord (retirer la part de fond mêlée au pixel)
+    //    reste telle quelle : pas de halo.
     // ------------------------------------------------------------------
     imagealphablending($im, false);
     imagesavealpha($im, true);
     $transparent = imagecolorallocatealpha($im, 0, 0, 0, 127);
+    $BANDE = 6;                       // deux pixels (chanfrein : 3 par pixel)
+    $tBas = 0.5 * $tolMode;           // en dessous : couleur du fond
+    $tHaut = 1.6 * $tolMode;          // au-dessus : couleur de la pièce
     for ($y = 0, $p = 0; $y < $H; $y++) {
         for ($x = 0; $x < $L; $x++, $p++) {
             $d = $dist[$p];
-            if ($d >= 6) {
+            if ($d >= $BANDE) {
                 continue; // cœur de la pièce : pixel d'origine intact
             }
-            if ($d <= 1) {
-                imagesetpixel($im, $x, $y, $transparent);
+            $o = $dout[$p];
+            if (!$garde[$p] && $o > $BANDE) {
+                imagesetpixel($im, $x, $y, $transparent); // loin dehors
                 continue;
-            }
-            // fondu : d = 3 (pixel de bord) → 0,33 ; d = 6 → 1
-            $ap = ($d - 1.5) / 4.5;
-            if ($ap <= 0) {
-                imagesetpixel($im, $x, $y, $transparent);
-                continue;
-            }
-            if ($ap > 1) {
-                $ap = 1;
             }
             $rr = (int) $r[$p];
             $vv = (int) $v[$p];
             $bb = (int) $b[$p];
-            // teinte du fond la plus proche de ce pixel (pour la retirer)
+            // teinte du fond la plus proche de ce pixel (pour la retirer, et
+            // pour juger de quel côté il est)
+            $dmin = $INF;
             if ($nbModes > 0) {
                 $meilleur = 0;
-                $dmin = $INF;
                 for ($k = 0; $k < $nbModes; $k++) {
                     $d1 = abs($rr - $mR[$k]);
                     $d2 = abs($vv - $mV[$k]);
@@ -1574,10 +1630,90 @@ function fpl_detourage_gd($src, $force = 45, &$motif = null)
                 $fr = $mR[$meilleur];
                 $fv = $mV[$meilleur];
                 $fb = $mB[$meilleur];
+                /* l'OMBRE du fond : même teinte, assombrie (rapport de canaux
+                   ±12) — c'est du fond, pas de la pièce. SAUF sur le PREMIER
+                   pixel dehors : là, un gris neutre entre une pièce noire et un
+                   fond blanc est le plus souvent le MÉLANGE du bord (un pixel
+                   de large, l'anti-crénelage de la photo), que la couleur seule
+                   ne distingue pas d'une ombre ; on laisse le mélange linéaire
+                   trancher, et une vraie ombre n'y gagne qu'un pixel à moitié
+                   transparent, éteint dès le pixel suivant. */
+                $somF = $mSom[$meilleur];
+                $premier_dehors = (!$garde[$p] && $o <= 3);
+                if ($somF > 0 && !$premier_dehors) {
+                    $ks = ($rr + $vv + $bb) / $somF;
+                    if ($ks >= 0.45 && $ks <= 1.05
+                        && abs($rr - $ks * $fr) <= 12 && abs($vv - $ks * $fv) <= 12 && abs($bb - $ks * $fb) <= 12) {
+                        $dmin = 0;
+                    }
+                }
             } else {
                 $fr = 255;
                 $fv = 255;
                 $fb = 255;
+                $dmin = max(abs($rr - 255), abs($vv - 255), abs($bb - 255));
+            }
+            /* LA PART « PIÈCE » DU PIXEL, PAR MÉLANGE LINÉAIRE (09/09/2026).
+               Un pixel de bord est un mélange de la couleur du fond F et de
+               celle de la pièce P juste derrière lui : sa part de pièce est la
+               projection de (pixel − F) sur (P − F). Un pixel à mi-chemin vaut
+               50 % — c'est exactement l'anti-crénelage de la photo d'origine,
+               que le seuil tout-ou-rien du masque écrasait en marches. P est
+               lu deux pixels plus DEDANS (le voisin le plus profond du
+               chanfrein), et si P ressemble à F (pièce de la couleur du fond)
+               on retombe sur le seuil de couleur d'avant. */
+            $c = ($dmin - $tBas) / ($tHaut - $tBas);
+            if ($c < 0) { $c = 0.0; } elseif ($c > 1) { $c = 1.0; }
+            if ($dmin > 0) {
+                /* le voisin le plus profond, deux fois : la chair derrière le bord */
+                $q = $p;
+                for ($pas = 0; $pas < 2; $pas++) {
+                    $qx = $q % $L;
+                    $qy = ($q - $qx) / $L;
+                    $meilleurQ = $q;
+                    $prof = $dist[$q];
+                    if ($qx > 0 && $dist[$q - 1] > $prof) { $prof = $dist[$q - 1]; $meilleurQ = $q - 1; }
+                    if ($qx < $L - 1 && $dist[$q + 1] > $prof) { $prof = $dist[$q + 1]; $meilleurQ = $q + 1; }
+                    if ($qy > 0 && $dist[$q - $L] > $prof) { $prof = $dist[$q - $L]; $meilleurQ = $q - $L; }
+                    if ($qy < $H - 1 && $dist[$q + $L] > $prof) { $prof = $dist[$q + $L]; $meilleurQ = $q + $L; }
+                    if ($qx > 0 && $qy > 0 && $dist[$q - $L - 1] > $prof) { $prof = $dist[$q - $L - 1]; $meilleurQ = $q - $L - 1; }
+                    if ($qx < $L - 1 && $qy > 0 && $dist[$q - $L + 1] > $prof) { $prof = $dist[$q - $L + 1]; $meilleurQ = $q - $L + 1; }
+                    if ($qx > 0 && $qy < $H - 1 && $dist[$q + $L - 1] > $prof) { $prof = $dist[$q + $L - 1]; $meilleurQ = $q + $L - 1; }
+                    if ($qx < $L - 1 && $qy < $H - 1 && $dist[$q + $L + 1] > $prof) { $prof = $dist[$q + $L + 1]; $meilleurQ = $q + $L + 1; }
+                    if ($meilleurQ === $q) { break; }
+                    $q = $meilleurQ;
+                }
+                if ($dist[$q] >= 6) {
+                    $pr = (int) $r[$q] - $fr;
+                    $pv = (int) $v[$q] - $fv;
+                    $pb = (int) $b[$q] - $fb;
+                    $norme2 = $pr * $pr + $pv * $pv + $pb * $pb;
+                    if ($norme2 >= 40 * 40) { // P se distingue de F : le mélange a un sens
+                        $proj = (($rr - $fr) * $pr + ($vv - $fv) * $pv + ($bb - $fb) * $pb) / $norme2;
+                        if ($proj < 0) { $proj = 0.0; } elseif ($proj > 1) { $proj = 1.0; }
+                        $c = $proj;
+                    }
+                }
+            }
+            if ($garde[$p]) {
+                // dedans : le fondu d'avant (33 % au pixel de bord, 100 % à deux
+                // pixels), relevé si la couleur est celle de la pièce
+                $gi = ($d - 1.5) / 4.5;
+                if ($gi > 1) { $gi = 1.0; }
+                $ap = $gi > $c ? $gi : $c;
+            } else {
+                // dehors : repris seulement si la couleur est celle de la pièce,
+                // en s'effaçant sur deux pixels (100 % puis 50 % puis 0)
+                $go = 1.0 - ($o - 3) / 6.0;
+                if ($go < 0) { $go = 0.0; } elseif ($go > 1) { $go = 1.0; }
+                $ap = $go * $c;
+            }
+            if ($ap <= 0.02) {
+                imagesetpixel($im, $x, $y, $transparent);
+                continue;
+            }
+            if ($ap > 1) {
+                $ap = 1;
             }
             $rr = (int) round(($rr - (1 - $ap) * $fr) / $ap);
             $vv = (int) round(($vv - (1 - $ap) * $fv) / $ap);
@@ -1619,7 +1755,7 @@ function fpl_detourage_fichier($chemin)
     if (!is_dir($dir)) {
         @mkdir($dir, 0775, true);
     }
-    $cle = md5(realpath($chemin) . '|' . filemtime($chemin) . '|v10');
+    $cle = md5(realpath($chemin) . '|' . filemtime($chemin) . '|v11');
     $cache = $dir . '/' . $cle . '.png';
     $refus = $dir . '/' . $cle . '.non';
     if (is_file($cache)) {
