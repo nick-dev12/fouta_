@@ -599,7 +599,17 @@ function etiquette70_donnees_pour_produit(array $produit)
  * « MÊME TAILLE » SE MESURE EN HAUTEUR DE CAPITALE, jamais au corps : à corps
  * égal, Anton monte 1,22 fois plus haut que Barlow Condensed. On cherche donc
  * UNE hauteur commune, la plus grande qui laisse les deux lignes tenir dans
- * leur largeur, plafonnée à 56 px.
+ * leur largeur, plafonnée à 40 px.
+ *
+ * LE PLAFOND EST À 40, PAS À 56 (09/09/2026, second retour de la direction sur
+ * 7750408447 : « les écritures sont grosses et pas à la même taille que les
+ * autres »). À 56, une pièce au nom court sortait en gros et sa voisine au
+ * nom long en petit — égales entre elles sur chaque étiquette, mais pas d'une
+ * étiquette à l'autre. La hauteur doit être commune à TOUT le catalogue.
+ * Mesuré sur les 3 313 noms : à 40 px, 96 % tiennent sur une ligne de 730 ;
+ * à 56, 77 % seulement. Et 40, c'est la taille que la direction a validée sur
+ * les deux rétroviseurs du matin. Seuls les noms les plus longs descendent
+ * encore en dessous.
  *
  * LA LARGEUR : 730 unités depuis x = 285, soit jusqu'à 1015 sur les 1080 de
  * la toile logique. Les anciens budgets (520 / 560) laissaient un tiers de la
@@ -624,7 +634,7 @@ function etiquette70_donnees_pour_produit(array $produit)
  */
 function etiquette70_titres_disposer($wolof, $francais)
 {
-    $CAP_PLAFOND = 56.0;
+    $CAP_PLAFOND = 40.0;
     $CAP_PLANCHER = 26.0;
     $LARG_APPEL = 730.0;
     $LARG_FR = 730.0;
@@ -768,6 +778,17 @@ function etiquette70_rendu(array $donnees, $cote)
     if ($francais !== '') {
         etiquette70_texte($img, 285 * $s, $t['base_fr'] * $s, $francais, 'barlow_condensed_700', $t['corps_fr'] * $s, $noir_titre, 0.9 * $s);
     }
+
+    /* --- LA BARRE BLEUE SOUS LES TITRES (09/09/2026) ---
+       Elle vivait dans la couche fixe dessus-1654.png (x 439..566, y 713..726 :
+       14 px d'épaisseur, 35 px sous la ligne de base du nom français de
+       l'époque, à 678). Quand les titres ont changé de taille, elle est restée
+       à sa place et s'est retrouvée à 87 px du texte — « elle doit remonter
+       pour se rapprocher d'eux ». Elle est désormais effacée de la couche fixe
+       et dessinée ICI, à la distance du dessin d'origine sous la ligne de base
+       du nom français, quelle que soit la taille des titres. */
+    $barre_y = (int) round($t['base_fr'] * $s) + 35;
+    imagefilledrectangle($img, 439, $barre_y, 566, $barre_y + 13, imagecolorallocate($img, 8, 26, 77));
 
     // --- la carte des références ---
     etiquette70_texte($img, 183 * $s, 699 * $s, 'RÉFÉRENCE FPL', 'barlow_condensed_700', 23 * $s, $encre, 0.4 * $s);

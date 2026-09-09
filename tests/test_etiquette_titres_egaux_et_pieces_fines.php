@@ -63,7 +63,7 @@ $cas = [
 foreach ($cas as $c) {
     $t = etiquette70_titres_disposer($c[0], $c[1]);
     vrai("« $c[0] » / « " . mb_substr($c[1], 0, 28) . "… » : mêmes hauteurs à 1 px", abs($t['cap_appel'] - $t['cap_fr']) <= 1.0);
-    vrai("  … et l'appellation ne dépasse plus 56 px (elle faisait 79)", $t['cap_appel'] <= 56.5);
+    vrai("  … et l'appellation ne dépasse plus 40 px (elle faisait 79, puis 56)", $t['cap_appel'] <= 40.5);
     vrai("  … et le nom français dépasse 30 px (il faisait 30)", $t['cap_fr'] > 30.5);
     vrai('  … le nom français tient dans sa largeur (730)',
         etiquette70_largeur_texte('barlow_condensed_700', $c[1], $t['corps_fr'], 0.9) <= 730.0);
@@ -222,6 +222,49 @@ if ($res !== null) {
     vrai("  … l'intérieur reste transparent, c'est une ouverture (alpha $a)", $a >= 100);
     imagedestroy($res['img']);
 }
+
+echo "— une hauteur commune à TOUT le catalogue, et la barre bleue qui suit le texte —\n";
+/* Second retour de la direction (7750408447) : « les écritures sont grosses
+   et pas à la même taille que les autres ». Un nom court doit sortir à la
+   même hauteur qu'un nom moyen : le plafond est commun, 40 px. */
+$court = etiquette70_titres_disposer('SETTU', 'CÂBLE DE VITESSE');
+$moyen = etiquette70_titres_disposer('SETTU', "RÉTROVISEUR D'ANTÉVISON MERCEDES BENZ");
+vrai('un nom court sort à 40 px, pas plus', abs($court['cap_fr'] - 40.0) <= 1.0 && abs($court['cap_appel'] - 40.0) <= 1.0);
+vrai('un nom moyen sort à la même hauteur que le court', abs($moyen['cap_fr'] - $court['cap_fr']) <= 1.0);
+
+/* La barre bleue : effacée de la couche fixe, dessinée par le moteur à 35 px
+   sous la ligne de base du nom français. On rend une étiquette avec la photo
+   d'HR1151 et on sonde les pixels. */
+$png = imagecreatefrompng($RACINE . '/image/etiquette70/dessus-1654.png');
+$bleu_fixe = 0;
+for ($y = 713; $y <= 726; $y++) {
+    for ($x = 439; $x <= 566; $x += 8) {
+        $cf = imagecolorat($png, $x, $y);
+        if (((($cf >> 24) & 127) < 100) && (($cf & 255) > ((($cf >> 16) & 255) + 20)) && ((($cf >> 16) & 255) < 120)) {
+            $bleu_fixe++; // un pixel bleu marine opaque : la barre serait encore la
+        }
+    }
+}
+verifie('la couche fixe ne porte plus la barre', 0, $bleu_fixe);
+imagedestroy($png);
+
+$donnees = [
+    'nom_wolof' => 'SETTU', 'nom_francais' => "Rétroviseur D'Antévison MERCEDES BENZ",
+    'ref_affichee' => 'FPL 150 ME 105116', 'oem' => 'A9438105116',
+    'qr_texte' => 'https://e.foutapoidslourds.com/p/2000010051953', 'ean12' => '200001005195',
+    'photo_chemin' => __DIR__ . '/fixtures/retroviseur_bras_hr1151_2209.png',
+];
+$rendu = etiquette70_rendu($donnees, ETQ70_BASE);
+$s = ETQ70_BASE / ETQ70_LOGIQUE;
+$attendu_y = (int) round($moyen['base_fr'] * $s) + 35;
+$xm = (int) ((439 + 566) / 2);
+$c = imagecolorat($rendu, $xm, $attendu_y + 6);
+$r_ = ($c >> 16) & 255; $g_ = ($c >> 8) & 255; $b_ = $c & 255;
+vrai("la barre est dessinée 35 px sous la ligne de base du nom français (y $attendu_y, couleur $r_,$g_,$b_)", $b_ > $r_ + 20 && $r_ < 120);
+$c2 = imagecolorat($rendu, $xm, $attendu_y - 12);
+vrai('… et rien de bleu juste au-dessus d\'elle', !((($c2 & 255) > ((($c2 >> 16) & 255) + 20)) && (($c2 >> 16) & 255) < 120));
+vrai('… la barre est plus haute qu\'avant (elle était à y 713)', $attendu_y < 713);
+imagedestroy($rendu);
 
 echo "— la boîte photo et le cache —\n";
 $moteur = (string) file_get_contents($RACINE . '/includes/etiquette_fpl70.php');
