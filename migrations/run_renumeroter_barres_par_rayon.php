@@ -80,6 +80,12 @@ foreach ($par_rayon as $cle => $g) {
             $probleme = 'la barre « ' . $b['nom'] . ' » n\'a pas de nombre dans son nom';
             break;
         }
+        if ($d['numero'] < 1) {
+            /* « B0 » (rayon 22B, 09/09) : un numéro 0 s'affiche « 01 » sur
+               l'étiquette et recoupe B1 — on ne le pose jamais */
+            $probleme = "la barre « " . $b['nom'] . " » porte le nombre 0, qui n'est pas un numéro";
+            break;
+        }
         $prefixes[mb_strtolower(trim($d['prefixe']))] = true;
         if (isset($nombres[$d['numero']])) {
             $probleme = 'deux barres portent le nombre ' . $d['numero'] . ' (« ' . $nombres[$d['numero']] . ' » et « ' . $b['nom'] . ' »)';
