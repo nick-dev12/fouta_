@@ -174,6 +174,11 @@ $alpha_en = function ($img, $x, $y) {
 $sondes = [
     ['retroviseur_bras_hr1151_2209.png', 'HR1151', [175, 428], [362, 372]],
     ['retroviseur_glace_blanche_fcsbzax0162_2189.png', '9408107516', [100, 200], [378, 248]],
+    /* 9608103016 : glace GRISE avec un reflet en dégradé (5 % de pixels lisses) ;
+       le second point sonde l'intérieur de la boucle du câble (x 357..437,
+       y 204..241), qui doit rester transparent : une boucle est fine partout,
+       une glace tient à un boîtier. */
+    ['retroviseur_glace_grise_9608103016_2202.png', '9608103016', [200, 200], [397, 222]],
 ];
 foreach ($sondes as $sd) {
     $chemin = __DIR__ . '/fixtures/' . $sd[0];
@@ -194,32 +199,43 @@ foreach ($sondes as $sd) {
     imagedestroy($src);
 }
 
-/* Les jumeaux de la règle : un cadre FIN (4 px) autour de blanc pur est une
-   glace, on la rend ; un cadre ÉPAIS (30 px) autour de blanc pur est une
-   ouverture, elle reste transparente. */
-function cadre_autour_de_blanc($epaisseur)
+/* Les jumeaux de la règle, trois images de 400 × 400 sur fond blanc :
+     - une GLACE : liseré fin (4 px) sur trois côtés, et un BOÎTIER épais
+       (60 px) sur le quatrième — l'intérieur est rendu à la pièce ;
+     - une OUVERTURE : cadre épais (30 px) tout autour — l'intérieur reste
+       transparent ;
+     - une BOUCLE : liseré fin (4 px) tout autour, sans boîtier — l'intérieur
+       n'est PAS rendu (un câble replié n'est pas une glace). */
+function cadre_autour_de_blanc($epaisseur, $boitier = 0)
 {
     $im = imagecreatetruecolor(400, 400);
     imagefilledrectangle($im, 0, 0, 399, 399, imagecolorallocate($im, 255, 255, 255));
-    imagefilledrectangle($im, 100 - $epaisseur, 100 - $epaisseur, 299 + $epaisseur, 299 + $epaisseur, imagecolorallocate($im, 18, 18, 18));
+    imagefilledrectangle($im, 100 - $epaisseur, 100 - $epaisseur, 299 + $epaisseur + $boitier, 299 + $epaisseur, imagecolorallocate($im, 18, 18, 18));
     imagefilledrectangle($im, 100, 100, 299, 299, imagecolorallocate($im, 255, 255, 255));
 
     return $im;
 }
 $motif = null;
-$res = fpl_detourage_gd(cadre_autour_de_blanc(4), 45, $motif);
-vrai('cadre FIN autour de blanc : accepté (motif : ' . ($motif ?: 'aucun') . ')', $res !== null);
+$res = fpl_detourage_gd(cadre_autour_de_blanc(4, 60), 45, $motif);
+vrai('GLACE : liseré fin + boîtier épais : accepté (motif : ' . ($motif ?: 'aucun') . ')', $res !== null);
 if ($res !== null) {
     $a = $alpha_en($res['img'], 200, 200);
-    vrai("  … l'intérieur est rendu à la pièce, c'est une glace (alpha $a)", $a < 40);
+    vrai("  … l'intérieur est rendu à la pièce (alpha $a)", $a < 40);
     imagedestroy($res['img']);
 }
 $motif = null;
 $res = fpl_detourage_gd(cadre_autour_de_blanc(30), 45, $motif);
-vrai('cadre ÉPAIS autour de blanc : accepté (motif : ' . ($motif ?: 'aucun') . ')', $res !== null);
+vrai('OUVERTURE : cadre épais tout autour : accepté (motif : ' . ($motif ?: 'aucun') . ')', $res !== null);
 if ($res !== null) {
     $a = $alpha_en($res['img'], 200, 200);
-    vrai("  … l'intérieur reste transparent, c'est une ouverture (alpha $a)", $a >= 100);
+    vrai("  … l'intérieur reste transparent (alpha $a)", $a >= 100);
+    imagedestroy($res['img']);
+}
+$motif = null;
+$res = fpl_detourage_gd(cadre_autour_de_blanc(4), 45, $motif);
+$a = $res !== null ? $alpha_en($res['img'], 200, 200) : 127;
+vrai("BOUCLE : liseré fin tout autour, sans boîtier : l'intérieur n'est pas rendu (" . ($res === null ? 'refusée : ' . $motif : "alpha $a") . ')', $res === null || $a >= 100);
+if ($res !== null) {
     imagedestroy($res['img']);
 }
 
@@ -285,7 +301,7 @@ list($wl2, $hl2) = etiquette70_photo_taille(720, 100); // une courroie posée à
 vrai("une pièce très allongée s'arrête à 420 de large (obtenu {$wl2} × {$hl2})", $wl2 === 420);
 vrai('la photo est recadrée sur sa matière avant d\'être posée', strpos($moteur, '$vis = etiquette70_boite_visible($ph[\'img\']);') !== false);
 $detour = (string) file_get_contents($RACINE . '/includes/fpl_detourage.php');
-vrai('le cache du détourage est reparti (clé v13)', strpos($detour, "'|v13'") !== false);
+vrai('le cache du détourage est reparti (clé v14)', strpos($detour, "'|v14'") !== false);
 vrai('le sauvetage des glaces est branché avant les portes', strpos($detour, '$diag_glaces = fpl_detour_sauver_glaces(') !== false);
 vrai('le garde-fou « squelettique » regarde le vide avant de refuser', strpos($detour, '$vrai_vide = ($remplissage >= 0.12 && $partIntrus < 0.10);') !== false);
 vrai('… à la tolérance SERRÉE du fond de studio (±10), pas à celle des diagnostics', strpos($detour, '$mR, $mV, $mB, $mSom, $nbModes, 10, true)) {') !== false);

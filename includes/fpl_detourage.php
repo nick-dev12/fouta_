@@ -537,12 +537,26 @@ function fpl_detour_sauver_glaces(
         }
         $partProche = $proches / $taille;
         if (getenv('FPL_DETOUR_DEBUG') && $taille >= 200) {
-            fwrite(STDERR, sprintf("[glaces] poche %d px bord=%d lum=%.1f proches=%.0f %%\n", $taille, $bord ? 1 : 0, $moy, 100 * $partProche));
+            $qx0 = $L; $qx1 = 0; $qy0 = $H; $qy1 = 0;
+            foreach ($poche as $p) {
+                $px = $p % $L; $py = ($p - $px) / $L;
+                if ($px < $qx0) { $qx0 = $px; } if ($px > $qx1) { $qx1 = $px; }
+                if ($py < $qy0) { $qy0 = $py; } if ($py > $qy1) { $qy1 = $py; }
+            }
+            fwrite(STDERR, sprintf("[glaces] poche %d px bord=%d lum=%.1f proches=%.0f %% boite x %d..%d y %d..%d\n",
+                $taille, $bord ? 1 : 0, $moy, 100 * $partProche, $qx0, $qx1, $qy0, $qy1));
         }
         if ($bord || $taille < $mini || $taille > $maxi) {
             continue;
         }
-        if ($partProche < 0.90) {
+        /* CLAIRE, pas forcément lisse (09/09/2026, 9608103016) : la glace de ce
+           rétroviseur est un gris clair traversé d'un REFLET en dégradé — 5 %
+           seulement de ses pixels à 15 niveaux de la moyenne. Exiger la
+           lissité, c'était découper toute glace qui reflète quelque chose. On
+           ne garde de ce critère que la clarté : une glace de rétroviseur est
+           claire ; une poche sombre est une ombre ou un creux. Le vrai
+           discriminant reste le bord, juste en dessous. */
+        if ($moy < 190.0) {
             continue;
         }
         // --- 3) l'épaisseur du bord : depuis chaque pixel du tour, on marche
@@ -577,17 +591,29 @@ function fpl_detour_sauver_glaces(
         sort($ep);
         $mediane = $ep[intdiv($ne, 2)];
         $fins = 0;
+        $epais = 0;
         foreach ($ep as $e) {
             if ($e <= 8) {
                 $fins++;
             }
+            if ($e >= 20) {
+                $epais++;
+            }
         }
+        /* UNE GLACE EST MONTÉE SUR UN BOÎTIER (09/09/2026) : son tour est fin
+           — le liseré — SAUF du côté où elle tient à la pièce, épais. Une
+           boucle de câble ou un fil replié enferment aussi du fond derrière
+           un tour fin, mais fin PARTOUT : sans ce côté épais, la poche reste
+           ouverte. Mesuré sur les trois glaces de la direction : 13, 15 et
+           16 % de tour à 20 px et plus (le bras, le boîtier) ; une boucle
+           de câble n'a que son point d'attache. Seuil à 8 %, pour la marge. */
+        $glace = !($mediane > 9 || $fins / $ne < 0.5) && ($epais / $ne >= 0.08);
         if (getenv('FPL_DETOUR_DEBUG')) {
-            fwrite(STDERR, sprintf("[glaces]    bord : %d mesures, mediane %d px, %.0f %% <= 8 px => %s\n",
-                $ne, $mediane, 100 * $fins / $ne, ($mediane > 9 || $fins / $ne < 0.5) ? 'TROU (reste ouvert)' : 'GLACE (rendue)'));
+            fwrite(STDERR, sprintf("[glaces]    bord : %d mesures, mediane %d px, %.0f %% <= 8 px, %.0f %% >= 20 px => %s\n",
+                $ne, $mediane, 100 * $fins / $ne, 100 * $epais / $ne, $glace ? 'GLACE (rendue)' : 'TROU (reste ouvert)'));
         }
-        if ($mediane > 9 || $fins / $ne < 0.5) {
-            continue; // bord épais : un vrai trou, il reste ouvert
+        if (!$glace) {
+            continue; // bord épais partout : un trou ; fin partout : une boucle
         }
         // --- 4) une glace : rendue à la pièce ---
         foreach ($poche as $p) {
@@ -2136,7 +2162,7 @@ function fpl_detourage_fichier($chemin)
     if (!is_dir($dir)) {
         @mkdir($dir, 0775, true);
     }
-    $cle = md5(realpath($chemin) . '|' . filemtime($chemin) . '|v13');
+    $cle = md5(realpath($chemin) . '|' . filemtime($chemin) . '|v14');
     $cache = $dir . '/' . $cle . '.png';
     $refus = $dir . '/' . $cle . '.non';
     if (is_file($cache)) {
