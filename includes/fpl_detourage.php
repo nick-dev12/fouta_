@@ -149,6 +149,167 @@ function fpl_detour_membre_fond($rr, $vv, $bb, $mR, $mV, $mB, $mSom, $nbModes, $
 }
 
 /**
+ * LES TROUS D'UNE PIÈCE AJOURÉE DOIVENT ÊTRE TRANSPARENTS (08/09/2026).
+ *
+ * Constat de la direction : « si on prend des grilles, ça prend seulement le
+ * contour ; mais s'il y a des grillages, il y a des trous, et ces trous-là
+ * devraient être détourés, de telle sorte que ça soit transparent. S'il y a
+ * des espaces à l'intérieur de l'image, ces espaces-là ne sont pas détourés. »
+ *
+ * POURQUOI ILS RESTAIENT PLEINS : la transparence est une CROISSANCE DEPUIS LES
+ * BORDS (étapes 3 et 4). Une poche de fond entourée de matière — l'ouverture
+ * d'un cadre de phare, une maille de grille — n'est jamais atteinte, donc
+ * jamais vidée. Mesuré le 08/09 sur 200 photos : 25 des 70 photos détourées
+ * gardaient au moins un trou plein, jusqu'à un cinquième de l'image.
+ *
+ * COMMENT ON DISTINGUE UN TROU D'UN REFLET, car c'est là tout le danger : un
+ * miroir gris clair ou le flanc mat d'un moteur gris ressemblent au fond blanc.
+ * Quatre preuves exigées ENSEMBLE, sinon la poche reste opaque :
+ *   1. chaque pixel appartient aux teintes du fond, au plafond STRICT déjà
+ *      utilisé par la croissance (pas de tolérance élargie ici) ;
+ *   2. la poche est ENTIÈREMENT entourée de matière (elle ne touche pas le
+ *      bord de l'image, sinon la croissance l'aurait atteinte) ;
+ *   3. elle est LISSE : le fond d'un studio n'a pas de texture, donc un faible
+ *      écart-type de luminance — un reflet, lui, est un dégradé ;
+ *   4. son pourtour est FRANC : la matière autour est nettement plus éloignée
+ *      du fond que la poche. Un dégradé de reflet échoue ici, un vrai trou
+ *      passe — c'est la garde qui sauve le miroir des rétroviseurs.
+ * Et une taille minimale, pour ne pas ouvrir le grain du capteur.
+ *
+ * @param SplFixedArray $fond    masque du fond (1 = déjà transparent), MODIFIÉ
+ * @param SplFixedArray $r,$v,$b canaux de l'image
+ * @param SplFixedArray $a       canal alpha d'origine
+ * @return array{trous: int, pixels: int}
+ */
+function fpl_detour_ouvrir_trous(
+    $fond, $r, $v, $b, $a, $L, $H,
+    $mR, $mV, $mB, $mSom, $nbModes, $tolMode
+) {
+    $N = $L * $H;
+    $rien = function ($n) {
+        $m = new SplFixedArray(max(1, $n));
+        for ($i = 0; $i < $n; $i++) {
+            $m[$i] = 0;
+        }
+        return ['trous' => 0, 'pixels' => 0, 'masque' => $m];
+    };
+    if ($nbModes < 1 || $N < 400) {
+        return $rien($N);
+    }
+    /* candidats : pas encore transparents, mais de la couleur du fond */
+    $cand = new SplFixedArray($N);
+    for ($p = 0; $p < $N; $p++) {
+        $cand[$p] = (!$fond[$p] && $a[$p] < 100
+            && fpl_detour_membre_fond($r[$p], $v[$p], $b[$p], $mR, $mV, $mB, $mSom, $nbModes, $tolMode)) ? 1 : 0;
+    }
+
+    $vu = new SplFixedArray($N);
+    for ($p = 0; $p < $N; $p++) {
+        $vu[$p] = 0;
+    }
+    $mini = max(24, (int) round(0.0003 * $N)); // 0,03 % de l'image
+    $trous = 0;
+    $pixels = 0;
+    $ouverts = new SplFixedArray($N); // les trous ouverts ici, pour les portes de qualité
+    for ($p = 0; $p < $N; $p++) {
+        $ouverts[$p] = 0;
+    }
+
+    for ($y0 = 1; $y0 < $H - 1; $y0++) {
+        for ($x0 = 1; $x0 < $L - 1; $x0++) {
+            $p0 = $y0 * $L + $x0;
+            if (!$cand[$p0] || $vu[$p0]) {
+                continue;
+            }
+            /* la poche, en 4-connexité */
+            $pile = [$p0];
+            $vu[$p0] = 1;
+            $poche = [];
+            $bord = false;
+            $som = 0.0;
+            $som2 = 0.0;
+            while ($pile) {
+                $p = array_pop($pile);
+                $py = intdiv($p, $L);
+                $px = $p - $py * $L;
+                $poche[] = $p;
+                if ($px === 0 || $py === 0 || $px === $L - 1 || $py === $H - 1) {
+                    $bord = true;
+                }
+                $lum = 0.299 * $r[$p] + 0.587 * $v[$p] + 0.114 * $b[$p];
+                $som += $lum;
+                $som2 += $lum * $lum;
+                if ($px > 0 && $cand[$p - 1] && !$vu[$p - 1]) { $vu[$p - 1] = 1; $pile[] = $p - 1; }
+                if ($px < $L - 1 && $cand[$p + 1] && !$vu[$p + 1]) { $vu[$p + 1] = 1; $pile[] = $p + 1; }
+                if ($py > 0 && $cand[$p - $L] && !$vu[$p - $L]) { $vu[$p - $L] = 1; $pile[] = $p - $L; }
+                if ($py < $H - 1 && $cand[$p + $L] && !$vu[$p + $L]) { $vu[$p + $L] = 1; $pile[] = $p + $L; }
+            }
+            $taille = count($poche);
+            if ($bord || $taille < $mini) {
+                continue; // preuve 2, et la taille minimale
+            }
+            /* preuve 3 : la poche est lisse */
+            $moy = $som / $taille;
+            $ecart = sqrt(max(0.0, $som2 / $taille - $moy * $moy));
+            if ($ecart > 7.0) {
+                continue;
+            }
+            /* preuve 4 : le pourtour est franc SUR TOUT SON TOUR.
+               Une MOYENNE ne suffit pas — elle s'est fait tromper par le bas
+               d'un miroir de rétroviseur (08/09) : ses côtés sont bordés du
+               cadre noir, dont le saut énorme masquait sa frontière du haut,
+               qui n'est qu'un dégradé continu vers le gris. On compte donc la
+               PART du contour réellement franche, et on exige la quasi-
+               totalité : un vrai trou est net de tous côtés, un reflet a
+               toujours un côté qui fond dans la pièce. */
+            $francs = 0;
+            $nb_saut = 0;
+            foreach ($poche as $p) {
+                $py = intdiv($p, $L);
+                $px = $p - $py * $L;
+                foreach ([[-1, 0], [1, 0], [0, -1], [0, 1]] as $d) {
+                    $qx = $px + $d[0];
+                    $qy = $py + $d[1];
+                    if ($qx < 0 || $qy < 0 || $qx >= $L || $qy >= $H) {
+                        continue;
+                    }
+                    $q = $qy * $L + $qx;
+                    if ($cand[$q] || $fond[$q]) {
+                        continue; // encore la poche, ou du fond déjà ouvert
+                    }
+                    /* on regarde DEUX pixels plus loin : au premier, le lissage
+                       de l'image mêle encore les deux côtés */
+                    $q2x = $px + 2 * $d[0];
+                    $q2y = $py + 2 * $d[1];
+                    $q2 = ($q2x >= 0 && $q2y >= 0 && $q2x < $L && $q2y < $H) ? ($q2y * $L + $q2x) : $q;
+                    $lq = 0.299 * $r[$q2] + 0.587 * $v[$q2] + 0.114 * $b[$q2];
+                    $nb_saut++;
+                    if (abs($lq - $moy) >= 18.0) {
+                        $francs++;
+                    }
+                }
+            }
+            if ($nb_saut < 12 || ($francs / $nb_saut) < 0.90) {
+                continue; // un côté fond dans la pièce : c'est un reflet
+            }
+            /* les quatre preuves sont là : la poche devient transparente.
+               On note aussi ces pixels : les PORTES DE QUALITÉ, plus bas,
+               doivent savoir qu'un centre vide peut être un trou VOULU, et
+               non une pièce mangée (le cadre de phare, creux par nature,
+               était refusé pour « centre vide » dès qu'on l'ouvrait). */
+            foreach ($poche as $p) {
+                $fond[$p] = 1;
+                $ouverts[$p] = 1;
+            }
+            $trous++;
+            $pixels += $taille;
+        }
+    }
+
+    return ['trous' => $trous, 'pixels' => $pixels, 'masque' => $ouverts];
+}
+
+/**
  * Détoure une image GD (fond → transparent). Rend une NOUVELLE image GD
  * truecolor+alpha, ou null si le détourage ne serait pas propre (fond chargé,
  * pièce mangée, contour déchiqueté…) — l'appelant garde alors la photo
@@ -550,6 +711,15 @@ function fpl_detourage_gd($src, $force = 45, &$motif = null)
     }
     $fq = null;
     $fd = null;
+
+    // ------------------------------------------------------------------
+    // 4 bis) LES TROUS INTÉRIEURS (08/09/2026) : la croissance vient des
+    //    bords, elle ne peut pas atteindre une poche de fond entourée de
+    //    matière — l'ouverture d'un cadre de phare, une fente de grille.
+    //    On les ouvre ici, sur quatre preuves (voir fpl_detour_ouvrir_trous).
+    // ------------------------------------------------------------------
+    $diag_trous = fpl_detour_ouvrir_trous($fond, $r, $v, $b, $a, $L, $H, $mR, $mV, $mB, $mSom, $nbModes, $tolMode);
+    $trous_ouverts = $diag_trous['masque'];
 
     // ------------------------------------------------------------------
     // 5) MÉNAGE DES COMPOSANTES gardées (étiquetage 4-connexe + règles)
@@ -1226,7 +1396,12 @@ function fpl_detourage_gd($src, $force = 45, &$motif = null)
         $base = $y * $L;
         for ($x = $cx0; $x < $cx1; $x++) {
             $centreTot++;
-            if ($garde[$base + $x]) {
+            /* UN TROU VOULU N'EST PAS UN CENTRE MANGÉ (08/09/2026) : cette
+               porte cherche une pièce dévorée par la croissance. Le trou
+               qu'on vient d'ouvrir exprès — l'ouverture d'un cadre de phare,
+               creux par nature — compte donc encore comme de la matière,
+               sinon la photo était refusée au moment même où on la corrigeait. */
+            if ($garde[$base + $x] || $trous_ouverts[$base + $x]) {
                 $centreGarde++;
             }
         }
@@ -1444,7 +1619,7 @@ function fpl_detourage_fichier($chemin)
     if (!is_dir($dir)) {
         @mkdir($dir, 0775, true);
     }
-    $cle = md5(realpath($chemin) . '|' . filemtime($chemin) . '|v9');
+    $cle = md5(realpath($chemin) . '|' . filemtime($chemin) . '|v10');
     $cache = $dir . '/' . $cle . '.png';
     $refus = $dir . '/' . $cle . '.non';
     if (is_file($cache)) {
