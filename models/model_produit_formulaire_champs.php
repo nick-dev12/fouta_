@@ -1098,7 +1098,7 @@ function produit_formulaire_champ_ajouter($label, $type_champ, $section, $option
  * @param array<int, string>|null $roles_acces
  * @return array{success: bool, message: string}
  */
-function produit_formulaire_champ_modifier($id, $label, $section = null, $type_champ = null, $options_raw = null, $obligatoire = null, array $roles_acces = null) {
+function produit_formulaire_champ_modifier($id, $label, $section = null, $type_champ = null, $options_raw = null, $obligatoire = null, ?array $roles_acces = null) {
     global $db;
     $id = (int) $id;
     $champ = produit_formulaire_champ_get($id);

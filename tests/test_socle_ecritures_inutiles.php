@@ -42,16 +42,34 @@ function vrai($libelle, $cond)
     verifie($libelle, true, (bool) $cond);
 }
 
-/** Remet les compteurs static à zéro en rejouant la fonction dans un sous-processus. */
-function jouer_a_neuf($RACINE, $php)
+/**
+ * Remet les compteurs static à zéro en rejouant la fonction dans un
+ * sous-processus.
+ *
+ * LA SORTIE EST BORNÉE PAR UNE BALISE (09/09) : le VPS tourne en PHP 8.4 et
+ * y écrit des avis de dépréciation sur la sortie standard. Sans balise, ces
+ * lignes se collaient devant le manifeste et le banc croyait le manifeste
+ * vide. On ne masque pas les avis — on les garde à part et on les montre.
+ */
+function jouer_a_neuf($RACINE, $php, &$avis = null)
 {
     $f = sys_get_temp_dir() . '/_socle_' . getmypid() . '.php';
     file_put_contents($f, "<?php\nrequire_once " . var_export($RACINE . '/conn/conn.php', true) . ";\n"
-        . 'require_once ' . var_export($RACINE . '/models/model_produit_formulaire_champs.php', true) . ";\n" . $php);
-    $sortie = shell_exec('php ' . escapeshellarg($f) . ' 2>&1');
+        . 'require_once ' . var_export($RACINE . '/models/model_produit_formulaire_champs.php', true) . ";\n"
+        . "echo '<<<DEBUT>>>';\n" . $php . "\necho '<<<FIN>>>';\n");
+    $sortie = (string) shell_exec('php ' . escapeshellarg($f) . ' 2>&1');
     @unlink($f);
 
-    return trim((string) $sortie);
+    $d = strpos($sortie, '<<<DEBUT>>>');
+    $g = strpos($sortie, '<<<FIN>>>');
+    if ($d === false || $g === false) {
+        $avis = trim($sortie);
+
+        return '';
+    }
+    $avis = trim(substr($sortie, 0, $d) . substr($sortie, $g + strlen('<<<FIN>>>')));
+
+    return trim(substr($sortie, $d + strlen('<<<DEBUT>>>'), $g - $d - strlen('<<<DEBUT>>>')));
 }
 
 $MAP = [
@@ -69,8 +87,13 @@ foreach (['info', 'prix', 'stock', 'categorie', 'ref', 'variantes', 'options', '
     vrai("l'ENUM contient « $v »", strpos($type_avant, "'" . $v . "'") !== false);
 }
 
-$manifeste_avant = jouer_a_neuf($RACINE, 'produit_formulaire_champs_ensure_schema(); echo produit_formulaire_champs_manifest_json();');
-vrai('le manifeste se lit', $manifeste_avant !== '' && $manifeste_avant[0] === '{' || $manifeste_avant[0] === '[');
+$avis = '';
+$manifeste_avant = jouer_a_neuf($RACINE, 'produit_formulaire_champs_ensure_schema(); echo produit_formulaire_champs_manifest_json();', $avis);
+vrai('le manifeste se lit', $manifeste_avant !== '' && (substr($manifeste_avant, 0, 1) === '{' || substr($manifeste_avant, 0, 1) === '['));
+vrai('le manifeste a du contenu', strlen($manifeste_avant) > 100);
+if ($avis !== '') {
+    echo "  (avis de PHP, hors sujet pour ce banc : " . substr(preg_replace('/\s+/', ' ', $avis), 0, 110) . ")\n";
+}
 
 echo "— quand tout est en ordre, RIEN n'est écrit —\n";
 /* La preuve : on regarde l'horodatage de modification de la table dans
