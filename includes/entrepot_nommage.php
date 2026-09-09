@@ -148,7 +148,22 @@ if (!function_exists('entrepot_nom_decomposer')) {
                    suffixe à un nom qui n'en a jamais eu. */
                 return ['noms' => [$saisi], 'numeros' => [$numero_depart], 'suit_le_numero' => false];
             }
-            $depart = $numero_depart;
+            /* LES NOMS ONT PU COURIR DEVANT LES NUMÉROS (09/09/2026, mesuré sur
+               le serveur de l'entreprise) : dans 25 rayons, les barres sont
+               nommées à la suite d'une étagère à l'autre (B1…B66) alors que
+               leurs numéros repartaient de 1 à chaque étagère. Repartir du seul
+               plus grand numéro (13) aurait proposé « B14 » — déjà pris — et
+               bloqué toute création. On repart donc après le plus grand des
+               deux : le numéro attribué par la base ET le plus grand nom du
+               même préfixe. Le nom et le numéro restent égaux. */
+            $plus_grand_nom = 0;
+            foreach ($noms_freres as $nom) {
+                $d = entrepot_nom_decomposer($nom);
+                if ($d !== null && entrepot_nom_meme($d['prefixe'], $prefixe) && $d['numero'] > $plus_grand_nom) {
+                    $plus_grand_nom = $d['numero'];
+                }
+            }
+            $depart = max($numero_depart, $plus_grand_nom + 1);
         }
 
         $noms = [];

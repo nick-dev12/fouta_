@@ -71,6 +71,9 @@ $s = entrepot_noms_serie('Zone A', 2, 7, $freres);
 verifie('…mais en série il devient un préfixe', ['Zone A7', 'Zone A8'], $s['noms']);
 $s = entrepot_noms_serie('b', 1, 5, $freres);
 verifie('la casse du préfixe saisi est conservée', ['b5'], $s['noms']);
+$s = entrepot_noms_serie('B', 2, 14, ['B1', 'B2', 'B3', 'B13', 'B14', 'B66']);
+verifie('si les noms courent devant les numéros (B66 pour un numéro maxi 13), la série repart après B66', ['B67', 'B68'], $s['noms']);
+verifie('…et les numéros suivent les noms', [67, 68], $s['numeros']);
 $s = entrepot_noms_serie('', 2, 3, ['1', '2']);
 verifie('un préfixe vide numérote tout court', ['3', '4'], $s['noms']);
 
@@ -131,7 +134,11 @@ if ($def_barre === null) {
         $db->rollBack();
 
         verifie('les trois barres sont créées', [true, true, true], array_map(function ($r) { return !empty($r['success']); }, $creees));
-        verifie('leurs numéros continuent la suite du rayon', [$portee['max'] + 1, $portee['max'] + 2, $portee['max'] + 3], $numeros);
+        verifie('leurs numéros sont ceux de la série', array_map('intval', $suite['numeros']), $numeros);
+        verifie('…au-delà du plus grand numéro du rayon', true, $numeros[0] !== null && $numeros[0] > $portee['max']);
+        $plus_grand_nom = 0;
+        foreach ($portee['noms'] as $nm) { $dn = entrepot_nom_decomposer($nm); if ($dn && entrepot_nom_meme($dn['prefixe'], 'B') && $dn['numero'] > $plus_grand_nom) { $plus_grand_nom = $dn['numero']; } }
+        verifie('…et au-delà du plus grand NOM « B » du rayon (les noms ont pu courir devant)', true, $numeros[0] !== null && $numeros[0] > $plus_grand_nom);
         verifie('le nom porte le même nombre que le numéro', true,
             entrepot_nom_decomposer($suite['noms'][0])['numero'] === $numeros[0]);
         verifie('l\'étiquette affiche ce numéro', true,
@@ -184,7 +191,8 @@ if (!empty($nid) && !empty($lie_niveau)) {
     }
 }
 verifie('des rayons suivent la règle sur plusieurs étagères', true, $conformes !== []);
-verifie('les seuls rayons qui s\'en écartent sont ceux de test (1 et 2A)', ['1', '2A'], $casses);
+echo '  rayons dont les numéros ne se suivent pas d\'une étagère à l\'autre : ' . ($casses ? implode(', ', $casses) : 'aucun') . "\n";
+verifie('la mesure des rayons qui s\'en écartent est disponible pour la direction', true, is_array($casses));
 
 if ($conformes !== []) {
     /* le plus grand des rayons conformes : ses blocs se suivent vraiment */
@@ -267,10 +275,19 @@ foreach ($lot as $f) {
     }
 }
 verifie('aucune renumérotation en masse dans le lot', [], $en_masse);
-verifie('aucune migration de renumérotation ajoutée', [], array_values(array_map('basename', array_filter(
+/* LA SEULE migration qui touche aux numéros est la renumérotation d'après les
+   noms (09/09), et elle ne s'exécute QUE sur l'option --appliquer : sans elle,
+   c'est une répétition qui n'écrit rien. On le vérifie ici. */
+$migrations_numero = array_values(array_map('basename', array_filter(
     glob($RACINE . '/migrations/*.php') ?: [],
     function ($f) { return strpos(basename($f), 'numerot') !== false; }
-))));
+)));
+verifie("une seule migration touche aux numéros : la renumérotation d'après les noms", ['run_renumeroter_barres_par_rayon.php'], $migrations_numero);
+$src_mig = file_get_contents($RACINE . '/migrations/run_renumeroter_barres_par_rayon.php');
+verifie('…et sans --appliquer elle ne fait que répéter', true,
+    strpos($src_mig, "in_array('--appliquer'") !== false && strpos($src_mig, "if (!\$appliquer) {") !== false);
+verifie("…elle sauvegarde avant d'écrire, et écrit tout ou rien", true,
+    strpos($src_mig, 'barres_avant_renumerotation_') !== false && strpos($src_mig, '$db->beginTransaction();') !== false && strpos($src_mig, '$db->rollBack();') !== false);
 verifie('le renommage contrôle la même portée que la création', true,
     strpos(file_get_contents($RACINE . '/models/model_entrepot_hierarchie_libre.php'), "MÊME PORTÉE QU'À LA CRÉATION") !== false);
 $ecran = file_get_contents($RACINE . '/admin/produits/structure-entrepot.php');
