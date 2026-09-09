@@ -173,8 +173,12 @@ function fpl_detour_membre_fond($rr, $vv, $bb, $mR, $mV, $mB, $mSom, $nbModes, $
  *      écart-type de luminance — un reflet, lui, est un dégradé ;
  *   4. son pourtour est FRANC : la matière autour est nettement plus éloignée
  *      du fond que la poche. Un dégradé de reflet échoue ici, un vrai trou
- *      passe — c'est la garde qui sauve le miroir des rétroviseurs.
+ *      passe — c'est la garde qui sauve le miroir GRIS des rétroviseurs.
  * Et une taille minimale, pour ne pas ouvrir le grain du capteur.
+ *
+ * Une glace BLANCHE, elle, passe ces quatre preuves comme un vrai trou : elle
+ * est rattrapée plus loin par fpl_detour_sauver_glaces (09/09/2026), sur
+ * l'épaisseur du bord — fin pour une glace, épais pour un trou.
  *
  * @param SplFixedArray $fond    masque du fond (1 = déjà transparent), MODIFIÉ
  * @param SplFixedArray $r,$v,$b canaux de l'image
@@ -307,6 +311,300 @@ function fpl_detour_ouvrir_trous(
     }
 
     return ['trous' => $trous, 'pixels' => $pixels, 'masque' => $ouverts];
+}
+
+/**
+ * LA GLACE D'UN RÉTROVISEUR N'EST PAS UN TROU (09/09/2026, retour de la
+ * direction sur 9408107516 : « tu as pratiquement coupé le miroir »).
+ *
+ * Une glace de rétroviseur photographiée en studio est souvent un BLANC PUR,
+ * identique au fond. Le moteur la vidait de deux façons :
+ *   - HR1151 : poche fermée, lisse, couleur du fond, pourtour franc — les
+ *     quatre preuves d'un trou. L'ouvre-trous l'ouvrait ;
+ *   - 9408107516 : le liseré du cadre fait 1 à 2 px sur la photo de 1200 px.
+ *     Réduit à 720 pour le calcul, il n'existe plus : le fond s'engouffre
+ *     dans la glace par toute la brèche. Ce n'est même plus une poche.
+ * Dans les deux cas l'étiquette ne montrait plus que le liseré.
+ *
+ * CE QUI SÉPARE UNE GLACE D'UN TROU SE MESURE — l'ÉPAISSEUR DU BORD. Une
+ * glace est posée dans son boîtier : de face, ce qui l'entoure est un liseré
+ * fin. Un trou traverse la pièce : ce qui l'entoure, c'est la matière de la
+ * pièce vue de face, épaisse. Mesuré le 09/09 sur foutasvr (médiane de
+ * l'épaisseur autour de la poche, en px de travail) :
+ *   glace HR1151 6 px (68 % du tour sous 8 px) — cercles de phare 35,
+ *   grilles 17 à 45, supports de phare 16 à 21, vide entre les tiges d'un
+ *   bras 52 à 76, tableau de bord 26 à 94. Rien entre 6 et 13.
+ *
+ * ET LA FERMETURE SE LIT À LA RÉSOLUTION D'ORIGINE, pas à celle du travail :
+ * une inondation du fond depuis le bord, sur la photo entière, n'entre qu'à
+ * 1 % dans la glace de 9408107516 quelle que soit la tolérance (6 à 30) — le
+ * liseré y est bel et bien. C'est ce que faisait déjà l'ancien repli, d'où sa
+ * glace intacte. On inonde donc à la résolution d'origine (plafonnée à
+ * 1600 px pour la mémoire), et on ramène « atteint / pas atteint » à la
+ * taille de travail.
+ *
+ * LA RÈGLE : une poche transparente du masque, fermée à la résolution
+ * d'origine, d'au moins 1 % de l'image, lisse, et dont le bord est fin
+ * (médiane ≤ 9 px et plus de la moitié du tour ≤ 8 px) est une GLACE : on la
+ * rend à la pièce. Tout le reste — trous de grille (petits), ouvertures de
+ * cadre (bord épais), vides entre tiges (bord épais) — reste transparent,
+ * comme la direction l'a demandé le 08/09.
+ *
+ * Se joue AVANT les portes de qualité : la pièce est jugée avec sa glace, et
+ * un bras de rétroviseur cesse d'y passer pour « squelettique ».
+ *
+ * @param SplFixedArray $garde  masque final (1 = pièce), MODIFIÉ
+ * @param SplFixedArray $trous_ouverts  trous ouverts par l'ouvre-trous, MODIFIÉ
+ * @param resource|GdImage $src  la photo d'origine (résolution native)
+ * @param float $ech  échelle travail / origine
+ * @return array{glaces: int, pixels: int}
+ */
+function fpl_detour_sauver_glaces(
+    $garde, $trous_ouverts, $src, $ech, $L, $H,
+    $r, $v, $b, $mR, $mV, $mB, $mSom, $nbModes, $tolMode
+) {
+    $N = $L * $H;
+    $rien = ['glaces' => 0, 'pixels' => 0];
+    if ($nbModes < 1 || $N < 400) {
+        return $rien;
+    }
+
+    // --- 1) l'inondation du fond depuis le bord, à la résolution d'origine ---
+    $L0 = imagesx($src);
+    $H0 = imagesy($src);
+    $fin = ($ech < 1.0);                         // la photo a été réduite pour le travail
+    $red = 1.0;                                  // réduction propre de l'inondation
+    if ($fin && max($L0, $H0) > 1600) {
+        $red = 1600.0 / max($L0, $H0);           // mémoire : jamais plus de 1600 px
+    }
+    if ($fin) {
+        $Li = max(8, (int) round($L0 * $red));
+        $Hi = max(8, (int) round($H0 * $red));
+        if ($red < 1.0) {
+            $img = imagecreatetruecolor($Li, $Hi);
+            imagecopyresampled($img, $src, 0, 0, 0, 0, $Li, $Hi, $L0, $H0);
+        } else {
+            $img = $src;
+        }
+        $Ni = $Li * $Hi;
+        $atteint = new SplFixedArray($Ni);
+        for ($p = 0; $p < $Ni; $p++) {
+            $atteint[$p] = 0;
+        }
+        $pile = [];
+        for ($x = 0; $x < $Li; $x++) {
+            $pile[] = $x;
+            $pile[] = ($Hi - 1) * $Li + $x;
+        }
+        for ($y = 0; $y < $Hi; $y++) {
+            $pile[] = $y * $Li;
+            $pile[] = $y * $Li + $Li - 1;
+        }
+        while ($pile) {
+            $p = array_pop($pile);
+            if ($atteint[$p]) {
+                continue;
+            }
+            $px = $p % $Li;
+            $py = ($p - $px) / $Li;
+            $c = imagecolorat($img, $px, $py);
+            if (!fpl_detour_membre_fond(($c >> 16) & 255, ($c >> 8) & 255, $c & 255,
+                    $mR, $mV, $mB, $mSom, $nbModes, $tolMode, true)) {
+                continue;
+            }
+            $atteint[$p] = 1;
+            if ($px > 0) { $pile[] = $p - 1; }
+            if ($px < $Li - 1) { $pile[] = $p + 1; }
+            if ($py > 0) { $pile[] = $p - $Li; }
+            if ($py < $Hi - 1) { $pile[] = $p + $Li; }
+        }
+        if ($img !== $src) {
+            imagedestroy($img);
+        }
+        // ramené à la taille de travail : le pixel d'origine le plus proche
+        $enclos = new SplFixedArray($N);
+        $kx = $Li / $L;
+        $ky = $Hi / $H;
+        for ($y = 0; $y < $H; $y++) {
+            $iy = min($Hi - 1, (int) floor(($y + 0.5) * $ky));
+            for ($x = 0; $x < $L; $x++) {
+                $ix = min($Li - 1, (int) floor(($x + 0.5) * $kx));
+                $enclos[$y * $L + $x] = $atteint[$iy * $Li + $ix] ? 0 : 1;
+            }
+        }
+        $atteint = null;
+    } else {
+        // la photo n'a pas été réduite : la même inondation, sur les canaux
+        // de travail, SANS l'érosion qui ouvre les brèches
+        $enclos = new SplFixedArray($N);
+        for ($p = 0; $p < $N; $p++) {
+            $enclos[$p] = 1;
+        }
+        $pile = [];
+        for ($x = 0; $x < $L; $x++) {
+            $pile[] = $x;
+            $pile[] = ($H - 1) * $L + $x;
+        }
+        for ($y = 0; $y < $H; $y++) {
+            $pile[] = $y * $L;
+            $pile[] = $y * $L + $L - 1;
+        }
+        while ($pile) {
+            $p = array_pop($pile);
+            if (!$enclos[$p]) {
+                continue;
+            }
+            if (!fpl_detour_membre_fond($r[$p], $v[$p], $b[$p], $mR, $mV, $mB, $mSom, $nbModes, $tolMode, true)) {
+                continue;
+            }
+            $enclos[$p] = 0;
+            $px = $p % $L;
+            $py = ($p - $px) / $L;
+            if ($px > 0) { $pile[] = $p - 1; }
+            if ($px < $L - 1) { $pile[] = $p + 1; }
+            if ($py > 0) { $pile[] = $p - $L; }
+            if ($py < $H - 1) { $pile[] = $p + $L; }
+        }
+    }
+
+    if (getenv('FPL_DETOUR_DEBUG')) {
+        $nEnclos = 0;
+        $nPoche = 0;
+        for ($p = 0; $p < $N; $p++) {
+            if ($enclos[$p]) {
+                $nEnclos++;
+                if (!$garde[$p]) {
+                    $nPoche++;
+                }
+            }
+        }
+        fwrite(STDERR, sprintf("[glaces] ech=%.2f fin=%d enclos=%d px, dont transparents=%d px (mini=%d)\n",
+            $ech, $fin ? 1 : 0, $nEnclos, $nPoche, (int) ceil(0.01 * $N)));
+    }
+
+    // --- 2) les poches : transparentes au masque ET fermées à l'origine ---
+    $vu = new SplFixedArray($N);
+    for ($p = 0; $p < $N; $p++) {
+        $vu[$p] = 0;
+    }
+    $mini = (int) ceil(0.01 * $N);
+    $maxi = (int) floor(0.40 * $N);
+    $glaces = 0;
+    $pixels = 0;
+    $bx0 = $L; $bx1 = -1; $by0 = $H; $by1 = -1; // la boîte de tout ce qui est rendu
+    for ($p0 = 0; $p0 < $N; $p0++) {
+        if ($vu[$p0] || $garde[$p0] || !$enclos[$p0]) {
+            continue;
+        }
+        $pile = [$p0];
+        $vu[$p0] = 1;
+        $poche = [];
+        $bord = false;
+        $som = 0.0;
+        $som2 = 0.0;
+        while ($pile) {
+            $p = array_pop($pile);
+            $poche[] = $p;
+            $px = $p % $L;
+            $py = ($p - $px) / $L;
+            if ($px === 0 || $py === 0 || $px === $L - 1 || $py === $H - 1) {
+                $bord = true;
+            }
+            $lum = 0.299 * $r[$p] + 0.587 * $v[$p] + 0.114 * $b[$p];
+            $som += $lum;
+            $som2 += $lum * $lum;
+            foreach ([$px > 0 ? $p - 1 : -1, $px < $L - 1 ? $p + 1 : -1, $py > 0 ? $p - $L : -1, $py < $H - 1 ? $p + $L : -1] as $q) {
+                if ($q < 0 || $vu[$q] || $garde[$q] || !$enclos[$q]) {
+                    continue;
+                }
+                $vu[$q] = 1;
+                $pile[] = $q;
+            }
+        }
+        $taille = count($poche);
+        $moy = $som / $taille;
+        /* LISSE, mesuré de façon ROBUSTE : l'écart-type se laissait tromper
+           par les pixels gris de transition au ras du liseré (la glace de
+           HR1151 : 1,4 à l'intérieur, 13 sur toute la poche). On compte la
+           part des pixels à 15 niveaux près de la moyenne : une glace éteinte
+           est à 95 % et plus, un reflet ou une ombre dégradée bien en dessous. */
+        $proches = 0;
+        foreach ($poche as $p) {
+            $lum = 0.299 * $r[$p] + 0.587 * $v[$p] + 0.114 * $b[$p];
+            if ($lum >= $moy - 15.0 && $lum <= $moy + 15.0) {
+                $proches++;
+            }
+        }
+        $partProche = $proches / $taille;
+        if (getenv('FPL_DETOUR_DEBUG') && $taille >= 200) {
+            fwrite(STDERR, sprintf("[glaces] poche %d px bord=%d lum=%.1f proches=%.0f %%\n", $taille, $bord ? 1 : 0, $moy, 100 * $partProche));
+        }
+        if ($bord || $taille < $mini || $taille > $maxi) {
+            continue;
+        }
+        if ($partProche < 0.90) {
+            continue;
+        }
+        // --- 3) l'épaisseur du bord : depuis chaque pixel du tour, on marche
+        //        vers l'extérieur dans la matière jusqu'à en sortir ---
+        $ep = [];
+        foreach ($poche as $p) {
+            $px = $p % $L;
+            $py = ($p - $px) / $L;
+            foreach ([[-1, 0], [1, 0], [0, -1], [0, 1]] as $d) {
+                $nx = $px + $d[0];
+                $ny = $py + $d[1];
+                if ($nx < 0 || $ny < 0 || $nx >= $L || $ny >= $H) {
+                    continue;
+                }
+                $q = $ny * $L + $nx;
+                if (!$garde[$q] && $enclos[$q]) {
+                    continue; // encore la poche
+                }
+                $k = 0;
+                while ($nx >= 0 && $ny >= 0 && $nx < $L && $ny < $H && $garde[$ny * $L + $nx] && $k < 200) {
+                    $k++;
+                    $nx += $d[0];
+                    $ny += $d[1];
+                }
+                $ep[] = $k;
+            }
+        }
+        $ne = count($ep);
+        if ($ne < 12) {
+            continue;
+        }
+        sort($ep);
+        $mediane = $ep[intdiv($ne, 2)];
+        $fins = 0;
+        foreach ($ep as $e) {
+            if ($e <= 8) {
+                $fins++;
+            }
+        }
+        if (getenv('FPL_DETOUR_DEBUG')) {
+            fwrite(STDERR, sprintf("[glaces]    bord : %d mesures, mediane %d px, %.0f %% <= 8 px => %s\n",
+                $ne, $mediane, 100 * $fins / $ne, ($mediane > 9 || $fins / $ne < 0.5) ? 'TROU (reste ouvert)' : 'GLACE (rendue)'));
+        }
+        if ($mediane > 9 || $fins / $ne < 0.5) {
+            continue; // bord épais : un vrai trou, il reste ouvert
+        }
+        // --- 4) une glace : rendue à la pièce ---
+        foreach ($poche as $p) {
+            $garde[$p] = 1;
+            $trous_ouverts[$p] = 0;
+            $px = $p % $L;
+            $py = ($p - $px) / $L;
+            if ($px < $bx0) { $bx0 = $px; }
+            if ($px > $bx1) { $bx1 = $px; }
+            if ($py < $by0) { $by0 = $py; }
+            if ($py > $by1) { $by1 = $py; }
+        }
+        $glaces++;
+        $pixels += $taille;
+    }
+
+    return ['glaces' => $glaces, 'pixels' => $pixels, 'x0' => $bx0, 'x1' => $bx1, 'y0' => $by0, 'y1' => $by1];
 }
 
 /**
@@ -1333,6 +1631,43 @@ function fpl_detourage_gd($src, $force = 45, &$motif = null)
     }
 
     // ------------------------------------------------------------------
+    // 6 bis) LES GLACES DE RÉTROVISEUR (09/09/2026) : une grande poche
+    //    lisse, fermée à la résolution d'origine et cernée d'un liseré FIN
+    //    n'est pas un trou, c'est une glace — rendue à la pièce avant que
+    //    les portes ne jugent (voir fpl_detour_sauver_glaces).
+    // ------------------------------------------------------------------
+    $diag_glaces = fpl_detour_sauver_glaces(
+        $garde, $trous_ouverts, $src, $ech, $L, $H,
+        $r, $v, $b, $mR, $mV, $mB, $mSom, $nbModes, $tolMode
+    );
+    if ($diag_glaces['glaces'] > 0) {
+        /* Les portes lisent le morceau principal tel qu'il a été étiqueté
+           AVANT ce sauvetage : boîte et compte de pixels. Sans cette mise à
+           jour, un cadre de rétroviseur avec sa glace rendue était encore
+           jugé « squelettique » sur le compte du cadre seul (8 % de sa boîte
+           pour un cadre fin). On élargit la boîte à la glace, et on recompte
+           la matière qu'elle contient au masque d'après sauvetage. */
+        $bbPrincipal['x0'] = min($bbPrincipal['x0'], $diag_glaces['x0']);
+        $bbPrincipal['x1'] = max($bbPrincipal['x1'], $diag_glaces['x1']);
+        $bbPrincipal['y0'] = min($bbPrincipal['y0'], $diag_glaces['y0']);
+        $bbPrincipal['y1'] = max($bbPrincipal['y1'], $diag_glaces['y1']);
+        $nB = 0;
+        for ($y = $bbPrincipal['y0']; $y <= $bbPrincipal['y1']; $y++) {
+            $base = $y * $L;
+            for ($x = $bbPrincipal['x0']; $x <= $bbPrincipal['x1']; $x++) {
+                if ($garde[$base + $x]) {
+                    $nB++;
+                }
+            }
+        }
+        $bbPrincipal['n'] = $nB;
+    }
+    if (getenv('FPL_DETOUR_DEBUG')) {
+        fwrite(STDERR, sprintf("[detour] glaces rendues a la piece : %d (%d px)\n",
+            $diag_glaces['glaces'], $diag_glaces['pixels']));
+    }
+
+    // ------------------------------------------------------------------
     // 7) PORTES DE QUALITÉ (sur le masque final) — au moindre doute : null
     // ------------------------------------------------------------------
     $nbGarde = 0;
@@ -1801,7 +2136,7 @@ function fpl_detourage_fichier($chemin)
     if (!is_dir($dir)) {
         @mkdir($dir, 0775, true);
     }
-    $cle = md5(realpath($chemin) . '|' . filemtime($chemin) . '|v12');
+    $cle = md5(realpath($chemin) . '|' . filemtime($chemin) . '|v13');
     $cache = $dir . '/' . $cle . '.png';
     $refus = $dir . '/' . $cle . '.non';
     if (is_file($cache)) {

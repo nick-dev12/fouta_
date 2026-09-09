@@ -161,13 +161,76 @@ if ($res !== null) {
     imagedestroy($res['img']);
 }
 
+echo "— la glace d'un rétroviseur reste une glace, un trou reste un trou —\n";
+/* Retour de la direction (9408107516) : « tu as pratiquement coupé le miroir ».
+   La glace blanche des deux rétroviseurs était vidée — l'une ouverte comme un
+   trou, l'autre inondée par la brèche d'un liseré perdu à la réduction. On
+   sonde le CENTRE de chaque glace (il doit être opaque) et le centre du vrai
+   vide entre les tiges du bras (il doit rester transparent). Coordonnées dans
+   les pixels de travail du moteur, relevées le 09/09. */
+$alpha_en = function ($img, $x, $y) {
+    return (imagecolorat($img, $x, $y) >> 24) & 127; // 0 opaque … 127 transparent
+};
+$sondes = [
+    ['retroviseur_bras_hr1151_2209.png', 'HR1151', [175, 428], [362, 372]],
+    ['retroviseur_glace_blanche_fcsbzax0162_2189.png', '9408107516', [100, 200], [378, 248]],
+];
+foreach ($sondes as $sd) {
+    $chemin = __DIR__ . '/fixtures/' . $sd[0];
+    if (!is_file($chemin)) {
+        continue;
+    }
+    $src = imagecreatefrompng($chemin);
+    $motif = null;
+    $res = fpl_detourage_gd($src, 45, $motif);
+    vrai("$sd[1] : accepté", $res !== null);
+    if ($res !== null) {
+        $ag = $alpha_en($res['img'], $sd[2][0], $sd[2][1]);
+        $av = $alpha_en($res['img'], $sd[3][0], $sd[3][1]);
+        vrai("  … le centre de la GLACE est opaque (alpha $ag sur 127)", $ag < 40);
+        vrai("  … le vide entre les tiges reste transparent (alpha $av sur 127)", $av >= 100);
+        imagedestroy($res['img']);
+    }
+    imagedestroy($src);
+}
+
+/* Les jumeaux de la règle : un cadre FIN (4 px) autour de blanc pur est une
+   glace, on la rend ; un cadre ÉPAIS (30 px) autour de blanc pur est une
+   ouverture, elle reste transparente. */
+function cadre_autour_de_blanc($epaisseur)
+{
+    $im = imagecreatetruecolor(400, 400);
+    imagefilledrectangle($im, 0, 0, 399, 399, imagecolorallocate($im, 255, 255, 255));
+    imagefilledrectangle($im, 100 - $epaisseur, 100 - $epaisseur, 299 + $epaisseur, 299 + $epaisseur, imagecolorallocate($im, 18, 18, 18));
+    imagefilledrectangle($im, 100, 100, 299, 299, imagecolorallocate($im, 255, 255, 255));
+
+    return $im;
+}
+$motif = null;
+$res = fpl_detourage_gd(cadre_autour_de_blanc(4), 45, $motif);
+vrai('cadre FIN autour de blanc : accepté (motif : ' . ($motif ?: 'aucun') . ')', $res !== null);
+if ($res !== null) {
+    $a = $alpha_en($res['img'], 200, 200);
+    vrai("  … l'intérieur est rendu à la pièce, c'est une glace (alpha $a)", $a < 40);
+    imagedestroy($res['img']);
+}
+$motif = null;
+$res = fpl_detourage_gd(cadre_autour_de_blanc(30), 45, $motif);
+vrai('cadre ÉPAIS autour de blanc : accepté (motif : ' . ($motif ?: 'aucun') . ')', $res !== null);
+if ($res !== null) {
+    $a = $alpha_en($res['img'], 200, 200);
+    vrai("  … l'intérieur reste transparent, c'est une ouverture (alpha $a)", $a >= 100);
+    imagedestroy($res['img']);
+}
+
 echo "— la boîte photo et le cache —\n";
 $moteur = (string) file_get_contents($RACINE . '/includes/etiquette_fpl70.php');
 vrai('la boîte photo fait 360 (elle faisait 440)', strpos($moteur, "'w' => (int) round(360 * \$s), 'h' => (int) round(360 * \$s)") !== false);
 vrai('… au même centre (785, 647) : x = 605, y = 467', strpos($moteur, "'x' => (int) round(605 * \$s), 'y' => (int) round(467 * \$s)") !== false);
 vrai('la photo est recadrée sur sa matière avant d\'être posée', strpos($moteur, '$vis = etiquette70_boite_visible($ph[\'img\']);') !== false);
 $detour = (string) file_get_contents($RACINE . '/includes/fpl_detourage.php');
-vrai('le cache du détourage est reparti (clé v12)', strpos($detour, "'|v12'") !== false);
+vrai('le cache du détourage est reparti (clé v13)', strpos($detour, "'|v13'") !== false);
+vrai('le sauvetage des glaces est branché avant les portes', strpos($detour, '$diag_glaces = fpl_detour_sauver_glaces(') !== false);
 vrai('le garde-fou « squelettique » regarde le vide avant de refuser', strpos($detour, '$vrai_vide = ($remplissage >= 0.12 && $partIntrus < 0.10);') !== false);
 vrai('… à la tolérance SERRÉE du fond de studio (±10), pas à celle des diagnostics', strpos($detour, '$mR, $mV, $mB, $mSom, $nbModes, 10, true)) {') !== false);
 
