@@ -95,7 +95,10 @@ verifie('le PDF est clos par %%EOF', '%%EOF', substr(rtrim($pdf), -5));
 verifie('quatre pages', 4, substr_count($pdf, '/Type /Page /Parent'));
 verifie('quatre images', 4, substr_count($pdf, '/Subtype /Image'));
 vrai('le compte des pages annonce 4', strpos($pdf, '/Count 4') !== false);
-vrai('la page fait 70 mm (198.43 points)', strpos($pdf, '/MediaBox [0 0 198.43 198.43]') !== false);
+$carre = preg_match('#/MediaBox \[0 0 ([\d.]+) ([\d.]+)\]#', $pdf, $m70) === 1;
+vrai('la page fait 70 × 70 mm', $carre
+    && abs((float) $m70[1] - 70 * 72 / 25.4) < 0.02
+    && abs((float) $m70[2] - 70 * 72 / 25.4) < 0.02);
 
 // les quatre dessins doivent DIFFÉRER : quatre pièces, quatre étiquettes
 $empreintes = [];
@@ -112,10 +115,26 @@ verifie("un lot d'une étiquette = le PDF de l'étiquette seule",
 
 verifie('un lot vide rend une chaîne vide', '', etiquette70_pdf_multi([], 70, 70));
 
-// une page qui n'est pas carrée : le dessin au côté court, centré
+/* Une page qui n'est pas carrée : le dessin au côté court, centré.
+   On LIT les nombres du PDF au lieu de comparer une chaîne toute faite :
+   PHP 8.4 a corrigé round() sur les cas limites, et 49.605 y devient 49.6
+   là où PHP 8.3 donnait 49.61 (quatre millièmes de millimètre). Le VPS
+   tourne en 8.4, le poste en 8.3 — un test écrit en dur y échouait sans
+   qu'aucun dessin ne bouge. */
 $rect = etiquette70_pdf_multi(array_slice($pages, 0, 2), 65, 100);
-vrai('page 65 × 100 mm', strpos($rect, '/MediaBox [0 0 184.25 283.46]') !== false);
-vrai('dessin centré en hauteur sur la page haute', strpos($rect, '184.25 0 0 184.25 0 49.61 cm') !== false);
+$L65 = 65 * 72 / 25.4;
+$H100 = 100 * 72 / 25.4;
+$boite = preg_match('#/MediaBox \[0 0 ([\d.]+) ([\d.]+)\]#', $rect, $mb) === 1;
+vrai('la page annonce ses deux côtés', $boite);
+vrai('page large de 65 mm', $boite && abs((float) $mb[1] - $L65) < 0.02);
+vrai('page haute de 100 mm', $boite && abs((float) $mb[2] - $H100) < 0.02);
+
+$pose = preg_match('#q ([\d.]+) 0 0 ([\d.]+) ([\d.]+) ([\d.]+) cm#', $rect, $mc) === 1;
+vrai('le dessin est posé sur la page', $pose);
+vrai('le dessin est carré au côté court', $pose && abs((float) $mc[1] - (float) $mc[2]) < 0.02
+    && abs((float) $mc[1] - $L65) < 0.02);
+vrai('le dessin est collé au bord gauche', $pose && abs((float) $mc[3]) < 0.02);
+vrai('le dessin est centré en hauteur', $pose && abs((float) $mc[4] - ($H100 - $L65) / 2) < 0.02);
 verifie('deux pages sur la planche 65 × 100', 2, substr_count($rect, '/Type /Page /Parent'));
 
 // la table xref doit pointer sur de VRAIS objets, sinon les lecteurs stricts refusent
