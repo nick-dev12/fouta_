@@ -1377,14 +1377,60 @@ function fpl_detourage_gd($src, $force = 45, &$motif = null)
         imagedestroy($im);
         return null;
     }
-    // pièce SQUELETTIQUE : le morceau principal ne remplit presque pas sa
-    // boîte — c'est ce qui reste d'une pièce blanche mangée sur fond blanc
-    // (il ne survit que ses garnitures sombres). On décline.
+    /* pièce SQUELETTIQUE : le morceau principal ne remplit presque pas sa
+       boîte — c'est ce qui reste d'une pièce blanche mangée sur fond blanc
+       (il ne survit que ses garnitures sombres). On décline.
+
+       MAIS UNE PIÈCE PEUT ÊTRE FINE POUR DE VRAI (09/09/2026, signalé par la
+       direction sur FCS-BZAX-016-2 et HR1151). Un bras de rétroviseur, c'est
+       une glace, deux tiges et une potence : il occupe 27 % de sa boîte alors
+       que RIEN n'a été mangé. Ces deux photos étaient donc refusées, et
+       l'étiquette retombait sur le repli grossier — celui qui rogne les bords
+       unis et seuille le blanc : il coupait le cadre noir de la glace à ras.
+       C'est le « contour noir qui n'apparaît pas sur certains côtés ».
+
+       CE QUI SÉPARE LES DEUX CAS SE MESURE : on regarde, DANS la boîte, les
+       pixels que le masque a jetés.
+        - pièce vraiment fine : ces pixels SONT le fond (le vide entre les
+          tiges) — un fond de studio est uniforme à ±10 par canal ;
+        - pièce dévorée : ces pixels sont la chair CLAIRE de la pièce, prise
+          pour du blanc par la croissance (qui tolère jusqu'à 20) — ils sont
+          donc à 10-20 du fond, jamais à moins de 10.
+       La tolérance est SERRÉE (10) exprès : à la tolérance large des
+       diagnostics (55), la chair mangée passait pour du fond par construction
+       — c'est précisément parce qu'elle en était proche qu'elle a été mangée —
+       et le test ne refusait plus rien. Sous 10 % d'intrus à ±10, le vide est
+       du vrai vide : on garde le détourage.
+
+       Cette porte ne s'ouvre que pour les pièces d'au moins 12 % de leur
+       boîte : en dessous il ne reste vraiment plus de matière à juger. */
     $aireP = max(1, ($bbPrincipal['x1'] - $bbPrincipal['x0'] + 1) * ($bbPrincipal['y1'] - $bbPrincipal['y0'] + 1));
-    if ($bbPrincipal['n'] / $aireP < 0.30) {
-        $motif = sprintf('piece squelettique (%.0f %% de sa boite)', 100 * $bbPrincipal['n'] / $aireP);
-        imagedestroy($im);
-        return null;
+    $remplissage = $bbPrincipal['n'] / $aireP;
+    if ($remplissage < 0.30) {
+        $vide = 0;
+        $intrus = 0;
+        for ($y = $bbPrincipal['y0']; $y <= $bbPrincipal['y1']; $y++) {
+            $base = $y * $L;
+            for ($x = $bbPrincipal['x0']; $x <= $bbPrincipal['x1']; $x++) {
+                $q = $base + $x;
+                if ($garde[$q]) {
+                    continue;
+                }
+                $vide++;
+                if ($nbModes > 0 && !fpl_detour_membre_fond($r[$q], $v[$q], $b[$q],
+                        $mR, $mV, $mB, $mSom, $nbModes, 10, true)) {
+                    $intrus++;
+                }
+            }
+        }
+        $partIntrus = $vide > 0 ? $intrus / $vide : 1.0;
+        $vrai_vide = ($remplissage >= 0.12 && $partIntrus < 0.10);
+        if (!$vrai_vide) {
+            $motif = sprintf('piece squelettique (%.0f %% de sa boite, %.0f %% du vide n\'est pas le fond)',
+                100 * $remplissage, 100 * $partIntrus);
+            imagedestroy($im);
+            return null;
+        }
     }
     $cx0 = (int) (0.35 * $L);
     $cx1 = (int) (0.65 * $L);
@@ -1755,7 +1801,7 @@ function fpl_detourage_fichier($chemin)
     if (!is_dir($dir)) {
         @mkdir($dir, 0775, true);
     }
-    $cle = md5(realpath($chemin) . '|' . filemtime($chemin) . '|v11');
+    $cle = md5(realpath($chemin) . '|' . filemtime($chemin) . '|v12');
     $cache = $dir . '/' . $cle . '.png';
     $refus = $dir . '/' . $cle . '.non';
     if (is_file($cache)) {

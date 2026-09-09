@@ -167,6 +167,91 @@ function etiquette70_texte($img, $x, $y, $texte, $nom_police, $corps, $couleur, 
 // ---------------------------------------------------------------------------
 
 /**
+ * LA BOÎTE DE LA MATIÈRE VISIBLE d'une image détourée.
+ *
+ * POURQUOI (09/09/2026) : le détourage rend une image de la TAILLE DE LA
+ * PHOTO, pièce comprise ET marges transparentes comprises. Deux photos du
+ * même rétroviseur, l'une cadrée serré et l'autre au large, donnaient donc
+ * deux étiquettes où la pièce n'a pas du tout la même taille — celle du bras
+ * de rétroviseur nageait dans sa boîte pendant que la coque la remplissait.
+ * On mesure ici la boîte de ce qui se voit vraiment, pour que l'étiquette
+ * pose TOUJOURS la pièce, jamais le vide autour.
+ *
+ * Le seuil est bas (alpha > 8 sur 127) : le bord anti-crénelé d'une pièce est
+ * à demi transparent, il fait partie de la pièce.
+ *
+ * @param resource|GdImage $img
+ * @return array{x0:int, y0:int, x1:int, y1:int}|null null si l'image est vide
+ */
+function etiquette70_boite_visible($img)
+{
+    $L = imagesx($img);
+    $H = imagesy($img);
+    $x0 = $L; $y0 = $H; $x1 = -1; $y1 = -1;
+    for ($y = 0; $y < $H; $y++) {
+        for ($x = 0; $x < $L; $x++) {
+            $a = (imagecolorat($img, $x, $y) >> 24) & 127;
+            if ($a >= 119) {   // 127 = tout à fait transparent
+                continue;
+            }
+            if ($x < $x0) { $x0 = $x; }
+            if ($x > $x1) { $x1 = $x; }
+            if ($y < $y0) { $y0 = $y; }
+            if ($y > $y1) { $y1 = $y; }
+        }
+    }
+    if ($x1 < 0) {
+        return null;
+    }
+
+    return ['x0' => $x0, 'y0' => $y0, 'x1' => $x1, 'y1' => $y1];
+}
+
+/**
+ * LA HAUTEUR DES CAPITALES d'une police à un corps donné, en pixels.
+ *
+ * « Même taille » se mesure ICI, pas au corps (09/09/2026). Anton et Barlow
+ * Condensed n'ont pas la même hauteur à corps égal : à 100, Anton monte à
+ * 115 px et Barlow à 94 px, soit 1,22 fois plus haut. Deux titres écrits au
+ * même corps ne se ressemblent donc pas — c'est la hauteur des lettres que
+ * l'œil compare.
+ *
+ * @param string $nom_police clé des tables de polices
+ * @param float $corps corps en points
+ * @return float hauteur du « H » majuscule, en pixels
+ */
+function etiquette70_cap_hauteur($nom_police, $corps)
+{
+    static $memo = [];
+    $cle = $nom_police . '|' . $corps;
+    if (isset($memo[$cle])) {
+        return $memo[$cle];
+    }
+    $chemin = etiquette70_police_chemin($nom_police);
+    $boite = @imagettfbbox((float) $corps, 0, $chemin, 'H');
+    $h = $boite ? abs(min($boite[5], $boite[7])) : (float) $corps;
+
+    return $memo[$cle] = (float) $h;
+}
+
+/**
+ * Le corps qui donne la hauteur de capitale demandée.
+ *
+ * @param string $nom_police clé des tables de polices
+ * @param float $cap hauteur de capitale voulue, en pixels
+ * @return float corps en points
+ */
+function etiquette70_corps_pour_cap($nom_police, $cap)
+{
+    $ref = etiquette70_cap_hauteur($nom_police, 100.0);
+    if ($ref <= 0.0) {
+        return (float) $cap;
+    }
+
+    return (float) $cap / $ref * 100.0;
+}
+
+/**
  * Charge une photo depuis le disque en GD truecolor+alpha, ou null.
  *
  * @return resource|GdImage|null
@@ -502,6 +587,96 @@ function etiquette70_donnees_pour_produit(array $produit)
 // ---------------------------------------------------------------------------
 
 /**
+ * LA DISPOSITION DES DEUX TITRES — corps et lignes de base, à partir des deux
+ * textes. Sortie en unités LOGIQUES (avant le facteur d'échelle du rendu).
+ *
+ * DEMANDE DE LA DIRECTION (09/09/2026) : « l'appellation et le nom français
+ * doivent avoir la même taille, en diminuant un peu l'appellation et en
+ * agrandissant un peu le nom français ». Avant : appellation en Anton 68
+ * (capitales de 79 px), nom français en Barlow Condensed 32 (30 px) — l'un
+ * écrasait l'autre.
+ *
+ * « MÊME TAILLE » SE MESURE EN HAUTEUR DE CAPITALE, jamais au corps : à corps
+ * égal, Anton monte 1,22 fois plus haut que Barlow Condensed. On cherche donc
+ * UNE hauteur commune, la plus grande qui laisse les deux lignes tenir dans
+ * leur largeur, plafonnée à 56 px.
+ *
+ * LA LARGEUR : 730 unités depuis x = 285, soit jusqu'à 1015 sur les 1080 de
+ * la toile logique. Les anciens budgets (520 / 560) laissaient un tiers de la
+ * ligne inutilisé alors que rien ne s'y trouve au-dessus de la photo — et
+ * mesuré sur les 70 pièces qui ont déjà leurs deux titres, la largeur de 560
+ * n'aurait donné l'égalité qu'à 19 % d'entre elles, contre 100 % à 730.
+ * Le bloc reste ENTIÈREMENT au-dessus de la boîte photo (haut à 310, bas au
+ * plus à 440 ; la photo commence à 467).
+ *
+ * LE PLANCHER : 26 px. Un nom français interminable fait descendre la hauteur
+ * commune ; en dessous de 26 px l'appellation s'arrête et seul le nom
+ * français continue de rétrécir — l'écart qui restait (79 contre 30) devient
+ * au pire 26 contre 20, sur une poignée de noms hors norme.
+ *
+ * LA LIGNE DU HAUT EST ANCRÉE (haut des capitales à 310) : quelle que soit la
+ * taille, le bloc commence toujours au même endroit d'une étiquette à l'autre.
+ * Sans appellation, le nom français prend cette première ligne.
+ *
+ * @param string $wolof appellation (déjà en majuscules), '' si absente
+ * @param string $francais nom français (déjà en majuscules), '' si absent
+ * @return array{corps_appel: float, corps_fr: float, base_appel: float, base_fr: float, cap_appel: float, cap_fr: float}
+ */
+function etiquette70_titres_disposer($wolof, $francais)
+{
+    $CAP_PLAFOND = 56.0;
+    $CAP_PLANCHER = 26.0;
+    $LARG_APPEL = 730.0;
+    $LARG_FR = 730.0;
+    $ECART = 18.0;
+    $HAUT_BLOC = 310.0;
+
+    // La plus grande hauteur commune qui laisse les deux lignes tenir.
+    $cap = $CAP_PLAFOND;
+    while ($cap > $CAP_PLANCHER) {
+        $ca = etiquette70_corps_pour_cap('anton', $cap);
+        $cf = etiquette70_corps_pour_cap('barlow_condensed_700', $cap);
+        $tient_appel = $wolof === '' || etiquette70_largeur_texte('anton', $wolof, $ca, 5.3) <= $LARG_APPEL;
+        $tient_fr = $francais === '' || etiquette70_largeur_texte('barlow_condensed_700', $francais, $cf, 0.9) <= $LARG_FR;
+        if ($tient_appel && $tient_fr) {
+            break;
+        }
+        $cap -= 1.0;
+    }
+
+    // L'appellation : à la hauteur commune, resserrée si elle déborde encore.
+    $cap_appel = $cap;
+    $corps_appel = etiquette70_corps_pour_cap('anton', $cap_appel);
+    while ($corps_appel > 14 && $wolof !== ''
+        && etiquette70_largeur_texte('anton', $wolof, $corps_appel, 5.3) > $LARG_APPEL) {
+        $corps_appel -= 1.0;
+        $cap_appel = etiquette70_cap_hauteur('anton', $corps_appel);
+    }
+
+    // Le nom français : la même hauteur, et lui seul descend sous le plancher.
+    $corps_fr = etiquette70_corps_pour_cap('barlow_condensed_700', $cap);
+    while ($corps_fr > 14 && $francais !== ''
+        && etiquette70_largeur_texte('barlow_condensed_700', $francais, $corps_fr, 0.9) > $LARG_FR) {
+        $corps_fr -= 1.0;
+    }
+
+    $base_appel = $HAUT_BLOC + $cap_appel;
+    $base_fr = $wolof !== ''
+        ? $base_appel + $ECART + etiquette70_cap_hauteur('barlow_condensed_700', $corps_fr)
+        : $HAUT_BLOC + etiquette70_cap_hauteur('barlow_condensed_700', $corps_fr);
+
+
+    return [
+        'corps_appel' => (float) $corps_appel,
+        'corps_fr' => (float) $corps_fr,
+        'base_appel' => (float) $base_appel,
+        'base_fr' => (float) $base_fr,
+        'cap_appel' => (float) $cap_appel,
+        'cap_fr' => (float) etiquette70_cap_hauteur('barlow_condensed_700', $corps_fr),
+    ];
+}
+
+/**
  * Dessine l'étiquette et rend l'image GD au côté demandé.
  *
  * @param array<string, mixed> $donnees voir etiquette70_donnees_pour_produit
@@ -526,13 +701,37 @@ function etiquette70_rendu(array $donnees, $cote)
                400 ; 07/09 : « agrandir un peu » → 440), même centre
                (755, 647). 08/09 : « décale un peu plus à droite » → la boîte
                glisse de 30 px (≈ 1,3 mm), centre (785, 647), même hauteur.
+               09/09 : « l'image de la pièce est un peu grande » → la boîte
+               passe à 360, MÊME CENTRE (785, 647) : la pièce maigrit sur
+               place, elle ne se déplace pas. Pourquoi 360 et pas 410 : depuis
+               le même jour la pièce est RECADRÉE sur sa matière avant d'être
+               posée (etiquette70_boite_visible), donc elle remplit la boîte
+               entière au lieu d'y nager — la coque 750903736, que la direction
+               trouvait un peu grande, mesurait 388 px d'apparent avec la boîte
+               de 440 ; 360 la fait 7 % plus petite, et toutes les pièces ont
+               désormais la même taille apparente, cadrage de la photo ou pas.
                Écart assumé avec le dessin de l'atelier. */
             $boite = [
-                'x' => (int) round(565 * $s), 'y' => (int) round(427 * $s),
-                'w' => (int) round(440 * $s), 'h' => (int) round(440 * $s),
+                'x' => (int) round(605 * $s), 'y' => (int) round(467 * $s),
+                'w' => (int) round(360 * $s), 'h' => (int) round(360 * $s),
             ];
-            $pl = imagesx($ph['img']);
-            $phh = imagesy($ph['img']);
+            /* ON POSE LA PIÈCE, PAS LE VIDE AUTOUR (09/09/2026). Le détourage
+               rend la photo entière, marges transparentes comprises : sans ce
+               recadrage, une pièce photographiée au large arrivait deux fois
+               plus petite sur l'étiquette qu'une pièce cadrée serré, à réglage
+               identique. On lit la boîte de la matière visible et on n'ajuste
+               que celle-là — toutes les pièces occupent enfin la même place. */
+            $vis = etiquette70_boite_visible($ph['img']);
+            if ($vis === null) {
+                $sx = 0; $sy = 0;
+                $pl = imagesx($ph['img']);
+                $phh = imagesy($ph['img']);
+            } else {
+                $sx = $vis['x0'];
+                $sy = $vis['y0'];
+                $pl = $vis['x1'] - $vis['x0'] + 1;
+                $phh = $vis['y1'] - $vis['y0'] + 1;
+            }
             $e = min($boite['w'] / $pl, $boite['h'] / $phh);
             $w = (int) round($pl * $e);
             $h = (int) round($phh * $e);
@@ -543,7 +742,7 @@ function etiquette70_rendu(array $donnees, $cote)
                par etiquette70_ombre_photo) est RETIRÉE sur consigne de la
                direction : « pas de contour gris au bas de la pièce », quel
                que soit le fond de la photo. La pièce se pose nue sur le fond. */
-            imagecopyresampled($img, $ph['img'], $dx, $dy, 0, 0, $w, $h, $pl, $phh);
+            imagecopyresampled($img, $ph['img'], $dx, $dy, $sx, $sy, $w, $h, $pl, $phh);
             imagedestroy($ph['img']);
         }
     }
@@ -559,16 +758,15 @@ function etiquette70_rendu(array $donnees, $cote)
     $noir_valeur = imagecolorallocate($img, 12, 13, 16);
     $noir_barres = imagecolorallocate($img, 16, 19, 25);
 
-    // --- les titres ---
+    // --- les deux titres, à la même hauteur (voir etiquette70_titres_disposer) ---
     $wolof = mb_strtoupper(trim((string) $donnees['nom_wolof']), 'UTF-8');
     $francais = mb_strtoupper(trim((string) $donnees['nom_francais']), 'UTF-8');
+    $t = etiquette70_titres_disposer($wolof, $francais);
     if ($wolof !== '') {
-        $corps = etiquette70_ajuster_corps('anton', $wolof, 68, 520, 5.3);
-        etiquette70_texte($img, 285 * $s, 404 * $s, $wolof, 'anton', $corps * $s, $encre, 5.3 * $s);
+        etiquette70_texte($img, 285 * $s, $t['base_appel'] * $s, $wolof, 'anton', $t['corps_appel'] * $s, $encre, 5.3 * $s);
     }
     if ($francais !== '') {
-        $corps = etiquette70_ajuster_corps('barlow_condensed_700', $francais, 32, 560, 0.9);
-        etiquette70_texte($img, 285 * $s, 443 * $s, $francais, 'barlow_condensed_700', $corps * $s, $noir_titre, 0.9 * $s);
+        etiquette70_texte($img, 285 * $s, $t['base_fr'] * $s, $francais, 'barlow_condensed_700', $t['corps_fr'] * $s, $noir_titre, 0.9 * $s);
     }
 
     // --- la carte des références ---

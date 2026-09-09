@@ -210,8 +210,8 @@ verifie('elle exige un pourtour franc sur au moins 90 % du tour', true,
     strpos($src, '($francs / $nb_saut) < 0.90') !== false);
 verifie('la porte du « centre vide » compte les trous voulus comme de la matière', true,
     strpos($src, '$trous_ouverts[$base + $x]') !== false);
-verifie('la clé du cache est passée à v11 (les anciens calculs sont refaits)', true,
-    strpos($src, "'|v11'") !== false && strpos($src, "'|v9'") === false && strpos($src, "'|v10'") === false);
+verifie('la clé du cache est passée à v12 (les anciens calculs sont refaits)', true,
+    strpos($src, "'|v12'") !== false && strpos($src, "'|v9'") === false && strpos($src, "'|v10'") === false);
 
 echo "\n$ok OK / $ko KO\n";
 exit($ko === 0 ? 0 : 1);
