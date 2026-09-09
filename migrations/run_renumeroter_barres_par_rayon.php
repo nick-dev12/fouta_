@@ -151,9 +151,7 @@ echo "\nsauvegarde : $sauvegarde\n";
 $db->beginTransaction();
 try {
     $db->exec('SET @sync_applying = 0'); // les déclencheurs (là où ils existent) marquent la synchro
-    $maj = $db->prepare('UPDATE entrepot_hierarchie_noeud SET numero = :n, date_modification = NOW()'
-        . (function_exists('entrepot_hierarchie_libre_schema_ok') ? '' : '')
-        . ' WHERE id = :id');
+    $maj = $db->prepare('UPDATE entrepot_hierarchie_noeud SET numero = :n, date_modification = NOW() WHERE id = :id');
     $marque = null;
     try {
         $db->query('SELECT sync_updated_at FROM entrepot_hierarchie_noeud LIMIT 1');
@@ -162,10 +160,13 @@ try {
         $marque = null;
     }
     /* deux passes : d'abord des numéros provisoires hors de portée, pour ne
-       pas croiser une contrainte d'unicité pendant le réarrangement */
+       pas croiser la clé unique (étage, niveau, parent, numéro) pendant le
+       réarrangement. La colonne est un SMALLINT UNSIGNED (65 535 au plus) :
+       on reste sous ce plafond — 100 000 a fait annuler la première tentative
+       du 09/09, sans rien écrire. */
     $provisoire = $db->prepare('UPDATE entrepot_hierarchie_noeud SET numero = :n WHERE id = :id');
     foreach ($a_changer as $i => $c) {
-        $provisoire->execute([':n' => 100000 + $i, ':id' => $c['id']]);
+        $provisoire->execute([':n' => 30000 + $i, ':id' => $c['id']]);
     }
     foreach ($a_changer as $c) {
         $maj->execute([':n' => $c['apres'], ':id' => $c['id']]);
