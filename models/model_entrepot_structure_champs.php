@@ -1822,10 +1822,18 @@ function produit_emplacement_cascade_fields_config() {
                 continue;
             }
             $is_leaf = ($feuille_id > 0 && $id === $feuille_id);
+            /* LE NIVEAU FACULTATIF SE DIT AU SÉLECTEUR (09/09/2026) : la box se
+               saute depuis le 07/09, mais la cascade exigeait chaque niveau
+               rempli avant de proposer le suivant — les positions posées
+               directement sous une barre ne se voyaient pas dans le champ
+               Position. Le drapeau permet au JS de passer par-dessus une box
+               vide et de lister les enfants de la barre. */
+            $facultatif = (function_exists('entrepot_hierarchie_def_est_facultatif') && entrepot_hierarchie_def_est_facultatif($def)) ? 1 : 0;
             $fields[] = [
                 'key' => $is_leaf ? 'entrepot_noeud_id' : ('ref_niveau_' . $id),
                 'type' => 'noeud',
                 'niveau_id' => $id,
+                'facultatif' => $facultatif,
                 'niveau' => (string) ($def['slug'] ?? ''),
                 'ordre' => $ordre,
                 'label' => $label,

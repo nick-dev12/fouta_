@@ -246,6 +246,12 @@
                 var prev = structure[j];
                 var val = parseInt(state[prev.key], 10) || 0;
                 if (!val) {
+                    // UNE BOX VIDE SE SAUTE (09/09/2026) : le niveau est facultatif,
+                    // le parent reste celui d'avant (la barre) et la position
+                    // posée directement sous la barre apparaît dans son champ.
+                    if (parseInt(prev.facultatif, 10) === 1) {
+                        continue;
+                    }
                     cascadeOk = false;
                     break;
                 }
@@ -304,7 +310,9 @@
                 }
                 var emptyLabel = (!ctx.cascadeOk && i > 0)
                     ? '— Choisissez d’abord le niveau précédent —'
-                    : ('— Choisir ' + label + ' —');
+                    : (parseInt(field.facultatif, 10) === 1
+                        ? ('— ' + label + ' (facultatif) —')
+                        : ('— Choisir ' + label + ' —'));
                 fillSelect(sel, filtered, selected, emptyLabel, 'id');
                 state[field.key] = sel.value || '';
             }

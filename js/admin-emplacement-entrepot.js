@@ -335,6 +335,10 @@
                     var cascadeOk = true;
                     for (var j = 0; j < i; j++) {
                         if (!(state.selections[j] > 0)) {
+                            // UNE BOX VIDE SE SAUTE (09/09/2026) : niveau facultatif
+                            if (parseInt(ancestors[j].facultatif, 10) === 1) {
+                                continue;
+                            }
                             cascadeOk = false;
                             break;
                         }
@@ -345,12 +349,19 @@
                     if (!cascadeOk) {
                         parentVal = -1;
                     } else if (i > 0) {
-                        var imm = ancestors[i - 1];
-                        if (parseInt(imm.is_etage, 10) === 1) {
-                            parentVal = 0;
-                            etageFilter = state.selections[i - 1] || etageFilter;
-                        } else {
-                            parentVal = state.selections[i - 1] || 0;
+                        // le parent : le niveau choisi le plus proche au-dessus,
+                        // en passant par-dessus les niveaux facultatifs laissés vides
+                        for (var k = i - 1; k >= 0; k--) {
+                            var prec = ancestors[k];
+                            if (parseInt(prec.is_etage, 10) === 1) {
+                                parentVal = 0;
+                                etageFilter = state.selections[k] || etageFilter;
+                                break;
+                            }
+                            if (state.selections[k] > 0) {
+                                parentVal = state.selections[k];
+                                break;
+                            }
                         }
                     }
                     var list = byNiveau[anc.id] || byNiveau[String(anc.id)] || [];
@@ -368,7 +379,9 @@
                         filtered,
                         parentVal < 0
                             ? '— Choisissez d’abord le niveau précédent —'
-                            : ('— Choisir ' + (anc.label || 'parent') + ' —'),
+                            : (parseInt(anc.facultatif, 10) === 1
+                                ? ('— ' + (anc.label || 'parent') + ' (facultatif) —')
+                                : ('— Choisir ' + (anc.label || 'parent') + ' —')),
                         'id',
                         function (n) {
                             return (n.nom || ('#' + n.numero));
@@ -385,11 +398,11 @@
             field.className = 'ee-field';
             field.setAttribute('data-cascade-level', String(i));
             var lab = document.createElement('label');
-            lab.textContent = (anc.label || 'Niveau') + ' *';
+            lab.textContent = (anc.label || 'Niveau') + (parseInt(anc.facultatif, 10) === 1 ? '' : ' *');
             lab.setAttribute('for', 'ee_cascade_' + i);
             var sel = document.createElement('select');
             sel.id = 'ee_cascade_' + i;
-            sel.required = true;
+            sel.required = parseInt(anc.facultatif, 10) !== 1; // une box peut rester vide
             sel.setAttribute('data-cascade-level', String(i));
             sel.addEventListener('change', function () {
                 var v = parseInt(sel.value, 10) || 0;

@@ -826,6 +826,8 @@ foreach ($hierarchie_defs as $d) {
         'label' => (string) ($d['label'] ?? ''),
         'icon' => (string) ($d['icon'] ?? 'fa-cube'),
         'is_etage' => entrepot_hierarchie_def_est_etage($d) ? 1 : 0,
+        // un niveau facultatif (la box) se saute dans la cascade (09/09/2026)
+        'facultatif' => (function_exists('entrepot_hierarchie_def_est_facultatif') && entrepot_hierarchie_def_est_facultatif($d)) ? 1 : 0,
     ];
 }
 echo json_encode($defs_json, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);

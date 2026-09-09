@@ -715,13 +715,29 @@ if ($courant !== null) {
                        position »). La liste déroulante cachait le second choix —
                        et chevauchait le champ « Nom ». Une pastille par niveau,
                        et une phrase qui dit que le niveau facultatif se saute. */ ?>
+              <?php /* LA PASTILLE COCHÉE D'AVANCE EST LE NIVEAU QU'ON REMPLIT (09/09,
+                       constat de la direction) : le 08/09 à 10 h 37, sous B1, B2, B3,
+                       B5 et B6, l'équipe a créé « 01 » et « 02 » sans changer la
+                       pastille — cochée sur Box, le niveau FACULTATIF — et ces
+                       positions sont nées box ; sous B4 et B7, en cliquant Position,
+                       c'était juste. Le choix par défaut est donc le premier niveau
+                       qui n'est PAS facultatif ; Box se choisit exprès. */ ?>
+              <?php
+              $defaut_idx = 0;
+              foreach ($defs_enfants as $i => $de) {
+                  if (!function_exists('entrepot_hierarchie_def_est_facultatif') || !entrepot_hierarchie_def_est_facultatif($de)) {
+                      $defaut_idx = $i;
+                      break;
+                  }
+              }
+              ?>
               <div class="cb-field" style="min-width:230px">
                 <label>Type</label>
                 <div class="cb-choix" id="cb-choix-niveau">
                   <?php foreach ($defs_enfants as $i => $de) : ?>
-                    <label class="cb-choix__item<?php echo $i === 0 ? ' is-on' : ''; ?>">
+                    <label class="cb-choix__item<?php echo $i === $defaut_idx ? ' is-on' : ''; ?>">
                       <input type="radio" name="niveau_id" value="<?php echo (int) $de['id']; ?>"
-                             data-label="<?php echo fpl_e($de['label']); ?>"<?php echo $i === 0 ? ' checked' : ''; ?>>
+                             data-label="<?php echo fpl_e($de['label']); ?>"<?php echo $i === $defaut_idx ? ' checked' : ''; ?>>
                       <?php echo fpl_e($de['label']); ?>
                     </label>
                   <?php endforeach; ?>
@@ -735,7 +751,7 @@ if ($courant !== null) {
                        alors que la suite reprend désormais après les emplacements
                        déjà là — c'est ce que la direction attendait. */ ?>
               <label>Nom <span class="muted">(« B » continue la suite : après B4 vient B5)</span></label>
-              <input type="text" name="nom" required placeholder="<?php echo fpl_e($def_enfants['label']); ?> 1">
+              <input type="text" name="nom" required placeholder="<?php echo fpl_e(($defs_enfants[$defaut_idx ?? 0]['label'] ?? $def_enfants['label'])); ?> 1">
             </div>
             <div class="cb-field" style="width:110px">
               <label>Combien ?</label>
