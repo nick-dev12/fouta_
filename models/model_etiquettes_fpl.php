@@ -116,9 +116,16 @@ function etiquette_retirer_derniere_impression($type, $id)
  * Les PIÈCES de la liste des étiquettes, filtrées et paginées.
  * @return array{lignes: array, total: int, page: int, par: int, derniere: int}
  */
-function etiquettes_pieces_liste($q, $etat, $du, $au, $page, $par)
+/**
+ * LES CRITÈRES DE LA LISTE DES PIÈCES — extraits ici (09/09/2026) pour que la
+ * liste paginée ET la sélection « tout cocher » du filtre courant lisent
+ * exactement le même filtre : sans cela, le PDF de lot pourrait contenir
+ * d'autres pièces que celles affichées.
+ *
+ * @return array{0: string, 1: array} Le WHERE (sans le mot WHERE) et ses paramètres
+ */
+function etiquettes_pieces_criteres($q, $etat, $du, $au)
 {
-    global $db;
 
     $ou = ['p.sync_deleted_at IS NULL'];
     $params = [];
@@ -161,7 +168,14 @@ function etiquettes_pieces_liste($q, $etat, $du, $au, $page, $par)
         $ou[] = 'DATE(p.date_creation) <= :au';
         $params['au'] = $au;
     }
-    $ouSql = implode(' AND ', $ou);
+    return [implode(' AND ', $ou), $params];
+}
+
+function etiquettes_pieces_liste($q, $etat, $du, $au, $page, $par)
+{
+    global $db;
+
+    list($ouSql, $params) = etiquettes_pieces_criteres($q, $etat, $du, $au);
 
     try {
         $stmt = $db->prepare("SELECT COUNT(*) FROM produits p LEFT JOIN marques ma ON ma.id = p.marque_id WHERE $ouSql");
@@ -186,6 +200,37 @@ function etiquettes_pieces_liste($q, $etat, $du, $au, $page, $par)
             'total' => $total, 'page' => $page, 'par' => $par, 'derniere' => $derniere];
     } catch (PDOException $e) {
         return ['lignes' => [], 'total' => 0, 'page' => 1, 'par' => $par, 'derniere' => 1];
+    }
+}
+
+/**
+ * TOUS LES IDENTIFIANTS du filtre courant, sans pagination — ce que coche
+ * « Tout sélectionner » quand la direction veut le lot entier d'un coup
+ * (un rayon, une recherche, ou tout le catalogue). Même ordre que la liste
+ * pour que le PDF sorte dans l'ordre affiché.
+ *
+ * @param int $plafond Nombre maximum d'identifiants rendus
+ * @return array<int>
+ */
+function etiquettes_pieces_ids($q, $etat, $du, $au, $plafond = 500)
+{
+    global $db;
+
+    list($ouSql, $params) = etiquettes_pieces_criteres($q, $etat, $du, $au);
+    $plafond = max(1, (int) $plafond);
+
+    try {
+        $stmt = $db->prepare("SELECT p.id
+                              FROM produits p
+                              LEFT JOIN marques ma ON ma.id = p.marque_id
+                              WHERE $ouSql
+                              ORDER BY p.nom
+                              LIMIT " . $plafond);
+        $stmt->execute($params);
+
+        return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+    } catch (PDOException $e) {
+        return [];
     }
 }
 

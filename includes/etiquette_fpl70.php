@@ -713,3 +713,82 @@ function etiquette70_pdf($jpeg, $wpx, $hpx, $lmm, $hmm)
 
     return $pdf;
 }
+
+/**
+ * LE PDF D'UN LOT D'ÉTIQUETTES — une seule page par étiquette, toutes à la
+ * même taille réelle, dans un seul fichier (demande de la direction du
+ * 09/09/2026 : cocher les étiquettes voulues, un clic, tout est dans le PDF).
+ *
+ * C'est etiquette70_pdf() répété : même MediaBox aux mm exacts, même dessin
+ * carré posé au côté court et centré. Chaque étiquette porte SON image (les
+ * dessins diffèrent d'une pièce à l'autre), d'où trois objets par page :
+ * la page, son flux de dessin, son image.
+ *
+ * @param array $pages Chaque entrée : ['jpeg' => binaire, 'w' => px, 'h' => px]
+ * @param float $lmm   Largeur de page en mm
+ * @param float $hmm   Hauteur de page en mm
+ * @return string Le PDF, ou '' si le lot est vide
+ */
+function etiquette70_pdf_multi(array $pages, $lmm, $hmm)
+{
+    $pages = array_values($pages);
+    $nb = count($pages);
+    if ($nb === 0) {
+        return '';
+    }
+
+    $MM = 72 / 25.4;
+    $L = round($lmm * $MM, 2);
+    $H = round($hmm * $MM, 2);
+    $cote = min($L, $H);
+    $dx = round(($L - $cote) / 2, 2);
+    $dy = round(($H - $cote) / 2, 2);
+    $flux = 'q ' . $cote . ' 0 0 ' . $cote . ' ' . $dx . ' ' . $dy . " cm /Im0 Do Q\n";
+
+    // Numérotation : 1 = catalogue, 2 = arbre des pages, puis trois objets par
+    // étiquette (page, flux, image) — la page n° i vit à l'objet 3 + 3i.
+    $enfants = [];
+    for ($i = 0; $i < $nb; $i++) {
+        $enfants[] = (3 + 3 * $i) . ' 0 R';
+    }
+
+    $pdf = "%PDF-1.4\n";
+    $offs = [];
+    $poser = function ($num, $corps) use (&$pdf, &$offs) {
+        $offs[$num] = strlen($pdf);
+        $pdf .= $num . " 0 obj\n" . $corps . "\nendobj\n";
+    };
+
+    $poser(1, '<< /Type /Catalog /Pages 2 0 R >>');
+    $poser(2, '<< /Type /Pages /Kids [' . implode(' ', $enfants) . '] /Count ' . $nb . ' >>');
+
+    foreach ($pages as $i => $pg) {
+        $n_page = 3 + 3 * $i;
+        $n_flux = $n_page + 1;
+        $n_img = $n_page + 2;
+        $jpeg = (string) $pg['jpeg'];
+
+        $poser($n_page, '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' . $L . ' ' . $H . ']'
+            . ' /Resources << /XObject << /Im0 ' . $n_img . ' 0 R >> >> /Contents ' . $n_flux . ' 0 R >>');
+
+        $offs[$n_flux] = strlen($pdf);
+        $pdf .= $n_flux . " 0 obj\n<< /Length " . strlen($flux) . " >>\nstream\n" . $flux . "endstream\nendobj\n";
+
+        $offs[$n_img] = strlen($pdf);
+        $pdf .= $n_img . " 0 obj\n<< /Type /XObject /Subtype /Image /Width " . (int) $pg['w']
+            . ' /Height ' . (int) $pg['h']
+            . ' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ' . strlen($jpeg)
+            . " >>\nstream\n" . $jpeg . "\nendstream\nendobj\n";
+    }
+
+    $total = 2 + 3 * $nb;
+    $xref = strlen($pdf);
+    $table = "xref\n0 " . ($total + 1) . "\n0000000000 65535 f \n";
+    for ($n = 1; $n <= $total; $n++) {
+        $table .= str_pad((string) $offs[$n], 10, '0', STR_PAD_LEFT) . " 00000 n \n";
+    }
+    $pdf .= $table;
+    $pdf .= "trailer\n<< /Size " . ($total + 1) . " /Root 1 0 R >>\nstartxref\n" . $xref . "\n%%EOF\n";
+
+    return $pdf;
+}
