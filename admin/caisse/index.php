@@ -209,7 +209,7 @@ $manque_preview = null;
                 <tbody>
                     <?php foreach ($ticket_data['lignes'] as $lg): ?>
                     <tr>
-                        <td><?php echo htmlspecialchars($lg['designation'] ?? ''); ?></td>
+                        <td><?php echo htmlspecialchars($lg['designation'] ?? ''); ?><?php if (!empty($lg['prix_saisi'])): ?> <span class="no-print" style="display:inline-block;margin-left:4px;padding:1px 6px;border-radius:4px;background:#F8EFDC;color:#8F6212;font-size:11px;font-weight:600" title="<?php echo !empty($lg['prix_catalogue']) ? 'Prix du catalogue ce jour-là : ' . number_format((float) $lg['prix_catalogue'], 0, ',', ' ') . ' FCFA' : 'Pièce sans prix au catalogue'; ?>">prix saisi</span><?php endif; ?></td>
                         <td><?php echo (int) ($lg['quantite'] ?? 0); ?></td>
                         <td><?php echo number_format((float) ($lg['prix_unitaire'] ?? 0), 0, ',', ' '); ?></td>
                         <td><?php echo number_format((float) ($lg['total_ligne'] ?? 0), 0, ',', ' '); ?></td>

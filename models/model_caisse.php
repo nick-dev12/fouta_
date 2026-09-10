@@ -20,6 +20,65 @@ if (!defined('CAISSE_TVA_TAUX_POURCENT')) {
     define('CAISSE_TVA_TAUX_POURCENT', 18.0);
 }
 
+/**
+ * PLAFOND DE REMISE DES VENDEURS, en % (10/09/2026). Le serveur acceptait
+ * jusqu'à 100 % de remise par ligne ou sur le ticket, sans aucun champ à
+ * l'écran, sans droit ni motif, et le ticket imprimé ne la montrait pas. Le
+ * plafond reste à 0 tant que la direction ne l'a pas fixé : un vendeur ne peut
+ * appliquer aucune remise cachée. Caissier, informaticien et développeur ne
+ * sont pas concernés.
+ */
+if (!defined('CAISSE_REMISE_MAX_VENDEUR_PCT')) {
+    define('CAISSE_REMISE_MAX_VENDEUR_PCT', 0.0);
+}
+
+/**
+ * Refuse une remise au-delà du plafond des vendeurs (10/09/2026).
+ *
+ * @return string|null le message de refus, ou null si le panier passe
+ */
+function caisse_remise_vendeur_refusee(array $cart)
+{
+    $role = function_exists('admin_current_role') ? admin_current_role() : '';
+    if (!in_array($role, ['commercial', 'commercial_general'], true)) {
+        return null;
+    }
+    $plafond = (float) CAISSE_REMISE_MAX_VENDEUR_PCT;
+    $trop = (float) ($cart['remise_globale_pct'] ?? 0) > $plafond;
+    foreach (($cart['lines'] ?? []) as $ligne) {
+        if ((float) ($ligne['remise_ligne_pct'] ?? 0) > $plafond) {
+            $trop = true;
+        }
+    }
+    return $trop ? 'Remise refusée : le plafond de remise des vendeurs n’a pas encore été fixé par la direction.' : null;
+}
+
+/**
+ * Les colonnes de trace du prix existent-elles sur ce serveur ? (10/09/2026,
+ * migration run_caisse_lignes_prix_catalogue.php). Sans elles, la caisse
+ * continue de vendre comme avant : on n'écrit simplement pas la trace.
+ */
+function caisse_lignes_prix_trace_ok()
+{
+    static $ok = null;
+    if ($ok !== null) {
+        return $ok;
+    }
+    global $db;
+    try {
+        $presentes = 0;
+        foreach (['prix_catalogue', 'prix_saisi'] as $colonne) {
+            if ($db->query('SHOW COLUMNS FROM caisse_vente_lignes LIKE ' . $db->quote($colonne))->fetch()) {
+                $presentes++;
+            }
+        }
+        $ok = ($presentes === 2);
+    } catch (PDOException $e) {
+        $ok = false;
+    }
+    return $ok;
+}
+
 /** Modes de paiement en caisse (ENUM après migration canaux). */
 function caisse_modes_paiement_valides()
 {
@@ -878,6 +937,7 @@ function caisse_build_cart_from_payload(array $payload)
             'prix_unitaire' => $prix,
             'quantite' => $qty,
             'remise_ligne_pct' => $remise,
+            'prix_catalogue' => $prix_catalogue > 0 ? $prix_catalogue : null,
         ];
         if ($prix_catalogue <= 0 || abs($prix - $prix_catalogue) >= 0.005) {
             $line['prix_manuel'] = 1;
@@ -1164,6 +1224,12 @@ function caisse_creer_ticket_en_attente($admin_id, array $cart)
 {
     global $db;
 
+    /* Pas de remise cachée pour un vendeur (10/09/2026) : voir CAISSE_REMISE_MAX_VENDEUR_PCT. */
+    $remise_refusee = caisse_remise_vendeur_refusee($cart);
+    if ($remise_refusee !== null) {
+        return ['ok' => false, 'error' => $remise_refusee];
+    }
+
     if (!caisse_tables_exist()) {
         return ['ok' => false, 'error' => 'Tables caisse absentes : exécutez la migration create_caisse_tables.sql.'];
     }
@@ -1248,6 +1314,16 @@ function caisse_creer_ticket_en_attente($admin_id, array $cart)
                 'remise_ligne_pct' => $rl,
                 'total_ligne' => $total_ligne,
             ]);
+            if (caisse_lignes_prix_trace_ok()) {
+                /* La trace du prix (10/09/2026) : le prix du catalogue au moment de
+                   la vente, et la marque d'un prix tapé à la main. */
+                $db->prepare('UPDATE caisse_vente_lignes SET prix_catalogue = :pc, prix_saisi = :ps WHERE id = :id')
+                   ->execute([
+                       'pc' => isset($line['prix_catalogue']) && $line['prix_catalogue'] !== null ? (float) $line['prix_catalogue'] : null,
+                       'ps' => !empty($line['prix_manuel']) ? 1 : 0,
+                       'id' => (int) $db->lastInsertId(),
+                   ]);
+            }
         }
 
         $nb_attendu = count($cart['lines']);
@@ -1699,6 +1775,16 @@ function caisse_enregistrer_vente($admin_id, array $cart, $mode_paiement, array 
                 'remise_ligne_pct' => $rl,
                 'total_ligne' => $total_ligne,
             ]);
+            if (caisse_lignes_prix_trace_ok()) {
+                /* La trace du prix (10/09/2026) : le prix du catalogue au moment de
+                   la vente, et la marque d'un prix tapé à la main. */
+                $db->prepare('UPDATE caisse_vente_lignes SET prix_catalogue = :pc, prix_saisi = :ps WHERE id = :id')
+                   ->execute([
+                       'pc' => isset($line['prix_catalogue']) && $line['prix_catalogue'] !== null ? (float) $line['prix_catalogue'] : null,
+                       'ps' => !empty($line['prix_manuel']) ? 1 : 0,
+                       'id' => (int) $db->lastInsertId(),
+                   ]);
+            }
 
             $produit = get_produit_by_id($pid);
             $quantite_avant = (int) ($produit['stock'] ?? 0);

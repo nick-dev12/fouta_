@@ -313,5 +313,44 @@ if ($base_locale) {
     verifie('nettoyage : aucun ticket d’essai restant', 0, (int) $db->query("SELECT COUNT(*) FROM caisse_ventes WHERE numero_ticket LIKE 'ESSAI-%'")->fetchColumn());
 }
 
+echo "— point 6 : pas de remise cachée, et le prix tapé à la main se voit —\n";
+$role_avant_6 = $_SESSION['admin_role'] ?? null;
+verifie('plafond de remise des vendeurs à 0 tant que la direction ne l’a pas fixé', 0.0, (float) CAISSE_REMISE_MAX_VENDEUR_PCT);
+$_SESSION['admin_role'] = 'commercial_general';
+verifie('remise sur le ticket refusée au vendeur', true, caisse_remise_vendeur_refusee(['remise_globale_pct' => 10, 'lines' => []]) !== null);
+verifie('remise de 99,99 % sur une ligne refusée au vendeur', true, caisse_remise_vendeur_refusee(['lines' => [['remise_ligne_pct' => 99.99]]]) !== null);
+verifie('sans remise, le panier du vendeur passe', null, caisse_remise_vendeur_refusee(['remise_globale_pct' => 0, 'lines' => [['remise_ligne_pct' => 0]]]));
+$_SESSION['admin_role'] = 'informaticien';
+verifie('l’informaticien n’est pas concerné par le plafond', null, caisse_remise_vendeur_refusee(['remise_globale_pct' => 10, 'lines' => []]));
+verifie('les colonnes de trace du prix existent en base locale', true, caisse_lignes_prix_trace_ok());
+if ($base_locale) {
+    $piece_prix = $db->query("SELECT id, nom, prix, prix_promotion, stock FROM produits WHERE statut = 'actif' AND stock >= 2 AND prix > 0 AND sync_deleted_at IS NULL ORDER BY id LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+    $_SESSION['admin_role'] = 'commercial_general';
+    $prix_du_catalogue = round((float) caisse_prix_unitaire_produit($piece_prix), 2);
+    $panier = caisse_build_cart_from_payload(['lines' => [['produit_id' => (int) $piece_prix['id'], 'quantite' => 1, 'prix_unitaire' => (string) ($prix_du_catalogue + 500)]]]);
+    verifie('panier construit avec un prix tapé à la main', true, !empty($panier['ok']));
+    $nb_tickets_avant = (int) $db->query('SELECT COUNT(*) FROM caisse_ventes')->fetchColumn();
+    $res_ticket = !empty($panier['ok']) ? caisse_creer_ticket_en_attente(38, $panier['cart']) : ['ok' => false];
+    $vente_essai = (int) ($res_ticket['vente_id'] ?? 0);
+    try {
+        verifie('ticket d’essai créé', true, !empty($res_ticket['ok']));
+        $ligne_essai = $db->query("SELECT prix_unitaire, prix_catalogue, prix_saisi FROM caisse_vente_lignes WHERE vente_id = $vente_essai")->fetch(PDO::FETCH_ASSOC);
+        verifie('la ligne garde le prix du catalogue du jour', $prix_du_catalogue, round((float) ($ligne_essai['prix_catalogue'] ?? 0), 2));
+        verifie('la ligne est marquée « prix saisi »', 1, (int) ($ligne_essai['prix_saisi'] ?? 0));
+        $panier_remise = $panier['cart'];
+        $panier_remise['remise_globale_pct'] = 50;
+        $refus = caisse_creer_ticket_en_attente(38, $panier_remise);
+        verifie('ticket avec une remise cachée de 50 % : refusé', false, !empty($refus['ok']));
+        verifie('le refus ne crée aucun ticket', $nb_tickets_avant + 1, (int) $db->query('SELECT COUNT(*) FROM caisse_ventes')->fetchColumn());
+    } finally {
+        if ($vente_essai > 0) {
+            $db->exec("DELETE FROM caisse_vente_lignes WHERE vente_id = $vente_essai");
+            $db->exec("DELETE FROM caisse_ventes WHERE id = $vente_essai");
+        }
+    }
+    verifie('nettoyage : nombre de tickets revenu à l’identique', $nb_tickets_avant, (int) $db->query('SELECT COUNT(*) FROM caisse_ventes')->fetchColumn());
+}
+$_SESSION['admin_role'] = $role_avant_6;
+
 echo "\n$ok OK / $ko KO\n";
 exit($ko === 0 ? 0 : 1);
