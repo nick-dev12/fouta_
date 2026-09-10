@@ -981,3 +981,8 @@ table tbody tr:hover td {
     display: none !important;
   }
 }
+
+/* ÉCRANS DE VENTE : LISTE DES DEVIS ET HUB DES BL (10/09/2026). Leur conteneur
+   .page-devis-admin n'avait aucune marge : le titre touchait le menu (0 px
+   mesuré). Même marge que la page des commandes (.page-commandes-index). */
+.page-devis-admin { padding: 0 16px 40px; box-sizing: border-box; }

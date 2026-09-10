@@ -210,6 +210,18 @@ include __DIR__ . '/../../includes/pwa_admin_boot.php';
             </a>
             <?php endif; ?>
             <?php elseif ($admin_role === 'commercial_general' || $admin_role === 'commercial'): ?>
+            <?php /* L'ordre suit l'usage mesuré en production le 10/09/2026 :
+                     caisse (47 tickets), devis (10), BL (2), commandes du site (0). */ ?>
+            <a href="<?php echo $admin_nav_base; ?>commercial/index.php"
+                class="menu-item mi-dashboard<?php echo $is_commercial_hub ? ' active' : ''; ?>">
+                <span class="menu-item-icon ico" aria-hidden="true"><?php echo fpl_icone('home', 16); ?></span>
+                <span class="menu-item-text">Accueil</span>
+            </a>
+            <a href="<?php echo $admin_nav_base; ?>caisse/index.php"
+                class="menu-item mi-caisse<?php echo ($is_caisse && $current_page === 'index.php') ? ' active' : ''; ?>">
+                <span class="menu-item-icon ico" aria-hidden="true"><i class="fas fa-cash-register"></i></span>
+                <span class="menu-item-text">Caisse magasin</span>
+            </a>
             <?php if ($nav_can_devis): ?>
             <a href="<?php echo $admin_nav_base; ?>devis/devis.php"
                 class="menu-item mi-devis<?php echo $is_nav_devis_section ? ' active' : ''; ?>">
@@ -228,11 +240,6 @@ include __DIR__ . '/../../includes/pwa_admin_boot.php';
                 class="menu-item mi-commandes<?php echo ($is_commandes && ($current_page == 'index.php' || $current_page == 'livrees.php' || $current_page == 'annulees.php' || $current_page == 'details.php' || $current_page == 'historique-ventes.php')) ? ' active' : ''; ?>">
                 <span class="menu-item-icon ico" aria-hidden="true"><i class="fas fa-shopping-cart"></i></span>
                 <span class="menu-item-text">Commandes</span>
-            </a>
-            <a href="<?php echo $admin_nav_base; ?>caisse/index.php"
-                class="menu-item mi-caisse<?php echo ($is_caisse && $current_page === 'index.php') ? ' active' : ''; ?>">
-                <span class="menu-item-icon ico" aria-hidden="true"><i class="fas fa-cash-register"></i></span>
-                <span class="menu-item-text">Caisse magasin</span>
             </a>
             <?php elseif ($admin_role === 'caissier'): ?>
             <a href="<?php echo $admin_nav_base; ?>caisse/encaisser-ticket.php"
@@ -448,10 +455,16 @@ include __DIR__ . '/../../includes/pwa_admin_boot.php';
                     <?php endif; ?>
                     <h1><?php echo fpl_e($fpl_titre_page); ?></h1>
                 <?php endif; ?>
-                <form class="admin-topbar__search" action="<?php echo $admin_nav_base; ?>produits/index.php" method="get" role="search">
+                <?php /* LA RECHERCHE MÈNE OÙ LE RÔLE PEUT ALLER (10/09/2026) — voir
+                         admin_recherche_cible() : le catalogue était fermé aux
+                         commerciaux, leur recherche rebondissait sur un refus. */ ?>
+                <?php $admin_nav_recherche = admin_recherche_cible($admin_role); ?>
+                <?php if ($admin_nav_recherche !== null): ?>
+                <form class="admin-topbar__search" action="<?php echo $admin_nav_base . $admin_nav_recherche['page']; ?>" method="get" role="search">
                     <i class="fas fa-search" aria-hidden="true"></i>
-                    <input type="search" name="recherche" placeholder="Rechercher une pièce…" autocomplete="off">
+                    <input type="search" name="<?php echo $admin_nav_recherche['champ']; ?>" placeholder="Rechercher une pièce…" autocomplete="off">
                 </form>
+                <?php endif; ?>
             </div>
             <div class="admin-topbar__right">
                 <?php /* LA DATE DU JOUR, en toutes lettres, à droite de la barre —

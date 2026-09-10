@@ -35,11 +35,35 @@ function fpl_css_link($relative_path) {
  *
  * @param array<int, string> $extra_css Chemins relatifs css/… ou /css/…
  */
+/**
+ * LA TAILLE RACINE DES MODULES DE VENTE (10/09/2026).
+ * La refonte du 20/08 a posé html { font-size: 10px } dans variables.css. La
+ * couche FPL (menu, barre du haut, écrans de stock) est écrite en pixels et
+ * n'en dépend pas. Mais les feuilles des modules de vente (devis, bons de
+ * livraison et de retour, caisse, commandes) sont écrites en rem pour la
+ * racine par défaut du navigateur, 16 px. Depuis ce jour-là, leurs textes
+ * sortaient à 62 % de leur taille : mesuré le 10/09, 7 à 9 px sur les cartes
+ * clients, 8,8 px pour les noms de pièces de la caisse, 303 textes sur 313
+ * sous 12 px dans la caisse.
+ * On rend à ces trois dossiers, et à eux seuls, la racine pour laquelle ils
+ * ont été écrits. Les autres écrans ne bougent pas.
+ *
+ * @param string $chemin_admin chemin sous admin/, ex. « devis/devis.php »
+ */
+function fpl_admin_racine_16px($chemin_admin) {
+    return (bool) preg_match('#^(devis|caisse|commandes)/[^/]+\.php$#', (string) $chemin_admin);
+}
+
 function fpl_admin_styles(array $extra_css = []) {
     $v = asset_version_query();
     echo '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300..700;1,14..32,300..700&display=swap">' . "\n";
     echo '<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">' . "\n";
     echo '<link rel="stylesheet" href="' . htmlspecialchars(fpl_asset_uri('css/variables.css'), ENT_QUOTES, 'UTF-8') . $v . '">' . "\n";
+    /* Les modules de vente retrouvent la racine de 16 px pour laquelle leurs
+     * feuilles ont été écrites (voir fpl_admin_racine_16px). */
+    if (function_exists('admin_route_relative_path') && fpl_admin_racine_16px(admin_route_relative_path())) {
+        echo '<style>html{font-size:16px}</style>' . "\n";
+    }
     echo '<link rel="stylesheet" href="' . htmlspecialchars(fpl_asset_uri('css/fpl.css'), ENT_QUOTES, 'UTF-8') . $v . '">' . "\n";
     echo '<link rel="stylesheet" href="' . htmlspecialchars(fpl_asset_uri('css/fpl-admin-compat.css'), ENT_QUOTES, 'UTF-8') . $v . '">' . "\n";
     echo '<link rel="stylesheet" href="' . htmlspecialchars(fpl_asset_uri('css/admin-dashboard.css'), ENT_QUOTES, 'UTF-8') . $v . '">' . "\n";

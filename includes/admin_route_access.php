@@ -161,10 +161,14 @@ if (!function_exists('admin_route_relative_path')) {
             case 'informaticien':
             case 'developpeur':
                 return 'dashboard.php';
+            /* L'ACCUEIL DES COMMERCIAUX (10/09/2026) : leurs files de travail
+             * (tickets pas encore encaissés, devis ouverts, BL en brouillon).
+             * Avant, le commercial général arrivait sur le hub des BL et le
+             * commercial sur les commandes du site, une file restée vide
+             * depuis toujours (0 commande en production). */
             case 'commercial_general':
-                return 'devis/index.php';
             case 'commercial':
-                return 'commandes/index.php';
+                return 'commercial/index.php';
             case 'caissier':
                 return 'caisse/encaisser-ticket.php';
             case 'comptabilite':
@@ -303,6 +307,30 @@ if (!function_exists('admin_route_relative_path')) {
             default:
                 return false;
         }
+    }
+
+    /**
+     * LA BARRE DE RECHERCHE DU HAUT, RÔLE PAR RÔLE (10/09/2026).
+     * Elle envoyait tout le monde vers le catalogue des pièces
+     * (produits/index.php). Or ce catalogue est fermé aux commerciaux, au
+     * caissier, à la comptabilité, à la RH et à l'infographiste : leur
+     * recherche rebondissait sur « page réservée à un autre profil ».
+     * Chacun cherche désormais là où il a le droit d'aller : le catalogue
+     * s'il lui est ouvert, la caisse pour les commerciaux (elle montre le
+     * prix et le stock, et c'est là qu'on ajoute au ticket). Pour les autres,
+     * pas de barre plutôt qu'une barre qui mène à un refus.
+     *
+     * @return array{page:string, champ:string}|null
+     */
+    function admin_recherche_cible($role) {
+        $r = admin_normalize_role_for_route($role);
+        if (admin_route_is_allowed($r, 'produits/index.php')) {
+            return ['page' => 'produits/index.php', 'champ' => 'recherche'];
+        }
+        if (($r === 'commercial' || $r === 'commercial_general') && admin_route_is_allowed($r, 'caisse/index.php')) {
+            return ['page' => 'caisse/index.php', 'champ' => 'q'];
+        }
+        return null;
     }
 
     /**
