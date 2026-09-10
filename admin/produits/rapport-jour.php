@@ -50,10 +50,19 @@ try {
                         LEFT JOIN produits p ON p.id = m.produit_id
                         LEFT JOIN entrepot_hierarchie_noeud ns ON ns.id = m.emplacement_source_id
                         LEFT JOIN entrepot_hierarchie_noeud nd ON nd.id = m.emplacement_destination_id
-                        WHERE m.sync_deleted_at IS NULL AND m.admin_id = :a
+                        WHERE m.sync_deleted_at IS NULL
+                          AND (m.admin_id = :a
+                               OR (:vendeur = 1 AND m.reference_type = 'caisse_vente'
+                                   AND EXISTS (SELECT 1 FROM caisse_ventes v
+                                               WHERE v.id = m.reference_id AND v.admin_id = :a2)))
                           AND DATE(m.date_mouvement) = :d
                         ORDER BY m.date_mouvement, m.id");
-    $st->execute(['a' => $cible_id, 'd' => $date]);
+    /* LE RAPPORT D'UN VENDEUR (10/09/2026) : une sortie de caisse est
+     * enregistrée au nom du CAISSIER qui encaisse. Sans cette clause, le
+     * rapport d'un commercial restait vide alors qu'il a vendu toute la
+     * journée : on y ajoute les sorties des tickets qu'il a préparés. */
+    $vendeur = in_array($cible_role, ['commercial', 'commercial_general'], true) ? 1 : 0;
+    $st->execute(['a' => $cible_id, 'a2' => $cible_id, 'vendeur' => $vendeur, 'd' => $date]);
     $mouvements = $st->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
     $mouvements = [];
@@ -85,7 +94,12 @@ uasort($par_motif, function ($a, $b) {
 });
 
 $agent_connecte = trim((string) ($_SESSION['admin_prenom'] ?? '') . ' ' . (string) ($_SESSION['admin_nom'] ?? ''));
-$role_lisible = ucfirst(str_replace('_', ' ', $cible_role));
+$role_lisible = function_exists('admin_role_label') ? admin_role_label($cible_role) : ucfirst(str_replace('_', ' ', $cible_role));
+/* Le bouton Retour mène chez soi : l'entrée en stock est fermée à
+   l'infographiste et aux commerciaux (10/09/2026). */
+$role_connecte = function_exists('admin_current_role') ? admin_current_role() : '';
+$rapport_retour = $role_connecte === 'photographe' ? 'photo-travail.php'
+    : (in_array($role_connecte, ['commercial', 'commercial_general'], true) ? '../commercial/index.php' : 'entree.php');
 $user_q = $cible_id !== (int) $_SESSION['admin_id'] ? '&user=' . $cible_id : '';
 ?>
 <!DOCTYPE html>
@@ -204,7 +218,7 @@ $user_q = $cible_id !== (int) $_SESSION['admin_id'] ? '&user=' . $cible_id : '';
 <div class="report">
 
   <div class="no-print">
-    <a class="btn btn-outline btn-sm" href="<?php echo (function_exists('admin_current_role') && admin_current_role() === 'photographe') ? 'photo-travail.php' : 'entree.php'; ?>" title="Retour">
+    <a class="btn btn-outline btn-sm" href="<?php echo $rapport_retour; ?>" title="Retour">
       <?php echo fpl_icone('arrow-left', 14); ?> Retour
     </a>
     <button class="btn btn-primary" onclick="window.print()"><?php echo fpl_icone('printer', 14); ?> Imprimer / PDF</button>

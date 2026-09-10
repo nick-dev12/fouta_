@@ -248,6 +248,14 @@ if (!function_exists('admin_route_relative_path')) {
         switch ($r) {
             case 'commercial_general':
             case 'commercial':
+                /* L'HISTORIQUE DES MOUVEMENTS ET LE RAPPORT JOURNALIER (10/09/2026,
+                 * demande de la direction) : le commercial général suit ce qui
+                 * entre et sort du stock, et le rapport de sa journée. Le
+                 * commercial simple n'en a pas encore : ses droits seront
+                 * définis une fois la chaîne du commercial général terminée. */
+                if ($r === 'commercial_general' && ($p === 'stock/mouvements.php' || $p === 'produits/rapport-jour.php')) {
+                    return true;
+                }
                 return $starts('devis/')
                     || $starts('commandes/')
                     || $starts('caisse/')

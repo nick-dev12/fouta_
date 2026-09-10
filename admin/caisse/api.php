@@ -141,8 +141,13 @@ if ($action === 'generer_ticket') {
 }
 
 if ($action === 'encaisser') {
-    if (!admin_can_caisse_vendeur()) {
-        caisse_api_out(['ok' => false, 'error' => 'Action non autorisée.'], 403);
+    /* ENCAISSER EST LE MÉTIER DU CAISSIER (10/09/2026). Cette action enregistre
+     * une vente PAYÉE et sort le stock en un seul geste. Elle ne demandait que le
+     * droit de préparer un ticket : un commercial pouvait donc encaisser seul,
+     * l'écran se contentant de cacher le bouton. Il faut désormais les deux
+     * droits, préparer ET encaisser (informaticien, développeur). */
+    if (!admin_can_caisse_vendeur() || !admin_can_encaisser_ticket()) {
+        caisse_api_out(['ok' => false, 'error' => "L'encaissement est réservé au caissier : générez le ticket, le caissier l'encaisse."], 403);
     }
     caisse_api_check_csrf($input);
     $payload = isset($input['cart']) && is_array($input['cart']) ? $input['cart'] : [];

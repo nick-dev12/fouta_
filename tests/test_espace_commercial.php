@@ -66,7 +66,9 @@ foreach ($ROLES as $role) {
 }
 
 echo "— ce qui reste fermé —\n";
-foreach (['produits/index.php', 'stock/mouvements.php', 'parametres.php', 'comptabilite/index.php', 'users/index.php'] as $r) {
+/* stock/mouvements.php a quitté cette liste le 10/09 : la direction a ouvert
+   l'historique des mouvements au commercial général (tests/test_chantier_commercial.php). */
+foreach (['produits/index.php', 'produits/ajuster-stock.php', 'parametres.php', 'comptabilite/index.php', 'users/index.php'] as $r) {
     foreach ($ROLES as $role) {
         verifie("fermé à « $role » : $r", false, admin_route_is_allowed($role, $r));
     }

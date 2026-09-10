@@ -237,8 +237,10 @@ if ($action === 'generer_ticket') {
 }
 
 if ($action === 'encaisser') {
-    if (!admin_can_caisse_vendeur()) {
-        $_SESSION['caisse_flash_error'] = 'L’encaissement depuis le bureau vendeur est réservé aux commerciaux. Les commerciaux génèrent un ticket ; le caissier l’encaisse.';
+    /* Même règle que caisse/api.php (10/09/2026) : préparer ET encaisser.
+     * L'ancien message disait le contraire de la règle qu'il appliquait. */
+    if (!admin_can_caisse_vendeur() || !admin_can_encaisser_ticket()) {
+        $_SESSION['caisse_flash_error'] = 'L’encaissement est réservé au caissier : générez le ticket, le caissier l’encaisse.';
         caisse_cart_save($cart);
         caisse_redirect_ok();
     }

@@ -27,6 +27,11 @@ require_once __DIR__ . '/../../includes/fpl_ui.php';
 require_once __DIR__ . '/../../models/model_categories.php';
 require_once __DIR__ . '/../../models/model_mouvements_stock.php';
 
+/* Les commerciaux voient l'historique (10/09/2026) mais pas la fiche stock
+   d'une pièce : pour eux, le nom reste en clair au lieu de mener à un refus. */
+$mouvements_fiche_fermee = function_exists('admin_current_role')
+    && in_array(admin_current_role(), ['commercial', 'commercial_general'], true);
+
 $recherche = trim((string) ($_GET['q'] ?? $_GET['recherche'] ?? ''));
 $categorie_id = isset($_GET['categorie_id']) ? (int) $_GET['categorie_id'] : 0;
 $type_filtre = isset($_GET['type']) && in_array($_GET['type'], ['entree', 'sortie', 'transfert', 'inventaire'], true)
@@ -188,7 +193,9 @@ $fpl_retour_page = '../produits/mon-travail.php';
                     <span style="display:block; font-size:12.5px"><?php echo date('H:i', strtotime($m['date_mouvement'])); ?></span>
                   </td>
                   <td>
-                    <?php if (!empty($m['produit_id'])) : ?>
+                    <?php if (!empty($m['produit_id']) && $mouvements_fiche_fermee) : ?>
+                      <span class="cell-title"><?php echo $m['produit_nom'] !== null ? fpl_e($m['produit_nom']) : 'Pièce supprimée'; ?></span>
+                    <?php elseif (!empty($m['produit_id'])) : ?>
                       <a class="cell-title" href="../produits/<?php echo (function_exists('admin_current_role') && admin_current_role() === 'photographe') ? 'photo-editer.php' : 'ajuster-stock.php'; ?>?id=<?php echo (int) $m['produit_id']; ?>" style="color:var(--ink)">
                         <?php echo $m['produit_nom'] !== null ? fpl_e($m['produit_nom']) : 'Pièce supprimée'; ?>
                       </a>
