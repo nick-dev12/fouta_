@@ -76,6 +76,7 @@ if (!function_exists('sync_registry_priority_tables')) {
             'bl_lignes',
             'factures_mensuelles',
             'facture_mensuelle_bl',
+            'paiements_factures',
             'caisse_vente_lignes',
             'caisse_corrections_paiement',
             'employe_absence_justificatifs',

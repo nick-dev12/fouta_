@@ -30,17 +30,10 @@ require_once __DIR__ . '/../../models/model_factures_devis.php';
 require_once __DIR__ . '/../../models/model_devis.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['marquer_facture_payee'])) {
-    $tok = (string) ($_POST['csrf_token'] ?? '');
-    if ($tok === '' || !hash_equals((string) ($_SESSION['admin_csrf'] ?? ''), $tok)) {
-        $_SESSION['flash_facture_error'] = 'Session expirée. Réessayez.';
-    } else {
-        $r = marquer_facture_devis_payee($facture_id);
-        if (!empty($r['ok'])) {
-            $_SESSION['success_message'] = 'Facture marquée comme payée. Référence : ' . ($r['numero_reference_fpl'] ?? '');
-        } else {
-            $_SESSION['flash_facture_error'] = $r['error'] ?? 'Action impossible.';
-        }
-    }
+    /* UNE FACTURE NE SE COCHE PLUS PAYÉE (10/09/2026). Ce bouton la marquait payée
+     * d'un clic, sans montant, sans moyen ni auteur. Le paiement s'enregistre dans
+     * le bloc « Paiements » (paiement_enregistrer.php), par la comptabilité. */
+    $_SESSION['flash_facture_error'] = 'Le paiement s’enregistre désormais avec son montant, son moyen et sa date, dans le bloc Paiements.';
     header('Location: facture.php?id=' . $facture_id);
     exit;
 }
@@ -146,7 +139,8 @@ $facture_est_payee = !empty($facture['payee']);
 $facture_numero_affichage = ($facture_est_payee && !empty($facture['numero_reference_fpl']))
     ? (string) $facture['numero_reference_fpl']
     : (string) ($facture['numero_facture'] ?? '');
-$facture_afficher_marquer_payee = function_exists('factures_devis_col_payee_ok') && factures_devis_col_payee_ok() && !$facture_est_payee;
+$facture_afficher_marquer_payee = false; // le bouton d’un clic est remplacé par le bloc Paiements (10/09/2026)
+$paiement_bloc = ['type' => 'facture_devis', 'id' => (int) $facture_id];
 $facture_csrf_token = (string) ($_SESSION['admin_csrf'] ?? '');
 
 $facture_recap_label_ht_decomp = 'TOTAL DEVIS';

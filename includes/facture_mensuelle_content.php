@@ -915,6 +915,11 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
             <i class="fas fa-check-circle"></i> <?php echo htmlspecialchars($fm_flash_success); ?>
         </div>
     <?php endif; ?>
+    <?php if (!empty($fm_flash_error) && empty($is_public)): ?>
+        <div class="facture-flash-error" role="alert" style="max-width:918px;margin:0 auto 12px;padding:14px 18px;background:#FBE9EA;border:1px solid #A61E25;border-radius:10px;color:#A61E25;font-size:14px;font-weight:600;">
+            <i class="fas fa-exclamation-triangle"></i> <?php echo htmlspecialchars($fm_flash_error); ?>
+        </div>
+    <?php endif; ?>
     <?php if (empty($is_public)): ?>
         <?php
         $back_url = $facture_back_url ?? ('bl_par_client.php?id=' . (int) ($facture['client_b2b_id'] ?? 0));
@@ -944,6 +949,7 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
                 </a>
             <?php endif; ?>
         </div>
+        <?php if (!empty($paiement_bloc)) { include __DIR__ . '/paiements_facture_bloc.php'; } ?>
     <?php else: ?>
         <div class="facture-actions facture-actions-top">
             <a href="javascript:window.print();"><i class="fas fa-print"></i> Imprimer</a>

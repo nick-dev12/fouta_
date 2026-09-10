@@ -120,7 +120,8 @@ $facture_back_url = '../comptabilite/index.php?tab=bl';
 $facture_back_label = 'Retour aux BL du client';
 
 $fm_show_validate = ($st === 'brouillon') && admin_can_comptabilite();
-$fm_show_marquer_paye = ($st === 'validee') && admin_can_comptabilite();
+$fm_show_marquer_paye = false; // le bouton d’un clic est remplacé par le bloc Paiements (10/09/2026)
+$paiement_bloc = ['type' => 'facture_mensuelle', 'id' => (int) $facture_id];
 $facture_mensuelle_id = $facture_id;
 $admin_csrf_token = $_SESSION['admin_csrf'];
 
@@ -147,6 +148,12 @@ $whatsapp_url = !empty($tel_whatsapp) ? 'https://wa.me/' . $tel_whatsapp . '?tex
 $fm_flash_success = $_SESSION['success_message'] ?? null;
 if (isset($_SESSION['success_message'])) {
     unset($_SESSION['success_message']);
+}
+/* Les refus s'affichent aussi sur la facture (10/09/2026) : « fm_erreur » était
+ * posé par les actions de la facture mais jamais lu sur cette page. */
+$fm_flash_error = $_SESSION['fm_erreur'] ?? null;
+if (isset($_SESSION['fm_erreur'])) {
+    unset($_SESSION['fm_erreur']);
 }
 
 $facture_show_client_zone = true;

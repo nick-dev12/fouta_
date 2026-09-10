@@ -1,6 +1,9 @@
 <?php
 /**
- * Enregistre le paiement d'une facture mensuelle (statut validee → payee)
+ * Ancienne porte « enregistrer le paiement » de la facture mensuelle (10/09/2026).
+ * Elle passait la facture à « payée » d'un clic, sans montant, sans moyen ni
+ * auteur. Le paiement s'enregistre désormais dans le bloc « Paiements » de la
+ * facture (paiement_enregistrer.php) ; la porte reste pour renvoyer proprement.
  */
 session_start();
 
@@ -10,36 +13,7 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
 }
 require_once __DIR__ . '/../includes/require_access.php';
 
-require_once __DIR__ . '/../../includes/admin_permissions.php';
-if (!admin_can_comptabilite()) {
-    header('Location: ../dashboard.php');
-    exit;
-}
-
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: ../comptabilite/index.php?tab=bl');
-    exit;
-}
-
-$token = $_POST['csrf_token'] ?? '';
-$expected = $_SESSION['admin_csrf'] ?? '';
-if ($token === '' || !hash_equals((string) $expected, (string) $token)) {
-    $_SESSION['fm_erreur'] = 'Session expirée. Réessayez.';
-    header('Location: ../comptabilite/index.php?tab=bl');
-    exit;
-}
-
 $facture_mensuelle_id = (int) ($_POST['facture_mensuelle_id'] ?? 0);
-
-require_once __DIR__ . '/../../models/model_factures_mensuelles.php';
-
-if ($facture_mensuelle_id <= 0 || !marquer_facture_mensuelle_comme_payee($facture_mensuelle_id)) {
-    $_SESSION['fm_erreur'] = 'Enregistrement du paiement impossible (facture introuvable ou déjà payée).';
-    $redir_id = $facture_mensuelle_id > 0 ? $facture_mensuelle_id : 0;
-    header('Location: ' . ($redir_id > 0 ? 'facture_mensuelle.php?id=' . $redir_id : '../comptabilite/index.php?tab=bl'));
-    exit;
-}
-
-$_SESSION['success_message'] = 'Paiement enregistré — facture marquée comme payée.';
-header('Location: facture_mensuelle.php?id=' . $facture_mensuelle_id);
+$_SESSION['fm_erreur'] = 'Le paiement s’enregistre désormais avec son montant, son moyen et sa date, dans le bloc Paiements.';
+header('Location: ' . ($facture_mensuelle_id > 0 ? 'facture_mensuelle.php?id=' . $facture_mensuelle_id : '../comptabilite/index.php?tab=bl'));
 exit;

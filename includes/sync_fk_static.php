@@ -70,6 +70,39 @@ if (!function_exists('sync_registry_static_foreign_keys')) {
       'REFERENCED_COLUMN_NAME' => 'id',
     ),
   ),
+  'paiements_factures' =>
+  array (
+    0 =>
+    array (
+      'COLUMN_NAME' => 'admin_id',
+      'REFERENCED_TABLE_NAME' => 'admin',
+      'REFERENCED_COLUMN_NAME' => 'id',
+    ),
+    1 =>
+    array (
+      'COLUMN_NAME' => 'annule_par',
+      'REFERENCED_TABLE_NAME' => 'admin',
+      'REFERENCED_COLUMN_NAME' => 'id',
+    ),
+    2 =>
+    array (
+      'COLUMN_NAME' => 'bl_id',
+      'REFERENCED_TABLE_NAME' => 'bons_livraison',
+      'REFERENCED_COLUMN_NAME' => 'id',
+    ),
+    3 =>
+    array (
+      'COLUMN_NAME' => 'facture_devis_id',
+      'REFERENCED_TABLE_NAME' => 'factures_devis',
+      'REFERENCED_COLUMN_NAME' => 'id',
+    ),
+    4 =>
+    array (
+      'COLUMN_NAME' => 'facture_mensuelle_id',
+      'REFERENCED_TABLE_NAME' => 'factures_mensuelles',
+      'REFERENCED_COLUMN_NAME' => 'id',
+    ),
+  ),
   'caisse_clotures' =>
   array (
     0 =>

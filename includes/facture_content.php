@@ -935,6 +935,7 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
                 </a>
             <?php endif; ?>
         </div>
+        <?php if (!empty($paiement_bloc)) { include __DIR__ . '/paiements_facture_bloc.php'; } ?>
     <?php else: ?>
         <div class="facture-actions facture-actions-top">
             <a href="javascript:window.print();"><i class="fas fa-print"></i> Imprimer</a>

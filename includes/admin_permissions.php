@@ -147,6 +147,16 @@ if (!function_exists('admin_current_role')) {
     }
 
     /**
+     * Enregistrer ou annuler le paiement d'une facture : facture de devis, facture
+     * de bon de livraison, facture mensuelle (10/09/2026). Réglé sur la comptabilité
+     * en attendant la décision de la direction (« qui a le droit de dire qu'une
+     * facture de devis est payée ») : le vendeur ne coche plus la facture de sa vente.
+     */
+    function admin_can_enregistrer_paiement_facture() {
+        return admin_can_comptabilite();
+    }
+
+    /**
      * Redirige si le rôle n'est pas autorisé
      */
     function admin_require_roles($allowed_roles, $redirect = 'dashboard.php') {

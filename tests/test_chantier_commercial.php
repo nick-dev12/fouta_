@@ -760,5 +760,157 @@ if ($base_locale) {
     }
 }
 
+echo "— point 8 : le paiement d'une facture s'enregistre avec son montant, son moyen, sa date et son auteur —\n";
+require_once "$RACINE/models/model_paiements_factures.php";
+require_once "$RACINE/includes/sync_registry.php";
+verifie('la table des paiements existe', true, paiements_factures_table_ok());
+$permissions_src = str_replace("\r\n", "\n", file_get_contents("$RACINE/includes/admin_permissions.php"));
+verifie('le paiement est enregistré par la comptabilité (réglage en attendant la direction)', true,
+    strpos($permissions_src, "function admin_can_enregistrer_paiement_facture() {\n        return admin_can_comptabilite();") !== false);
+verifie('les pages de paiement sont ouvertes à la comptabilité', [true, true],
+    [admin_route_is_allowed('comptabilite', 'devis/paiement_enregistrer.php'), admin_route_is_allowed('comptabilite', 'devis/paiement_annuler.php')]);
+verifie('la migration est au registre du déploiement', true,
+    strpos(file_get_contents("$RACINE/config/update_entreprise.example.php"), "'migrations/run_paiements_factures.php'") !== false);
+$fk_paiements = $db->query("SELECT COLUMN_NAME, REFERENCED_TABLE_NAME FROM information_schema.KEY_COLUMN_USAGE
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'paiements_factures' AND REFERENCED_TABLE_NAME IS NOT NULL")->fetchAll(PDO::FETCH_KEY_PAIR);
+ksort($fk_paiements);
+verifie('chaque paiement vise sa facture et ses auteurs par de vraies clés étrangères',
+    ['admin_id' => 'admin', 'annule_par' => 'admin', 'bl_id' => 'bons_livraison', 'facture_devis_id' => 'factures_devis', 'facture_mensuelle_id' => 'factures_mensuelles'],
+    $fk_paiements);
+$fk_secours_paiements = array_column(sync_registry_static_foreign_keys('paiements_factures') ?: [], 'REFERENCED_TABLE_NAME', 'COLUMN_NAME');
+ksort($fk_secours_paiements);
+verifie('la synchro les retraduit aussi par ses clés de secours', $fk_paiements, $fk_secours_paiements);
+$ordre_synchro = sync_registry_priority_tables();
+verifie('la table est synchronisée après les factures qu’elle vise', true,
+    array_search('paiements_factures', $ordre_synchro, true) > array_search('facture_mensuelle_bl', $ordre_synchro, true));
+$ecran_facture = file_get_contents("$RACINE/admin/devis/facture.php");
+$ecran_bl = file_get_contents("$RACINE/admin/devis/bl_facture.php");
+$ecran_fm = file_get_contents("$RACINE/admin/devis/facture_mensuelle.php");
+verifie('les trois anciennes portes « marquer payée » ne cochent plus rien', [false, false, false], [
+    strpos($ecran_facture, 'marquer_facture_devis_payee(') !== false,
+    strpos($ecran_bl, 'marquer_bl_facture_payee(') !== false,
+    strpos(file_get_contents("$RACINE/admin/devis/facture_mensuelle_marquer_payee.php"), 'marquer_facture_mensuelle_comme_payee(') !== false,
+]);
+verifie('les trois factures montrent le bloc Paiements', [true, true, true], [
+    strpos($ecran_facture, "'type' => 'facture_devis'") !== false,
+    strpos($ecran_bl, "'type' => 'bl'") !== false,
+    strpos($ecran_fm, "'type' => 'facture_mensuelle'") !== false,
+]);
+verifie('la facture du mois affiche enfin ses messages d’erreur', true, strpos($ecran_fm, "\$_SESSION['fm_erreur']") !== false);
+
+if ($base_locale) {
+    $comptable = (int) $db->query("SELECT id FROM admin WHERE email = 'fpl.compta@local.test' AND role = 'comptabilite'")->fetchColumn();
+    $nb_paiements_avant = (int) $db->query('SELECT COUNT(*) FROM paiements_factures')->fetchColumn();
+    $nb_bl_avant = (int) $db->query('SELECT COUNT(*) FROM bons_livraison')->fetchColumn();
+    $facture_essai = $db->query('SELECT * FROM factures_devis WHERE COALESCE(payee, 0) = 0 AND montant_total >= 1000 ORDER BY id LIMIT 1')->fetch(PDO::FETCH_ASSOC);
+    $bl_libre = $db->query("SELECT * FROM bons_livraison b WHERE b.statut = 'valide' AND COALESCE(b.facture_bl_payee, 0) = 0 AND b.total_ht > 0
+        AND NOT EXISTS (SELECT 1 FROM facture_mensuelle_bl f WHERE f.bl_id = b.id) ORDER BY b.id LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+    verifie('un comptable d’essai et une facture de devis impayée existent', [true, true], [$comptable > 0, is_array($facture_essai)]);
+    if ($comptable > 0 && is_array($facture_essai)) {
+        $fid = (int) $facture_essai['id'];
+        $du = round((float) $facture_essai['montant_total'], 2);
+        $moitie = floor($du / 2);
+        $bl_essai_cree = 0;
+        try {
+            $etat = paiement_facture_etat('facture_devis', $fid);
+            verifie('l’état part du total imprimé, rien de payé', [$du, 0.0, $du, true], [$etat['du'], $etat['paye'], $etat['reste'], $etat['payable']]);
+            $r = paiement_facture_enregistrer('facture_devis', $fid, '1000', 'cheque', date('Y-m-d'), '', '', 0);
+            verifie('un paiement sans auteur est refusé', false, !empty($r['ok']));
+            $r = paiement_facture_enregistrer('facture_devis', $fid, '1000', 'bitcoin', date('Y-m-d'), '', '', $comptable);
+            verifie('un moyen de paiement inconnu est refusé', false, !empty($r['ok']));
+            $r = paiement_facture_enregistrer('facture_devis', $fid, (string) ($du + 1000), 'especes', date('Y-m-d'), '', '', $comptable);
+            verifie('un montant au-delà du reste est refusé', [false, true], [!empty($r['ok']), strpos((string) ($r['error'] ?? ''), 'dépasse le reste') !== false]);
+            $r = paiement_facture_enregistrer('facture_devis', $fid, '1000', 'especes', date('Y-m-d', strtotime('+1 day')), '', '', $comptable);
+            verifie('un paiement daté du futur est refusé', false, !empty($r['ok']));
+
+            $r = paiement_facture_enregistrer('facture_devis', $fid, number_format($moitie, 0, ',', ' '), 'cheque',
+                date('Y-m-d', strtotime('-2 days')), 'CHQ 0012345', 'Essai : premier versement', $comptable);
+            verifie('un premier versement partiel est enregistré', [true, false], [!empty($r['ok']), !empty($r['soldee'])]);
+            $etat = paiement_facture_etat('facture_devis', $fid);
+            verifie('la facture reste impayée et le reste baisse', [false, $moitie, round($du - $moitie, 2)], [$etat['payee'], $etat['paye'], $etat['reste']]);
+            $r2 = paiement_facture_enregistrer('facture_devis', $fid, (string) ($du - $moitie), 'wave', date('Y-m-d'), 'TX-ESSAI', 'Essai : solde', $comptable);
+            verifie('le second versement solde la facture et lui donne sa référence FPL', [true, true, true],
+                [!empty($r2['ok']), !empty($r2['soldee']), (bool) preg_match('/^FPL\d{5}$/', (string) ($r2['numero_reference_fpl'] ?? ''))]);
+            $soldee = $db->query("SELECT payee, DATE(date_paiement) AS jour, numero_reference_fpl FROM factures_devis WHERE id = $fid")->fetch(PDO::FETCH_ASSOC);
+            verifie('le drapeau payée et la date du dernier versement sont posés', ['1', date('Y-m-d')], [(string) $soldee['payee'], (string) $soldee['jour']]);
+            $r = paiement_facture_enregistrer('facture_devis', $fid, '1000', 'especes', date('Y-m-d'), '', '', $comptable);
+            verifie('une facture soldée ne reçoit plus de paiement', false, !empty($r['ok']));
+            $lignes = paiement_facture_lignes('facture_devis', $fid);
+            verifie('chaque versement garde montant, moyen, date, référence et auteur',
+                [2, (float) $moitie, 'cheque', date('Y-m-d', strtotime('-2 days')), 'CHQ 0012345', $comptable],
+                [count($lignes), (float) ($lignes[0]['montant'] ?? 0), $lignes[0]['mode_paiement'] ?? null, $lignes[0]['date_paiement'] ?? null, $lignes[0]['reference'] ?? null, (int) ($lignes[0]['admin_id'] ?? 0)]);
+
+            $r = paiement_facture_annuler((int) ($r2['paiement_id'] ?? 0), $comptable, '');
+            verifie('une annulation sans motif est refusée', false, !empty($r['ok']));
+            $r = paiement_facture_annuler((int) ($r2['paiement_id'] ?? 0), $comptable, 'Essai : versement Wave saisi deux fois');
+            verifie('l’annulation rouvre la facture et rend le reste', [true, true, round($du - $moitie, 2)],
+                [!empty($r['ok']), !empty($r['rouverte']), (float) ($r['reste'] ?? -1)]);
+            $rouverte = $db->query("SELECT payee, numero_reference_fpl FROM factures_devis WHERE id = $fid")->fetch(PDO::FETCH_ASSOC);
+            verifie('la facture redevient impayée et garde sa référence FPL', ['0', (string) $soldee['numero_reference_fpl']],
+                [(string) $rouverte['payee'], (string) $rouverte['numero_reference_fpl']]);
+            verifie('le paiement annulé reste visible, avec son motif', 'Essai : versement Wave saisi deux fois',
+                (string) (paiement_facture_lignes('facture_devis', $fid)[1]['motif_annulation'] ?? ''));
+            $r = paiement_facture_annuler((int) ($r2['paiement_id'] ?? 0), $comptable, 'Essai : seconde annulation');
+            verifie('un paiement ne s’annule qu’une fois', false, !empty($r['ok']));
+
+            $bl_brouillon = (int) $db->query("SELECT id FROM bons_livraison WHERE statut = 'brouillon' ORDER BY id LIMIT 1")->fetchColumn();
+            if ($bl_brouillon > 0) {
+                $etat_bl = paiement_facture_etat('bl', $bl_brouillon);
+                verifie('un bon de livraison en brouillon ne se paie pas', [false, true], [$etat_bl['payable'], strpos((string) $etat_bl['raison'], 'Validez') === 0]);
+            }
+            $bl_dans_fm = (int) $db->query('SELECT bl_id FROM facture_mensuelle_bl ORDER BY bl_id LIMIT 1')->fetchColumn();
+            if ($bl_dans_fm > 0) {
+                verifie('un bon regroupé dans une facture du mois ne se paie pas seul', false, paiement_facture_etat('bl', $bl_dans_fm)['payable']);
+            }
+            $fm_payee = (int) $db->query("SELECT id FROM factures_mensuelles WHERE statut = 'payee' ORDER BY id LIMIT 1")->fetchColumn();
+            if ($fm_payee > 0) {
+                $etat_fm = paiement_facture_etat('facture_mensuelle', $fm_payee);
+                verifie('une facture du mois payée avant le registre le dit, sans ligne inventée', [true, true, 0, false],
+                    [$etat_fm['payee'], $etat_fm['anciens_sans_detail'], count($etat_fm['paiements']), $etat_fm['payable']]);
+            }
+            if (!is_array($bl_libre)) {
+                // Aucun bon validé hors facture du mois en base locale : un bon d'essai, supprimé à la fin.
+                $client_essai = (int) $db->query('SELECT client_b2b_id FROM bons_livraison ORDER BY id LIMIT 1')->fetchColumn();
+                $db->prepare("INSERT INTO bons_livraison (numero_bl, client_b2b_id, admin_createur_id, statut, date_bl, total_ht, notes)
+                    VALUES ('BL-ESSAI-P8', :client, :admin, 'valide', CURDATE(), 5000, 'Essai : bon libre du point 8')")
+                    ->execute(['client' => $client_essai, 'admin' => $comptable]);
+                $bl_essai_cree = (int) $db->lastInsertId();
+                $bl_libre = $db->query("SELECT * FROM bons_livraison WHERE id = $bl_essai_cree")->fetch(PDO::FETCH_ASSOC);
+            }
+            if (is_array($bl_libre)) {
+                $bid = (int) $bl_libre['id'];
+                $etat_bl = paiement_facture_etat('bl', $bid);
+                $rb = paiement_facture_enregistrer('bl', $bid, (string) $etat_bl['du'], 'virement', date('Y-m-d'), 'VIR-ESSAI', 'Essai : bon payé seul', $comptable);
+                verifie('un bon payé seul en totalité est marqué payé', [true, '1'],
+                    [!empty($rb['soldee']), (string) $db->query("SELECT facture_bl_payee FROM bons_livraison WHERE id = $bid")->fetchColumn()]);
+                paiement_facture_annuler((int) ($rb['paiement_id'] ?? 0), $comptable, 'Essai : annulation du bon');
+                verifie('son annulation le rend à la facture du mois', '0',
+                    (string) $db->query("SELECT facture_bl_payee FROM bons_livraison WHERE id = $bid")->fetchColumn());
+            }
+        } finally {
+            $db->prepare("DELETE FROM paiements_factures WHERE facture_devis_id = ? AND notes LIKE 'Essai : %'")->execute([$fid]);
+            $db->prepare('UPDATE factures_devis SET payee = :p, date_paiement = :d, numero_reference_fpl = :n WHERE id = :id')
+                ->execute(['p' => $facture_essai['payee'], 'd' => $facture_essai['date_paiement'], 'n' => $facture_essai['numero_reference_fpl'], 'id' => $fid]);
+            if (is_array($bl_libre)) {
+                $db->prepare("DELETE FROM paiements_factures WHERE bl_id = ? AND notes LIKE 'Essai : %'")->execute([(int) $bl_libre['id']]);
+                if ($bl_essai_cree > 0) {
+                    $db->prepare("DELETE FROM bons_livraison WHERE id = ? AND numero_bl = 'BL-ESSAI-P8'")->execute([$bl_essai_cree]);
+                } else {
+                    $db->prepare('UPDATE bons_livraison SET facture_bl_payee = :p, date_paiement_bl = :d, date_modification = :m WHERE id = :id')
+                        ->execute(['p' => $bl_libre['facture_bl_payee'], 'd' => $bl_libre['date_paiement_bl'], 'm' => $bl_libre['date_modification'], 'id' => (int) $bl_libre['id']]);
+                }
+            }
+        }
+        $facture_remise = $db->query("SELECT * FROM factures_devis WHERE id = $fid")->fetch(PDO::FETCH_ASSOC);
+        $bl_remis = is_array($bl_libre) ? $db->query('SELECT * FROM bons_livraison WHERE id = ' . (int) $bl_libre['id'])->fetch(PDO::FETCH_ASSOC) : null;
+        verifie('base remise à l’état initial : paiements, bons, facture et bon d’essai', [$nb_paiements_avant, $nb_bl_avant, true, true], [
+            (int) $db->query('SELECT COUNT(*) FROM paiements_factures')->fetchColumn(),
+            (int) $db->query('SELECT COUNT(*) FROM bons_livraison')->fetchColumn(),
+            $facture_remise == $facture_essai,
+            $bl_essai_cree > 0 ? $bl_remis === false : (!is_array($bl_libre) || $bl_remis == $bl_libre),
+        ]);
+    }
+}
+
 echo "\n$ok OK / $ko KO\n";
 exit($ko === 0 ? 0 : 1);

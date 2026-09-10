@@ -31,19 +31,10 @@ if ($bl_id <= 0 || !bl_tables_available()) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['marquer_facture_payee'])) {
-    $tok = (string) ($_POST['csrf_token'] ?? '');
-    if (!admin_can_comptabilite()) {
-        $_SESSION['flash_facture_error'] = 'Action réservée à la comptabilité.';
-    } elseif ($tok === '' || !hash_equals((string) ($_SESSION['admin_csrf'] ?? ''), $tok)) {
-        $_SESSION['flash_facture_error'] = 'Session expirée. Réessayez.';
-    } else {
-        $r = marquer_bl_facture_payee($bl_id);
-        if (!empty($r['ok'])) {
-            $_SESSION['success_message'] = 'Facture BL marquée comme payée. Ce bon ne sera plus inclus dans les factures mensuelles groupées.';
-        } else {
-            $_SESSION['flash_facture_error'] = $r['error'] ?? 'Action impossible.';
-        }
-    }
+    /* UNE FACTURE NE SE COCHE PLUS PAYÉE (10/09/2026). Ce bouton la marquait payée
+     * d'un clic, sans montant, sans moyen ni auteur. Le paiement s'enregistre dans
+     * le bloc « Paiements » (paiement_enregistrer.php), par la comptabilité. */
+    $_SESSION['flash_facture_error'] = 'Le paiement s’enregistre désormais avec son montant, son moyen et sa date, dans le bloc Paiements.';
     header('Location: bl_facture.php?id=' . $bl_id);
     exit;
 }
@@ -157,11 +148,8 @@ if (!empty($_SESSION['flash_facture_error'])) {
    la facture du mois. */
 $bl_fm_numero = bl_facture_mensuelle_du_bl($bl_id);
 $facture_est_payee = $bl_facture_payee;
-$facture_afficher_marquer_payee = admin_can_comptabilite()
-    && bl_col_facture_payee_ok()
-    && $bl_valide
-    && !$bl_facture_payee
-    && $bl_fm_numero === null;
+$facture_afficher_marquer_payee = false; // le bouton d’un clic est remplacé par le bloc Paiements (10/09/2026)
+$paiement_bloc = ['type' => 'bl', 'id' => $bl_id];
 $facture_csrf_token = (string) ($_SESSION['admin_csrf'] ?? '');
 $facture_marquer_payee_confirm = 'Confirmer le paiement ? Ce bon de livraison ne sera plus proposé dans les factures mensuelles groupées.';
 

@@ -40,6 +40,8 @@ return [
         'migrations/run_commandes_statut_paye.php',
         // Clôture de caisse et historique des corrections de paiement (10/09/2026) : sur foutasvr ET le VPS.
         'migrations/run_caisse_cloture.php',
+        // Paiements des factures (devis, BL, facture du mois) avec montant, moyen et auteur (10/09/2026) : sur foutasvr ET le VPS.
+        'migrations/run_paiements_factures.php',
     ],
 
     // Migrations lourdes / ponctuelles — exclues du mode --all-migrations
