@@ -174,7 +174,11 @@ $tva_incl = isset($_POST['inclure_tva']) && (string) $_POST['inclure_tva'] === '
 $res = create_bl_manuel((int) $client['id'], $date_bl, $notes !== '' ? $notes : null, $lignes, (int) $_SESSION['admin_id'], $statut, $tva_incl, $adresse_client !== '' ? $adresse_client : null);
 
 if (!empty($res['success'])) {
-    $_SESSION['success_message'] = 'Bon de livraison ' . ($res['numero_bl'] ?? '') . ' enregistré.';
+    if (!empty($res['reste_brouillon'])) {
+        $_SESSION['bl_erreur'] = 'Bon de livraison ' . ($res['numero_bl'] ?? '') . ' enregistré en brouillon, pas validé : ' . ($res['message'] ?? '');
+    } else {
+        $_SESSION['success_message'] = 'Bon de livraison ' . ($res['numero_bl'] ?? '') . ' enregistré.';
+    }
     header('Location: bl_voir.php?id=' . (int) $res['bl_id']);
     exit;
 }

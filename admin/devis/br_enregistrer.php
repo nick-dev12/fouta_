@@ -48,7 +48,7 @@ $admin_id = (int) ($_SESSION['admin_id'] ?? 0);
 $result = br_create_bon_retour($bl_id, $admin_id, $notes, $quantites);
 
 if (!empty($result['success'])) {
-    $_SESSION['success_message'] = 'Bon de retour ' . ($result['numero_br'] ?? '') . ' enregistré.';
+    $_SESSION['success_message'] = 'Bon de retour ' . ($result['numero_br'] ?? '') . ' enregistré. ' . (!empty($result['sans_entree_stock']) ? 'Rien n’est rentré en stock : ce bon de livraison, validé avant le 10/09/2026, n’avait pas sorti la marchandise.' : 'La marchandise est rentrée en stock.');
     header('Location: br_voir.php?id=' . (int) ($result['br_id'] ?? 0));
     exit;
 }

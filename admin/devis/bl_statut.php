@@ -46,7 +46,15 @@ if ($bl_cur && bl_est_statut_verrouille($bl_cur['statut'] ?? '') && $nouveau ===
     exit;
 }
 
-if ($bl_id > 0) {
+if ($bl_id > 0 && $nouveau === 'valide') {
+    /* Valider sort la marchandise du stock (10/09/2026) : voir bl_valider_et_sortir_stock(). */
+    $res_validation = bl_valider_et_sortir_stock($bl_id, (int) ($_SESSION['admin_id'] ?? 0));
+    if ($res_validation['success']) {
+        $_SESSION['success_message'] = $res_validation['message'];
+    } else {
+        $_SESSION['bl_erreur'] = $res_validation['message'];
+    }
+} elseif ($bl_id > 0) {
     if (update_bl_statut($bl_id, $nouveau)) {
         if ($nouveau === 'valide') {
             $msg = 'BL validé pour la comptabilité.';

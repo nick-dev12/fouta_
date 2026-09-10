@@ -51,6 +51,19 @@ if (!$client) {
 
 $detail_bls = get_bls_et_lignes_facture_mensuelle($facture_id);
 
+/* LES RETOURS SUR LA FACTURE (10/09/2026) : listés et déduits du total. Une
+   facture déjà validée ou payée garde son montant ; si des retours n'y ont pas
+   été déduits, l'écart est signalé pour un avoir. */
+$fm_retours = [];
+$fm_montants = null;
+try {
+    $fm_retours = facture_mensuelle_retours($facture_id);
+    $fm_montants = facture_mensuelle_montants($facture_id);
+} catch (PDOException $e) {
+    error_log('[facture_mensuelle.php retours] ' . $e->getMessage());
+}
+$fm_ecart_avoir = $fm_montants !== null ? round((float) $facture_fm['total_ht'] - $fm_montants['net'], 2) : 0.0;
+
 $net_ht_fm = (float) $facture_fm['total_ht'];
 $taux_fm = fiscal_taux_tva_pourcent();
 $fm_tva_col = function_exists('factures_mensuelles_tva_incluse_column_ok') && factures_mensuelles_tva_incluse_column_ok();

@@ -1051,6 +1051,18 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
                 <h3>Information de paiement</h3>
             </div>
             <div class="facture-summary">
+                <?php if (!empty($fm_retours) && !empty($fm_montants)): ?>
+                <div class="row">
+                    <span>BONS DE LIVRAISON</span>
+                    <span><?php echo number_format((float) $fm_montants['bl'], 2, ',', ' '); ?> CFA</span>
+                </div>
+                <?php foreach ($fm_retours as $fm_r): ?>
+                <div class="row facture-row-retour">
+                    <span>Retour <?php echo htmlspecialchars((string) $fm_r['numero_br']); ?> sur <?php echo htmlspecialchars((string) $fm_r['numero_bl']); ?></span>
+                    <span>− <?php echo number_format((float) $fm_r['total_ht_retour'], 2, ',', ' '); ?> CFA</span>
+                </div>
+                <?php endforeach; ?>
+                <?php endif; ?>
                 <?php if ($fm_afficher_detail_tva): ?>
                 <?php if ($fm_tva_incl): ?>
                 <div class="row">
@@ -1083,6 +1095,12 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
                 <div class="row total">
                     <span>TOTAL</span>
                     <span><?php echo number_format($fm_montant_total, 2, ',', ' '); ?> CFA</span>
+                </div>
+                <?php endif; ?>
+                <?php if (!empty($fm_ecart_avoir) && $fm_ecart_avoir > 0.005): ?>
+                <div class="row facture-row-avoir no-print" style="color:#A32D24;font-weight:600">
+                    <span>Retours non déduits de cette facture : avoir à émettre</span>
+                    <span><?php echo number_format((float) $fm_ecart_avoir, 2, ',', ' '); ?> CFA</span>
                 </div>
                 <?php endif; ?>
                 <?php if (!$fm_affiche_comme_reglee): ?>

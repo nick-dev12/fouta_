@@ -531,6 +531,128 @@ function get_lignes_bl($bl_id) {
     }
 }
 
+/**
+ * LE STOCK SORT QUAND LE BON DE LIVRAISON EST VALIDÉ (10/09/2026).
+ *
+ * Avant, valider un BL ne touchait pas au stock : la pièce n°2 est partie dix
+ * fois par BL sans une seule sortie au journal, alors que le bon de retour,
+ * lui, faisait rentrer la marchandise. Désormais la validation, d'un seul
+ * geste : verrouille chaque pièce, vérifie son stock, le baisse, écrit la
+ * sortie au journal (reference_type « bon_livraison »), puis passe le bon à
+ * « valide ». S'il manque une seule pièce, rien n'est écrit et le bon reste
+ * brouillon, avec le nom de la pièce en cause.
+ *
+ * @return array{success:bool, message:string}
+ */
+function bl_valider_et_sortir_stock($bl_id, $admin_id)
+{
+    global $db;
+    $bl_id = (int) $bl_id;
+    $bl = $bl_id > 0 ? get_bl_by_id($bl_id) : false;
+    if (!$bl) {
+        return ['success' => false, 'message' => 'Bon de livraison introuvable.'];
+    }
+    if (bl_est_statut_verrouille($bl['statut'] ?? '')) {
+        return ['success' => false, 'message' => 'Ce bon de livraison est déjà validé.'];
+    }
+    // Peut modifier la structure de la table (commit implicite) : AVANT la transaction.
+    if (!bl_ensure_statut_enum_bl()) {
+        return ['success' => false, 'message' => 'Le statut « validé » ne peut pas être enregistré : vérifiez la colonne statut des bons de livraison.'];
+    }
+    require_once __DIR__ . '/model_mouvements_stock.php';
+
+    $besoins = [];
+    foreach (get_lignes_bl($bl_id) as $l) {
+        $pid = (int) ($l['produit_id'] ?? 0);
+        $q = (int) round((float) ($l['quantite'] ?? 0));
+        if ($pid > 0 && $q > 0) {
+            $besoins[$pid] = ($besoins[$pid] ?? 0) + $q;
+        }
+    }
+    $numero = (string) ($bl['numero_bl'] ?? '');
+    $baisses = [];
+    try {
+        $db->beginTransaction();
+        $lire = $db->prepare('SELECT id, nom, stock FROM produits WHERE id = :id FOR UPDATE');
+        $sortir = $db->prepare('UPDATE produits SET stock = stock - :q, date_modification = NOW() WHERE id = :id AND stock >= :q2');
+        foreach ($besoins as $pid => $q) {
+            $lire->execute(['id' => $pid]);
+            $p = $lire->fetch(PDO::FETCH_ASSOC);
+            if (!$p) {
+                throw new RuntimeException('Une pièce de ce bon n’existe plus (#' . $pid . ').');
+            }
+            $avant = (int) $p['stock'];
+            if ($avant < $q) {
+                throw new RuntimeException('Stock insuffisant pour « ' . $p['nom'] . ' » : ' . $avant . ' en stock, ' . $q . ' sur le bon.');
+            }
+            $sortir->execute(['q' => $q, 'q2' => $q, 'id' => $pid]);
+            if ($sortir->rowCount() !== 1) {
+                throw new RuntimeException('Le stock de « ' . $p['nom'] . ' » a changé pendant la validation : réessayez.');
+            }
+            $mv = create_stock_mouvement([
+                'type' => 'sortie',
+                'produit_id' => $pid,
+                'quantite' => $q,
+                'quantite_avant' => $avant,
+                'quantite_apres' => $avant - $q,
+                'reference_type' => 'bon_livraison',
+                'reference_id' => $bl_id,
+                'reference_numero' => $numero,
+                'notes' => 'Livraison B2B — bon ' . $numero,
+                'admin_id' => (int) $admin_id,
+            ]);
+            if ($mv === false) {
+                throw new RuntimeException('La sortie de stock de « ' . $p['nom'] . ' » n’a pas pu être écrite au journal.');
+            }
+            $baisses[$pid] = [$avant, $avant - $q];
+        }
+        $valider = $db->prepare("UPDATE bons_livraison SET statut = 'valide', date_modification = NOW() WHERE id = :id AND statut <> 'valide'");
+        $valider->execute(['id' => $bl_id]);
+        if ($valider->rowCount() !== 1) {
+            throw new RuntimeException('Ce bon de livraison vient d’être validé par ailleurs.');
+        }
+        $db->commit();
+    } catch (Throwable $e) {
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
+        error_log('[bl_valider_et_sortir_stock] BL ' . $bl_id . ' : ' . $e->getMessage());
+        return ['success' => false, 'message' => $e instanceof RuntimeException ? $e->getMessage() : 'La validation du bon de livraison a échoué.'];
+    }
+
+    bl_attribuer_reference_fpl_si_besoin($bl_id);
+    // Les alertes de seuil partent après l'écriture définitive, jamais pour une baisse annulée.
+    if ($baisses !== [] && is_file(__DIR__ . '/../includes/stock_alertes_notifications.php')) {
+        require_once __DIR__ . '/../includes/stock_alertes_notifications.php';
+        if (function_exists('stock_alertes_notifier_baisse_stock')) {
+            foreach ($baisses as $pid => $ab) {
+                stock_alertes_notifier_baisse_stock($pid, $ab[0], $ab[1]);
+            }
+        }
+    }
+    return ['success' => true, 'message' => 'Bon de livraison ' . $numero . ' validé : la marchandise est sortie du stock.'];
+}
+
+/**
+ * Ce BL a-t-il sorti sa marchandise du stock ? (10/09/2026) Les bons validés
+ * avant cette date ne l'ont jamais fait : un retour sur eux ne doit pas faire
+ * rentrer en stock ce qui n'en est jamais sorti.
+ *
+ * @return bool
+ */
+function bl_a_sorti_stock($bl_id)
+{
+    global $db;
+    try {
+        $st = $db->prepare("SELECT COUNT(*) FROM stock_mouvements WHERE reference_type = 'bon_livraison' AND reference_id = :id AND type = 'sortie' AND sync_deleted_at IS NULL");
+        $st->execute(['id' => (int) $bl_id]);
+        return (int) $st->fetchColumn() > 0;
+    } catch (PDOException $e) {
+        error_log('[bl_a_sorti_stock] ' . $e->getMessage());
+        return false;
+    }
+}
+
 function update_bl_statut($bl_id, $statut) {
     global $db;
     if (!bl_tables_available() || !in_array($statut, ['brouillon', 'valide'], true)) {
@@ -761,6 +883,10 @@ function create_bl_manuel($client_b2b_id, $date_bl, $notes, $lignes, $admin_id, 
     if (!in_array($statut, ['brouillon', 'valide'], true)) {
         $statut = 'brouillon';
     }
+    /* Un bon demandé « validé » naît brouillon, puis bl_valider_et_sortir_stock()
+     * sort le stock et le valide d'un seul geste (10/09/2026). S'il manque du
+     * stock, il reste brouillon et l'écran le dit. */
+    $statut_demande = $statut;
     $total_ht = 0;
     $clean = [];
     foreach ($lignes as $i => $l) {
@@ -807,7 +933,7 @@ function create_bl_manuel($client_b2b_id, $date_bl, $notes, $lignes, $admin_id, 
                 'numero_bl' => $numero,
                 'client_b2b_id' => $client_b2b_id,
                 'admin_id' => $admin_id ? (int) $admin_id : null,
-                'statut' => $statut,
+                'statut' => 'brouillon',
                 'date_bl' => $date_bl ?: date('Y-m-d'),
                 'total_ht' => $total_ht,
                 'tva_incluse' => $tva_flag ? 1 : 0,
@@ -823,7 +949,7 @@ function create_bl_manuel($client_b2b_id, $date_bl, $notes, $lignes, $admin_id, 
                 'numero_bl' => $numero,
                 'client_b2b_id' => $client_b2b_id,
                 'admin_id' => $admin_id ? (int) $admin_id : null,
-                'statut' => $statut,
+                'statut' => 'brouillon',
                 'date_bl' => $date_bl ?: date('Y-m-d'),
                 'total_ht' => $total_ht,
                 'notes' => $notes !== '' ? $notes : null,
@@ -859,7 +985,6 @@ function create_bl_manuel($client_b2b_id, $date_bl, $notes, $lignes, $admin_id, 
             ]);
         }
         $db->commit();
-        return ['success' => true, 'bl_id' => $bl_id, 'numero_bl' => $numero];
     } catch (PDOException $e) {
         $db->rollBack();
         error_log('[create_bl_manuel] ' . $e->getMessage());
@@ -869,6 +994,14 @@ function create_bl_manuel($client_b2b_id, $date_bl, $notes, $lignes, $admin_id, 
         }
         return ['success' => false, 'message' => $msg];
     }
+
+    if ($statut_demande === 'valide') {
+        $validation = bl_valider_et_sortir_stock($bl_id, $admin_id);
+        if (!$validation['success']) {
+            return ['success' => true, 'bl_id' => $bl_id, 'numero_bl' => $numero, 'reste_brouillon' => true, 'message' => $validation['message']];
+        }
+    }
+    return ['success' => true, 'bl_id' => $bl_id, 'numero_bl' => $numero];
 }
 
 /**

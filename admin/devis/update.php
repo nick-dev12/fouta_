@@ -46,6 +46,11 @@ if (!$d || ($d['statut'] ?? '') !== 'brouillon') {
     header('Location: modifier.php?id=' . $devis_id);
     exit;
 }
+if (devis_est_facture($devis_id)) {
+    $_SESSION['error_devis'] = 'Ce devis est déjà facturé : il ne se modifie plus. Pour corriger, établissez un nouveau devis.';
+    header('Location: devis.php');
+    exit;
+}
 
 $client_nom = trim($_POST['client_nom'] ?? '');
 $client_prenom = trim($_POST['client_prenom'] ?? '');

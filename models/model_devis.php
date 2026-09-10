@@ -463,6 +463,14 @@ function update_devis($devis_id, $items, $infos) {
     if (!$ex || ($ex['statut'] ?? '') !== 'brouillon') {
         return false;
     }
+    /* UNE FACTURE ÉMISE FIGE SON DEVIS (10/09/2026). La facture recopie le total
+     * le jour où elle naît, mais elle affiche les lignes ACTUELLES du devis :
+     * modifier le devis ensuite produisait un document contradictoire, même
+     * payé (DEV00010 : lignes à 500 000 FCFA, facture INV-DEV00011 à 130 000).
+     * Le statut « brouillon » ne protégeait rien : aucun écran ne le change. */
+    if (devis_est_facture($devis_id)) {
+        return false;
+    }
 
     try {
         $db->beginTransaction();
@@ -602,4 +610,17 @@ function delete_devis($devis_id) {
         error_log('[delete_devis] ' . $e->getMessage());
         return false;
     }
+}
+
+/**
+ * Un devis a-t-il déjà sa facture ? (10/09/2026) Si oui, il est figé : voir
+ * update_devis(). Une seule facture par devis (index unique sur devis_id).
+ *
+ * @param int $devis_id
+ * @return bool
+ */
+function devis_est_facture($devis_id)
+{
+    require_once __DIR__ . '/model_factures_devis.php';
+    return (bool) get_facture_devis_by_devis((int) $devis_id);
 }

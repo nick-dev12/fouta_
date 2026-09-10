@@ -43,6 +43,11 @@ if (!$devis || ($devis['statut'] ?? '') !== 'brouillon') {
     header('Location: devis.php');
     exit;
 }
+if (devis_est_facture($devis_id)) {
+    $_SESSION['error_devis'] = 'Ce devis est déjà facturé : il ne se modifie plus. Pour corriger, établissez un nouveau devis.';
+    header('Location: devis.php');
+    exit;
+}
 
 $produits = get_produits_by_devis($devis_id);
 $zones_livraison = get_all_zones_livraison('actif');

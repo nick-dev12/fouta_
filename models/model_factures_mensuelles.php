@@ -283,6 +283,62 @@ function generate_numero_facture_mensuelle() {
 }
 
 /**
+ * Les montants d'une facture mensuelle (10/09/2026) : total des BL rattachés,
+ * total de leurs bons de retour, et net à facturer. Lève PDOException : un
+ * appelant ne doit jamais écrire un total calculé sur une lecture ratée.
+ *
+ * @return array{bl:float, retours:float, net:float}
+ */
+function facture_mensuelle_montants($facture_mensuelle_id)
+{
+    global $db;
+    $fid = (int) $facture_mensuelle_id;
+    $st = $db->prepare('SELECT COALESCE(SUM(b.total_ht), 0) FROM facture_mensuelle_bl f INNER JOIN bons_livraison b ON b.id = f.bl_id WHERE f.facture_mensuelle_id = :fid');
+    $st->execute(['fid' => $fid]);
+    $bl = (float) $st->fetchColumn();
+    $st = $db->prepare('SELECT COALESCE(SUM(r.total_ht_retour), 0) FROM facture_mensuelle_bl f INNER JOIN bons_retour r ON r.bl_id = f.bl_id WHERE f.facture_mensuelle_id = :fid AND r.sync_deleted_at IS NULL');
+    $st->execute(['fid' => $fid]);
+    $retours = (float) $st->fetchColumn();
+    return ['bl' => $bl, 'retours' => $retours, 'net' => round(max(0.0, $bl - $retours), 2)];
+}
+
+/**
+ * Les bons de retour des BL d'une facture mensuelle, pour les afficher.
+ *
+ * @return array<int, array<string, mixed>>
+ */
+function facture_mensuelle_retours($facture_mensuelle_id)
+{
+    global $db;
+    $st = $db->prepare('SELECT r.id, r.numero_br, b.numero_bl, r.date_retour, r.total_ht_retour
+        FROM facture_mensuelle_bl f
+        INNER JOIN bons_retour r ON r.bl_id = f.bl_id
+        INNER JOIN bons_livraison b ON b.id = f.bl_id
+        WHERE f.facture_mensuelle_id = :fid AND r.sync_deleted_at IS NULL
+        ORDER BY r.date_retour, r.id');
+    $st->execute(['fid' => (int) $facture_mensuelle_id]);
+    return $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+}
+
+/**
+ * Après un bon de retour, la facture du mois encore en brouillon qui contient
+ * ce BL est recalculée, retours déduits (10/09/2026).
+ */
+function facture_mensuelle_recalculer_brouillon_du_bl($bl_id)
+{
+    global $db;
+    try {
+        $st = $db->prepare("SELECT fm.id FROM facture_mensuelle_bl f INNER JOIN factures_mensuelles fm ON fm.id = f.facture_mensuelle_id WHERE f.bl_id = :bl AND fm.statut = 'brouillon'");
+        $st->execute(['bl' => (int) $bl_id]);
+        foreach ($st->fetchAll(PDO::FETCH_COLUMN) as $fid) {
+            recalc_total_facture_mensuelle((int) $fid);
+        }
+    } catch (PDOException $e) {
+        error_log('[facture_mensuelle_recalculer_brouillon_du_bl] ' . $e->getMessage());
+    }
+}
+
+/**
  * Recalcule total_ht à partir des BL liés
  */
 function recalc_total_facture_mensuelle($facture_mensuelle_id) {
@@ -292,17 +348,14 @@ function recalc_total_facture_mensuelle($facture_mensuelle_id) {
         return false;
     }
     try {
-        $stmt = $db->prepare('
-            SELECT COALESCE(SUM(b.total_ht), 0) AS t
-            FROM facture_mensuelle_bl f
-            INNER JOIN bons_livraison b ON b.id = f.bl_id
-            WHERE f.facture_mensuelle_id = :fid
-        ');
-        $stmt->execute(['fid' => $facture_mensuelle_id]);
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        $total = (float) ($row['t'] ?? 0);
-        $stmt = $db->prepare('UPDATE factures_mensuelles SET total_ht = :t, date_modification = NOW() WHERE id = :id');
-        return $stmt->execute(['t' => $total, 'id' => $facture_mensuelle_id]);
+        /* LES RETOURS SE DÉDUISENT (10/09/2026). Le total additionnait les BL
+         * sans leurs bons de retour : FM202606-00002 a facturé et encaissé
+         * 12 000 FCFA de marchandise rendue. Net = BL − retours de ces BL.
+         * Une facture déjà validée ou payée n'est jamais recalculée : sa
+         * correction passe par un avoir. */
+        $montants = facture_mensuelle_montants($facture_mensuelle_id);
+        $stmt = $db->prepare("UPDATE factures_mensuelles SET total_ht = :t, date_modification = NOW() WHERE id = :id AND statut = 'brouillon'");
+        return $stmt->execute(['t' => $montants['net'], 'id' => $facture_mensuelle_id]);
     } catch (PDOException $e) {
         error_log('[recalc_total_facture_mensuelle] ' . $e->getMessage());
         return false;

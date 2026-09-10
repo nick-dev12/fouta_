@@ -221,6 +221,10 @@ function stock_mouvement_motif_libelle(array $m)
         case 'transfert_emplacement': return 'Transfert d\'emplacement';
         case 'ajustement': return 'Ajustement';
         case 'creation_produit': return 'Stock initial';
+        case 'caisse_vente': return 'Vente en caisse';
+        case 'bon_livraison': return 'Livraison B2B';
+        case 'bon_retour': return 'Retour B2B';
+        case 'commande': return 'Commande du site';
     }
     if ($ref !== '') {
         return ucfirst(str_replace('_', ' ', $ref));

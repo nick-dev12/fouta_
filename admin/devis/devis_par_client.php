@@ -94,7 +94,7 @@ $devis_items = $filtre['devis'];
                         </div>
                         <div class="commande-actions-devis devis-card-actions">
                             <a href="details.php?id=<?php echo $devis_id_row; ?>" class="btn-view"><i class="fas fa-eye"></i> Voir</a>
-                            <?php if ($is_brouillon): ?>
+                            <?php if ($is_brouillon && !devis_est_facture($devis_id_row)): ?>
                                 <a href="modifier.php?id=<?php echo $devis_id_row; ?>" class="btn-secondary"><i class="fas fa-edit"></i> Modifier</a>
                             <?php endif; ?>
                         </div>

@@ -95,6 +95,15 @@ function br_create_bon_retour($bl_id, $admin_id, $notes, array $quantites_par_li
     if (!$bl) {
         return ['success' => false, 'message' => 'Bon de livraison introuvable.'];
     }
+    /* UN RETOUR SE FAIT SUR UN BON VALIDÉ (10/09/2026). Sur un brouillon, le bon
+     * de retour bloquait le BL : ni modifiable (ses lignes sont référencées), ni
+     * supprimable, et la comptabilité ne peut pas le valider. */
+    if (!bl_est_statut_verrouille($bl['statut'] ?? '')) {
+        return ['success' => false, 'message' => 'Un bon de retour se fait sur un bon de livraison validé. Tant qu’il est en brouillon, corrigez directement ses lignes.'];
+    }
+    /* Ce qui rentre en stock doit en être sorti : un BL validé avant le 10/09/2026
+     * n'a jamais sorti sa marchandise, son retour n'y fait donc rien rentrer. */
+    $bl_a_sorti = bl_a_sorti_stock($bl_id);
     $lignes = get_lignes_bl($bl_id);
     if (empty($lignes)) {
         return ['success' => false, 'message' => 'Aucune ligne sur ce bon de livraison.'];
@@ -182,7 +191,8 @@ function br_create_bon_retour($bl_id, $admin_id, $notes, array $quantites_par_li
         require_once __DIR__ . '/model_produits.php';
         require_once __DIR__ . '/model_mouvements_stock.php';
 
-        foreach ($rows_insert as $r) {
+        $rows_stock = $bl_a_sorti ? $rows_insert : [];
+        foreach ($rows_stock as $r) {
             $pid = !empty($r['produit_id']) ? (int) $r['produit_id'] : 0;
             if ($pid <= 0) {
                 continue;
@@ -218,7 +228,10 @@ function br_create_bon_retour($bl_id, $admin_id, $notes, array $quantites_par_li
         }
 
         $db->commit();
-        return ['success' => true, 'br_id' => $br_id, 'numero_br' => $numero];
+        /* La facture du mois encore en brouillon suit le retour (10/09/2026). */
+        require_once __DIR__ . '/model_factures_mensuelles.php';
+        facture_mensuelle_recalculer_brouillon_du_bl($bl_id);
+        return ['success' => true, 'br_id' => $br_id, 'numero_br' => $numero, 'sans_entree_stock' => !$bl_a_sorti];
     } catch (PDOException $e) {
         $db->rollBack();
         error_log('[br_create_bon_retour] ' . $e->getMessage());
