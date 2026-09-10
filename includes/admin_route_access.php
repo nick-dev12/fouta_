@@ -215,6 +215,11 @@ if (!function_exists('admin_route_relative_path')) {
             if ($p === 'parametres.php' || strpos($p, 'parametres/') === 0) {
                 return $acces_sans_restriction;
             }
+            /* La direction consulte les clôtures de caisse et les corrections de
+             * paiement (10/09/2026) ; le reste de la caisse lui reste fermé. */
+            if ($r === 'admin' && $p === 'caisse/cloture.php') {
+                return true;
+            }
             if ($r === 'admin') {
                 $interdits = ['caisse/', 'zones-livraison/', 'commandes/', 'users/', 'comptes/'];
                 foreach ($interdits as $prefix) {
@@ -271,6 +276,10 @@ if (!function_exists('admin_route_relative_path')) {
                 if ($p === 'commandes/historique-ventes.php') {
                     return true;
                 }
+                // Les clôtures de caisse et les corrections de paiement, en lecture (10/09/2026).
+                if ($p === 'caisse/cloture.php') {
+                    return true;
+                }
                 if ($p === 'devis/devis_par_client.php') {
                     return true;
                 }
@@ -302,6 +311,8 @@ if (!function_exists('admin_route_relative_path')) {
                 return $p === 'caisse/encaisser-ticket.php'
                     || $p === 'caisse/historique-encaissements.php'
                     || $p === 'caisse/depenses.php'
+                    // Clôture de caisse (10/09/2026) : compter le tiroir, constater l'écart.
+                    || $p === 'caisse/cloture.php'
                     || $p === 'caisse/post.php';
 
             case 'gestion_stock':

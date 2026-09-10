@@ -1610,7 +1610,7 @@ function caisse_finaliser_vente_en_attente($vente_id, $caissier_admin_id, $mode_
  *
  * @return array{ok:bool, vente_id?:int, numero_ticket?:string, error?:string}
  */
-function caisse_corriger_paiement_vente_payee($vente_id, $mode_paiement, array $paiement_details)
+function caisse_corriger_paiement_vente_payee($vente_id, $mode_paiement, array $paiement_details, $admin_id = 0, $motif = '')
 {
     global $db;
 
@@ -1629,6 +1629,19 @@ function caisse_corriger_paiement_vente_payee($vente_id, $mode_paiement, array $
     }
     if (caisse_vente_statut($v) !== 'paye') {
         return ['ok' => false, 'error' => 'Seuls les tickets déjà payés peuvent être corrigés ainsi.'];
+    }
+
+    /* CHAQUE CORRECTION EST GARDÉE (10/09/2026). L'ancienne valeur était écrasée,
+     * à n'importe quelle date. Il faut désormais un auteur et un motif ; la
+     * correction et sa trace s'écrivent ensemble, et un ticket couvert par une
+     * clôture de caisse ne se corrige plus (son argent a été compté). */
+    require_once __DIR__ . '/model_caisse_cloture.php';
+    $motif = trim((string) $motif);
+    if ((int) $admin_id <= 0 || mb_strlen($motif) < 3) {
+        return ['ok' => false, 'error' => 'Indiquez le motif de la correction : elle est gardée dans l’historique du ticket.'];
+    }
+    if (!caisse_cloture_tables_ok()) {
+        return ['ok' => false, 'error' => 'La correction de paiement attend la mise à jour de la base (migrations/run_caisse_cloture.php).'];
     }
 
     $cart = [
@@ -1685,7 +1698,44 @@ function caisse_corriger_paiement_vente_payee($vente_id, $mode_paiement, array $
     $numero = (string) ($v['numero_ticket'] ?? '');
 
     try {
-        $sqlUp = '
+        $db->beginTransaction();
+        $verrou = $db->prepare('SELECT * FROM caisse_ventes WHERE id = :id FOR UPDATE');
+        $verrou->execute(['id' => $vente_id]);
+        $actuel = $verrou->fetch(PDO::FETCH_ASSOC);
+        if (!$actuel || ($actuel['statut'] ?? '') !== 'paye') {
+            $db->rollBack();
+            return ['ok' => false, 'error' => 'Impossible de mettre à jour le paiement (ticket introuvable ou non payé).'];
+        }
+        $moment = (string) ($actuel['date_encaissement'] ?? '') !== '' ? (string) $actuel['date_encaissement'] : (string) ($actuel['date_vente'] ?? '');
+        $couverte = $db->prepare('SELECT periode_fin FROM caisse_clotures
+            WHERE periode_fin >= :moment AND sync_deleted_at IS NULL ORDER BY periode_fin ASC LIMIT 1');
+        $couverte->execute(['moment' => $moment]);
+        $fin_cloture = $couverte->fetchColumn();
+        if ($fin_cloture !== false) {
+            $db->rollBack();
+            return ['ok' => false, 'error' => 'Ce ticket est dans la caisse clôturée le ' . date('d/m/Y à H:i', strtotime((string) $fin_cloture))
+                . ' : son argent a été compté, son paiement ne se corrige plus.'];
+        }
+
+        $nouveau = [
+            'mode_paiement' => $mode_paiement,
+            'montant_especes' => $montant_especes,
+            'montant_carte' => $montant_carte,
+            'montant_orange_money' => $montant_orange,
+            'montant_wave' => $montant_wave,
+            'montant_mobile_money' => $montant_mobile,
+            'montant_recu' => $montant_recu,
+            'monnaie_rendue' => $monnaie,
+            'notes' => $notes_val !== null && $notes_val !== '' ? $notes_val : null,
+        ];
+        $avant = caisse_paiement_instantane($actuel);
+        $apres = caisse_paiement_instantane($nouveau);
+        if ($avant == $apres) {
+            $db->rollBack();
+            return ['ok' => false, 'error' => 'Rien n’a changé : aucune correction enregistrée.'];
+        }
+
+        $stmtU = $db->prepare('
             UPDATE caisse_ventes SET
                 mode_paiement = :mode_paiement,
                 montant_especes = :montant_especes,
@@ -1696,28 +1746,26 @@ function caisse_corriger_paiement_vente_payee($vente_id, $mode_paiement, array $
                 montant_recu = :montant_recu,
                 monnaie_rendue = :monnaie_rendue,
                 notes = :notes
-            WHERE id = :id AND statut = \'paye\'';
-        $stmtU = $db->prepare($sqlUp);
-        $stmtU->execute([
-            'mode_paiement' => $mode_paiement,
-            'montant_especes' => $montant_especes,
-            'montant_carte' => $montant_carte,
-            'montant_orange_money' => $montant_orange,
-            'montant_wave' => $montant_wave,
-            'montant_mobile_money' => $montant_mobile,
-            'montant_recu' => $montant_recu,
-            'monnaie_rendue' => $monnaie,
-            'notes' => $notes_val !== null && $notes_val !== '' ? $notes_val : null,
-            'id' => $vente_id,
+            WHERE id = :id AND statut = \'paye\'');
+        $stmtU->execute($nouveau + ['id' => $vente_id]);
+
+        $trace = $db->prepare('INSERT INTO caisse_corrections_paiement
+            (vente_id, admin_id, motif, paiement_avant, paiement_apres, date_correction)
+            VALUES (:vente, :admin, :motif, :avant, :apres, NOW())');
+        $trace->execute([
+            'vente' => $vente_id,
+            'admin' => (int) $admin_id,
+            'motif' => mb_substr($motif, 0, 255),
+            'avant' => json_encode($avant, JSON_UNESCAPED_UNICODE),
+            'apres' => json_encode($apres, JSON_UNESCAPED_UNICODE),
         ]);
-        $chk = $db->prepare('SELECT COUNT(*) FROM caisse_ventes WHERE id = :id AND statut = \'paye\'');
-        $chk->execute(['id' => $vente_id]);
-        if ((int) $chk->fetchColumn() !== 1) {
-            return ['ok' => false, 'error' => 'Impossible de mettre à jour le paiement (ticket introuvable ou non payé).'];
-        }
+        $db->commit();
 
         return ['ok' => true, 'vente_id' => $vente_id, 'numero_ticket' => $numero];
     } catch (PDOException $e) {
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
         error_log('[caisse_corriger_paiement_vente_payee] ' . $e->getMessage());
         return ['ok' => false, 'error' => 'Erreur lors de la mise à jour du paiement.'];
     }

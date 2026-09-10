@@ -409,14 +409,38 @@ if ($action === 'corriger_paiement_ticket') {
         $paiement['monnaie_rendue'] = max(0, round($montant_recu - $total, 2));
     }
 
-    $res = caisse_corriger_paiement_vente_payee($vente_id, $mode, $paiement);
+    $res = caisse_corriger_paiement_vente_payee($vente_id, $mode, $paiement, (int) $_SESSION['admin_id'], (string) ($_POST['motif_correction'] ?? ''));
     if (!$res['ok']) {
         $_SESSION['caisse_flash_error'] = $res['error'] ?? 'Erreur lors de la correction du paiement.';
         header('Location: encaisser-ticket.php?ticket=' . $vente_id);
         exit;
     }
-    $_SESSION['caisse_flash_success'] = 'Paiement du ticket mis à jour (mode et montants).';
+    $_SESSION['caisse_flash_success'] = 'Paiement du ticket corrigé. L’ancienne valeur est gardée dans l’historique du ticket.';
     header('Location: encaisser-ticket.php?ticket=' . (int) ($res['vente_id'] ?? $vente_id));
+    exit;
+}
+
+if ($action === 'cloturer_caisse') {
+    /* CLÔTURER LA CAISSE (10/09/2026) : le caissier compte le tiroir, l'écart
+     * est enregistré. Les règles vivent dans caisse_cloturer(). */
+    if (!admin_can_encaisser_ticket()) {
+        $_SESSION['caisse_flash_error'] = 'Seul le caissier clôture la caisse.';
+        header('Location: cloture.php');
+        exit;
+    }
+    require_once __DIR__ . '/../../models/model_caisse_cloture.php';
+    $res = caisse_cloturer((int) $_SESSION['admin_id'], (string) ($_POST['especes_comptees'] ?? ''), (string) ($_POST['commentaire'] ?? ''));
+    if (empty($res['ok'])) {
+        $_SESSION['caisse_flash_error'] = $res['error'] ?? 'La clôture n’a pas pu être enregistrée.';
+        $_SESSION['caisse_cloture_saisie'] = [
+            'especes_comptees' => (string) ($_POST['especes_comptees'] ?? ''),
+            'commentaire' => (string) ($_POST['commentaire'] ?? ''),
+        ];
+        header('Location: cloture.php');
+        exit;
+    }
+    $_SESSION['caisse_flash_success'] = 'Caisse clôturée. Les tickets de cette période ne se corrigent plus.';
+    header('Location: cloture.php?cloture=' . (int) $res['cloture_id']);
     exit;
 }
 

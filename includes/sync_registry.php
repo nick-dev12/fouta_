@@ -53,6 +53,7 @@ if (!function_exists('sync_registry_priority_tables')) {
             'commandes',
             'devis',
             'caisse_ventes',
+            'caisse_clotures',
             'stock_mouvements',
             'depenses',
             'commandes_personnalisees',
@@ -76,6 +77,7 @@ if (!function_exists('sync_registry_priority_tables')) {
             'factures_mensuelles',
             'facture_mensuelle_bl',
             'caisse_vente_lignes',
+            'caisse_corrections_paiement',
             'employe_absence_justificatifs',
         ];
     }

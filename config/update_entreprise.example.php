@@ -38,6 +38,8 @@ return [
         'migrations/run_caisse_lignes_prix_catalogue.php',
         // Statut « payée » des commandes du site (10/09/2026) : sur foutasvr ET le VPS.
         'migrations/run_commandes_statut_paye.php',
+        // Clôture de caisse et historique des corrections de paiement (10/09/2026) : sur foutasvr ET le VPS.
+        'migrations/run_caisse_cloture.php',
     ],
 
     // Migrations lourdes / ponctuelles — exclues du mode --all-migrations

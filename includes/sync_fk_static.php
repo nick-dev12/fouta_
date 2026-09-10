@@ -70,7 +70,31 @@ if (!function_exists('sync_registry_static_foreign_keys')) {
       'REFERENCED_COLUMN_NAME' => 'id',
     ),
   ),
-  'caisse_ventes' => 
+  'caisse_clotures' =>
+  array (
+    0 =>
+    array (
+      'COLUMN_NAME' => 'caissier_id',
+      'REFERENCED_TABLE_NAME' => 'admin',
+      'REFERENCED_COLUMN_NAME' => 'id',
+    ),
+  ),
+  'caisse_corrections_paiement' =>
+  array (
+    0 =>
+    array (
+      'COLUMN_NAME' => 'admin_id',
+      'REFERENCED_TABLE_NAME' => 'admin',
+      'REFERENCED_COLUMN_NAME' => 'id',
+    ),
+    1 =>
+    array (
+      'COLUMN_NAME' => 'vente_id',
+      'REFERENCED_TABLE_NAME' => 'caisse_ventes',
+      'REFERENCED_COLUMN_NAME' => 'id',
+    ),
+  ),
+  'caisse_ventes' =>
   array (
     0 => 
     array (

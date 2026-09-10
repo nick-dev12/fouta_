@@ -120,6 +120,13 @@ include __DIR__ . '/../../includes/pwa_admin_boot.php';
                 <span class="menu-item-icon ico" aria-hidden="true"><i class="fas fa-calculator"></i></span>
                 <span class="menu-item-text">Comptabilité</span>
             </a>
+            <?php if ($admin_role === 'admin'): ?>
+            <a href="<?php echo $admin_nav_base; ?>caisse/cloture.php"
+                class="menu-item mi-cloture-caisse<?php echo ($is_caisse && $current_page === 'cloture.php') ? ' active' : ''; ?>">
+                <span class="menu-item-icon ico" aria-hidden="true"><i class="fas fa-lock"></i></span>
+                <span class="menu-item-text">Clôtures de caisse</span>
+            </a>
+            <?php endif; ?>
             <a href="<?php echo $admin_nav_base; ?>produits/index.php"
                 class="menu-item mi-produits<?php echo ($is_produits) ? ' active' : ''; ?>">
                 <span class="menu-item-icon ico" aria-hidden="true"><?php echo fpl_icone('tool', 16); ?></span>
@@ -203,6 +210,11 @@ include __DIR__ . '/../../includes/pwa_admin_boot.php';
                 <span class="menu-item-icon ico" aria-hidden="true"><i class="fas fa-history"></i></span>
                 <span class="menu-item-text">Historique encaissements</span>
             </a>
+            <a href="<?php echo $admin_nav_base; ?>caisse/cloture.php"
+                class="menu-item mi-cloture-caisse<?php echo ($is_caisse && $current_page === 'cloture.php') ? ' active' : ''; ?>">
+                <span class="menu-item-icon ico" aria-hidden="true"><i class="fas fa-lock"></i></span>
+                <span class="menu-item-text">Clôture de caisse</span>
+            </a>
             <a href="<?php echo $admin_nav_base; ?>zones-livraison/index.php"
                 class="menu-item mi-zones<?php echo $is_zones_livraison ? ' active' : ''; ?>">
                 <span class="menu-item-icon ico" aria-hidden="true"><i class="fas fa-map-location-dot"></i></span>
@@ -264,6 +276,11 @@ include __DIR__ . '/../../includes/pwa_admin_boot.php';
                 <span class="menu-item-icon ico" aria-hidden="true"><i class="fas fa-history"></i></span>
                 <span class="menu-item-text">Historique encaissements</span>
             </a>
+            <a href="<?php echo $admin_nav_base; ?>caisse/cloture.php"
+                class="menu-item mi-cloture-caisse<?php echo ($is_caisse && $current_page === 'cloture.php') ? ' active' : ''; ?>">
+                <span class="menu-item-icon ico" aria-hidden="true"><i class="fas fa-lock"></i></span>
+                <span class="menu-item-text">Clôture de caisse</span>
+            </a>
             <a href="<?php echo $admin_nav_base; ?>caisse/depenses.php"
                 class="menu-item mi-depenses-caisse<?php echo $is_caisse_depenses ? ' active' : ''; ?>">
                 <span class="menu-item-icon ico" aria-hidden="true"><i class="fas fa-wallet"></i></span>
@@ -274,6 +291,11 @@ include __DIR__ . '/../../includes/pwa_admin_boot.php';
                 class="menu-item mi-compta<?php echo $is_comptabilite_hub ? ' active' : ''; ?>">
                 <span class="menu-item-icon ico" aria-hidden="true"><i class="fas fa-calculator"></i></span>
                 <span class="menu-item-text">Comptabilité</span>
+            </a>
+            <a href="<?php echo $admin_nav_base; ?>caisse/cloture.php"
+                class="menu-item mi-cloture-caisse<?php echo ($is_caisse && $current_page === 'cloture.php') ? ' active' : ''; ?>">
+                <span class="menu-item-icon ico" aria-hidden="true"><i class="fas fa-lock"></i></span>
+                <span class="menu-item-text">Clôtures de caisse</span>
             </a>
             <a href="<?php echo $admin_nav_base; ?>contacts/index.php"
                 class="menu-item mi-contacts<?php echo $is_contacts ? ' active' : ''; ?>">

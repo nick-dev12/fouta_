@@ -56,6 +56,10 @@ $ticket_recap = $vente ? caisse_vente_recap_fiscal_affichage($vente) : null;
 $ticket_inclure_tva = $vente && !empty($vente['tva_incluse']);
 $ticket_afficher_detail_tva = $ticket_inclure_tva && $ticket_recap && abs((float) ($ticket_recap['tva'] ?? 0)) >= 0.005;
 $ticket_statut = $vente ? caisse_vente_statut($vente) : null;
+/* Historique des corrections et clôture qui couvre le ticket (10/09/2026). */
+require_once __DIR__ . '/../../models/model_caisse_cloture.php';
+$ticket_corrections = ($vente && $ticket_statut === 'paye') ? caisse_corrections_liste((int) $vente['id'], 20) : [];
+$ticket_cloture = ($vente && $ticket_statut === 'paye') ? caisse_cloture_couvrant_vente($vente) : null;
 $ticket_barcode_src = ($vente && $ticket_recap) ? caisse_ticket_get_barcode_web_path($vente) : '';
 $ticket_barcode_payload = ($vente && $ticket_recap) ? caisse_ticket_valeur_code_barres($vente) : '';
 
@@ -66,7 +70,7 @@ $total_ttc = $vente ? (float) ($vente['montant_total'] ?? 0) : 0;
 
 /** Préremplissage formulaire correction paiement (ticket payé) */
 $corr_prefill = null;
-if ($vente && caisse_vente_statut($vente) === 'paye') {
+if ($vente && caisse_vente_statut($vente) === 'paye' && !$ticket_cloture) {
     $fmtIn = function ($val) {
         if ($val === null || $val === '') {
             return '';
@@ -264,6 +268,19 @@ $auto_print = isset($_GET['imprimer']) && $_GET['imprimer'] === '1';
                 <?php endif; ?>
                 <?php if ($ticket_statut === 'paye'): ?>
                 <p class="caisse-ticket-pay">Paiement : <strong><?php echo htmlspecialchars(caisse_compta_libelle_paiement_ticket($vente)); ?></strong></p>
+                <?php if ($ticket_cloture): ?>
+                <p class="caisse-ticket-cloture no-print" style="margin:6px 0 0;font-size:.85em;color:#4A5468"><i class="fas fa-lock" aria-hidden="true"></i> Caisse clôturée le <?php echo htmlspecialchars(date('d/m/Y à H:i', strtotime((string) $ticket_cloture['periode_fin']))); ?> : ce paiement ne se corrige plus.</p>
+                <?php endif; ?>
+                <?php if ($ticket_corrections): ?>
+                <details class="caisse-ticket-corrections no-print" style="margin-top:8px;font-size:.85em">
+                    <summary style="cursor:pointer">Paiement corrigé <?php echo count($ticket_corrections); ?> fois</summary>
+                    <ul style="margin:6px 0 0;padding-left:18px">
+                        <?php foreach ($ticket_corrections as $corr): ?>
+                        <li><?php echo htmlspecialchars(date('d/m/Y H:i', strtotime((string) $corr['date_correction']))); ?>, par <?php echo htmlspecialchars(trim(($corr['auteur_prenom'] ?? '') . ' ' . ($corr['auteur_nom'] ?? '')) ?: '—'); ?> : <?php echo htmlspecialchars(caisse_paiement_libelle_instantane($corr['paiement_avant'])); ?>, devenu <?php echo htmlspecialchars(caisse_paiement_libelle_instantane($corr['paiement_apres'])); ?>. Motif : <?php echo htmlspecialchars((string) $corr['motif']); ?></li>
+                        <?php endforeach; ?>
+                    </ul>
+                </details>
+                <?php endif; ?>
                 <?php endif; ?>
                 <div class="caisse-ticket-actions no-print">
                     <?php if ($ticket_statut === 'en_attente'): ?>
@@ -362,7 +379,7 @@ $auto_print = isset($_GET['imprimer']) && $_GET['imprimer'] === '1';
                 <button type="button" class="caisse-encaisse-modal__close" data-corriger-close-modal aria-label="Fermer"><i class="fas fa-times"></i></button>
             </div>
             <p class="caisse-encaisse-modal__recap">Total TTC du ticket : <strong><?php echo number_format($total_ttc, 0, ',', ' '); ?> FCFA</strong></p>
-            <p class="caisse-encaisse-modal__hint">En cas d’erreur sur le mode enregistré, ajustez les champs puis enregistrez. Le stock n’est pas modifié.</p>
+            <p class="caisse-encaisse-modal__hint">En cas d’erreur sur le mode enregistré, ajustez les champs puis enregistrez. Le stock n’est pas modifié. La correction est gardée dans l’historique du ticket, avec l’ancienne valeur, votre nom et le motif.</p>
 
             <form method="post" action="post.php" class="caisse-pay-form caisse-encaisse-modal__form" id="formCorrigerPaiementTicket"
                 data-total-ttc="<?php echo htmlspecialchars((string) $total_ttc); ?>">
@@ -401,6 +418,9 @@ $auto_print = isset($_GET['imprimer']) && $_GET['imprimer'] === '1';
                     <label for="corriger_montant_wave">Part Wave</label>
                     <input type="text" name="montant_wave" id="corriger_montant_wave" inputmode="decimal" placeholder="0" class="caisse-input-pay" value="<?php echo htmlspecialchars($cp['montant_wave']); ?>">
                 </div>
+
+                <label for="corriger_motif">Motif de la correction</label>
+                <input type="text" name="motif_correction" id="corriger_motif" class="caisse-input-pay" required minlength="3" maxlength="255" placeholder="Ex. payé par Wave, saisi en espèces" autocomplete="off">
 
                 <label for="corriger_notes">Note (optionnel)</label>
                 <textarea name="notes_vente" id="corriger_notes" rows="2" class="caisse-textarea-pay" placeholder="Référence…"><?php echo htmlspecialchars($cp['notes']); ?></textarea>

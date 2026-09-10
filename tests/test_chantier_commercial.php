@@ -646,5 +646,119 @@ $appel_code = strpos($recherche_js, 'if (estCodeExact(raw) && window.CaissePanie
 verifie('un code d’étiquette part au serveur avant le rapprochement flou', true,
     $appel_code !== false && $appel_code < strpos($recherche_js, 'var hitsQuick'));
 
+echo "— point 9 : clôturer la caisse, et garder chaque correction de paiement —\n";
+require_once "$RACINE/models/model_caisse_cloture.php";
+require_once "$RACINE/includes/sync_registry.php";
+verifie('les tables de clôture et de corrections existent', true, caisse_cloture_tables_ok());
+verifie('le caissier ouvre la clôture', true, admin_route_is_allowed('caissier', 'caisse/cloture.php'));
+verifie('la comptabilité la consulte', true, admin_route_is_allowed('comptabilite', 'caisse/cloture.php'));
+verifie('la direction la consulte', true, admin_route_is_allowed('admin', 'caisse/cloture.php'));
+verifie('la migration est au registre du déploiement', true,
+    strpos(file_get_contents("$RACINE/config/update_entreprise.example.php"), "'migrations/run_caisse_cloture.php'") !== false);
+$prioritaires = sync_registry_priority_tables();
+verifie('les deux tables sont synchronisées, après les tables dont elles dépendent', [true, true], [
+    array_search('caisse_clotures', $prioritaires, true) > array_search('admin', $prioritaires, true),
+    array_search('caisse_corrections_paiement', $prioritaires, true) > array_search('caisse_ventes', $prioritaires, true),
+]);
+$fk_secours = array_column(sync_registry_static_foreign_keys('caisse_corrections_paiement') ?: [], 'REFERENCED_TABLE_NAME', 'COLUMN_NAME');
+ksort($fk_secours);
+verifie('la synchro retraduit le ticket et l’auteur d’une correction (clés de secours)', ['admin_id' => 'admin', 'vente_id' => 'caisse_ventes'], $fk_secours);
+$fk_base = $db->query("SELECT COLUMN_NAME, REFERENCED_TABLE_NAME FROM information_schema.KEY_COLUMN_USAGE
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('caisse_clotures', 'caisse_corrections_paiement')
+      AND REFERENCED_TABLE_NAME IS NOT NULL")->fetchAll(PDO::FETCH_KEY_PAIR);
+ksort($fk_base);
+verifie('les vraies clés étrangères existent en base', ['admin_id' => 'admin', 'caissier_id' => 'admin', 'vente_id' => 'caisse_ventes'], $fk_base);
+$ecran_ticket = file_get_contents("$RACINE/admin/caisse/encaisser-ticket.php");
+verifie('le formulaire de correction exige un motif', true, strpos($ecran_ticket, 'name="motif_correction" id="corriger_motif" class="caisse-input-pay" required') !== false);
+verifie('la fiche du ticket montre ses corrections et sa clôture', [true, true],
+    [strpos($ecran_ticket, 'caisse_corrections_liste(') !== false, strpos($ecran_ticket, 'caisse_cloture_couvrant_vente(') !== false]);
+verifie('le menu mène à la clôture : direction, informaticien, caissier, comptabilité', 4, substr_count(file_get_contents("$RACINE/admin/includes/nav.php"), 'caisse/cloture.php'));
+
+if ($base_locale) {
+    $caissier_essai = (int) $db->query("SELECT id FROM admin WHERE email = 'fpl.caisse@local.test' AND role = 'caissier'")->fetchColumn();
+    $nb_clotures_avant = (int) $db->query('SELECT COUNT(*) FROM caisse_clotures')->fetchColumn();
+    $nb_corrections_avant = (int) $db->query('SELECT COUNT(*) FROM caisse_corrections_paiement')->fetchColumn();
+    $ticket_essai = $db->query("SELECT * FROM caisse_ventes WHERE statut = 'paye' AND mode_paiement = 'especes'
+        ORDER BY COALESCE(date_encaissement, date_vente) DESC, id DESC LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+    verifie('un caissier d’essai et un ticket payé en espèces existent', [true, true], [$caissier_essai > 0, is_array($ticket_essai)]);
+    if ($caissier_essai > 0 && is_array($ticket_essai)) {
+        $vid = (int) $ticket_essai['id'];
+        $clotures_essai = [];
+        try {
+            $r = caisse_corriger_paiement_vente_payee($vid, 'wave', ['notes' => ''], $caissier_essai, '');
+            verifie('une correction sans motif est refusée', [false, true], [!empty($r['ok']), strpos((string) ($r['error'] ?? ''), 'motif') !== false]);
+            $r = caisse_corriger_paiement_vente_payee($vid, 'wave', ['notes' => ''], $caissier_essai, 'Essai : payé par Wave');
+            verifie('une correction avec motif passe', true, !empty($r['ok']));
+            $trace = $db->prepare('SELECT * FROM caisse_corrections_paiement WHERE vente_id = ? ORDER BY id DESC LIMIT 1');
+            $trace->execute([$vid]);
+            $ligne = $trace->fetch(PDO::FETCH_ASSOC) ?: [];
+            $avant = json_decode((string) ($ligne['paiement_avant'] ?? ''), true) ?: [];
+            $apres = json_decode((string) ($ligne['paiement_apres'] ?? ''), true) ?: [];
+            verifie('l’historique garde l’ancienne valeur, la nouvelle, l’auteur et le motif',
+                ['especes', 'wave', $caissier_essai, 'Essai : payé par Wave'],
+                [$avant['mode_paiement'] ?? null, $apres['mode_paiement'] ?? null, (int) ($ligne['admin_id'] ?? 0), $ligne['motif'] ?? null]);
+            verifie('le ticket porte le nouveau mode', 'wave', (string) $db->query("SELECT mode_paiement FROM caisse_ventes WHERE id = $vid")->fetchColumn());
+            verifie('la fiche du ticket liste la correction', 'Essai : payé par Wave', (string) ((caisse_corrections_liste($vid, 5)[0] ?? [])['motif'] ?? ''));
+            $r = caisse_corriger_paiement_vente_payee($vid, 'wave', ['notes' => ''], $caissier_essai, 'Essai : même valeur');
+            verifie('une correction qui ne change rien n’est pas enregistrée', [false, true], [!empty($r['ok']), strpos((string) ($r['error'] ?? ''), 'Rien n’a changé') === 0]);
+
+            $periode = caisse_cloture_periode_en_cours();
+            verifie('la caisse en cours voit le ticket passé en Wave', true,
+                $periode !== null && $periode['canaux']['wave']['montant'] >= (float) $ticket_essai['montant_total'] - 0.01);
+            $r = caisse_cloturer($caissier_essai, 'douze mille', '');
+            verifie('des espèces comptées illisibles sont refusées', false, !empty($r['ok']));
+            $comptees = round((float) $periode['especes_attendues']) + 1000;
+            $ecart_attendu = round($comptees - (float) $periode['especes_attendues'], 2);
+            $r = caisse_cloturer($caissier_essai, number_format($comptees, 0, ',', ' '), '');
+            verifie('un écart sans explication est refusé', [false, true], [!empty($r['ok']), strpos((string) ($r['error'] ?? ''), 'expliquez') !== false]);
+            $r = caisse_cloturer($caissier_essai, number_format($comptees, 0, ',', ' '), 'Essai : 1 000 de trop dans le tiroir');
+            verifie('un écart expliqué est enregistré', true, !empty($r['ok']));
+            if (!empty($r['cloture_id'])) {
+                $clotures_essai[] = (int) $r['cloture_id'];
+            }
+            $cl = caisse_cloture_par_id((int) ($r['cloture_id'] ?? 0)) ?: [];
+            verifie('la clôture garde espèces attendues, comptées et écart',
+                [round((float) $periode['especes_attendues'], 2), round($comptees, 2), $ecart_attendu],
+                [round((float) ($cl['especes_attendues'] ?? -1), 2), round((float) ($cl['especes_comptees'] ?? -1), 2), round((float) ($cl['ecart'] ?? -1), 2)]);
+            if ($nb_clotures_avant === 0) {
+                verifie('la première clôture couvre tous les tickets encaissés',
+                    (int) $db->query("SELECT COUNT(*) FROM caisse_ventes WHERE statut = 'paye'")->fetchColumn(), (int) ($cl['nb_tickets'] ?? -1));
+            }
+            $r = caisse_corriger_paiement_vente_payee($vid, 'especes', ['notes' => ''], $caissier_essai, 'Essai : remettre en espèces');
+            verifie('un ticket couvert par la clôture ne se corrige plus', [false, true], [!empty($r['ok']), strpos((string) ($r['error'] ?? ''), 'clôturée') !== false]);
+            verifie('la fiche du ticket sait quelle clôture le couvre', (int) ($cl['id'] ?? -1), (int) ((caisse_cloture_couvrant_vente($ticket_essai) ?: [])['id'] ?? 0));
+            sleep(1);
+            $r2 = caisse_cloturer($caissier_essai, '0', '');
+            if (!empty($r2['cloture_id'])) {
+                $clotures_essai[] = (int) $r2['cloture_id'];
+            }
+            $cl2 = caisse_cloture_par_id((int) ($r2['cloture_id'] ?? 0)) ?: [];
+            verifie('la clôture suivante repart de la précédente, sans ticket ni écart',
+                [true, (string) ($cl['periode_fin'] ?? 'x'), 0, 0.0],
+                [!empty($r2['ok']), (string) ($cl2['periode_debut'] ?? ''), (int) ($cl2['nb_tickets'] ?? -1), (float) ($cl2['ecart'] ?? -1)]);
+            verifie('la caisse en cours repart à zéro', 0, (int) ((caisse_cloture_periode_en_cours() ?: [])['nb'] ?? -1));
+        } finally {
+            $remise = $db->prepare('UPDATE caisse_ventes SET mode_paiement = :mode, montant_especes = :e, montant_carte = :c,
+                montant_orange_money = :o, montant_wave = :w, montant_mobile_money = :m, montant_recu = :r, monnaie_rendue = :mr, notes = :n
+                WHERE id = :id');
+            $remise->execute([
+                'mode' => $ticket_essai['mode_paiement'], 'e' => $ticket_essai['montant_especes'], 'c' => $ticket_essai['montant_carte'],
+                'o' => $ticket_essai['montant_orange_money'], 'w' => $ticket_essai['montant_wave'], 'm' => $ticket_essai['montant_mobile_money'],
+                'r' => $ticket_essai['montant_recu'], 'mr' => $ticket_essai['monnaie_rendue'], 'n' => $ticket_essai['notes'], 'id' => $vid,
+            ]);
+            if ($clotures_essai) {
+                $db->exec('DELETE FROM caisse_clotures WHERE id IN (' . implode(',', array_map('intval', $clotures_essai)) . ')');
+            }
+            $db->prepare("DELETE FROM caisse_corrections_paiement WHERE vente_id = ? AND motif LIKE 'Essai : %'")->execute([$vid]);
+        }
+        $ticket_apres_essai = $db->query("SELECT * FROM caisse_ventes WHERE id = $vid")->fetch(PDO::FETCH_ASSOC);
+        verifie('base remise à l’état initial : clôtures, corrections et ticket d’essai', [$nb_clotures_avant, $nb_corrections_avant, true], [
+            (int) $db->query('SELECT COUNT(*) FROM caisse_clotures')->fetchColumn(),
+            (int) $db->query('SELECT COUNT(*) FROM caisse_corrections_paiement')->fetchColumn(),
+            $ticket_apres_essai == $ticket_essai,
+        ]);
+    }
+}
+
 echo "\n$ok OK / $ko KO\n";
 exit($ko === 0 ? 0 : 1);
