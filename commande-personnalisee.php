@@ -7,6 +7,13 @@
 require_once __DIR__ . '/includes/session_user.php';
 session_start();
 
+/* FORMULAIRE RETIRÉ (10/09/2026). Il venait d'un autre métier (« Cake Topper »,
+ * « papier sucre ») et ses demandes arrivaient dans une file que l'équipe
+ * commerciale ne voit pas. Une pièce introuvable se demande par la page Contact.
+ * Le code reste en place : retirer ces lignes le rétablit. */
+header('Location: /contact.php', true, 301);
+exit;
+
 require_once __DIR__ . '/includes/fouta_upload_limits.php';
 
 require_once __DIR__ . '/controllers/controller_commandes_personnalisees.php';

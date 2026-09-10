@@ -128,6 +128,28 @@ function delete_fcm_tokens_by_user($user_id) {
  * Récupère tous les tokens FCM des administrateurs
  * @return array Liste des tokens
  */
+/**
+ * Les jetons de notification de l'équipe commerciale seulement (10/09/2026) :
+ * même règle que get_emails_equipe_commerciale().
+ *
+ * @return array<int, string>
+ */
+function get_fcm_tokens_equipe_commerciale() {
+    global $db;
+
+    try {
+        $stmt = $db->prepare("SELECT DISTINCT t.token FROM fcm_tokens t
+            INNER JOIN admin a ON a.id = t.admin_id
+            WHERE t.type = 'admin' AND t.token IS NOT NULL AND t.token != ''
+              AND a.statut = 'actif' AND a.role IN ('commercial', 'commercial_general', 'informaticien', 'developpeur')");
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+    } catch (PDOException $e) {
+        error_log('[get_fcm_tokens_equipe_commerciale] ' . $e->getMessage());
+        return [];
+    }
+}
+
 function get_all_fcm_tokens_admin() {
     global $db;
     

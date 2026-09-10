@@ -371,8 +371,8 @@ $statuts_labels = get_statuts_commande_personnalisee();
         <!-- Section Commandes personnalisées -->
         <div class="section-title" style="margin-top: 40px;">
             <h2><i class="fas fa-palette"></i> Mes commandes personnalisées (<?php echo count($commandes_perso_actives); ?>)</h2>
-            <a href="/commande-personnalisee.php" class="btn-view-categories">
-                <i class="fas fa-plus"></i> Nouvelle demande
+            <a href="/contact.php" class="btn-view-categories">
+                <i class="fas fa-envelope"></i> Demander une pièce
             </a>
         </div>
 
@@ -380,8 +380,8 @@ $statuts_labels = get_statuts_commande_personnalisee();
             <div class="empty-state empty-state-compact">
                 <i class="fas fa-palette"></i>
                 <p>Aucune commande personnalisée en cours.</p>
-                <a href="/commande-personnalisee.php" class="btn-primary">
-                    <i class="fas fa-palette"></i> Faire une demande personnalisée
+                <a href="/contact.php" class="btn-primary">
+                    <i class="fas fa-envelope"></i> Demander une pièce introuvable
                 </a>
             </div>
         <?php else: ?>

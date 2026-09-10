@@ -119,8 +119,8 @@ $statuts_labels = get_statuts_commande_personnalisee();
             <div class="empty-state empty-state-compact">
                 <i class="fas fa-palette"></i>
                 <p>Aucune commande personnalisée reçue.</p>
-                <a href="/commande-personnalisee.php" class="btn-primary">
-                    <i class="fas fa-palette"></i> Faire une demande personnalisée
+                <a href="/contact.php" class="btn-primary">
+                    <i class="fas fa-envelope"></i> Demander une pièce introuvable
                 </a>
             </div>
         <?php else: ?>

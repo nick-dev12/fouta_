@@ -335,6 +335,30 @@ function get_all_admin_emails()
 }
 
 /**
+ * LES COURRIELS D'UNE NOUVELLE COMMANDE VONT À L'ÉQUIPE COMMERCIALE (10/09/2026).
+ * Chaque commande du site partait à TOUS les comptes actifs, RH, caissier et
+ * infographiste compris, avec le téléphone et l'adresse du client. Seuls ceux
+ * qui traitent les commandes les reçoivent désormais.
+ *
+ * @return array<int, string>
+ */
+function get_emails_equipe_commerciale()
+{
+    global $db;
+
+    try {
+        $stmt = $db->prepare("SELECT email FROM admin
+            WHERE statut = 'actif' AND email IS NOT NULL AND email != ''
+              AND role IN ('commercial', 'commercial_general', 'informaticien', 'developpeur')");
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+    } catch (PDOException $e) {
+        error_log('[get_emails_equipe_commerciale] ' . $e->getMessage());
+        return [];
+    }
+}
+
+/**
  * Destinataires des alertes stock : administrateurs + gestion des stocks + commerciaux (comptes actifs).
  *
  * @return list<string>

@@ -16,7 +16,6 @@ $static_pages = [
     ['loc' => '/produits.php', 'priority' => '0.9', 'changefreq' => 'daily'],
     ['loc' => '/nouveautes.php', 'priority' => '0.9', 'changefreq' => 'daily'],
     ['loc' => '/promo.php', 'priority' => '0.9', 'changefreq' => 'daily'],
-    ['loc' => '/commande-personnalisee.php', 'priority' => '0.7', 'changefreq' => 'monthly'],
     ['loc' => '/politique-confidentialite.php', 'priority' => '0.4', 'changefreq' => 'yearly'],
     ['loc' => '/conditions-utilisation.php', 'priority' => '0.4', 'changefreq' => 'yearly'],
 ];

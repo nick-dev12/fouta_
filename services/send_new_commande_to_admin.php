@@ -21,7 +21,8 @@ function send_new_commande_to_admin($numero_commande, $montant_total, $nombre_ar
     $base_url = get_site_base_url();
     $link = $base_url . '/admin/commandes/index.php';
 
-    $tokens = get_all_fcm_tokens_admin();
+    /* Nouvelle commande : seule l'équipe commerciale est prévenue (10/09/2026). */
+    $tokens = get_fcm_tokens_equipe_commerciale();
     if (!empty($tokens)) {
         firebase_send_notification($tokens, $title, $body, [
             'link' => $link,
@@ -30,7 +31,7 @@ function send_new_commande_to_admin($numero_commande, $montant_total, $nombre_ar
         ]);
     }
 
-    $admin_emails = get_all_admin_emails();
+    $admin_emails = get_emails_equipe_commerciale();
     if (!empty($admin_emails) && function_exists('mail_send')) {
         $sujet = "[FOUTA POIDS LOURDS] Nouvelle commande #{$numero_commande}";
         $body_html = '<div style="font-family: Arial, sans-serif; max-width: 600px;">';

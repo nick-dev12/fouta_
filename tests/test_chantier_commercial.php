@@ -369,5 +369,24 @@ verifie('fiche commande : les changements de statut exigent le jeton', true,
 verifie('fiche client de la comptabilité : plus de génération de facture par GET', false,
     strpos(file_get_contents("$RACINE/admin/comptabilite/bl-fiche-client.php"), 'method="get" action="../devis/facture_mensuelle_generer.php"') !== false);
 
+echo "— point 18 : les commandes vont à l'équipe commerciale, le formulaire hérité est retiré —\n";
+require_once "$RACINE/models/model_admin.php";
+$emails_equipe = get_emails_equipe_commerciale();
+$emails_attendus = $db->query("SELECT email FROM admin WHERE statut = 'actif' AND email IS NOT NULL AND email != ''
+    AND role IN ('commercial', 'commercial_general', 'informaticien', 'developpeur')")->fetchAll(PDO::FETCH_COLUMN);
+sort($emails_equipe);
+sort($emails_attendus);
+verifie('les destinataires sont exactement l’équipe commerciale active', $emails_attendus, $emails_equipe);
+$hors_equipe = (int) $db->query("SELECT COUNT(*) FROM admin WHERE statut = 'actif' AND email IS NOT NULL AND email != ''
+    AND role NOT IN ('commercial', 'commercial_general', 'informaticien', 'developpeur')")->fetchColumn();
+verifie("les $hors_equipe comptes hors équipe commerciale ne reçoivent plus les commandes", count($emails_attendus), count($emails_equipe));
+$service = file_get_contents("$RACINE/services/send_new_commande_to_admin.php");
+verifie('le service n’écrit plus à tous les comptes', false, strpos($service, 'get_all_admin_emails()') !== false);
+verifie('le service ne notifie plus tous les comptes', false, strpos($service, 'get_all_fcm_tokens_admin()') !== false);
+verifie('la page du formulaire hérité renvoie vers Contact', true, strpos(file_get_contents("$RACINE/commande-personnalisee.php"), "header('Location: /contact.php', true, 301);") !== false);
+foreach (['user/mes-commandes.php', 'user/produits-livres.php', 'sitemap.php', 'generate_sitemap.php'] as $f) {
+    verifie("$f ne mène plus au formulaire hérité", false, strpos(file_get_contents("$RACINE/$f"), '/commande-personnalisee.php') !== false);
+}
+
 echo "\n$ok OK / $ko KO\n";
 exit($ko === 0 ? 0 : 1);
