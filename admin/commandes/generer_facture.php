@@ -11,7 +11,16 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
 require_once __DIR__ . '/../includes/require_access.php';
 
 
-$commande_id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
+/* UNE ÉCRITURE NE PART PLUS D'UN SIMPLE LIEN (10/09/2026) : un lien piégé ouvert
+   par un utilisateur connecté suffisait. Formulaire POST avec jeton de sécurité. */
+$jeton_recu = (string) ($_POST['csrf_token'] ?? '');
+if ($_SERVER['REQUEST_METHOD'] !== 'POST' || $jeton_recu === ''
+    || !hash_equals((string) ($_SESSION['admin_csrf'] ?? ''), $jeton_recu)) {
+    $_SESSION['error_message'] = 'Demande refusée : générez la facture depuis la fiche de la commande.';
+    header('Location: index.php');
+    exit;
+}
+$commande_id = isset($_POST['id']) ? (int) $_POST['id'] : 0;
 if ($commande_id <= 0) {
     header('Location: index.php');
     exit;

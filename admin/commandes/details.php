@@ -24,7 +24,7 @@ if ($commande_id <= 0) {
 /* LE GARDE-BARRIÈRE (31/08/2026) : cette page ne demandait jamais si le
  * compte connecté avait le droit d'être là. La règle existe depuis
  * toujours dans includes/admin_route_access.php ; il manquait l'appel. */
-require_once __DIR__ . '/../includes/require_access.php';
+require_once __DIR__ . '/../includes/require_access.php'; if (empty($_SESSION['admin_csrf'])) { $_SESSION['admin_csrf'] = bin2hex(random_bytes(32)); }
 require_once __DIR__ . '/../../models/model_commandes_admin.php';
 require_once __DIR__ . '/../../models/model_produits.php';
 require_once __DIR__ . '/../../models/model_factures.php';
@@ -50,7 +50,7 @@ $is_livree = $commande['statut'] === 'livree';
 $is_paye = $commande['statut'] === 'paye';
 
 // Traiter les actions de statut (uniquement si la commande n'est pas annulée)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$is_annulee) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$is_annulee && ((string) ($_POST['csrf_token'] ?? '') === '' || !hash_equals((string) ($_SESSION['admin_csrf'] ?? ''), (string) $_POST['csrf_token']))) { $_SESSION['error_message'] = 'Session expirée : rechargez la page puis recommencez.'; header('Location: details.php?id=' . $commande_id); exit; } if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$is_annulee) {
     $statut_mis_a_jour = null;
 
     $admin_traitant = (int) ($_SESSION['admin_id'] ?? 0);
@@ -135,9 +135,9 @@ $cmd_detail_has_alert = isset($_SESSION['success_message']) || isset($_SESSION['
                     <i class="fas fa-file-invoice" aria-hidden="true"></i> Voir la facture
                 </a>
             <?php else: ?>
-                <a href="generer_facture.php?id=<?php echo $commande_id; ?>" class="btn-primary">
+                <form method="post" action="generer_facture.php" style="display:inline"><input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars((string) ($_SESSION['admin_csrf'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"><input type="hidden" name="id" value="<?php echo (int) $commande_id; ?>"><button type="submit" class="btn-primary" style="border:none;cursor:pointer;font:inherit">
                     <i class="fas fa-file-invoice" aria-hidden="true"></i> Générer une facture
-                </a>
+                </button></form>
             <?php endif; ?>
             <a href="index.php" class="btn-back page-cmd-detail-back">
                 <i class="fas fa-arrow-left" aria-hidden="true"></i> Retour à la liste
@@ -387,14 +387,14 @@ $cmd_detail_has_alert = isset($_SESSION['success_message']) || isset($_SESSION['
 
                 <div class="form-group">
                     <?php if (in_array($commande['statut'], ['en_attente', 'confirmee'])): ?>
-                        <form method="POST" action="">
+                        <form method="POST" action=""><input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars((string) ($_SESSION['admin_csrf'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
                             <button type="submit" name="prendre_en_charge" class="btn-primary btn-prise-charge">
                                 <i class="fas fa-hand-paper"></i> Prendre en charge la commande
                             </button>
                         </form>
 
                     <?php elseif ($commande['statut'] == 'prise_en_charge'): ?>
-                        <form method="POST" action="">
+                        <form method="POST" action=""><input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars((string) ($_SESSION['admin_csrf'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
                             <button type="submit" name="expedier" class="btn-primary btn-expedier">
                                 <i class="fas fa-shipping-fast"></i> Mettre en livraison
                             </button>
@@ -411,7 +411,7 @@ $cmd_detail_has_alert = isset($_SESSION['success_message']) || isset($_SESSION['
                 <!-- Formulaire de changement manuel de statut (masqué si livrée ou payée) -->
                 <div class="actions-divider">
                     <h3>Changer le statut manuellement</h3>
-                    <form method="POST" action="">
+                    <form method="POST" action=""><input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars((string) ($_SESSION['admin_csrf'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
                         <div class="form-group">
                             <label for="statut">Nouveau statut</label>
                             <select id="statut" name="statut" required>

@@ -21,6 +21,12 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Location: index.php?tab=bl');
     exit;
 }
+$jeton_recu = (string) ($_POST['csrf_token'] ?? '');
+if ($jeton_recu === '' || !hash_equals((string) ($_SESSION['admin_csrf'] ?? ''), $jeton_recu)) {
+    $_SESSION['bl_erreur'] = 'Session expirée : rechargez la page puis recommencez.';
+    header('Location: index.php?tab=bl');
+    exit;
+}
 
 $rs = trim($_POST['raison_sociale'] ?? '');
 $tel = trim($_POST['telephone'] ?? '');

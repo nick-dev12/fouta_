@@ -16,7 +16,16 @@ if (!admin_can_devis()) {
     exit;
 }
 
-$devis_id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
+/* UNE ÉCRITURE NE PART PLUS D'UN SIMPLE LIEN (10/09/2026) : un lien piégé ouvert
+   par un utilisateur connecté suffisait. Formulaire POST avec jeton de sécurité. */
+$jeton_recu = (string) ($_POST['csrf_token'] ?? '');
+if ($_SERVER['REQUEST_METHOD'] !== 'POST' || $jeton_recu === ''
+    || !hash_equals((string) ($_SESSION['admin_csrf'] ?? ''), $jeton_recu)) {
+    $_SESSION['error_devis'] = 'Demande refusée : générez la facture depuis la fiche du devis.';
+    header('Location: devis.php');
+    exit;
+}
+$devis_id = isset($_POST['id']) ? (int) $_POST['id'] : 0;
 if ($devis_id <= 0) {
     header('Location: devis.php');
     exit;

@@ -1,6 +1,6 @@
 <?php
 /**
- * Conversion devis → BL (GET avec confirmation)
+ * Conversion devis → BL (POST avec jeton de sécurité, 10/09/2026)
  */
 session_start();
 
@@ -17,7 +17,16 @@ if (!admin_can_bl_retours_b2b()) {
     exit;
 }
 
-$devis_id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
+/* UNE ÉCRITURE NE PART PLUS D'UN SIMPLE LIEN (10/09/2026) : un lien piégé ouvert
+   par un utilisateur connecté suffisait. Formulaire POST avec jeton de sécurité. */
+$jeton_recu = (string) ($_POST['csrf_token'] ?? '');
+if ($_SERVER['REQUEST_METHOD'] !== 'POST' || $jeton_recu === ''
+    || !hash_equals((string) ($_SESSION['admin_csrf'] ?? ''), $jeton_recu)) {
+    $_SESSION['error_devis'] = 'Demande refusée : la conversion d’un devis en bon de livraison se fait par un formulaire.';
+    header('Location: index.php');
+    exit;
+}
+$devis_id = isset($_POST['id']) ? (int) $_POST['id'] : 0;
 if ($devis_id <= 0) {
     header('Location: index.php');
     exit;

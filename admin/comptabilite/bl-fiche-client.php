@@ -141,8 +141,8 @@ if (isset($_SESSION['fm_erreur'])) {
                     </div>
                     <div class="bl-facture-bar__actions">
                         <a href="bl-factures-archives.php?client=<?php echo (int) $client_b2b_id; ?>" class="btn-secondary"><i class="fas fa-list" aria-hidden="true"></i> Liste des factures</a>
-                        <form method="get" action="../devis/facture_mensuelle_generer.php" class="bl-fm-gen-inline" style="display:inline-flex;flex-wrap:wrap;align-items:center;gap:12px;vertical-align:middle;">
-                            <input type="hidden" name="client_b2b_id" value="<?php echo (int) $client_b2b_id; ?>">
+                        <?php if (empty($_SESSION['admin_csrf'])) { $_SESSION['admin_csrf'] = bin2hex(random_bytes(32)); } ?><form method="post" action="../devis/facture_mensuelle_generer.php" class="bl-fm-gen-inline" style="display:inline-flex;flex-wrap:wrap;align-items:center;gap:12px;vertical-align:middle;">
+                            <input type="hidden" name="client_b2b_id" value="<?php echo (int) $client_b2b_id; ?>"><input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars((string) ($_SESSION['admin_csrf'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
                             <label style="display:inline-flex;align-items:center;gap:8px;font-size:0.88rem;color:var(--gris-fonce,#444);cursor:pointer;white-space:nowrap;">
                                 <input type="checkbox" name="inclure_tva" value="1" style="width:16px;height:16px;accent-color:var(--couleur-dominante,#3564a6);">
                                 Facture TTC (inclure la TVA)
@@ -155,8 +155,8 @@ if (isset($_SESSION['fm_erreur'])) {
                 </div>
                 <div class="bl-fm-period-row form-hint" style="margin-top:14px;padding:14px 16px;border-radius:12px;border:1px solid var(--glass-border);background:var(--blanc-neige);">
                     <strong style="display:block;margin-bottom:8px;"><i class="fas fa-calendar-alt" aria-hidden="true"></i> Période comptable (facultatif)</strong>
-                    <form method="get" action="../devis/facture_mensuelle_generer.php" class="bl-fm-period-form" style="display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px;">
-                        <input type="hidden" name="client_b2b_id" value="<?php echo (int) $client_b2b_id; ?>">
+                    <?php if (empty($_SESSION['admin_csrf'])) { $_SESSION['admin_csrf'] = bin2hex(random_bytes(32)); } ?><form method="post" action="../devis/facture_mensuelle_generer.php" class="bl-fm-period-form" style="display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px;">
+                        <input type="hidden" name="client_b2b_id" value="<?php echo (int) $client_b2b_id; ?>"><input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars((string) ($_SESSION['admin_csrf'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
                         <label style="display:flex;flex-direction:column;gap:4px;font-size:0.88rem;">
                             Mois
                             <select name="mois" class="input-field" style="min-width:160px;padding:8px 10px;border-radius:8px;border:1px solid var(--border-input);">

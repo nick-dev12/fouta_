@@ -352,5 +352,22 @@ if ($base_locale) {
 }
 $_SESSION['admin_role'] = $role_avant_6;
 
+echo "— point 19 : aucune écriture ne part d'un simple lien —\n";
+foreach (['admin/devis/generer_facture.php', 'admin/devis/convertir_bl.php', 'admin/devis/facture_mensuelle_generer.php',
+          'admin/devis/clients_b2b_create.php', 'admin/commandes/generer_facture.php', 'admin/commandes/create_manuelle.php'] as $f) {
+    $source_ecriture = file_get_contents("$RACINE/$f");
+    verifie("$f exige un jeton de sécurité", true,
+        strpos($source_ecriture, 'hash_equals(') !== false && strpos($source_ecriture, "\$_POST['csrf_token']") !== false);
+}
+foreach (['admin/devis/generer_facture.php', 'admin/devis/convertir_bl.php', 'admin/devis/facture_mensuelle_generer.php', 'admin/commandes/generer_facture.php'] as $f) {
+    $source_ecriture = file_get_contents("$RACINE/$f");
+    verifie("$f refuse une demande qui n'est pas un POST", true, strpos($source_ecriture, "\$_SERVER['REQUEST_METHOD'] !== 'POST'") !== false);
+    verifie("$f ne lit plus ses paramètres dans l'adresse", false, strpos($source_ecriture, '$_GET[') !== false);
+}
+verifie('fiche commande : les changements de statut exigent le jeton', true,
+    strpos(file_get_contents("$RACINE/admin/commandes/details.php"), "hash_equals((string) (\$_SESSION['admin_csrf']") !== false);
+verifie('fiche client de la comptabilité : plus de génération de facture par GET', false,
+    strpos(file_get_contents("$RACINE/admin/comptabilite/bl-fiche-client.php"), 'method="get" action="../devis/facture_mensuelle_generer.php"') !== false);
+
 echo "\n$ok OK / $ko KO\n";
 exit($ko === 0 ? 0 : 1);

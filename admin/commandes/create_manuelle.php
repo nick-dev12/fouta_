@@ -15,6 +15,12 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Location: index.php');
     exit;
 }
+$jeton_recu = (string) ($_POST['csrf_token'] ?? '');
+if ($jeton_recu === '' || !hash_equals((string) ($_SESSION['admin_csrf'] ?? ''), $jeton_recu)) {
+    $_SESSION['commande_manuelle_erreur'] = 'Session expirée : rechargez la page puis recommencez.';
+    header('Location: index.php?modal=commande_manuelle');
+    exit;
+}
 
 require_once __DIR__ . '/../../models/model_commandes.php';
 

@@ -13,7 +13,7 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
  * compte connecté avait le droit d'être là. La règle existe depuis
  * toujours dans includes/admin_route_access.php ; il manquait l'appel. */
 require_once __DIR__ . '/../includes/require_access.php';
-require_once __DIR__ . '/../../includes/admin_permissions.php';
+require_once __DIR__ . '/../../includes/admin_permissions.php'; if (empty($_SESSION['admin_csrf'])) { $_SESSION['admin_csrf'] = bin2hex(random_bytes(32)); }
 if (!admin_can_consulter_devis_compta()) {
     header('Location: ../dashboard.php');
     exit;
@@ -92,9 +92,9 @@ $frais = isset($devis['frais_livraison']) ? (float) $devis['frais_livraison'] : 
                     <i class="fas fa-file-invoice" aria-hidden="true"></i> Voir la facture
                 </a>
             <?php else: ?>
-                <a href="generer_facture.php?id=<?php echo $devis_id; ?>" class="btn-primary">
+                <form method="post" action="generer_facture.php" style="display:inline"><input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars((string) ($_SESSION['admin_csrf'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"><input type="hidden" name="id" value="<?php echo (int) $devis_id; ?>"><button type="submit" class="btn-primary" style="border:none;cursor:pointer;font:inherit">
                     <i class="fas fa-file-signature" aria-hidden="true"></i> Générer une facture
-                </a>
+                </button></form>
             <?php endif; ?>
             <a href="devis.php" class="btn-back">
                 <i class="fas fa-arrow-left" aria-hidden="true"></i> Retour à la liste

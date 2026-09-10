@@ -348,7 +348,7 @@ $montant_total_a_traiter = array_sum(array_column($commandes, 'montant_total'));
                 </div>
                 <?php endif; ?>
 
-                <form method="POST" action="create_manuelle.php" id="form-commande-manuelle">
+                <form method="POST" action="create_manuelle.php" id="form-commande-manuelle"><input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars((string) ($_SESSION['admin_csrf'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
                     <div class="form-commande-manuelle-grid">
                         <div class="form-commande-manuelle-col form-col-articles">
                             <div class="form-section-card">
