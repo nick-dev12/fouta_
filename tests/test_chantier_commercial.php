@@ -446,5 +446,61 @@ if ($base_locale) {
         [$stock_piece_cmd(), (int) $db->query("SELECT COUNT(*) FROM commandes WHERE numero_commande LIKE 'ESSAI-%'")->fetchColumn()]);
 }
 
+echo "— point 13 : le devis et la facture du mois suivent leurs états —\n";
+verifie('les libellés des statuts de devis', ['Brouillon', 'Envoyé', 'Accepté', 'Refusé'],
+    array_map(function ($s) { return devis_statut_libelle(['statut' => $s]); }, ['brouillon', 'envoye', 'accepte', 'refuse']));
+verifie('la comptabilité peut enregistrer le paiement d’une facture validée', true, admin_route_is_allowed('comptabilite', 'devis/facture_mensuelle_marquer_payee.php'));
+verifie('la page de statut des devis existe', true, is_file("$RACINE/admin/devis/devis_statut.php"));
+verifie('un devis refusé ne se facture pas', true, strpos(file_get_contents("$RACINE/admin/devis/generer_facture.php"), "=== 'refuse'") !== false);
+verifie('valider une facture du mois ne la marque plus payée', true, strpos(file_get_contents("$RACINE/models/model_factures_mensuelles.php"), "SET statut = \\'validee\\'") !== false);
+if ($base_locale) {
+    $devis_essai = [];
+    $fm_etat = 0;
+    $cree_devis = function () use ($db, &$devis_essai) {
+        $db->prepare("INSERT INTO devis (numero_devis, client_nom, client_prenom, client_telephone, adresse_livraison, montant_total, statut, date_creation)
+                      VALUES (:n, 'Essai', 'Automatique', '770000010', 'Essai automatique test_chantier_commercial', 1000, 'brouillon', NOW())")
+           ->execute(['n' => 'ESSAI-' . substr(uniqid(), -8)]);
+        $id = (int) $db->lastInsertId();
+        $devis_essai[] = $id;
+        return $id;
+    };
+    $statut_du_devis = function ($id) use ($db) {
+        return (string) $db->query("SELECT statut FROM devis WHERE id = $id")->fetchColumn();
+    };
+    try {
+        $d1 = $cree_devis();
+        verifie('brouillon → envoyé', true, devis_changer_statut($d1, 'envoye')['ok']);
+        verifie('envoyé → brouillon : refusé', false, devis_changer_statut($d1, 'brouillon')['ok']);
+        verifie('envoyé → accepté', true, devis_changer_statut($d1, 'accepte')['ok']);
+        verifie('accepté → refusé : refusé', false, devis_changer_statut($d1, 'refuse')['ok']);
+        verifie('le devis reste accepté', 'accepte', $statut_du_devis($d1));
+        $d2 = $cree_devis();
+        verifie('brouillon → refusé', true, devis_changer_statut($d2, 'refuse')['ok']);
+        verifie('refusé → accepté : refusé', false, devis_changer_statut($d2, 'accepte')['ok']);
+
+        $client_etat = (int) $db->query('SELECT id FROM clients_b2b ORDER BY id LIMIT 1')->fetchColumn();
+        $db->prepare("INSERT INTO factures_mensuelles (numero_facture, client_b2b_id, annee, mois, statut, total_ht, admin_createur_id, date_creation)
+                      VALUES (:n, :c, 2099, 11, 'brouillon', 0, 38, NOW())")
+           ->execute(['n' => 'FM-ESSAI-' . substr(uniqid(), -6), 'c' => $client_etat]);
+        $fm_etat = (int) $db->lastInsertId();
+        verifie('valider une facture du mois', true, valider_facture_mensuelle($fm_etat));
+        $ligne_fm = $db->query("SELECT statut, date_emission, date_paiement FROM factures_mensuelles WHERE id = $fm_etat")->fetch(PDO::FETCH_ASSOC);
+        verifie('... elle est « validée », pas payée', 'validee', $ligne_fm['statut']);
+        verifie('... émise aujourd’hui, sans date de paiement', [date('Y-m-d'), null], [$ligne_fm['date_emission'], $ligne_fm['date_paiement']]);
+        verifie('enregistrer ensuite son paiement', true, marquer_facture_mensuelle_comme_payee($fm_etat));
+        verifie('... elle est payée', 'payee', (string) $db->query("SELECT statut FROM factures_mensuelles WHERE id = $fm_etat")->fetchColumn());
+    } finally {
+        $liste_devis_essai = implode(',', array_map('intval', $devis_essai ?: [0]));
+        $db->exec("DELETE FROM devis WHERE id IN ($liste_devis_essai)");
+        if ($fm_etat > 0) {
+            $db->exec("DELETE FROM factures_mensuelles WHERE id = $fm_etat");
+        }
+    }
+    verifie('nettoyage : aucun devis ni facture du mois d’essai restant', [0, 0], [
+        (int) $db->query("SELECT COUNT(*) FROM devis WHERE numero_devis LIKE 'ESSAI-%'")->fetchColumn(),
+        (int) $db->query("SELECT COUNT(*) FROM factures_mensuelles WHERE numero_facture LIKE 'FM-ESSAI-%'")->fetchColumn(),
+    ]);
+}
+
 echo "\n$ok OK / $ko KO\n";
 exit($ko === 0 ? 0 : 1);

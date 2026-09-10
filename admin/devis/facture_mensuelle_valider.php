@@ -41,6 +41,6 @@ if ($facture_mensuelle_id <= 0 || !valider_facture_mensuelle($facture_mensuelle_
     exit;
 }
 
-$_SESSION['success_message'] = 'Facture enregistrée comme payée (comptabilité).';
+$_SESSION['success_message'] = 'Facture validée : elle est émise et reste à payer. Enregistrez le paiement quand il arrive.';
 header('Location: facture_mensuelle.php?id=' . $facture_mensuelle_id);
 exit;

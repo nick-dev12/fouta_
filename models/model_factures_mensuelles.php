@@ -565,7 +565,8 @@ function get_bls_et_lignes_facture_mensuelle($facture_mensuelle_id) {
 }
 
 /**
- * Depuis un brouillon : marque la facture comme payée (comptabilité), fixe date d’émission et date de paiement.
+ * Depuis un brouillon : VALIDE la facture — elle est émise et reste à payer (10/09/2026 : elle ne passe plus
+ * directement à « payée » ; le paiement s'enregistre ensuite par marquer_facture_mensuelle_comme_payee()).
  *
  * @return bool
  */
@@ -582,15 +583,14 @@ function valider_facture_mensuelle($facture_mensuelle_id) {
     try {
         $stmt = $db->prepare('
             UPDATE factures_mensuelles
-            SET statut = \'payee\',
+            SET statut = \'validee\',
                 date_emission = COALESCE(date_emission, CURDATE()),
-                date_paiement = CURDATE(),
                 date_modification = NOW()
             WHERE id = :id AND statut = \'brouillon\'
         ');
         $stmt->execute(['id' => $facture_mensuelle_id]);
         $fm2 = get_facture_mensuelle_by_id($facture_mensuelle_id);
-        return $fm2 && ($fm2['statut'] ?? '') === 'payee';
+        return $fm2 && ($fm2['statut'] ?? '') === 'validee';
     } catch (PDOException $e) {
         error_log('[valider_facture_mensuelle] ' . $e->getMessage());
         return false;

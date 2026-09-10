@@ -52,12 +52,19 @@ if (bl_exists_for_devis($devis_id)) {
     header('Location: devis.php');
     exit;
 }
+if (($devis['statut'] ?? '') === 'refuse') {
+    $_SESSION['error_devis'] = 'Ce devis a été refusé : il ne se facture pas.';
+    header('Location: devis.php');
+    exit;
+}
 
 $result = create_facture_devis(
     $devis_id,
     (int) ($_SESSION['admin_id'] ?? 0) > 0 ? (int) $_SESSION['admin_id'] : null
 );
 if ($result && $result['success']) {
+    /* Facturer un devis vaut acceptation (10/09/2026). */
+    devis_changer_statut($devis_id, 'accepte');
     $_SESSION['success_message'] = 'Facture #' . $result['numero_facture'] . ' générée avec succès.';
     header('Location: facture.php?id=' . $result['facture_id']);
     exit;

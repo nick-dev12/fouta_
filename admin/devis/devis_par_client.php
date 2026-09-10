@@ -79,7 +79,7 @@ $devis_items = $filtre['devis'];
                                 <p class="commande-date">Date: <?php echo date('d/m/Y à H:i', strtotime($d['date_creation'])); ?></p>
                             </div>
                             <span class="commande-statut statut-<?php echo htmlspecialchars((string) $d['statut']); ?>">
-                                <?php echo ucfirst((string) $d['statut']); ?>
+                                <?php echo htmlspecialchars(devis_statut_libelle($d)); ?>
                             </span>
                         </div>
                         <div class="commande-details">

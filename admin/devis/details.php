@@ -55,7 +55,7 @@ $client_nom = trim($devis['client_prenom'] . ' ' . $devis['client_nom']);
 $num_devis = htmlspecialchars($devis['numero_devis']);
 $date_creation_txt = date('d/m/Y à H:i', strtotime($devis['date_creation']));
 $st = htmlspecialchars($devis['statut']);
-$st_uc = ucfirst($devis['statut']);
+$st_uc = devis_statut_libelle($devis) . ($facture ? ' · facturé' : '');
 $sous_total = array_sum(array_column($produits, 'prix_total'));
 $frais = isset($devis['frais_livraison']) ? (float) $devis['frais_livraison'] : 0;
 ?>
@@ -87,11 +87,12 @@ $frais = isset($devis['frais_livraison']) ? (float) $devis['frais_livraison'] : 
             </div>
         </div>
         <div class="header-actions">
+            <?php if (!$facture && in_array(($devis['statut'] ?? ''), ['brouillon', 'envoye'], true)): ?><form method="post" action="devis_statut.php" style="display:inline-flex;gap:6px;flex-wrap:wrap"><input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars((string) ($_SESSION['admin_csrf'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"><input type="hidden" name="id" value="<?php echo (int) $devis_id; ?>"><?php if (($devis['statut'] ?? '') === 'brouillon'): ?><button type="submit" name="statut" value="envoye" class="btn-back" style="border:none;cursor:pointer;font:inherit"><i class="fas fa-paper-plane" aria-hidden="true"></i> Marquer envoyé</button><?php endif; ?><button type="submit" name="statut" value="accepte" class="btn-back" style="border:none;cursor:pointer;font:inherit"><i class="fas fa-check" aria-hidden="true"></i> Accepté</button><button type="submit" name="statut" value="refuse" class="btn-back" style="border:none;cursor:pointer;font:inherit" onclick="return confirm('Marquer ce devis comme refusé ? Il ne pourra plus être facturé.');"><i class="fas fa-times" aria-hidden="true"></i> Refusé</button></form><?php endif; ?>
             <?php if ($facture): ?>
                 <a href="facture.php?id=<?php echo (int) $facture['id']; ?>" class="btn-primary">
                     <i class="fas fa-file-invoice" aria-hidden="true"></i> Voir la facture
                 </a>
-            <?php else: ?>
+            <?php elseif (($devis['statut'] ?? '') !== 'refuse'): ?>
                 <form method="post" action="generer_facture.php" style="display:inline"><input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars((string) ($_SESSION['admin_csrf'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"><input type="hidden" name="id" value="<?php echo (int) $devis_id; ?>"><button type="submit" class="btn-primary" style="border:none;cursor:pointer;font:inherit">
                     <i class="fas fa-file-signature" aria-hidden="true"></i> Générer une facture
                 </button></form>

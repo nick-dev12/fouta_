@@ -624,3 +624,51 @@ function devis_est_facture($devis_id)
     require_once __DIR__ . '/model_factures_devis.php';
     return (bool) get_facture_devis_by_devis((int) $devis_id);
 }
+
+/**
+ * Le libellé lisible du statut d'un devis (10/09/2026).
+ *
+ * @return string
+ */
+function devis_statut_libelle(array $devis)
+{
+    $libelles = ['brouillon' => 'Brouillon', 'envoye' => 'Envoyé', 'accepte' => 'Accepté', 'refuse' => 'Refusé'];
+    $statut = (string) ($devis['statut'] ?? 'brouillon');
+    return $libelles[$statut] ?? ucfirst($statut);
+}
+
+/**
+ * FAIRE VIVRE LE DEVIS (10/09/2026). Les statuts envoyé, accepté et refusé
+ * existaient en base mais aucun écran ne les posait. Transitions permises :
+ * brouillon → envoyé, accepté ou refusé ; envoyé → accepté ou refusé.
+ * Accepté et refusé sont définitifs ; un devis facturé ne peut pas être refusé.
+ *
+ * @return array{ok:bool, message:string}
+ */
+function devis_changer_statut($devis_id, $nouveau)
+{
+    global $db;
+    $permis = ['brouillon' => ['envoye', 'accepte', 'refuse'], 'envoye' => ['accepte', 'refuse']];
+    $devis = get_devis_by_id((int) $devis_id);
+    if (!$devis) {
+        return ['ok' => false, 'message' => 'Devis introuvable.'];
+    }
+    $actuel = (string) ($devis['statut'] ?? 'brouillon');
+    if (!in_array($nouveau, $permis[$actuel] ?? [], true)) {
+        return ['ok' => false, 'message' => 'Un devis « ' . devis_statut_libelle($devis) . ' » ne peut pas devenir « ' . devis_statut_libelle(['statut' => $nouveau]) . ' ».'];
+    }
+    if ($nouveau === 'refuse' && devis_est_facture((int) $devis_id)) {
+        return ['ok' => false, 'message' => 'Ce devis est déjà facturé : il ne peut pas être marqué refusé.'];
+    }
+    try {
+        $st = $db->prepare('UPDATE devis SET statut = :nouveau, date_modification = NOW() WHERE id = :id AND statut = :actuel');
+        $st->execute(['nouveau' => $nouveau, 'id' => (int) $devis_id, 'actuel' => $actuel]);
+        if ($st->rowCount() !== 1) {
+            return ['ok' => false, 'message' => 'Le statut de ce devis vient de changer : rechargez la fiche.'];
+        }
+        return ['ok' => true, 'message' => 'Devis ' . ($devis['numero_devis'] ?? '') . ' : ' . mb_strtolower(devis_statut_libelle(['statut' => $nouveau]), 'UTF-8') . '.'];
+    } catch (PDOException $e) {
+        error_log('[devis_changer_statut] ' . $e->getMessage());
+        return ['ok' => false, 'message' => 'Le statut n’a pas pu être enregistré.'];
+    }
+}

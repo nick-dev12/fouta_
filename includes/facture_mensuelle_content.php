@@ -924,10 +924,10 @@ $facture_og_image = get_site_base_url() . '/image/logo-fpl.png';
             <a href="<?php echo htmlspecialchars($back_url); ?>"><i class="fas fa-arrow-left"></i> <?php echo htmlspecialchars($back_label); ?></a>
             <a href="javascript:window.print();"><i class="fas fa-print"></i> Imprimer</a>
             <?php if (!empty($fm_show_validate) && !empty($facture_mensuelle_id) && !empty($admin_csrf_token)): ?>
-                <form method="post" action="facture_mensuelle_valider.php" onsubmit="return confirm('Marquer cette facture comme payée ?');">
+                <form method="post" action="facture_mensuelle_valider.php" onsubmit="return confirm('Valider cette facture ? Elle ne se modifiera plus et restera à payer jusqu’à l’enregistrement du paiement.');">
                     <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($admin_csrf_token); ?>">
                     <input type="hidden" name="facture_mensuelle_id" value="<?php echo (int) $facture_mensuelle_id; ?>">
-                    <button type="submit" class="facture-btn-validate"><i class="fas fa-check-circle"></i> Marquer comme payé</button>
+                    <button type="submit" class="facture-btn-validate"><i class="fas fa-check-circle"></i> Valider la facture</button>
                 </form>
             <?php endif; ?>
             <?php if (!empty($fm_show_marquer_paye) && !empty($facture_mensuelle_id) && !empty($admin_csrf_token)): ?>

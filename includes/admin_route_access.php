@@ -278,6 +278,8 @@ if (!function_exists('admin_route_relative_path')) {
                     'devis/facture_mensuelle.php',
                     'devis/facture_mensuelle_generer.php',
                     'devis/facture_mensuelle_valider.php',
+                    // Enregistrer le paiement d'une facture validée (10/09/2026) : la page existait, la porte manquait.
+                    'devis/facture_mensuelle_marquer_payee.php',
                     'devis/bl_voir.php',
                     'devis/bl_facture.php',
                     'devis/facture.php',
