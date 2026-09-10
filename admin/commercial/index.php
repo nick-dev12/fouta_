@@ -35,6 +35,7 @@ if (!admin_can_caisse_vendeur()) {
 require_once __DIR__ . '/../../includes/fpl_texte.php';  // fpl_e(), appelé par le menu
 require_once __DIR__ . '/../../includes/fpl_ui.php';
 require_once __DIR__ . '/../../models/model_commercial_accueil.php';
+require_once __DIR__ . '/../../models/model_devis.php';  // devis_statut_libelle()
 
 $moi = (int) $_SESSION['admin_id'];
 $peut_bl = admin_can_bl_retours_b2b();
@@ -43,12 +44,18 @@ $tickets_attente = [];
 $jour = ['n' => 0, 'total' => 0.0];
 $devis_ouverts = [];
 $bl_brouillons = [];
+$factures_a_relancer = [];
+$devis_sans_reponse = [];
+$ventes_du_mois = [];
 $lecture_ko = false;
 try {
     $tickets_attente = commercial_tickets_en_attente($moi);
     $jour = commercial_tickets_du_jour($moi);
     $devis_ouverts = commercial_devis_ouverts($moi);
     $bl_brouillons = $peut_bl ? commercial_bl_brouillons($moi) : [];
+    $factures_a_relancer = commercial_factures_a_relancer($moi);
+    $devis_sans_reponse = commercial_devis_sans_reponse($moi, 7);
+    $ventes_du_mois = commercial_ventes_du_mois($moi);
 } catch (Throwable $e) {
     error_log('[commercial/index] ' . $e->getMessage());
     $lecture_ko = true;
@@ -162,6 +169,67 @@ $fpl_titre_page = 'Accueil';
       <?php endif; ?>
     </div>
 
+    <?php if ($factures_a_relancer !== []) : ?>
+    <div class="card" id="factures-a-relancer" style="margin-bottom:var(--s4)">
+      <div class="card-head">
+        <h2>Mes factures de devis à relancer</h2>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Facture</th><th>Client</th><th>Émise le</th><th class="num">Depuis</th><th class="num">Montant</th><th></th></tr>
+          </thead>
+          <tbody>
+            <?php foreach ($factures_a_relancer as $f) : ?>
+              <?php $client_f = trim((string) $f['client_prenom'] . ' ' . (string) $f['client_nom']); ?>
+              <tr>
+                <td><span class="chip-code"><?php echo e($f['numero_facture']); ?></span></td>
+                <td>
+                  <div class="cell-title"><?php echo $client_f !== '' ? e($client_f) : '—'; ?></div>
+                  <?php if (!empty($f['client_telephone'])) : ?><div class="cell-sub"><?php echo e($f['client_telephone']); ?></div><?php endif; ?>
+                </td>
+                <td class="muted"><?php echo !empty($f['date_facture']) ? date('d/m/Y', strtotime($f['date_facture'])) : '—'; ?></td>
+                <td class="num"><?php echo (int) $f['jours']; ?> j</td>
+                <td class="num"><span class="qty"><?php echo fpl_montant($f['montant_total']); ?></span> <span class="muted">FCFA</span></td>
+                <td class="num"><a class="btn btn-outline btn-sm" href="../devis/details.php?id=<?php echo (int) $f['devis_id']; ?>">Ouvrir</a></td>
+              </tr>
+            <?php endforeach; ?>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <?php endif; ?>
+
+    <?php if ($devis_sans_reponse !== []) : ?>
+    <div class="card" id="devis-sans-reponse" style="margin-bottom:var(--s4)">
+      <div class="card-head">
+        <h2>Mes devis envoyés sans réponse depuis 7 jours</h2>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Devis</th><th>Client</th><th class="num">Envoyé depuis</th><th class="num">Montant</th><th></th></tr>
+          </thead>
+          <tbody>
+            <?php foreach ($devis_sans_reponse as $s) : ?>
+              <?php $client_s = trim((string) $s['client_prenom'] . ' ' . (string) $s['client_nom']); ?>
+              <tr>
+                <td><span class="chip-code"><?php echo e($s['numero_devis']); ?></span></td>
+                <td>
+                  <div class="cell-title"><?php echo $client_s !== '' ? e($client_s) : '—'; ?></div>
+                  <?php if (!empty($s['client_telephone'])) : ?><div class="cell-sub"><?php echo e($s['client_telephone']); ?></div><?php endif; ?>
+                </td>
+                <td class="num"><?php echo (int) $s['jours']; ?> j</td>
+                <td class="num"><span class="qty"><?php echo fpl_montant($s['montant_total']); ?></span> <span class="muted">FCFA</span></td>
+                <td class="num"><a class="btn btn-outline btn-sm" href="../devis/details.php?id=<?php echo (int) $s['id']; ?>">Ouvrir</a></td>
+              </tr>
+            <?php endforeach; ?>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <?php endif; ?>
+
     <div class="card" id="devis-ouverts" style="margin-bottom:var(--s4)">
       <div class="card-head">
         <h2>Mes devis ouverts</h2>
@@ -176,7 +244,7 @@ $fpl_titre_page = 'Accueil';
         <div class="table-wrap">
           <table>
             <thead>
-              <tr><th>Devis</th><th>Client</th><th>Créé le</th><th class="num">Montant</th><th>Facture</th><th></th></tr>
+              <tr><th>Devis</th><th>Client</th><th>Statut</th><th>Créé le</th><th class="num">Montant</th><th>Facture</th><th></th></tr>
             </thead>
             <tbody>
               <?php foreach ($devis_ouverts as $d) : ?>
@@ -184,6 +252,7 @@ $fpl_titre_page = 'Accueil';
                 <tr>
                   <td><span class="chip-code"><?php echo e($d['numero_devis']); ?></span></td>
                   <td><div class="cell-title"><?php echo $client !== '' ? e($client) : '—'; ?></div></td>
+                  <td><span class="badge"><?php echo e(devis_statut_libelle($d)); ?></span></td>
                   <td class="muted"><?php echo date('d/m/Y', strtotime($d['date_creation'])); ?></td>
                   <td class="num"><span class="qty"><?php echo fpl_montant($d['montant_total']); ?></span> <span class="muted">FCFA</span></td>
                   <td>
@@ -221,6 +290,31 @@ $fpl_titre_page = 'Accueil';
                 <td class="muted"><?php echo $b['date_bl'] ? date('d/m/Y', strtotime($b['date_bl'])) : '—'; ?></td>
                 <td class="num"><span class="qty"><?php echo fpl_montant($b['total_ht']); ?></span> <span class="muted">FCFA</span></td>
                 <td class="num"><a class="btn btn-outline btn-sm" href="../devis/bl_modifier.php?id=<?php echo (int) $b['id']; ?>">Reprendre</a></td>
+              </tr>
+            <?php endforeach; ?>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <?php endif; ?>
+
+    <?php if ($ventes_du_mois !== []) : ?>
+    <div class="card" id="mes-ventes-du-mois" style="margin-bottom:var(--s4)">
+      <div class="card-head">
+        <h2>Mes ventes du mois</h2>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Chemin</th><th class="num">Nombre</th><th class="num">Montant</th><th>Précision</th></tr>
+          </thead>
+          <tbody>
+            <?php foreach ($ventes_du_mois as $v) : ?>
+              <tr>
+                <td><div class="cell-title"><?php echo e($v['chemin']); ?></div></td>
+                <td class="num"><?php echo (int) $v['nombre']; ?></td>
+                <td class="num"><span class="qty"><?php echo fpl_montant($v['montant']); ?></span> <span class="muted">FCFA</span></td>
+                <td class="muted"><?php echo e($v['detail']); ?></td>
               </tr>
             <?php endforeach; ?>
           </tbody>

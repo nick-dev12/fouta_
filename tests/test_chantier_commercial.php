@@ -502,5 +502,44 @@ if ($base_locale) {
     ]);
 }
 
+echo "— point 15 : l'accueil montre les relances et toutes ses ventes du mois —\n";
+require_once "$RACINE/models/model_commercial_accueil.php";
+$source_accueil = file_get_contents("$RACINE/admin/commercial/index.php");
+foreach (['factures-a-relancer', 'devis-sans-reponse', 'mes-ventes-du-mois'] as $section) {
+    verifie("l'accueil porte la section « $section »", true, strpos($source_accueil, 'id="' . $section . '"') !== false);
+}
+$debut_du_mois = date('Y-m-01');
+foreach ([20, 23, 10] as $compte) {
+    $attendu_relances = (int) $db->query("SELECT COUNT(*) FROM factures_devis f INNER JOIN devis d ON d.id = f.devis_id
+        WHERE COALESCE(f.payee, 0) = 0 AND d.sync_deleted_at IS NULL AND d.admin_createur_id = $compte")->fetchColumn();
+    verifie("compte $compte : factures à relancer = seconde lecture ($attendu_relances)", $attendu_relances, count(commercial_factures_a_relancer($compte)));
+    $mois_compte = commercial_ventes_du_mois($compte);
+    verifie("compte $compte : au moins trois chemins de vente dans le mois", true, count($mois_compte) >= 3);
+    $attendu_caisse = (int) $db->query("SELECT COUNT(*) FROM caisse_ventes WHERE sync_deleted_at IS NULL AND statut = 'paye'
+        AND admin_id = $compte AND date_encaissement >= '$debut_du_mois'")->fetchColumn();
+    verifie("compte $compte : tickets encaissés du mois = seconde lecture ($attendu_caisse)", $attendu_caisse, $mois_compte[0]['nombre']);
+}
+if ($base_locale) {
+    $db->prepare("INSERT INTO devis (numero_devis, client_nom, client_prenom, client_telephone, adresse_livraison, montant_total, statut, admin_createur_id, date_creation)
+                  VALUES (:n, 'Essai', 'Relance', '770000011', 'Essai automatique test_chantier_commercial', 1000, 'envoye', 38, NOW())")
+       ->execute(['n' => 'ESSAI-' . substr(uniqid(), -8)]);
+    $devis_relance = (int) $db->lastInsertId();
+    try {
+        $db->exec('SET @sync_applying = 1');
+        $db->exec("UPDATE devis SET date_modification = NOW() - INTERVAL 10 DAY WHERE id = $devis_relance");
+        $db->exec('SET @sync_applying = NULL');
+        $cherche_relance = function ($seuil) use ($devis_relance) {
+            return count(array_filter(commercial_devis_sans_reponse(38, $seuil), function ($s) use ($devis_relance) {
+                return (int) $s['id'] === $devis_relance;
+            }));
+        };
+        verifie('un devis envoyé il y a 10 jours apparaît « sans réponse » au seuil de 7 jours', 1, $cherche_relance(7));
+        verifie('... mais pas au seuil de 15 jours', 0, $cherche_relance(15));
+    } finally {
+        $db->exec("DELETE FROM devis WHERE id = $devis_relance");
+    }
+    verifie('nettoyage : aucun devis d’essai restant', 0, (int) $db->query("SELECT COUNT(*) FROM devis WHERE numero_devis LIKE 'ESSAI-%'")->fetchColumn());
+}
+
 echo "\n$ok OK / $ko KO\n";
 exit($ko === 0 ? 0 : 1);

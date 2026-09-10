@@ -71,7 +71,7 @@ function commercial_tickets_du_jour($admin_id)
 function commercial_devis_ouverts($admin_id)
 {
     return commercial_lire(
-        "SELECT d.id, d.numero_devis, d.client_nom, d.client_prenom, d.montant_total, d.date_creation,
+        "SELECT d.id, d.numero_devis, d.statut, d.client_nom, d.client_prenom, d.montant_total, d.date_creation,
                 fd.numero_facture
          FROM devis d
          LEFT JOIN factures_devis fd
@@ -99,4 +99,100 @@ function commercial_bl_brouillons($admin_id)
          LIMIT 200",
         ['moi' => (int) $admin_id]
     );
+}
+
+/**
+ * Ses factures de devis non payées, de la plus ancienne à la plus récente
+ * (10/09/2026) : ce sont les relances à faire.
+ */
+function commercial_factures_a_relancer($admin_id)
+{
+    return commercial_lire(
+        "SELECT f.id, f.numero_facture, f.date_facture, f.montant_total,
+                d.id AS devis_id, d.numero_devis, d.client_nom, d.client_prenom, d.client_telephone,
+                DATEDIFF(CURDATE(), f.date_facture) AS jours
+         FROM factures_devis f
+         INNER JOIN devis d ON d.id = f.devis_id
+         WHERE COALESCE(f.payee, 0) = 0
+           AND d.sync_deleted_at IS NULL
+           AND d.admin_createur_id = :moi
+         ORDER BY f.date_facture ASC, f.id ASC
+         LIMIT 200",
+        ['moi' => (int) $admin_id]
+    );
+}
+
+/**
+ * Ses devis envoyés restés sans réponse depuis au moins $jours jours
+ * (10/09/2026). La date retenue est celle du dernier changement du devis,
+ * c'est-à-dire son passage à « envoyé ».
+ */
+function commercial_devis_sans_reponse($admin_id, $jours = 7)
+{
+    return commercial_lire(
+        "SELECT d.id, d.numero_devis, d.client_nom, d.client_prenom, d.client_telephone, d.montant_total,
+                d.date_modification, DATEDIFF(CURDATE(), DATE(d.date_modification)) AS jours
+         FROM devis d
+         WHERE d.sync_deleted_at IS NULL
+           AND d.statut = 'envoye'
+           AND d.admin_createur_id = :moi
+           AND d.date_modification <= NOW() - INTERVAL " . max(0, (int) $jours) . " DAY
+         ORDER BY d.date_modification ASC
+         LIMIT 200",
+        ['moi' => (int) $admin_id]
+    );
+}
+
+/**
+ * SES VENTES DU MOIS, CHEMIN PAR CHEMIN (10/09/2026). Aucun écran ne montrait au
+ * commercial général toutes ses ventes : la comptabilité ne lui est pas ouverte
+ * et chaque chemin vit sur sa page. Quatre lignes : tickets encaissés, factures
+ * de devis, bons de livraison validés, commandes du site payées.
+ *
+ * @return array<int, array{chemin:string, nombre:int, montant:float, detail:string}>
+ */
+function commercial_ventes_du_mois($admin_id)
+{
+    $moi = (int) $admin_id;
+    $debut = date('Y-m-01');
+
+    $caisse = commercial_lire(
+        "SELECT COUNT(*) AS n, COALESCE(SUM(montant_total), 0) AS t FROM caisse_ventes
+         WHERE sync_deleted_at IS NULL AND statut = 'paye' AND admin_id = :moi AND date_encaissement >= :debut",
+        ['moi' => $moi, 'debut' => $debut]
+    )[0];
+    $devis = commercial_lire(
+        "SELECT COUNT(*) AS n, COALESCE(SUM(f.montant_total), 0) AS t,
+                COALESCE(SUM(CASE WHEN f.payee = 1 THEN 1 ELSE 0 END), 0) AS payees
+         FROM factures_devis f INNER JOIN devis d ON d.id = f.devis_id
+         WHERE d.admin_createur_id = :moi AND f.date_facture >= :debut",
+        ['moi' => $moi, 'debut' => $debut]
+    )[0];
+    $bl = commercial_lire(
+        "SELECT COUNT(*) AS n, COALESCE(SUM(total_ht), 0) AS t FROM bons_livraison
+         WHERE sync_deleted_at IS NULL AND statut = 'valide' AND admin_createur_id = :moi AND date_bl >= :debut",
+        ['moi' => $moi, 'debut' => $debut]
+    )[0];
+
+    $lignes = [
+        ['chemin' => 'Caisse : tickets encaissés', 'nombre' => (int) $caisse['n'], 'montant' => (float) $caisse['t'], 'detail' => 'TTC, encaissés par le caissier ce mois-ci'],
+        ['chemin' => 'Factures de devis', 'nombre' => (int) $devis['n'], 'montant' => (float) $devis['t'], 'detail' => (int) $devis['payees'] . ' payée(s)'],
+        ['chemin' => 'Bons de livraison validés', 'nombre' => (int) $bl['n'], 'montant' => (float) $bl['t'], 'detail' => 'HT, avant retours'],
+    ];
+
+    // La colonne du dernier traitant n'existe pas sur toutes les bases : sans elle, pas de ligne.
+    $colonne = commercial_lire(
+        "SELECT COUNT(*) AS n FROM information_schema.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'commandes' AND COLUMN_NAME = 'admin_dernier_traitement_id'",
+        []
+    )[0];
+    if ((int) $colonne['n'] > 0) {
+        $site = commercial_lire(
+            "SELECT COUNT(*) AS n, COALESCE(SUM(montant_total), 0) AS t FROM commandes
+             WHERE statut = 'paye' AND admin_dernier_traitement_id = :moi AND date_livraison >= :debut",
+            ['moi' => $moi, 'debut' => $debut]
+        )[0];
+        $lignes[] = ['chemin' => 'Commandes du site payées', 'nombre' => (int) $site['n'], 'montant' => (float) $site['t'], 'detail' => 'paiement enregistré par vous'];
+    }
+    return $lignes;
 }
