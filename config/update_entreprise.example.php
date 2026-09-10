@@ -36,6 +36,8 @@ return [
         'migrations/run_caisse_ticket_annulation.php',
         // Trace du prix tapé à la main sur les lignes de ticket (10/09/2026) : sur foutasvr ET le VPS.
         'migrations/run_caisse_lignes_prix_catalogue.php',
+        // Statut « payée » des commandes du site (10/09/2026) : sur foutasvr ET le VPS.
+        'migrations/run_commandes_statut_paye.php',
     ],
 
     // Migrations lourdes / ponctuelles — exclues du mode --all-migrations

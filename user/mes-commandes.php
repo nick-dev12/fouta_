@@ -7,6 +7,14 @@
 require_once __DIR__ . '/../includes/session_user.php';
 session_start();
 
+/* JETON DES FORMULAIRES DU CLIENT (10/09/2026) : confirmer un colis, annuler ou
+   recommander se faisait sans jeton, une page piégée suffisait. */
+if (empty($_SESSION['user_csrf'])) {
+    $_SESSION['user_csrf'] = bin2hex(random_bytes(32));
+}
+$user_jeton_ok = $_SERVER['REQUEST_METHOD'] !== 'POST'
+    || (isset($_POST['csrf_token']) && hash_equals((string) $_SESSION['user_csrf'], (string) $_POST['csrf_token']));
+
 // Vérifier si l'utilisateur est connecté
 if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_email'])) {
     header('Location: connexion.php');
@@ -20,15 +28,21 @@ require_once __DIR__ . '/../models/model_commandes_personnalisees.php';
 // Traitement de la confirmation de livraison
 $success_message = '';
 $error_message = '';
+if (!$user_jeton_ok) {
+    $error_message = 'Session expirée : rechargez la page puis recommencez.';
+}
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirmer_livraison'])) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $user_jeton_ok && isset($_POST['confirmer_livraison'])) {
     $commande_id = isset($_POST['commande_id']) ? (int) $_POST['commande_id'] : 0;
 
     if ($commande_id > 0) {
         $commande = get_commande_by_id($commande_id, $_SESSION['user_id']);
         if ($commande && $commande['statut'] === 'livraison_en_cours') {
             require_once __DIR__ . '/../models/model_commandes_admin.php';
-            if (update_commande_statut($commande_id, 'paye')) {
+            /* LE CLIENT CONFIRME SA RÉCEPTION, PAS SON PAIEMENT (10/09/2026) : son clic
+               mettait la commande à « payée » et sortait le stock. La commande passe à
+               « livrée » ; le commercial enregistre ensuite le paiement. */
+            if (update_commande_statut($commande_id, 'livree')) {
                 $success_message = 'Colis reçu confirmé avec succès !';
                 header('Location: mes-commandes.php?livraison_confirmee=1');
                 exit;
@@ -41,14 +55,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirmer_livraison']
 }
 
 // Traitement de l'annulation de commande
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['annuler_commande'])) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $user_jeton_ok && isset($_POST['annuler_commande'])) {
     $commande_id = isset($_POST['commande_id']) ? (int) $_POST['commande_id'] : 0;
 
     if ($commande_id > 0) {
         // Vérifier que la commande peut être annulée (pas déjà livrée ou annulée)
         $commande = get_commande_by_id($commande_id, $_SESSION['user_id']);
 
-        if ($commande && $commande['statut'] !== 'livree' && $commande['statut'] !== 'annulee') {
+        /* Une commande prise en charge, en livraison, livrée ou payée ne s'annule plus
+           en ligne (10/09/2026) : son annulation ne remettait rien en stock. */
+        if ($commande && in_array($commande['statut'], ['en_attente', 'confirmee'], true)) {
             if (update_commande_statut_user($commande_id, $_SESSION['user_id'], 'annulee')) {
                 $success_message = 'Commande annulée avec succès !';
                 // Recharger les commandes pour afficher le nouveau statut
@@ -64,7 +80,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['annuler_commande'])) 
 }
 
 // Traitement de la recommandation (ajouter les produits au panier)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['recommander'])) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $user_jeton_ok && isset($_POST['recommander'])) {
     $commande_id = isset($_POST['commande_id']) ? (int) $_POST['commande_id'] : 0;
 
     if ($commande_id > 0) {
@@ -340,7 +356,7 @@ $statuts_labels = get_statuts_commande_personnalisee();
                             <!-- Bouton Colis reçu - visible uniquement si statut = livraison_en_cours -->
                             <?php if ($commande['statut'] == 'livraison_en_cours'): ?>
                                 <form method="POST" action="" style="margin: 0;">
-                                    <input type="hidden" name="commande_id" value="<?php echo $commande['id']; ?>">
+                                    <input type="hidden" name="commande_id" value="<?php echo $commande['id']; ?>"><input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars((string) ($_SESSION['user_csrf'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
                                     <button type="submit" name="confirmer_livraison" class="btn-confirmer-livraison"
                                         onclick="return confirm('Avez-vous bien reçu votre colis ?');" style="width: 100%;">
                                         <i class="fas fa-check-circle"></i> Colis reçu
@@ -354,7 +370,7 @@ $statuts_labels = get_statuts_commande_personnalisee();
                             if ($can_cancel):
                                 ?>
                                 <form method="POST" action="" style="margin: 0;">
-                                    <input type="hidden" name="commande_id" value="<?php echo $commande['id']; ?>">
+                                    <input type="hidden" name="commande_id" value="<?php echo $commande['id']; ?>"><input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars((string) ($_SESSION['user_csrf'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
                                     <button type="submit" name="annuler_commande" class="btn-annuler-commande"
                                         onclick="return confirm('Êtes-vous sûr de vouloir annuler cette commande ? Cette action est irréversible.');">
                                         <i class="fas fa-times-circle"></i> Annuler la commande

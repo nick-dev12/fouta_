@@ -184,6 +184,21 @@ function update_commande_statut($commande_id, $statut, $admin_traitant_id = null
     $ancien_statut = $commande['statut'] ?? '';
     $numero_commande = $commande['numero_commande'] ?? '';
 
+    /* LES STATUTS NE REVIENNENT PAS EN ARRIÈRE (10/09/2026). Seul l'écran cachait
+     * le formulaire : un POST forgé pouvait faire payée → en attente → payée et
+     * sortir le stock deux fois. « Payée » et « annulée » sont définitives ; une
+     * commande « livrée » (le client a reçu son colis) ne peut plus que devenir
+     * « payée », geste du commercial qui sort la marchandise du stock. */
+    $GLOBALS['commande_statut_erreur'] = '';
+    if (in_array($ancien_statut, ['paye', 'annulee'], true)) {
+        $GLOBALS['commande_statut_erreur'] = 'Cette commande est ' . ($ancien_statut === 'paye' ? 'payée' : 'annulée') . ' : son statut ne change plus.';
+        return false;
+    }
+    if ($ancien_statut === 'livree' && $statut !== 'paye') {
+        $GLOBALS['commande_statut_erreur'] = 'Une commande livrée ne peut plus qu’être marquée payée.';
+        return false;
+    }
+
     $set_traitement = '';
     $params_trait = ['id' => $commande_id, 'statut' => $statut];
     if (admin_activite_column_exists('commandes', 'admin_dernier_traitement_id')
@@ -205,17 +220,32 @@ function update_commande_statut($commande_id, $statut, $admin_traitant_id = null
         try {
             $db->beginTransaction();
 
+            /* LA SORTIE DE STOCK D'UNE COMMANDE PAYÉE EST VÉRIFIÉE (10/09/2026) :
+             * pièce verrouillée, stock suffisant exigé, sortie écrite au journal,
+             * sinon rien n'est écrit. Avant, le stock était ramené à zéro en
+             * silence et un journal raté passait inaperçu. */
+            $lire_stock = $db->prepare('SELECT stock, nom FROM produits WHERE id = :id FOR UPDATE');
+            $sortir_stock = $db->prepare('UPDATE produits SET stock = stock - :q, date_modification = NOW() WHERE id = :id AND stock >= :q2');
             foreach ($produits_commande as $item) {
                 $produit_id = (int) ($item['produit_id'] ?? $item['id'] ?? 0);
                 $quantite = (int) ($item['quantite'] ?? 0);
                 if ($produit_id <= 0 || $quantite <= 0) continue;
 
-                $produit = get_produit_by_id($produit_id);
-                if (!$produit) continue;
-
-                $quantite_avant = (int) ($produit['stock'] ?? 0);
-                decrement_produit_stock($produit_id, $quantite);
-                $quantite_apres = max(0, $quantite_avant - $quantite);
+                $lire_stock->execute(['id' => $produit_id]);
+                $produit = $lire_stock->fetch(PDO::FETCH_ASSOC);
+                if (!$produit) {
+                    throw new PDOException('pièce #' . $produit_id . ' introuvable');
+                }
+                $quantite_avant = (int) $produit['stock'];
+                if ($quantite_avant < $quantite) {
+                    $GLOBALS['commande_statut_erreur'] = 'Stock insuffisant pour « ' . $produit['nom'] . ' » : ' . $quantite_avant . ' en stock, ' . $quantite . ' commandé(s).';
+                    throw new PDOException('stock insuffisant');
+                }
+                $sortir_stock->execute(['q' => $quantite, 'q2' => $quantite, 'id' => $produit_id]);
+                if ($sortir_stock->rowCount() !== 1) {
+                    throw new PDOException('le stock de « ' . $produit['nom'] . ' » a changé pendant l’enregistrement');
+                }
+                $quantite_apres = $quantite_avant - $quantite;
 
                 $mv = [
                     'type' => 'sortie',
@@ -232,7 +262,9 @@ function update_commande_statut($commande_id, $statut, $admin_traitant_id = null
                 if ($admin_traitant_id !== null && (int) $admin_traitant_id > 0) {
                     $mv['admin_id'] = (int) $admin_traitant_id;
                 }
-                create_stock_mouvement($mv);
+                if (create_stock_mouvement($mv) === false) {
+                    throw new PDOException('la sortie de stock n’a pas pu être écrite au journal');
+                }
             }
 
             $stmt = $db->prepare("
@@ -249,6 +281,9 @@ function update_commande_statut($commande_id, $statut, $admin_traitant_id = null
         } catch (PDOException $e) {
             $db->rollBack();
             error_log('[update_commande_statut paye] ' . $e->getMessage());
+            if (($GLOBALS['commande_statut_erreur'] ?? '') === '') {
+                $GLOBALS['commande_statut_erreur'] = 'Le paiement n’a pas pu être enregistré : ' . $e->getMessage() . '.';
+            }
             return false;
         }
     }

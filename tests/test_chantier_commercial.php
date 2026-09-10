@@ -388,5 +388,63 @@ foreach (['user/mes-commandes.php', 'user/produits-livres.php', 'sitemap.php', '
     verifie("$f ne mène plus au formulaire hérité", false, strpos(file_get_contents("$RACINE/$f"), '/commande-personnalisee.php') !== false);
 }
 
+echo "— point 17 : le client ne déclare plus le paiement, et les statuts ne reviennent pas en arrière —\n";
+require_once "$RACINE/models/model_commandes_admin.php";
+$enum_commandes = (string) $db->query("SELECT COLUMN_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'commandes' AND COLUMN_NAME = 'statut'")->fetchColumn();
+verifie('la base connaît le statut « paye » des commandes', true, strpos($enum_commandes, "'paye'") !== false);
+$page_client = file_get_contents("$RACINE/user/mes-commandes.php");
+verifie('« Colis reçu » passe la commande à « livrée », plus à « payée »', true,
+    strpos($page_client, "update_commande_statut(\$commande_id, 'livree')") !== false && strpos($page_client, "update_commande_statut(\$commande_id, 'paye')") === false);
+verifie('le client ne peut annuler qu’avant la prise en charge', true, strpos($page_client, "in_array(\$commande['statut'], ['en_attente', 'confirmee'], true)") !== false);
+verifie('les formulaires du client portent un jeton', true, strpos($page_client, "\$_SESSION['user_csrf']") !== false && strpos($page_client, '$user_jeton_ok && isset($_POST') !== false);
+verifie('la fiche commande propose d’enregistrer le paiement d’une commande livrée', true, strpos(file_get_contents("$RACINE/admin/commandes/details.php"), 'Enregistrer le paiement') !== false);
+if ($base_locale) {
+    $piece_cmd = $db->query("SELECT id, stock, date_modification, sync_updated_at FROM produits WHERE statut = 'actif' AND stock >= 3 AND sync_deleted_at IS NULL ORDER BY id DESC LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+    $stock_cmd_avant = (int) $piece_cmd['stock'];
+    $cmd_ids = [];
+    $cree_commande = function ($statut, $quantite) use ($db, $piece_cmd, &$cmd_ids) {
+        $db->prepare("INSERT INTO commandes (numero_commande, montant_total, adresse_livraison, telephone_livraison, statut, date_commande)
+                      VALUES (:n, :m, 'Essai automatique test_chantier_commercial', '770000009', :s, NOW())")
+           ->execute(['n' => 'ESSAI-' . substr(uniqid(), -8), 'm' => 1000 * $quantite, 's' => $statut]);
+        $id = (int) $db->lastInsertId();
+        $cmd_ids[] = $id;
+        $db->prepare('INSERT INTO commande_produits (commande_id, produit_id, quantite, prix_unitaire, prix_total) VALUES (:c, :p, :q, 1000, :t)')
+           ->execute(['c' => $id, 'p' => (int) $piece_cmd['id'], 'q' => $quantite, 't' => 1000 * $quantite]);
+        return $id;
+    };
+    $stock_piece_cmd = function () use ($db, $piece_cmd) {
+        return (int) $db->query('SELECT stock FROM produits WHERE id = ' . (int) $piece_cmd['id'])->fetchColumn();
+    };
+    try {
+        $c1 = $cree_commande('livraison_en_cours', 2);
+        verifie('le colis reçu passe la commande à « livrée »', true, update_commande_statut($c1, 'livree'));
+        verifie('... sans toucher au stock', $stock_cmd_avant, $stock_piece_cmd());
+        verifie('une commande livrée ne s’annule plus', false, update_commande_statut($c1, 'annulee', 38));
+        verifie('... et le refus est expliqué', true, strpos((string) ($GLOBALS['commande_statut_erreur'] ?? ''), 'livrée') !== false);
+        verifie('le commercial enregistre le paiement', true, update_commande_statut($c1, 'paye', 38));
+        verifie('... la marchandise sort du stock', $stock_cmd_avant - 2, $stock_piece_cmd());
+        verifie('... la sortie est au journal', 1, (int) $db->query("SELECT COUNT(*) FROM stock_mouvements WHERE reference_type = 'commande' AND reference_id = $c1 AND type = 'sortie' AND quantite = 2")->fetchColumn());
+        verifie('une commande payée ne revient pas en attente', false, update_commande_statut($c1, 'en_attente', 38));
+        verifie('... et ne ressort pas son stock une seconde fois', $stock_cmd_avant - 2, $stock_piece_cmd());
+
+        $c2 = $cree_commande('livree', $stock_cmd_avant + 1000);
+        verifie('stock insuffisant : le paiement est refusé', false, update_commande_statut($c2, 'paye', 38));
+        verifie('... le refus nomme le manque', 0, strpos((string) ($GLOBALS['commande_statut_erreur'] ?? ''), 'Stock insuffisant'));
+        verifie('... la commande reste livrée', 'livree', (string) $db->query("SELECT statut FROM commandes WHERE id = $c2")->fetchColumn());
+        verifie('... aucun stock sorti', $stock_cmd_avant - 2, $stock_piece_cmd());
+    } finally {
+        $liste_cmd = implode(',', array_map('intval', $cmd_ids ?: [0]));
+        $db->exec("DELETE FROM stock_mouvements WHERE reference_type = 'commande' AND reference_id IN ($liste_cmd)");
+        $db->exec("DELETE FROM commande_produits WHERE commande_id IN ($liste_cmd)");
+        $db->exec("DELETE FROM commandes WHERE id IN ($liste_cmd)");
+        $db->exec('SET @sync_applying = 1');
+        $db->prepare('UPDATE produits SET stock = :s, date_modification = :d, sync_updated_at = :u WHERE id = :id')
+           ->execute(['s' => $stock_cmd_avant, 'd' => $piece_cmd['date_modification'], 'u' => $piece_cmd['sync_updated_at'], 'id' => (int) $piece_cmd['id']]);
+        $db->exec('SET @sync_applying = NULL');
+    }
+    verifie('nettoyage : stock rétabli, aucune commande d’essai restante', [$stock_cmd_avant, 0],
+        [$stock_piece_cmd(), (int) $db->query("SELECT COUNT(*) FROM commandes WHERE numero_commande LIKE 'ESSAI-%'")->fetchColumn()]);
+}
+
 echo "\n$ok OK / $ko KO\n";
 exit($ko === 0 ? 0 : 1);

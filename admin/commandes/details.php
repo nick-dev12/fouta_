@@ -69,7 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$is_annulee && ((string) ($_POST['
             if (update_commande_statut($commande_id, $nouveau_statut, $admin_traitant)) {
                 $statut_mis_a_jour = $nouveau_statut;
             } else {
-                $_SESSION['error_message'] = 'Impossible de mettre à jour le statut. Vérifiez que la migration "add_statut_paye_commandes" a été exécutée et que la commande contient des produits.';
+                $_SESSION['error_message'] = !empty($GLOBALS['commande_statut_erreur']) ? $GLOBALS['commande_statut_erreur'] : 'Impossible de mettre à jour le statut. Vérifiez que la migration run_commandes_statut_paye.php a été jouée et que la commande contient des pièces.';
             }
         }
     }
@@ -357,9 +357,10 @@ $cmd_detail_has_alert = isset($_SESSION['success_message']) || isset($_SESSION['
         <?php elseif ($is_livree): ?>
             <div class="alert-livree">
                 <h3><i class="fas fa-check-circle"></i> Commande livrée</h3>
-                <p>Le client a confirmé la réception du colis. La commande est terminée. Aucune modification n'est possible.
+                <p>Le client a confirmé la réception du colis. Il reste à enregistrer le paiement : c'est ce geste qui sort la marchandise du stock.
                 </p>
             </div>
+            <form method="POST" action=""><input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars((string) ($_SESSION['admin_csrf'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"><input type="hidden" name="statut" value="paye"><button type="submit" name="changer_statut" class="btn-primary" style="margin-top:12px"><i class="fas fa-money-bill-wave"></i> Enregistrer le paiement</button></form>
         <?php elseif ($is_paye): ?>
             <div class="alert-livree">
                 <h3><i class="fas fa-money-bill-wave"></i> Commande payée</h3>
