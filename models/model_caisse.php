@@ -317,6 +317,9 @@ function caisse_catalog_live_items($limit = null)
     $has_marque = produits_has_column('marque_id');
     $has_fourn = produits_has_column('fournisseur_id');
     $has_ref_f = produits_has_column('reference_fournisseur');
+    // La référence FPL imprimée sur l'étiquette et la référence OEM se cherchent en direct (10/09/2026).
+    $has_ref_fpl = produits_has_column('reference_fpl');
+    $has_oem = produits_has_column('reference_oem');
     $has_promo = produits_has_column('prix_promotion');
 
     $sel = 'p.id, p.nom, p.stock, p.prix, p.categorie_id, p.image_principale, LEFT(p.description, 280) AS description';
@@ -331,6 +334,12 @@ function caisse_catalog_live_items($limit = null)
     }
     if ($has_ref_f) {
         $sel .= ', p.reference_fournisseur';
+    }
+    if ($has_ref_fpl) {
+        $sel .= ', p.reference_fpl';
+    }
+    if ($has_oem) {
+        $sel .= ', p.reference_oem';
     }
     if ($has_promo) {
         $sel .= ', p.prix_promotion';
@@ -357,6 +366,8 @@ function caisse_catalog_live_items($limit = null)
         $nom = (string) ($pr['nom'] ?? '');
         $ref = $has_ident ? strtoupper(trim((string) ($pr['identifiant_interne'] ?? ''))) : '';
         $refF = $has_ref_f ? trim((string) ($pr['reference_fournisseur'] ?? '')) : '';
+        $refFpl = $has_ref_fpl ? strtoupper(trim((string) ($pr['reference_fpl'] ?? ''))) : '';
+        $refOem = $has_oem ? trim((string) ($pr['reference_oem'] ?? '')) : '';
         $marqueNom = function_exists('produits_marque_libelle_from_row')
             ? produits_marque_libelle_from_row($pr)
             : trim((string) ($pr['marque_libelle_catalogue'] ?? ''));
@@ -368,7 +379,7 @@ function caisse_catalog_live_items($limit = null)
         if (function_exists('produits_description_excerpt')) {
             $desc = produits_description_excerpt($pr['description'] ?? '', 80);
         }
-        $search_parts = [$nom, $ref, $refF, $marqueNom, $fournisseurNom, $categorieNom, $desc];
+        $search_parts = [$nom, $ref, $refFpl, $refOem, $refF, $marqueNom, $fournisseurNom, $categorieNom, $desc];
         $img = caisse_catalog_first_image_url($pr);
         $out[] = [
             'id' => (int) ($pr['id'] ?? 0),
@@ -378,6 +389,8 @@ function caisse_catalog_live_items($limit = null)
                 ? produits_recherche_normalize(implode(' ', $search_parts))
                 : mb_strtolower(implode(' ', $search_parts)),
             'ref' => $ref,
+            'ref_fpl' => $refFpl,
+            'ref_oem' => $refOem,
             'ref_f' => $refF,
             'marque_nom' => $marqueNom,
             'desc' => $desc,
@@ -396,7 +409,7 @@ function caisse_catalog_live_items($limit = null)
     foreach ($out as $i => $item) {
         $item = produit_formulaire_filtrer_produit_api($item);
         $search_parts = [(string) ($item['nom'] ?? '')];
-        foreach (['ref', 'ref_f', 'marque_nom', 'fournisseur_nom', 'categorie_nom', 'desc'] as $sk) {
+        foreach (['ref', 'ref_fpl', 'ref_oem', 'ref_f', 'marque_nom', 'fournisseur_nom', 'categorie_nom', 'desc'] as $sk) {
             if (!empty($item[$sk])) {
                 $search_parts[] = (string) $item[$sk];
             }
@@ -589,14 +602,28 @@ function caisse_resoudre_produit_par_code($input)
         return ['ok' => false, 'error' => 'Code ou recherche vide.'];
     }
 
-    if (ctype_digit($t) && strlen($t) <= 9) {
-        $id = (int) $t;
-        if ($id > 0) {
-            $p = get_produit_by_id($id);
-            if ($p && ($p['statut'] ?? '') === 'actif') {
-                return ['ok' => true, 'produit' => $p];
-            }
+    /* UNE PIÈCE SE TROUVE PAR CE QUE PORTE SON ÉTIQUETTE (10/09/2026). Un nombre
+     * tapé puis Entrée ajoutait la pièce dont le numéro INTERNE est ce nombre
+     * (« 1645 » ajoutait la pièce n°1645, numéro que rien n'affiche) : mauvaise
+     * pièce vendue. Et le code-barres des étiquettes (13 chiffres « 200… »)
+     * partait en recherche par nom : introuvable. On lit désormais ce que porte
+     * l'étiquette — code-barres, QR, identifiant FPL, référence FPL — et l'OEM ;
+     * un code porté par plusieurs pièces ne tranche pas au hasard. */
+    $ids_exacts = caisse_produits_par_code_exact($t);
+    if (count($ids_exacts) === 1) {
+        $p = get_produit_by_id($ids_exacts[0]);
+        if ($p) {
+            return ['ok' => true, 'produit' => $p];
         }
+    } elseif (count($ids_exacts) > 1) {
+        return ['ok' => false, 'error' => 'Plusieurs pièces portent ce code : choisissez la bonne dans la liste.'];
+    }
+    /* Un nombre qui ne désigne exactement aucune pièce n'en ajoute aucune au
+     * hasard d'une description (« 3630 » ajoutait la pièce dont la description
+     * cite l'OEM 7421636309). Les 5 derniers chiffres de l'identifiant restent
+     * la saisie rapide reconnue par search_produits(). */
+    if (ctype_digit($t) && strlen($t) !== 5) {
+        return ['ok' => false, 'error' => 'Aucune pièce ne porte exactement ce numéro : choisissez-la dans la liste.'];
     }
 
     $found = search_produits($t, 0, 15);
@@ -607,6 +634,61 @@ function caisse_resoudre_produit_par_code($input)
         return ['ok' => false, 'error' => 'Aucun produit actif trouvé pour ce code ou cette recherche.'];
     }
     return ['ok' => false, 'error' => 'Plusieurs produits correspondent : affinez la recherche ou choisissez dans la liste.', 'ambigus' => $found];
+}
+
+/**
+ * Les pièces actives que désigne EXACTEMENT un code tapé ou scanné (10/09/2026) :
+ * code-barres ou QR de l'étiquette, identifiant FPL (avec ou sans « FPL »),
+ * puis référence FPL imprimée ou référence OEM — ces deux-là comparées sans
+ * espaces, tirets ni points, la lettre O lue comme zéro (produits_ref_normalise).
+ * Au plus 5 ids ; tableau vide si le code ne désigne aucune pièce exactement.
+ *
+ * @return int[]
+ */
+function caisse_produits_par_code_exact($code)
+{
+    global $db;
+    $t = trim((string) $code);
+    if ($t === '' || !$db) {
+        return [];
+    }
+    require_once __DIR__ . '/../includes/produit_emplacement_entrepot.php';
+    $vivante = "statut = 'actif'" . (produits_has_column('sync_deleted_at') ? ' AND sync_deleted_at IS NULL' : '');
+    try {
+        $fpl = produit_emplacement_extraire_fpl_du_scan($t);
+        if (preg_match('/^(\d{6}|\d{9})$/', $fpl)) {
+            $fpl = 'FPL' . $fpl;
+        }
+        if (preg_match('/^FPL(\d{6}|\d{9})$/', $fpl) && produits_has_column('identifiant_interne')) {
+            $st = $db->prepare("SELECT id FROM produits WHERE $vivante AND UPPER(TRIM(identifiant_interne)) = :code LIMIT 5");
+            $st->execute(['code' => $fpl]);
+            $ids = array_map('intval', $st->fetchAll(PDO::FETCH_COLUMN));
+            if ($ids !== []) {
+                return $ids;
+            }
+        }
+        $cle = produits_ref_normalise($t);
+        if (strlen($cle) < 4) {
+            return [];
+        }
+        $ou = [];
+        $params = [];
+        foreach (['reference_fpl', 'reference_oem'] as $colonne) {
+            if (produits_has_column($colonne)) {
+                $ou[] = produits_ref_normalise_sql($colonne) . ' = :' . $colonne;
+                $params[$colonne] = $cle;
+            }
+        }
+        if ($ou === []) {
+            return [];
+        }
+        $st = $db->prepare("SELECT id FROM produits WHERE $vivante AND (" . implode(' OR ', $ou) . ') LIMIT 5');
+        $st->execute($params);
+        return array_map('intval', $st->fetchAll(PDO::FETCH_COLUMN));
+    } catch (PDOException $e) {
+        error_log('[caisse_produits_par_code_exact] ' . $e->getMessage());
+        return [];
+    }
 }
 
 /**

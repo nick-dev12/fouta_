@@ -162,7 +162,40 @@
     el.textContent = msg;
   }
 
+  /* LE PANIER SURVIT À UN RECHARGEMENT (10/09/2026). Il ne vivait que dans la
+     page : la touche Entrée d'une recherche sans résultat unique rechargeait la
+     page et vidait le panier, prix saisis compris. Il est gardé dans l'onglet
+     (sessionStorage) à chaque mise à jour du total, repris seulement par le même
+     vendeur, et oublié dès que le ticket est généré ou la vente encaissée. */
+  var CLE_PANIER = 'fouta_caisse_panier_v1';
+  function sauverPanier() {
+    try {
+      if (state.lines.length) {
+        global.sessionStorage.setItem(CLE_PANIER, JSON.stringify({
+          vendeur: cfg.vendeur_id || 0,
+          lines: state.lines,
+          inclure_tva: state.inclure_tva ? 1 : 0
+        }));
+      } else {
+        global.sessionStorage.removeItem(CLE_PANIER);
+      }
+    } catch (e) { /* stockage indisponible : le panier reste en mémoire */ }
+  }
+  function restaurerPanier() {
+    try {
+      var lu = JSON.parse(global.sessionStorage.getItem(CLE_PANIER) || 'null');
+      if (lu && Array.isArray(lu.lines) && lu.vendeur === (cfg.vendeur_id || 0)) {
+        state.lines = lu.lines;
+        state.inclure_tva = lu.inclure_tva ? 1 : 0;
+      }
+    } catch (e) { /* panier illisible : on repart d'un panier vide */ }
+  }
+  function oublierPanier() {
+    try { global.sessionStorage.removeItem(CLE_PANIER); } catch (e) { /* rien à oublier */ }
+  }
+
   function updateRecapOnly() {
+    sauverPanier();
     var totals = computeTotals();
     var hasLines = state.lines.length > 0;
     var mount = document.getElementById('caisse-panier-mount');
@@ -403,6 +436,7 @@
         return;
       }
       state.lines = [];
+      oublierPanier();
       flash('Ticket généré : ' + (res.numero_ticket || ''));
       if (res.redirect) {
         window.location.href = res.redirect;
@@ -434,6 +468,7 @@
     if (mount && !document.getElementById('caisse-panier-root')) {
       mount.innerHTML = '<div id="caisse-panier-root"></div>';
     }
+    restaurerPanier();
     bindRootEvents();
     render();
 
@@ -464,6 +499,7 @@
             return;
           }
           state.lines = [];
+          oublierPanier();
           if (res.redirect) window.location.href = res.redirect;
         }).catch(function () {
           if (btn) btn.disabled = false;

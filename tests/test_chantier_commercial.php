@@ -541,5 +541,110 @@ if ($base_locale) {
     verifie('nettoyage : aucun devis d’essai restant', 0, (int) $db->query("SELECT COUNT(*) FROM devis WHERE numero_devis LIKE 'ESSAI-%'")->fetchColumn());
 }
 
+echo "— point 14 : la caisse trouve la pièce par son étiquette, sa référence FPL ou OEM —\n";
+require_once "$RACINE/includes/produit_vitrine.php";
+$vivantes = $db->query("SELECT id, nom, description, identifiant_interne, reference_fpl, reference_oem
+    FROM produits WHERE statut = 'actif' AND sync_deleted_at IS NULL ORDER BY id")->fetchAll(PDO::FETCH_ASSOC);
+$resolu = function ($code) {
+    $r = caisse_resoudre_produit_par_code($code);
+    return !empty($r['ok']) ? (int) $r['produit']['id'] : 0;
+};
+// Combien de pièces portent chaque clé de référence (FPL ou OEM), comparée comme le serveur la compare.
+$porteurs = [];
+$idents = [];
+foreach ($vivantes as $v) {
+    foreach ([(string) $v['reference_fpl'], (string) $v['reference_oem']] as $reference) {
+        $cle = produits_ref_normalise($reference);
+        if (strlen($cle) >= 4) {
+            $porteurs[$cle][(int) $v['id']] = true;
+        }
+    }
+    $ident = strtoupper(trim((string) $v['identifiant_interne']));
+    $idents[$ident] = ($idents[$ident] ?? 0) + 1;
+}
+
+$piece_etiquette = null;
+foreach (array_reverse($vivantes) as $v) {
+    $ident = strtoupper(trim((string) $v['identifiant_interne']));
+    if (preg_match('/^FPL\d{9}$/', $ident) && $idents[$ident] === 1) {
+        $piece_etiquette = $v;
+        break;
+    }
+}
+verifie('une pièce à étiquette existe pour l’essai', true, $piece_etiquette !== null);
+if ($piece_etiquette) {
+    $id_attendu = (int) $piece_etiquette['id'];
+    $ean = fpl_vitrine_ean13_pour_produit($piece_etiquette);
+    verifie("le code-barres de l'étiquette ($ean) trouve sa pièce", $id_attendu, $resolu($ean));
+    verifie('le QR de l’étiquette trouve la pièce', $id_attendu, $resolu(produit_vitrine_url($piece_etiquette)));
+    verifie('l’identifiant FPL tapé en minuscules trouve la pièce', $id_attendu, $resolu(strtolower((string) $piece_etiquette['identifiant_interne'])));
+    verifie('ses 9 chiffres seuls trouvent la pièce', $id_attendu, $resolu(substr(trim((string) $piece_etiquette['identifiant_interne']), 3)));
+}
+
+// Un numéro interne tapé n'ajoute plus sa pièce (choisie pour que rien d'autre sur elle ne porte ce nombre).
+foreach (array_reverse($vivantes) as $v) {
+    $id_txt = (string) $v['id'];
+    $sur_la_piece = $v['nom'] . ' ' . $v['description'] . ' ' . $v['identifiant_interne'] . ' ' . $v['reference_fpl'] . ' ' . $v['reference_oem'];
+    if (strpos((string) $sur_la_piece, $id_txt) === false) {
+        verifie("taper « $id_txt » n’ajoute plus la pièce qui porte ce numéro interne", false, $resolu($id_txt) === (int) $v['id']);
+        $r = caisse_resoudre_produit_par_code($id_txt);
+        verifie('… ni une autre pièce au hasard d’une description', count($porteurs[produits_ref_normalise($id_txt)] ?? []) === 1, !empty($r['ok']));
+        break;
+    }
+}
+
+$oem_essaye = $fpl_essaye = $double_essaye = false;
+foreach ($vivantes as $v) {
+    $cle_oem = produits_ref_normalise((string) $v['reference_oem']);
+    if (!$oem_essaye && strlen($cle_oem) >= 6 && !preg_match('/^(\d{6}|\d{9}|\d{13})$/', $cle_oem)
+        && count($porteurs[$cle_oem] ?? []) === 1) {
+        $saisie = implode(' ', str_split($cle_oem, 3));
+        verifie("la référence OEM tapée « $saisie » trouve sa pièce", (int) $v['id'], $resolu($saisie));
+        $oem_essaye = true;
+    }
+    $cle_fpl = produits_ref_normalise((string) $v['reference_fpl']);
+    if (strlen($cle_fpl) >= 4) {
+        $n = count($porteurs[$cle_fpl] ?? []);
+        if (!$fpl_essaye && $n === 1) {
+            verifie("la référence FPL imprimée « {$v['reference_fpl']} » trouve sa pièce", (int) $v['id'], $resolu(strtolower((string) $v['reference_fpl'])));
+            $fpl_essaye = true;
+        }
+        if (!$double_essaye && $n > 1) {
+            $r = caisse_resoudre_produit_par_code((string) $v['reference_fpl']);
+            verifie("« {$v['reference_fpl']} », portée par $n pièces, ne tranche pas au hasard", false, !empty($r['ok']));
+            verifie('… et le dit au vendeur', true, strpos((string) ($r['error'] ?? ''), 'Plusieurs pièces') === 0);
+            $double_essaye = true;
+        }
+    }
+}
+verifie('les cas OEM, référence FPL et référence partagée ont tous été essayés', [true, true, true], [$oem_essaye, $fpl_essaye, $double_essaye]);
+
+$catalogue_direct = caisse_catalog_live_items();
+$avec_oem = $avec_fpl = null;
+foreach ($catalogue_direct as $it) {
+    if ($avec_oem === null && trim((string) ($it['ref_oem'] ?? '')) !== '') {
+        $avec_oem = $it;
+    }
+    if ($avec_fpl === null && trim((string) ($it['ref_fpl'] ?? '')) !== '') {
+        $avec_fpl = $it;
+    }
+}
+verifie('la référence OEM est dans le texte cherché en direct', true,
+    $avec_oem !== null && strpos((string) $avec_oem['search'], produits_recherche_normalize($avec_oem['ref_oem'])) !== false);
+verifie('la référence FPL imprimée est dans le texte cherché en direct', true,
+    $avec_fpl !== null && strpos((string) $avec_fpl['search'], produits_recherche_normalize($avec_fpl['ref_fpl'])) !== false);
+
+$panier_js = str_replace("\r\n", "\n", file_get_contents("$RACINE/js/admin-caisse-panier.js"));
+verifie('le panier est gardé dans l’onglet à chaque mise à jour du total', true, strpos($panier_js, "function updateRecapOnly() {\n    sauverPanier();") !== false);
+verifie('il est repris au chargement de la caisse', true, strpos($panier_js, "restaurerPanier();\n    bindRootEvents();") !== false);
+verifie('le panier d’un autre vendeur n’est pas repris', true, strpos($panier_js, 'lu.vendeur === (cfg.vendeur_id || 0)') !== false);
+verifie('le panier est oublié après le ticket et après l’encaissement', 2, substr_count($panier_js, 'oublierPanier();'));
+verifie('la page de caisse transmet le vendeur au panier', true,
+    strpos(file_get_contents("$RACINE/admin/caisse/index.php"), "vendeur_id: <?php echo (int) (\$_SESSION['admin_id'] ?? 0); ?>") !== false);
+$recherche_js = file_get_contents("$RACINE/js/admin-caisse-live-search.js");
+$appel_code = strpos($recherche_js, 'if (estCodeExact(raw) && window.CaissePanier)');
+verifie('un code d’étiquette part au serveur avant le rapprochement flou', true,
+    $appel_code !== false && $appel_code < strpos($recherche_js, 'var hitsQuick'));
+
 echo "\n$ok OK / $ko KO\n";
 exit($ko === 0 ? 0 : 1);

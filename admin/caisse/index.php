@@ -517,7 +517,8 @@ $manque_preview = null;
                 csrf: <?php echo json_encode((string) $_SESSION['admin_csrf'], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT); ?>,
                 tva_taux: <?php echo json_encode($taux_tva); ?>,
                 afficher_tva: <?php echo $afficher_option_tva_caisse ? 'true' : 'false'; ?>,
-                tables_ok: <?php echo $tables_ok ? 'true' : 'false'; ?>
+                tables_ok: <?php echo $tables_ok ? 'true' : 'false'; ?>,
+                vendeur_id: <?php echo (int) ($_SESSION['admin_id'] ?? 0); ?>
             });
         }
         document.querySelectorAll('.caisse-inline-add-btn').forEach(function (btn) {

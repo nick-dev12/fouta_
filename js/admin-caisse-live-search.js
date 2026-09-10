@@ -281,10 +281,17 @@
     if (/^fpl\d+/i.test(t)) {
       return true;
     }
-    if (/^\d{1,12}$/.test(t)) {
+    if (/^\d{1,13}$/.test(t)) { // 13 chiffres : le code-barres des étiquettes (10/09/2026)
       return true;
     }
     return false;
+  }
+
+  // Un CODE exact : code-barres (13 chiffres) ou QR d'étiquette, identifiant FPL,
+  // ticket. Il part au serveur AVANT tout rapprochement approché (10/09/2026).
+  function estCodeExact(raw) {
+    var t = (raw || '').trim();
+    return /^tkt/i.test(t) || /^fpl(\d{6}|\d{9})$/i.test(t) || /^(\d{9}|\d{13})$/.test(t) || /\/p\/[0-9a-z]+/i.test(t);
   }
 
   function buildCardHeading(p) {
@@ -512,6 +519,13 @@
     var catVal = selCat.value;
     var marqueVal = marqueFilterOn ? selMarque.value : '';
     var fournisseurVal = fournisseurFilterOn ? selFournisseur.value : '';
+    // La douchette tape 13 chiffres que le rapprochement flou pouvait prêter à
+    // une seule pièce — la mauvaise : un code exact va d'abord au serveur.
+    if (estCodeExact(raw) && window.CaissePanier) {
+      ev.preventDefault();
+      CaissePanier.resolveAndAdd(raw, 1);
+      return;
+    }
     var hitsQuick = collectHits(inputQ.value, catVal, marqueVal, fournisseurVal, 2).hits;
     if (hitsQuick.length === 1) {
       ev.preventDefault();
