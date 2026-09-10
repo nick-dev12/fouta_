@@ -288,6 +288,22 @@ if ($action === 'encaisser') {
     caisse_redirect_ok('ticket=' . (int) ($res['vente_id'] ?? 0));
 }
 
+if ($action === 'annuler_ticket') {
+    /* Annuler un ticket en attente, avec motif (10/09/2026) : le vendeur qui l'a
+     * préparé ou le caissier. Rien n'est effacé, rien ne touche au stock. */
+    $vente_id = (int) ($_POST['vente_id'] ?? 0);
+    $depuis_encaissement = (($_POST['retour'] ?? '') === 'encaissement');
+    $res = caisse_annuler_ticket($vente_id, (int) ($_SESSION['admin_id'] ?? 0), (string) ($_POST['motif_annulation'] ?? ''));
+    if (!empty($res['ok'])) {
+        $_SESSION['caisse_flash_success'] = 'Ticket annulé : il ne sera jamais encaissé.';
+        header('Location: ' . ($depuis_encaissement ? 'encaisser-ticket.php' : 'index.php'));
+    } else {
+        $_SESSION['caisse_flash_error'] = $res['error'] ?? 'Annulation impossible.';
+        header('Location: ' . ($depuis_encaissement ? 'encaisser-ticket.php' : 'index.php?ticket=' . $vente_id));
+    }
+    exit;
+}
+
 if ($action === 'finaliser_ticket') {
     if (!admin_can_encaisser_ticket()) {
         $_SESSION['caisse_flash_error'] = 'Action non autorisée.';

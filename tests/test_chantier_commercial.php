@@ -215,5 +215,103 @@ if ($base !== 'jomas_fouta3' || (stripos($hote, 'localhost') === false && stripo
     }
 }
 
+echo "— point 5 : une vente, une seule facture —\n";
+require_once "$RACINE/models/model_factures_devis.php";
+verifie('facturer un devis parti en BL : la page refuse', true, strpos(file_get_contents("$RACINE/admin/devis/generer_facture.php"), 'bl_exists_for_devis(') !== false);
+verifie('un bon regroupé au mois ne se présente plus comme une facture', true, strpos(file_get_contents("$RACINE/admin/devis/bl_facture.php"), '$bl_fm_numero === null') !== false);
+$base_locale = ((string) $db->query('SELECT DATABASE()')->fetchColumn()) === 'jomas_fouta3'
+    && (stripos((string) $db->getAttribute(PDO::ATTR_CONNECTION_STATUS), 'localhost') !== false
+        || stripos((string) $db->getAttribute(PDO::ATTR_CONNECTION_STATUS), '127.0.0.1') !== false);
+if ($base_locale) {
+    // Un devis facturé ne part pas en bon de livraison
+    $devis_facture = (int) $db->query("SELECT devis_id FROM factures_devis ORDER BY id LIMIT 1")->fetchColumn();
+    $bl_avant = (int) $db->query("SELECT COUNT(*) FROM bons_livraison WHERE devis_id = $devis_facture")->fetchColumn();
+    $r = create_bl_from_devis($devis_facture, 38);
+    $bl_crees = (int) $db->query("SELECT COUNT(*) FROM bons_livraison WHERE devis_id = $devis_facture")->fetchColumn() - $bl_avant;
+    if ($bl_crees > 0) {
+        $db->exec("DELETE l FROM bl_lignes l INNER JOIN bons_livraison b ON b.id = l.bl_id WHERE b.devis_id = $devis_facture");
+        $db->exec("DELETE FROM bons_livraison WHERE devis_id = $devis_facture");
+    }
+    verifie('convertir un devis facturé en BL : refusé', false, !empty($r['success']));
+    verifie('le refus dit pourquoi', true, strpos((string) ($r['message'] ?? ''), 'déjà facturé') !== false);
+    verifie('aucun bon de livraison créé', 0, $bl_crees);
+
+    // Un devis parti en bon de livraison ne se facture pas seul
+    $devis_libre = (int) $db->query('SELECT d.id FROM devis d WHERE NOT EXISTS (SELECT 1 FROM factures_devis f WHERE f.devis_id = d.id) ORDER BY d.id LIMIT 1')->fetchColumn();
+    $max_facture = (int) $db->query('SELECT COALESCE(MAX(id), 0) FROM factures_devis')->fetchColumn();
+    $client_essai = (int) $db->query('SELECT id FROM clients_b2b ORDER BY id LIMIT 1')->fetchColumn();
+    $db->prepare("INSERT INTO bons_livraison (numero_bl, client_b2b_id, devis_id, admin_createur_id, statut, date_bl, total_ht, notes, date_creation)
+                  VALUES (:n, :c, :d, 38, 'brouillon', CURDATE(), 0, 'ESSAI AUTOMATIQUE test_chantier_commercial', NOW())")
+       ->execute(['n' => 'ESSAI-' . substr(uniqid(), -8), 'c' => $client_essai, 'd' => $devis_libre]);
+    $bl_essai = (int) $db->lastInsertId();
+    try {
+        $r = create_facture_devis($devis_libre, 38);
+        verifie('facturer seul un devis parti en BL : refusé', true, $r === false);
+    } finally {
+        $db->exec("DELETE FROM factures_devis WHERE id > $max_facture AND devis_id = $devis_libre");
+        $db->exec("DELETE FROM bons_livraison WHERE id = $bl_essai");
+    }
+    verifie('aucune facture créée', 0, (int) $db->query("SELECT COUNT(*) FROM factures_devis WHERE id > $max_facture")->fetchColumn());
+
+    // Un bon regroupé dans une facture mensuelle ne se paie pas seul
+    $bl_regroupe = (int) $db->query('SELECT f.bl_id FROM facture_mensuelle_bl f INNER JOIN bons_livraison b ON b.id = f.bl_id WHERE COALESCE(b.facture_bl_payee, 0) = 0 ORDER BY f.bl_id LIMIT 1')->fetchColumn();
+    if ($bl_regroupe > 0) {
+        $r = marquer_bl_facture_payee($bl_regroupe);
+        if (!empty($r['ok'])) {
+            $db->exec("UPDATE bons_livraison SET facture_bl_payee = 0, date_paiement_bl = NULL WHERE id = $bl_regroupe");
+        }
+        verifie("payer seul le bon #$bl_regroupe, regroupé au mois : refusé", false, !empty($r['ok']));
+        verifie('le refus nomme la facture mensuelle', true, strpos((string) ($r['error'] ?? ''), 'facture mensuelle FM') !== false);
+    }
+}
+
+echo "— point 7 : annuler un ticket en attente —\n";
+require_once "$RACINE/models/model_caisse.php";
+require_once "$RACINE/models/model_commercial_accueil.php";
+$enum_statut = (string) $db->query("SELECT COLUMN_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'caisse_ventes' AND COLUMN_NAME = 'statut'")->fetchColumn();
+verifie('la base connaît le statut « annule »', true, strpos($enum_statut, "'annule'") !== false);
+verifie('un ticket annulé ne passe jamais pour payé', 'annule', caisse_vente_statut(['statut' => 'annule']));
+verifie('un ticket en attente reste en attente', 'en_attente', caisse_vente_statut(['statut' => 'en_attente']));
+if ($base_locale) {
+    $cree_ticket = function ($vendeur) use ($db) {
+        $db->prepare("INSERT INTO caisse_ventes (admin_id, numero_ticket, reference, montant_total, montant_ht, montant_tva, tva_incluse, remise_globale_pct, mode_paiement, statut, date_vente)
+                      VALUES (:a, :n, NULL, 1000, 1000, 0, 0, 0, 'especes', 'en_attente', NOW())")
+           ->execute(['a' => $vendeur, 'n' => 'ESSAI-' . substr(uniqid(), -10)]);
+        return (int) $db->lastInsertId();
+    };
+    $ticket = $cree_ticket(38);
+    $ticket2 = $cree_ticket(38);
+    $role_avant = $_SESSION['admin_role'] ?? null;
+    try {
+        $_SESSION['admin_role'] = 'commercial_general';
+        $r = caisse_annuler_ticket($ticket, 20, 'Essai automatique : pas son ticket');
+        verifie('un autre vendeur ne peut pas annuler ce ticket', false, $r['ok']);
+        $r = caisse_annuler_ticket($ticket, 38, 'ok');
+        verifie('le motif est obligatoire', false, $r['ok']);
+        $r = caisse_annuler_ticket($ticket, 38, 'Essai automatique : doublon');
+        verifie('le vendeur annule son propre ticket', true, $r['ok']);
+        $ligne = $db->query("SELECT statut, reference, annule_par, motif_annulation, date_annulation FROM caisse_ventes WHERE id = $ticket")->fetch(PDO::FETCH_ASSOC);
+        verifie('le ticket est annulé', 'annule', $ligne['statut']);
+        verifie('l’auteur et le motif sont gardés', [38, 'Essai automatique : doublon'], [(int) $ligne['annule_par'], $ligne['motif_annulation']]);
+        verifie('la date d’annulation est posée', true, !empty($ligne['date_annulation']));
+        $r = caisse_annuler_ticket($ticket, 38, 'Essai automatique : deuxième fois');
+        verifie('annuler deux fois : refusé', false, $r['ok']);
+        $restants = array_filter(commercial_tickets_en_attente(38), function ($t) use ($ticket) {
+            return (int) $t['id'] === $ticket;
+        });
+        verifie('le ticket annulé quitte les tickets en attente du vendeur', 0, count($restants));
+
+        $_SESSION['admin_role'] = 'caissier';
+        $r = caisse_annuler_ticket($ticket2, 33, 'Essai automatique : client parti');
+        verifie('le caissier annule le ticket d’un vendeur', true, $r['ok']);
+        verifie('aucun mouvement de stock pour ces annulations', 0, (int) $db->query("SELECT COUNT(*) FROM stock_mouvements WHERE reference_type = 'caisse_vente' AND reference_id IN ($ticket, $ticket2)")->fetchColumn());
+    } finally {
+        $_SESSION['admin_role'] = $role_avant;
+        $db->exec("DELETE FROM caisse_vente_lignes WHERE vente_id IN ($ticket, $ticket2)");
+        $db->exec("DELETE FROM caisse_ventes WHERE id IN ($ticket, $ticket2)");
+    }
+    verifie('nettoyage : aucun ticket d’essai restant', 0, (int) $db->query("SELECT COUNT(*) FROM caisse_ventes WHERE numero_ticket LIKE 'ESSAI-%'")->fetchColumn());
+}
+
 echo "\n$ok OK / $ko KO\n";
 exit($ko === 0 ? 0 : 1);

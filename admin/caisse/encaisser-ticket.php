@@ -270,6 +270,14 @@ $auto_print = isset($_GET['imprimer']) && $_GET['imprimer'] === '1';
                     <button type="button" class="btn-primary" id="btnOpenEncaisseModal" <?php echo !$tables_ok ? 'disabled' : ''; ?>>
                         <i class="fas fa-cash-register"></i> Marquer comme payé
                     </button>
+                    <form method="post" action="post.php" class="caisse-annuler-ticket no-print" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;width:100%;margin-top:8px" onsubmit="return confirm('Annuler ce ticket ? Il ne pourra plus être encaissé.');">
+                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars((string) ($_SESSION['admin_csrf'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
+                    <input type="hidden" name="caisse_action" value="annuler_ticket">
+                    <input type="hidden" name="vente_id" value="<?php echo (int) ($vente['id'] ?? 0); ?>">
+                    <input type="hidden" name="retour" value="encaissement">
+                    <input type="text" name="motif_annulation" required minlength="3" maxlength="255" placeholder="Motif : doublon, client parti…" aria-label="Motif de l'annulation" style="flex:1;min-width:180px;padding:8px 10px;border:1px solid #C4CCDA;border-radius:6px;font:inherit">
+                    <button type="submit" class="btn-secondary">Annuler le ticket</button>
+                </form>
                     <?php elseif ($ticket_statut === 'paye' && $tables_ok && $corr_prefill): ?>
                     <button type="button" class="btn-secondary" id="btnOpenCorrigerPaiementModal" <?php echo !$tables_ok ? 'disabled' : ''; ?>>
                         <i class="fas fa-edit"></i> Corriger le mode de paiement

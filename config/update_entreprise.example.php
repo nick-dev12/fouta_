@@ -32,6 +32,8 @@ return [
         'migrations/run_migration_production_ajouts.php',
         'migrations/run_add_sync_columns.php',
         'migrations/run_assign_sync_uuids.php',
+        // Annulation des tickets de caisse en attente (10/09/2026) : sur foutasvr ET le VPS.
+        'migrations/run_caisse_ticket_annulation.php',
     ],
 
     // Migrations lourdes / ponctuelles — exclues du mode --all-migrations

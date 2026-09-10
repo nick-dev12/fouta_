@@ -291,6 +291,12 @@ function marquer_bl_facture_payee($bl_id)
     if (bl_est_facture_payee($bl)) {
         return ['ok' => false, 'error' => 'Cette facture est déjà marquée comme payée.'];
     }
+    /* Un bon déjà regroupé dans une facture mensuelle se paie avec elle, pas
+     * seul (10/09/2026) : sinon la même livraison était encaissée deux fois. */
+    $fm_du_bl = bl_facture_mensuelle_du_bl($bl_id);
+    if ($fm_du_bl !== null) {
+        return ['ok' => false, 'error' => 'Ce bon fait partie de la facture mensuelle ' . $fm_du_bl . ' : son paiement s’enregistre sur cette facture.'];
+    }
     try {
         $stmt = $db->prepare('
             UPDATE bons_livraison
@@ -305,6 +311,27 @@ function marquer_bl_facture_payee($bl_id)
     } catch (PDOException $e) {
         error_log('[marquer_bl_facture_payee] ' . $e->getMessage());
         return ['ok' => false, 'error' => 'Erreur lors de l’enregistrement du paiement.'];
+    }
+}
+
+/**
+ * Le numéro de la facture mensuelle qui contient ce bon, ou null (10/09/2026).
+ * En cas d'erreur de lecture, on répond « non vérifiable » plutôt que null :
+ * dans le doute, un paiement seul reste refusé.
+ *
+ * @return string|null
+ */
+function bl_facture_mensuelle_du_bl($bl_id)
+{
+    global $db;
+    try {
+        $st = $db->prepare('SELECT fm.numero_facture FROM facture_mensuelle_bl f INNER JOIN factures_mensuelles fm ON fm.id = f.facture_mensuelle_id WHERE f.bl_id = :id LIMIT 1');
+        $st->execute(['id' => (int) $bl_id]);
+        $numero = $st->fetchColumn();
+        return $numero === false ? null : (string) $numero;
+    } catch (PDOException $e) {
+        error_log('[bl_facture_mensuelle_du_bl] ' . $e->getMessage());
+        return 'non vérifiable';
     }
 }
 
@@ -713,6 +740,13 @@ function create_bl_from_devis($devis_id, $admin_id) {
     $devis_id = (int) $devis_id;
     if (bl_exists_for_devis($devis_id)) {
         return ['success' => false, 'message' => 'Ce devis a déjà été converti en bon de livraison.'];
+    }
+    /* UNE VENTE, UNE SEULE FACTURE (10/09/2026). Un devis déjà facturé qui
+     * partait aussi en bon de livraison finissait dans la facture du mois :
+     * la même vente sous deux numéros. */
+    require_once __DIR__ . '/model_factures_devis.php';
+    if (get_facture_devis_by_devis($devis_id)) {
+        return ['success' => false, 'message' => 'Ce devis est déjà facturé : il ne peut pas aussi partir en bon de livraison, la vente serait facturée deux fois.'];
     }
     $devis = get_devis_by_id($devis_id);
     if (!$devis) {

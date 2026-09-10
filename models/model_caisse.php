@@ -1102,7 +1102,57 @@ function caisse_trouver_vente_id_par_code_scan($input)
 function caisse_vente_statut(array $row)
 {
     $s = $row['statut'] ?? null;
+    if ($s === 'annule') {
+        return 'annule';
+    }
     return ($s === 'en_attente') ? 'en_attente' : 'paye';
+}
+
+/**
+ * ANNULER UN TICKET EN ATTENTE (10/09/2026).
+ *
+ * Un ticket jamais encaissé restait « en attente » pour toujours, doublons
+ * compris. Le vendeur qui l'a préparé, ou le caissier, l'annule avec un motif.
+ * Rien n'est effacé et rien ne touche au stock : un ticket en attente n'en a
+ * jamais sorti. La référence de caisse est libérée.
+ * Demande la migration migrations/run_caisse_ticket_annulation.php.
+ *
+ * @return array{ok:bool, error?:string}
+ */
+function caisse_annuler_ticket($vente_id, $admin_id, $motif)
+{
+    global $db;
+    require_once __DIR__ . '/../includes/admin_permissions.php';
+    $vente_id = (int) $vente_id;
+    $motif = trim((string) preg_replace('/\s+/u', ' ', (string) $motif));
+    if (mb_strlen($motif, 'UTF-8') < 3) {
+        return ['ok' => false, 'error' => 'Indiquez le motif de l’annulation.'];
+    }
+    $motif = mb_substr($motif, 0, 255, 'UTF-8');
+    $vente = caisse_get_vente_by_id($vente_id);
+    if (!$vente) {
+        return ['ok' => false, 'error' => 'Ticket introuvable.'];
+    }
+    if (caisse_vente_statut($vente) !== 'en_attente') {
+        return ['ok' => false, 'error' => 'Seul un ticket en attente d’encaissement peut être annulé.'];
+    }
+    $est_son_ticket = admin_can_caisse_vendeur() && (int) ($vente['admin_id'] ?? 0) === (int) $admin_id;
+    if (!$est_son_ticket && !admin_can_encaisser_ticket()) {
+        return ['ok' => false, 'error' => 'Seul le vendeur qui a préparé ce ticket, ou le caissier, peut l’annuler.'];
+    }
+    try {
+        $st = $db->prepare("UPDATE caisse_ventes
+            SET statut = 'annule', reference = NULL, annule_par = :a, date_annulation = NOW(), motif_annulation = :m
+            WHERE id = :id AND statut = 'en_attente'");
+        $st->execute(['a' => (int) $admin_id, 'm' => $motif, 'id' => $vente_id]);
+        if ($st->rowCount() !== 1) {
+            return ['ok' => false, 'error' => 'Ce ticket vient d’être encaissé ou annulé par ailleurs.'];
+        }
+        return ['ok' => true];
+    } catch (PDOException $e) {
+        error_log('[caisse_annuler_ticket] ' . $e->getMessage());
+        return ['ok' => false, 'error' => 'L’annulation n’a pas pu être enregistrée : la mise à jour de la base pour l’annulation des tickets est-elle faite sur ce serveur ?'];
+    }
 }
 
 /**

@@ -68,6 +68,11 @@ function create_facture_devis($devis_id, $admin_createur_id = null) {
         $stmt->execute(['did' => $devis_id]);
         if ($stmt->fetch()) return false;
 
+        /* Un devis parti en bon de livraison se facture avec le mois du client,
+         * pas seul (10/09/2026) : sinon la même vente portait deux factures. */
+        require_once __DIR__ . '/model_bl.php';
+        if (function_exists('bl_exists_for_devis') && bl_exists_for_devis($devis_id)) return false;
+
         $net = devis_calcul_net_ht($devis_id);
         $tva_incl = devis_tva_columns_ok() && !empty($devis['tva_incluse']);
         $ttp = devis_tva_columns_ok() && isset($devis['taux_tva_pourcent']) && (float) $devis['taux_tva_pourcent'] > 0

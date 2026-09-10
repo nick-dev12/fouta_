@@ -55,6 +55,7 @@ function commercial_tickets_du_jour($admin_id)
          FROM caisse_ventes v
          WHERE v.sync_deleted_at IS NULL
            AND v.admin_id = :moi
+           AND v.statut <> 'annule'
            AND v.date_vente >= CURDATE()
            AND v.date_vente < CURDATE() + INTERVAL 1 DAY",
         ['moi' => (int) $admin_id]

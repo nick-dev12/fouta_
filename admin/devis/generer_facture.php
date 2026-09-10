@@ -37,6 +37,13 @@ if ($existant) {
     exit;
 }
 
+require_once __DIR__ . '/../../models/model_bl.php';
+if (bl_exists_for_devis($devis_id)) {
+    $_SESSION['error_devis'] = 'Ce devis est parti en bon de livraison : il se facture avec la facture du mois du client, pas seul.';
+    header('Location: devis.php');
+    exit;
+}
+
 $result = create_facture_devis(
     $devis_id,
     (int) ($_SESSION['admin_id'] ?? 0) > 0 ? (int) $_SESSION['admin_id'] : null
@@ -47,5 +54,5 @@ if ($result && $result['success']) {
     exit;
 }
 
-$_SESSION['success_message'] = 'Erreur lors de la génération de la facture.';
-header('Location: details.php?id=' . $devis_id);
+$_SESSION['error_devis'] = 'La facture n’a pas pu être générée.';
+header('Location: devis.php');

@@ -152,15 +152,20 @@ if (!empty($_SESSION['flash_facture_error'])) {
     unset($_SESSION['flash_facture_error']);
 }
 
+/* Un bon regroupé dans une facture mensuelle n'est pas une facture de plus
+   (10/09/2026) : son document reste un bon de livraison, et il se paie avec
+   la facture du mois. */
+$bl_fm_numero = bl_facture_mensuelle_du_bl($bl_id);
 $facture_est_payee = $bl_facture_payee;
 $facture_afficher_marquer_payee = admin_can_comptabilite()
     && bl_col_facture_payee_ok()
     && $bl_valide
-    && !$bl_facture_payee;
+    && !$bl_facture_payee
+    && $bl_fm_numero === null;
 $facture_csrf_token = (string) ($_SESSION['admin_csrf'] ?? '');
 $facture_marquer_payee_confirm = 'Confirmer le paiement ? Ce bon de livraison ne sera plus proposé dans les factures mensuelles groupées.';
 
-$facture_document_type_label = $bl_valide ? 'FACTURE' : 'BON DE LIVRAISON';
+$facture_document_type_label = ($bl_valide && $bl_fm_numero === null) ? 'FACTURE' : 'BON DE LIVRAISON';
 $facture_numero_affichage = bl_numero_document_affichage($bl);
 $facture_bl_statut_libelle = '';
 $facture_bl_statut_code = '';

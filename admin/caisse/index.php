@@ -240,6 +240,9 @@ $manque_preview = null;
                 <div class="caisse-ticket-barcode-value"><?php echo htmlspecialchars($ticket_barcode_payload); ?></div>
             </div>
             <?php endif; ?>
+            <?php if ($ticket_statut === 'annule'): ?>
+            <p class="caisse-ticket-pay">Ticket annulé<?php echo !empty($ticket_data['date_annulation']) ? ' le ' . htmlspecialchars(date('d/m/Y à H:i', strtotime((string) $ticket_data['date_annulation']))) : ''; ?><?php echo !empty($ticket_data['motif_annulation']) ? ' : ' . htmlspecialchars((string) $ticket_data['motif_annulation']) : ''; ?></p>
+            <?php endif; ?>
             <?php if ($ticket_statut === 'paye'): ?>
             <p class="caisse-ticket-pay">Paiement :
                 <strong><?php echo htmlspecialchars(caisse_compta_libelle_paiement_ticket($ticket_data)); ?></strong></p>
@@ -249,6 +252,15 @@ $manque_preview = null;
                     Imprimer</button>
                 <?php if ($ticket_statut === 'en_attente'): ?>
                 <a href="index.php" class="btn-secondary">Continuer la vente</a>
+                <?php if ((int) ($ticket_data['admin_id'] ?? 0) === (int) ($_SESSION['admin_id'] ?? 0) || admin_can_encaisser_ticket()): ?>
+                <form method="post" action="post.php" class="caisse-annuler-ticket no-print" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;width:100%;margin-top:8px" onsubmit="return confirm('Annuler ce ticket ? Il ne pourra plus être encaissé.');">
+                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars((string) ($_SESSION['admin_csrf'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
+                    <input type="hidden" name="caisse_action" value="annuler_ticket">
+                    <input type="hidden" name="vente_id" value="<?php echo (int) ($ticket_data['id'] ?? 0); ?>">
+                    <input type="text" name="motif_annulation" required minlength="3" maxlength="255" placeholder="Motif : doublon, client parti…" aria-label="Motif de l'annulation" style="flex:1;min-width:180px;padding:8px 10px;border:1px solid #C4CCDA;border-radius:6px;font:inherit">
+                    <button type="submit" class="btn-secondary">Annuler le ticket</button>
+                </form>
+                <?php endif; ?>
                 <?php else: ?>
                 <a href="index.php" class="btn-secondary">Nouvelle vente</a>
                 <?php endif; ?>
