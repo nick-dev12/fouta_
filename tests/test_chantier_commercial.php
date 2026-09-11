@@ -1477,7 +1477,7 @@ verifie('un seul gabarit : les deux pages l’appellent et ne recopient plus le 
     strpos($s20_page_caisse, 'caisse-ticket-brand') !== false,
 ]);
 verifie('le logo et la feuille du ticket existent, les deux pages chargent la feuille', [true, true, true, true], [
-    is_file("$RACINE/image/logo-fpl.png"),
+    is_file("$RACINE/image/logo-fpl-bleu.png"),
     is_file("$RACINE/css/caisse-ticket-recu.css"),
     strpos($s20_page_vente, "fpl_css_link('caisse-ticket-recu.css')") !== false,
     strpos($s20_page_caisse, "fpl_css_link('caisse-ticket-recu.css')") !== false,
@@ -1496,7 +1496,7 @@ if ($base_locale) {
         $s20_html = (string) ob_get_clean();
         verifie('le reçu d’un ticket payé porte le logo, l’identité, le numéro, chaque ligne, le total, le paiement et la règle des retours',
             [true, true, true, true, true, true, true], [
-            strpos($s20_html, 'src="/image/logo-fpl.png"') !== false,
+            strpos($s20_html, 'src="/image/logo-fpl-bleu.png"') !== false,
             strpos($s20_html, 'NINEA ' . $s20_identite['ninea']) !== false && strpos($s20_html, $s20_identite['telephone']) !== false,
             strpos($s20_html, htmlspecialchars(caisse_ticket_valeur_code_barres($s20_vente))) !== false,
             substr_count($s20_html, 'class="fpl-recu__ligne"') === count($s20_vente['lignes']),
@@ -1731,6 +1731,21 @@ if ($base_locale) {
     }
 }
 $_SESSION['admin_role'] = $s21_role_avant;
+
+echo "— le logo du ticket de caisse au bleu foncé FPL (demande de la direction, 11/09/2026) —\n";
+$s22_css = (string) file_get_contents("$RACINE/css/caisse-ticket-recu.css");
+$s22_im = is_file("$RACINE/image/logo-fpl-bleu.png") ? imagecreatefrompng("$RACINE/image/logo-fpl-bleu.png") : null;
+$s22_plein = null;
+if ($s22_im) {
+    $s22_c = imagecolorat($s22_im, 180, 250);
+    $s22_plein = sprintf('#%02X%02X%02X/%d', ($s22_c >> 16) & 255, ($s22_c >> 8) & 255, $s22_c & 255, ($s22_c >> 24) & 127);
+}
+verifie('le ticket porte le logo FPL au bleu foncé #10316F, et l’impression ne le noircit plus', [true, '#10316F/0', false, true], [
+    strpos((string) file_get_contents("$RACINE/includes/caisse_ticket_recu.php"), 'src="/image/logo-fpl-bleu.png"') !== false,
+    $s22_plein,
+    strpos($s22_css, 'brightness(0)') !== false,
+    strpos($s22_css, 'print-color-adjust: exact;') !== false,
+]);
 
 echo "\n$ok OK / $ko KO\n";
 exit($ko === 0 ? 0 : 1);

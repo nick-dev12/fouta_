@@ -7,7 +7,8 @@
  * (caissier) : le même ticket s'imprimait jusqu'ici par deux copies du même
  * code, sans logo, avec le nom de l'entreprise en simple texte.
  *
- * Pensé pour l'impression thermique 80 mm en noir : le logo passe en noir pur,
+ * Pensé pour l'impression thermique 80 mm : le logo garde le bleu foncé FPL
+ * (#10316F, demande de la direction du 11/09/2026), et
  * le total s'imprime en bandeau plein, tout le texte est noir à l'impression.
  * Il reste lisible sur A4 (reçu étroit centré) et à l'écran (papier blanc).
  * L'identité est celle des pages publiques : fpl_public_branding_coords().
@@ -59,7 +60,7 @@ function caisse_ticket_recu_afficher(array $vente, array $recap, $statut, $code_
     ?>
     <article class="fpl-recu fpl-recu--<?php echo $e($statut); ?>" id="ticket-print-zone" aria-label="<?php echo $e($titre . ' ' . $numero); ?>">
         <header class="fpl-recu__entete">
-            <img class="fpl-recu__logo" src="/image/logo-fpl.png" alt="" width="364" height="434">
+            <img class="fpl-recu__logo" src="/image/logo-fpl-bleu.png" alt="" width="364" height="434">
             <p class="fpl-recu__marque"><?php echo $e($identite['nom']); ?></p>
             <p class="fpl-recu__coord"><?php echo $e($identite['adresse']); ?></p>
             <p class="fpl-recu__coord">Tél. <?php echo $e($identite['telephone']); ?> · <?php echo $e($identite['telephone2']); ?></p>

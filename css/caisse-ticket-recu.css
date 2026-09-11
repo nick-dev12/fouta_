@@ -1,7 +1,7 @@
 /*
  * LE TICKET DE CAISSE (11/09/2026) — includes/caisse_ticket_recu.php.
  * Un reçu 80 mm pensé d'abord pour l'impression thermique en noir : pas de gris
- * à l'impression, logo en noir pur, total en bandeau plein. À l'écran : un
+ * à l'impression, logo au bleu foncé FPL, total en bandeau plein. À l'écran : un
  * papier blanc posé sur la page, dentelé en bas.
  * En pixels : les pages de caisse n'ont pas toutes la même base de taille.
  */
@@ -352,9 +352,11 @@
     color: #000 !important;
   }
 
+  /* Le logo garde le bleu foncé FPL (#10316F) à l'impression (11/09/2026, direction). */
   .fpl-recu__logo {
     width: 20mm;
-    filter: grayscale(1) brightness(0);
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 
   .fpl-recu__total {
