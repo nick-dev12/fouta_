@@ -24,6 +24,8 @@ if (empty($_SESSION['admin_csrf'])) {
 require_once __DIR__ . '/../../models/model_caisse.php';
 require_once __DIR__ . '/../../models/model_caisse_compta.php';
 require_once __DIR__ . '/../../includes/barcode_caisse_ticket.php';
+// Le ticket imprimé : un seul gabarit pour la vente directe et l'encaissement (11/09/2026).
+require_once __DIR__ . '/../../includes/caisse_ticket_recu.php';
 
 $flash_ok = '';
 $flash_err = '';
@@ -109,6 +111,7 @@ $auto_print = isset($_GET['imprimer']) && $_GET['imprimer'] === '1';
 <?php include __DIR__ . '/..//includes/fpl_head.php'; ?>
     <?php fpl_css_link('admin-caisse-encaisser-ticket.css'); ?>
     <?php fpl_css_link('admin-dashboard-caisse-pages.css'); ?>
+    <?php fpl_css_link('caisse-ticket-recu.css'); ?>
 </head>
 <body class="admin-caisse-page admin-caisse-encaisser<?php echo ($vente && $ticket_recap) ? ' caisse-modal-open' : ''; ?>">
 <?php include __DIR__ . '/../includes/nav.php'; ?>
@@ -228,57 +231,9 @@ $auto_print = isset($_GET['imprimer']) && $_GET['imprimer'] === '1';
                 <a href="encaisser-ticket.php" class="caisse-ticket-view-modal__close" data-ticket-view-close aria-label="Fermer le ticket"><i class="fas fa-times"></i></a>
             </div>
             <div class="caisse-encaisseur-wrap caisse-encaisseur-wrap--in-modal">
-            <div class="caisse-ticket-card" id="ticket-print-zone">
-                <div class="caisse-ticket-brand">FOUTA POIDS LOURDS</div>
-                <div class="caisse-ticket-head">
-                    <strong><?php echo htmlspecialchars(caisse_ticket_numero_date_public($vente)); ?></strong>
-                    <span><?php echo isset($vente['date_vente']) ? htmlspecialchars(date('d/m/Y H:i', strtotime($vente['date_vente']))) : ''; ?></span>
-                </div>
-                <?php if ($ticket_statut === 'en_attente' && isset($vente['reference']) && (string) $vente['reference'] !== ''): ?>
-                <p class="caisse-ticket-ref-caisse">Ref : <strong><code><?php echo htmlspecialchars((string) $vente['reference']); ?></code></strong></p>
-                <?php endif; ?>
-                <p class="caisse-ticket-meta">
-                    Préparé par : <?php echo htmlspecialchars(trim(($vente['admin_prenom'] ?? '') . ' ' . ($vente['admin_nom'] ?? ''))); ?>
-                </p>
-                <?php if ($ticket_statut === 'paye' && trim(($vente['caissier_prenom'] ?? '') . ' ' . ($vente['caissier_nom'] ?? '')) !== ''): ?>
-                <p class="caisse-ticket-meta">
-                    Encaissé par : <?php echo htmlspecialchars(trim(($vente['caissier_prenom'] ?? '') . ' ' . ($vente['caissier_nom'] ?? ''))); ?>
-                </p>
-                <?php endif; ?>
-                <table class="caisse-ticket-table">
-                    <thead>
-                        <tr><th>Article</th><th>Qté</th><th>PU HT</th><th>Total</th></tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($vente['lignes'] as $lg): ?>
-                        <tr>
-                            <td><?php echo htmlspecialchars($lg['designation'] ?? ''); ?><?php if (!empty($lg['prix_saisi'])): ?> <span class="no-print" style="display:inline-block;margin-left:4px;padding:1px 6px;border-radius:4px;background:#F8EFDC;color:#8F6212;font-size:11px;font-weight:600" title="<?php echo !empty($lg['prix_catalogue']) ? 'Prix du catalogue ce jour-là : ' . number_format((float) $lg['prix_catalogue'], 0, ',', ' ') . ' FCFA' : 'Pièce sans prix au catalogue'; ?>">prix saisi</span><?php endif; ?></td>
-                            <td><?php echo (int) ($lg['quantite'] ?? 0); ?></td>
-                            <td><?php echo number_format((float) ($lg['prix_unitaire'] ?? 0), 0, ',', ' '); ?></td>
-                            <td><?php echo number_format((float) ($lg['total_ligne'] ?? 0), 0, ',', ' '); ?></td>
-                        </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-                    <div class="caisse-ticket-tva-block">
-                    <?php if ($ticket_afficher_detail_tva): ?>
-                    <div class="caisse-ticket-row"><span>Total HT</span><strong><?php echo number_format($ticket_recap['ht'], 0, ',', ' '); ?> FCFA</strong></div>
-                    <div class="caisse-ticket-row"><span>TVA (<?php echo htmlspecialchars((string) CAISSE_TVA_TAUX_POURCENT); ?> %)</span><strong><?php echo number_format($ticket_recap['tva'], 0, ',', ' '); ?> FCFA</strong></div>
-                    <?php endif; ?>
-                    <div class="caisse-ticket-row caisse-ticket-row--total"><span><?php echo $ticket_afficher_detail_tva ? 'Total TTC' : 'Total à payer'; ?></span><strong><?php echo number_format($ticket_recap['ttc'], 0, ',', ' '); ?> FCFA</strong></div>
-                </div>
-                <?php if ($ticket_barcode_src !== ''): ?>
-                <div class="caisse-ticket-barcode-block">
-                    <div class="caisse-ticket-barcode-wrap">
-                        <img src="<?php echo htmlspecialchars($ticket_barcode_src); ?>?v=<?php echo (int) ($vente['id'] ?? 0); ?>"
-                            alt="Code-barres ticket <?php echo htmlspecialchars($ticket_barcode_payload); ?>"
-                            class="caisse-ticket-barcode-img">
-                    </div>
-                    <div class="caisse-ticket-barcode-value"><?php echo htmlspecialchars($ticket_barcode_payload); ?></div>
-                </div>
-                <?php endif; ?>
+            <div class="caisse-ticket-card fpl-recu-cadre">
+                <?php caisse_ticket_recu_afficher($vente, $ticket_recap, (string) $ticket_statut, $ticket_barcode_src, $ticket_barcode_payload, $ticket_afficher_detail_tva); ?>
                 <?php if ($ticket_statut === 'paye'): ?>
-                <p class="caisse-ticket-pay">Paiement : <strong><?php echo htmlspecialchars(caisse_compta_libelle_paiement_ticket($vente)); ?></strong></p>
                 <?php if ($ticket_cloture): ?>
                 <p class="caisse-ticket-cloture no-print" style="margin:6px 0 0;font-size:.85em;color:#4A5468"><i class="fas fa-lock" aria-hidden="true"></i> Caisse clôturée le <?php echo htmlspecialchars(date('d/m/Y à H:i', strtotime((string) $ticket_cloture['periode_fin']))); ?> : ce paiement ne se corrige plus.</p>
                 <?php endif; ?>

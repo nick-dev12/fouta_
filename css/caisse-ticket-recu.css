@@ -1,0 +1,364 @@
+/*
+ * LE TICKET DE CAISSE (11/09/2026) — includes/caisse_ticket_recu.php.
+ * Un reçu 80 mm pensé d'abord pour l'impression thermique en noir : pas de gris
+ * à l'impression, logo en noir pur, total en bandeau plein. À l'écran : un
+ * papier blanc posé sur la page, dentelé en bas.
+ * En pixels : les pages de caisse n'ont pas toutes la même base de taille.
+ */
+
+.caisse-ticket-card.fpl-recu-cadre {
+  max-width: 380px;
+  margin: 0 auto 24px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.fpl-recu {
+  --recu-encre: #121417;
+  --recu-gris: #5A606B;
+  --recu-papier: #FFFFFF;
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 340px;
+  margin: 0 auto 26px;
+  padding: 26px 22px 24px;
+  background: var(--recu-papier);
+  color: var(--recu-encre);
+  font-family: "Inter", "Segoe UI", Arial, sans-serif;
+  font-size: 13px;
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+  box-shadow: 0 1px 2px rgba(18, 20, 23, 0.08), 0 14px 34px rgba(16, 49, 111, 0.14);
+}
+
+/* Le bord déchiré du papier, en bas, à l'écran seulement. */
+.fpl-recu::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -9px;
+  height: 10px;
+  background:
+    linear-gradient(135deg, var(--recu-papier) 5px, transparent 0) 0 0 / 10px 10px repeat-x,
+    linear-gradient(-135deg, var(--recu-papier) 5px, transparent 0) 0 0 / 10px 10px repeat-x;
+}
+
+.fpl-recu p,
+.fpl-recu dl,
+.fpl-recu dd,
+.fpl-recu figure {
+  margin: 0;
+}
+
+.fpl-recu__entete {
+  padding-bottom: 14px;
+  border-bottom: 1px dashed var(--recu-encre);
+  text-align: center;
+}
+
+.fpl-recu__logo {
+  display: block;
+  width: 62px;
+  height: auto;
+  margin: 0 auto 10px;
+}
+
+.fpl-recu__marque {
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+}
+
+.fpl-recu__coord {
+  margin-top: 3px !important;
+  font-size: 11px;
+  color: var(--recu-gris);
+}
+
+.fpl-recu__legal {
+  margin-top: 4px !important;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  color: var(--recu-gris);
+}
+
+.fpl-recu__titre {
+  margin: 14px 0 12px !important;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.fpl-recu--annule .fpl-recu__titre {
+  padding: 6px 0;
+  border: 2px solid var(--recu-encre);
+}
+
+.fpl-recu__reference {
+  margin: 0 0 14px;
+  padding: 10px 8px 8px;
+  border: 2px solid var(--recu-encre);
+  border-radius: 8px;
+  text-align: center;
+}
+
+.fpl-recu__reference span {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--recu-gris);
+}
+
+.fpl-recu__reference strong {
+  display: block;
+  margin-top: 2px;
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 30px;
+  letter-spacing: 0.2em;
+}
+
+.fpl-recu__infos,
+.fpl-recu__paiement {
+  display: grid;
+  gap: 3px;
+  font-size: 12px;
+}
+
+.fpl-recu__infos {
+  margin-bottom: 12px !important;
+}
+
+.fpl-recu__infos div,
+.fpl-recu__paiement div,
+.fpl-recu__rang {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.fpl-recu__infos dt,
+.fpl-recu__paiement dt,
+.fpl-recu__rang span:first-child {
+  color: var(--recu-gris);
+}
+
+.fpl-recu__infos dd,
+.fpl-recu__paiement dd {
+  font-weight: 600;
+  text-align: right;
+}
+
+.fpl-recu__numero {
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 11.5px;
+  letter-spacing: 0.02em;
+}
+
+.fpl-recu__lignes {
+  display: grid;
+  gap: 9px;
+  margin: 0;
+  padding: 11px 0;
+  list-style: none;
+  border-top: 1px dashed var(--recu-encre);
+  border-bottom: 1px dashed var(--recu-encre);
+}
+
+.fpl-recu__ligne {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  column-gap: 12px;
+  row-gap: 1px;
+}
+
+.fpl-recu__designation {
+  grid-column: 1 / -1;
+  font-size: 12.5px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.fpl-recu__calcul {
+  font-size: 12px;
+  color: var(--recu-gris);
+}
+
+.fpl-recu__montant {
+  font-weight: 600;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.fpl-recu__staff {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 0 6px;
+  border-radius: 4px;
+  background: #F8EFDC;
+  color: #8F6212;
+  font-size: 10.5px;
+  font-weight: 600;
+  vertical-align: 1px;
+}
+
+.fpl-recu__totaux {
+  display: grid;
+  gap: 3px;
+  padding: 10px 0 8px;
+  font-size: 12px;
+}
+
+.fpl-recu__rang span:last-child {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.fpl-recu__total {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  margin: 2px -8px 0;
+  padding: 10px 12px 9px;
+  border-radius: 6px;
+  background: var(--recu-encre);
+  color: #FFFFFF;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.fpl-recu__total span {
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.fpl-recu__total strong {
+  font-size: 22px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.fpl-recu__total small {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
+.fpl-recu__paiement {
+  margin-top: 12px !important;
+}
+
+.fpl-recu__annule {
+  margin-top: 12px !important;
+  padding: 8px 10px;
+  border: 2px solid var(--recu-encre);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.fpl-recu__code {
+  margin-top: 16px !important;
+  text-align: center;
+}
+
+.fpl-recu__code img {
+  display: block;
+  width: 100%;
+  max-width: 250px;
+  height: 54px;
+  margin: 0 auto;
+  object-fit: fill;
+  image-rendering: pixelated;
+}
+
+.fpl-recu__code figcaption {
+  margin-top: 4px;
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+}
+
+.fpl-recu__pied {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--recu-encre);
+  font-size: 11px;
+  color: var(--recu-gris);
+  text-align: center;
+}
+
+.fpl-recu__pied p + p {
+  margin-top: 4px;
+}
+
+.fpl-recu__merci {
+  margin-top: 8px !important;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--recu-encre);
+}
+
+.fpl-recu__site {
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+}
+
+@media print {
+  body.admin-caisse-page .caisse-ticket-card.fpl-recu-cadre,
+  body.admin-caisse-encaisser .caisse-ticket-card.fpl-recu-cadre {
+    max-width: none !important;
+    margin: 0 !important;
+  }
+
+  body.admin-caisse-page #ticket-print-zone.fpl-recu,
+  body.admin-caisse-encaisser #ticket-print-zone.fpl-recu {
+    width: 72mm !important;
+    max-width: 72mm !important;
+    margin: 0 auto !important;
+    padding: 1mm 1mm 3mm !important;
+    box-shadow: none !important;
+    font-size: 11.5px;
+  }
+
+  .fpl-recu::after {
+    display: none;
+  }
+
+  /* Une imprimante thermique rend mal le gris : tout passe en noir. */
+  .fpl-recu,
+  .fpl-recu__coord,
+  .fpl-recu__legal,
+  .fpl-recu__reference span,
+  .fpl-recu__infos dt,
+  .fpl-recu__paiement dt,
+  .fpl-recu__rang span:first-child,
+  .fpl-recu__calcul,
+  .fpl-recu__pied {
+    color: #000 !important;
+  }
+
+  .fpl-recu__logo {
+    width: 20mm;
+    filter: grayscale(1) brightness(0);
+  }
+
+  .fpl-recu__total {
+    background: #000 !important;
+    color: #FFF !important;
+  }
+}

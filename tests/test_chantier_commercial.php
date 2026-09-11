@@ -1463,5 +1463,60 @@ sort($s19_attendu_ids);
 sort($s19_obtenu_ids);
 verifie('pièces vendues presque épuisées : mêmes pièces (seconde lecture)', $s19_attendu_ids, $s19_obtenu_ids);
 
+echo "— ticket de caisse redessiné, avec le logo (demande de la direction, 11/09/2026) —\n";
+require_once "$RACINE/models/model_caisse.php";
+require_once "$RACINE/models/model_caisse_compta.php";
+require_once "$RACINE/includes/caisse_ticket_recu.php";
+$s20_page_vente = file_get_contents("$RACINE/admin/caisse/index.php");
+$s20_page_caisse = file_get_contents("$RACINE/admin/caisse/encaisser-ticket.php");
+verifie('un seul gabarit : les deux pages l’appellent et ne recopient plus le ticket', [true, true, false, false], [
+    strpos($s20_page_vente, 'caisse_ticket_recu_afficher(') !== false,
+    strpos($s20_page_caisse, 'caisse_ticket_recu_afficher(') !== false,
+    strpos($s20_page_vente, 'caisse-ticket-brand') !== false,
+    strpos($s20_page_caisse, 'caisse-ticket-brand') !== false,
+]);
+verifie('le logo et la feuille du ticket existent, les deux pages chargent la feuille', [true, true, true, true], [
+    is_file("$RACINE/image/logo-fpl.png"),
+    is_file("$RACINE/css/caisse-ticket-recu.css"),
+    strpos($s20_page_vente, "fpl_css_link('caisse-ticket-recu.css')") !== false,
+    strpos($s20_page_caisse, "fpl_css_link('caisse-ticket-recu.css')") !== false,
+]);
+
+if ($base_locale) {
+    $s20_identite = fpl_public_branding_coords();
+    $s20_id = (int) $db->query("SELECT v.id FROM caisse_ventes v WHERE v.statut = 'paye'
+        AND EXISTS (SELECT 1 FROM caisse_vente_lignes l WHERE l.vente_id = v.id) ORDER BY v.id DESC LIMIT 1")->fetchColumn();
+    $s20_vente = caisse_get_vente_by_id($s20_id);
+    verifie('un ticket payé avec ses lignes existe', true, is_array($s20_vente) && $s20_vente['lignes'] !== []);
+    if (is_array($s20_vente) && $s20_vente['lignes'] !== []) {
+        $s20_recap = caisse_vente_recap_fiscal_affichage($s20_vente);
+        ob_start();
+        caisse_ticket_recu_afficher($s20_vente, $s20_recap, 'paye', '', caisse_ticket_valeur_code_barres($s20_vente), false);
+        $s20_html = (string) ob_get_clean();
+        verifie('le reçu d’un ticket payé porte le logo, l’identité, le numéro, chaque ligne, le total, le paiement et la règle des retours',
+            [true, true, true, true, true, true, true], [
+            strpos($s20_html, 'src="/image/logo-fpl.png"') !== false,
+            strpos($s20_html, 'NINEA ' . $s20_identite['ninea']) !== false && strpos($s20_html, $s20_identite['telephone']) !== false,
+            strpos($s20_html, htmlspecialchars(caisse_ticket_valeur_code_barres($s20_vente))) !== false,
+            substr_count($s20_html, 'class="fpl-recu__ligne"') === count($s20_vente['lignes']),
+            strpos($s20_html, number_format((float) $s20_recap['ttc'], 0, ',', "\u{00A0}") . ' <small>FCFA</small>') !== false,
+            strpos($s20_html, htmlspecialchars(caisse_compta_libelle_paiement_ticket($s20_vente))) !== false,
+            strpos($s20_html, 'Conservez ce ticket') !== false,
+        ]);
+    }
+    $s20_attente = $db->query("SELECT id FROM caisse_ventes WHERE statut = 'en_attente' AND reference IS NOT NULL AND reference <> '' ORDER BY id DESC LIMIT 1")->fetchColumn();
+    if ($s20_attente) {
+        $s20_vente_attente = caisse_get_vente_by_id((int) $s20_attente);
+        ob_start();
+        caisse_ticket_recu_afficher($s20_vente_attente, caisse_vente_recap_fiscal_affichage($s20_vente_attente), 'en_attente', '', '', false);
+        $s20_html_attente = (string) ob_get_clean();
+        verifie('un ticket en attente dit « À payer à la caisse », montre sa référence et aucun paiement', [true, true, false], [
+            strpos($s20_html_attente, 'À payer à la caisse') !== false,
+            strpos($s20_html_attente, '<strong>' . htmlspecialchars((string) $s20_vente_attente['reference']) . '</strong>') !== false,
+            strpos($s20_html_attente, 'fpl-recu__paiement') !== false,
+        ]);
+    }
+}
+
 echo "\n$ok OK / $ko KO\n";
 exit($ko === 0 ? 0 : 1);

@@ -101,6 +101,8 @@ $ticket_recap = $ticket_data ? caisse_vente_recap_fiscal_affichage($ticket_data)
 $ticket_inclure_tva = $ticket_data && !empty($ticket_data['tva_incluse']);
 $ticket_afficher_detail_tva = $ticket_inclure_tva && $ticket_recap && abs((float) ($ticket_recap['tva'] ?? 0)) >= 0.005;
 $ticket_statut = $ticket_data ? caisse_vente_statut($ticket_data) : null;
+// Le ticket imprimé : un seul gabarit pour la vente directe et l'encaissement (11/09/2026).
+require_once __DIR__ . '/../../includes/caisse_ticket_recu.php';
 $masquer_zone_paiement_commercial = in_array(admin_current_role(), ['commercial', 'commercial_general'], true);
 /** Option « Inclure la TVA » : masquée pour le rôle commercial seul ; visible pour commercial_general et les autres */
 $afficher_option_tva_caisse = admin_current_role() !== 'commercial';
@@ -125,6 +127,7 @@ $manque_preview = null;
     <?php require_once __DIR__ . '/../../includes/asset_version.php'; ?>
 <?php include __DIR__ . '/..//includes/fpl_head.php'; ?>
     <?php fpl_css_link('admin-dashboard-caisse-pages.css'); ?>
+    <?php fpl_css_link('caisse-ticket-recu.css'); ?>
 </head>
 
 <body class="admin-caisse-page<?php echo $masquer_zone_paiement_commercial ? ' admin-caisse-commercial' : ''; ?><?php echo ($ticket_data && $ticket_recap) ? ' caisse-modal-open' : ''; ?>">
@@ -185,75 +188,8 @@ $manque_preview = null;
                     <a href="index.php" class="caisse-ticket-view-modal__close" aria-label="Fermer"><i
                             class="fas fa-times"></i></a>
                 </div>
-        <div class="caisse-ticket-card" id="ticket-print-zone">
-            <div class="caisse-ticket-brand">FOUTA POIDS LOURDS</div>
-            <div class="caisse-ticket-head">
-                <strong><?php echo htmlspecialchars(caisse_ticket_numero_date_public($ticket_data)); ?></strong>
-                <span><?php echo isset($ticket_data['date_vente']) ? htmlspecialchars(date('d/m/Y H:i', strtotime($ticket_data['date_vente']))) : ''; ?></span>
-            </div>
-            <?php if ($ticket_statut === 'en_attente' && isset($ticket_data['reference']) && (string) $ticket_data['reference'] !== ''): ?>
-            <p class="caisse-ticket-ref-caisse">Ref : <strong><code><?php echo htmlspecialchars((string) $ticket_data['reference']); ?></code></strong></p>
-            <?php endif; ?>
-            <p class="caisse-ticket-meta">
-                Préparé par :
-                <?php echo htmlspecialchars(trim(($ticket_data['admin_prenom'] ?? '') . ' ' . ($ticket_data['admin_nom'] ?? ''))); ?>
-            </p>
-            <?php if ($ticket_statut === 'paye' && trim(($ticket_data['caissier_prenom'] ?? '') . ' ' . ($ticket_data['caissier_nom'] ?? '')) !== ''): ?>
-            <p class="caisse-ticket-meta">
-                Encaissé par :
-                <?php echo htmlspecialchars(trim(($ticket_data['caissier_prenom'] ?? '') . ' ' . ($ticket_data['caissier_nom'] ?? ''))); ?>
-            </p>
-            <?php endif; ?>
-            <table class="caisse-ticket-table">
-                <thead>
-                    <tr>
-                        <th>Article</th>
-                        <th>Qté</th>
-                        <th>PU HT</th>
-                        <th>Total</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($ticket_data['lignes'] as $lg): ?>
-                    <tr>
-                        <td><?php echo htmlspecialchars($lg['designation'] ?? ''); ?><?php if (!empty($lg['prix_saisi'])): ?> <span class="no-print" style="display:inline-block;margin-left:4px;padding:1px 6px;border-radius:4px;background:#F8EFDC;color:#8F6212;font-size:11px;font-weight:600" title="<?php echo !empty($lg['prix_catalogue']) ? 'Prix du catalogue ce jour-là : ' . number_format((float) $lg['prix_catalogue'], 0, ',', ' ') . ' FCFA' : 'Pièce sans prix au catalogue'; ?>">prix saisi</span><?php endif; ?></td>
-                        <td><?php echo (int) ($lg['quantite'] ?? 0); ?></td>
-                        <td><?php echo number_format((float) ($lg['prix_unitaire'] ?? 0), 0, ',', ' '); ?></td>
-                        <td><?php echo number_format((float) ($lg['total_ligne'] ?? 0), 0, ',', ' '); ?></td>
-                    </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-            <div class="caisse-ticket-tva-block">
-                <?php if ($ticket_afficher_detail_tva): ?>
-                <div class="caisse-ticket-row"><span>Total
-                        HT</span><strong><?php echo number_format($ticket_recap['ht'], 0, ',', ' '); ?> FCFA</strong>
-                </div>
-                <div class="caisse-ticket-row"><span>TVA
-                        (<?php echo htmlspecialchars((string) CAISSE_TVA_TAUX_POURCENT); ?>
-                        %)</span><strong><?php echo number_format($ticket_recap['tva'], 0, ',', ' '); ?> FCFA</strong>
-                </div>
-                <?php endif; ?>
-                <div class="caisse-ticket-row caisse-ticket-row--total"><span><?php echo $ticket_afficher_detail_tva ? 'Total TTC' : 'Total à payer'; ?></span><strong><?php echo number_format($ticket_recap['ttc'], 0, ',', ' '); ?> FCFA</strong>
-                </div>
-            </div>
-            <?php if ($ticket_barcode_src !== ''): ?>
-            <div class="caisse-ticket-barcode-block">
-                <div class="caisse-ticket-barcode-wrap">
-                    <img src="<?php echo htmlspecialchars($ticket_barcode_src); ?>?v=<?php echo (int) ($ticket_data['id'] ?? 0); ?>"
-                        alt="Code-barres ticket <?php echo htmlspecialchars($ticket_barcode_payload); ?>"
-                        class="caisse-ticket-barcode-img">
-                </div>
-                <div class="caisse-ticket-barcode-value"><?php echo htmlspecialchars($ticket_barcode_payload); ?></div>
-            </div>
-            <?php endif; ?>
-            <?php if ($ticket_statut === 'annule'): ?>
-            <p class="caisse-ticket-pay">Ticket annulé<?php echo !empty($ticket_data['date_annulation']) ? ' le ' . htmlspecialchars(date('d/m/Y à H:i', strtotime((string) $ticket_data['date_annulation']))) : ''; ?><?php echo !empty($ticket_data['motif_annulation']) ? ' : ' . htmlspecialchars((string) $ticket_data['motif_annulation']) : ''; ?></p>
-            <?php endif; ?>
-            <?php if ($ticket_statut === 'paye'): ?>
-            <p class="caisse-ticket-pay">Paiement :
-                <strong><?php echo htmlspecialchars(caisse_compta_libelle_paiement_ticket($ticket_data)); ?></strong></p>
-            <?php endif; ?>
+        <div class="caisse-ticket-card fpl-recu-cadre">
+            <?php caisse_ticket_recu_afficher($ticket_data, $ticket_recap, (string) $ticket_statut, $ticket_barcode_src, $ticket_barcode_payload, $ticket_afficher_detail_tva); ?>
             <div class="caisse-ticket-actions no-print">
                 <button type="button" class="btn-primary" id="btnPrintTicket"><i class="fas fa-print"></i>
                     Imprimer</button>
