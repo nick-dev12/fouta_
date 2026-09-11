@@ -73,17 +73,19 @@ $mois_labels = ['', 'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juil
 <?php include __DIR__ . '/..//includes/fpl_head.php'; ?>
     <?php fpl_css_link('compta-bilan.css'); ?>
     <style>
-        .bilan-synthese { margin-bottom: 1.5rem; }
+        /* En pixels : la comptabilité hérite encore d'une base de 10 px (refonte e76948f), où 1rem ne fait que 10 px. */
+        .bilan-synthese { margin-bottom: 24px; }
         .bilan-synthese__wrap { overflow-x: auto; }
-        .bilan-synthese__table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
-        .bilan-synthese__table th, .bilan-synthese__table td { padding: 0.55rem 0.7rem; border-bottom: 1px solid rgba(16, 49, 111, 0.12); text-align: left; vertical-align: top; }
-        .bilan-synthese__table thead th { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; color: #56617A; white-space: nowrap; }
+        .bilan-synthese__table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: 14px; line-height: 1.45; }
+        .bilan-synthese__table th, .bilan-synthese__table td { padding: 8px 10px; border-bottom: 1px solid rgba(16, 49, 111, 0.12); text-align: left; vertical-align: top; }
+        .bilan-synthese__table thead th { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.04em; color: #56617A; white-space: nowrap; }
         .bilan-synthese__table .num { text-align: right; white-space: nowrap; }
-        .bilan-synthese__table td small { display: block; margin-top: 2px; color: #56617A; font-size: 0.82em; line-height: 1.35; }
+        .bilan-synthese__table td small { display: block; margin-top: 2px; color: #56617A; font-size: 12px; line-height: 1.4; }
+        .bilan-synthese__table td:first-child { min-width: 190px; }
         .bilan-synthese__table tfoot th { border-bottom: 0; border-top: 2px solid #10316F; color: #10316F; }
         .bilan-synthese__groupe td { font-weight: 600; color: #10316F; background: rgba(16, 49, 111, 0.05); }
-        .bilan-synthese__note { margin: 0.75rem 0 0; color: #56617A; font-size: 0.92rem; max-width: 80ch; }
-        .bilan-synthese h3 { margin: 1.25rem 0 0.5rem; font-size: 1rem; color: #10316F; }
+        .bilan-synthese__note { margin: 12px 0 0; color: #56617A; font-size: 13px; line-height: 1.5; max-width: 80ch; }
+        .bilan-synthese h3 { margin: 20px 0 8px; font-size: 14px; color: #10316F; }
     </style>
 </head>
 <body class="page-compta-bilan">
