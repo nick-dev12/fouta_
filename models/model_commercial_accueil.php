@@ -223,3 +223,64 @@ function commercial_retours_en_attente($admin_id)
         ['moi' => (int) $admin_id]
     );
 }
+
+/**
+ * Les pièces vendues en vente directe ces derniers jours qui n'ont toujours pas
+ * de prix au catalogue (11/09/2026). Mesuré : 3 095 pièces actives sur 3 235
+ * sans prix, et 49 lignes de ticket sur 57 vendues à un prix tapé à la main.
+ * Le dernier prix pratiqué aide le vendeur à vendre au même prix d'une fois à
+ * l'autre ; fixer le prix au catalogue reste le travail de la gestion du stock.
+ */
+function commercial_pieces_vendues_sans_prix($jours = 90, $limite = 10)
+{
+    return commercial_lire(
+        "SELECT p.id, p.nom, p.identifiant_interne, COUNT(DISTINCT v.id) AS ventes,
+                (SELECT l2.prix_unitaire FROM caisse_vente_lignes l2
+                 INNER JOIN caisse_ventes v2 ON v2.id = l2.vente_id
+                 WHERE l2.produit_id = p.id AND v2.statut <> 'annule' AND v2.sync_deleted_at IS NULL AND l2.sync_deleted_at IS NULL
+                 ORDER BY v2.date_vente DESC, l2.id DESC LIMIT 1) AS dernier_prix,
+                MAX(v.date_vente) AS derniere_vente
+         FROM caisse_vente_lignes l
+         INNER JOIN caisse_ventes v ON v.id = l.vente_id
+         INNER JOIN produits p ON p.id = l.produit_id
+         WHERE v.statut <> 'annule' AND v.sync_deleted_at IS NULL AND l.sync_deleted_at IS NULL
+           AND p.sync_deleted_at IS NULL
+           AND COALESCE(p.prix, 0) = 0 AND COALESCE(p.prix_promotion, 0) = 0
+           AND v.date_vente >= CURDATE() - INTERVAL " . max(1, (int) $jours) . " DAY
+         GROUP BY p.id, p.nom, p.identifiant_interne
+         ORDER BY ventes DESC, derniere_vente DESC, p.id
+         LIMIT " . max(1, min(50, (int) $limite)),
+        []
+    );
+}
+
+/**
+ * Les pièces vendues ces derniers jours (vente directe encaissée ou bon de
+ * livraison validé) qui sont en rupture ou à $seuil pièces ou moins
+ * (11/09/2026) : le vendeur prévient le client avant de promettre la pièce.
+ */
+function commercial_pieces_vendues_presque_epuisees($seuil = 2, $jours = 90, $limite = 10)
+{
+    $depuis = 'CURDATE() - INTERVAL ' . max(1, (int) $jours) . ' DAY';
+    return commercial_lire(
+        "SELECT p.id, p.nom, p.identifiant_interne, p.stock, p.statut, MAX(x.moment) AS derniere_vente
+         FROM produits p
+         INNER JOIN (
+             SELECT l.produit_id, COALESCE(v.date_encaissement, v.date_vente) AS moment
+             FROM caisse_vente_lignes l
+             INNER JOIN caisse_ventes v ON v.id = l.vente_id
+             WHERE v.statut = 'paye' AND v.sync_deleted_at IS NULL AND l.sync_deleted_at IS NULL
+               AND COALESCE(v.date_encaissement, v.date_vente) >= $depuis
+             UNION ALL
+             SELECT bl.produit_id, b.date_bl AS moment
+             FROM bl_lignes bl
+             INNER JOIN bons_livraison b ON b.id = bl.bl_id
+             WHERE b.statut IN ('valide', 'paye') AND b.sync_deleted_at IS NULL AND b.date_bl >= $depuis
+         ) x ON x.produit_id = p.id
+         WHERE p.sync_deleted_at IS NULL AND (p.statut = 'rupture_stock' OR p.stock <= :seuil)
+         GROUP BY p.id, p.nom, p.identifiant_interne, p.stock, p.statut
+         ORDER BY p.stock ASC, derniere_vente DESC, p.id
+         LIMIT " . max(1, min(50, (int) $limite)),
+        ['seuil' => (int) $seuil]
+    );
+}

@@ -502,11 +502,11 @@ if ($base_locale) {
     ]);
 }
 
-echo "— point 15 : l'accueil montre les relances et toutes ses ventes du mois —\n";
+echo "— point 15 : relances et ventes du mois lues juste, retirées de l'accueil le 11/09/2026 —\n";
 require_once "$RACINE/models/model_commercial_accueil.php";
 $source_accueil = file_get_contents("$RACINE/admin/commercial/index.php");
 foreach (['factures-a-relancer', 'devis-sans-reponse', 'mes-ventes-du-mois'] as $section) {
-    verifie("l'accueil porte la section « $section »", true, strpos($source_accueil, 'id="' . $section . '"') !== false);
+    verifie("décision de la direction : l'accueil ne montre plus « $section »", false, strpos($source_accueil, 'id="' . $section . '"') !== false);
 }
 $debut_du_mois = date('Y-m-01');
 foreach ([20, 23, 10] as $compte) {
@@ -1401,6 +1401,67 @@ verifie('les deux boutons de la comptabilité et l’alerte du tableau de bord a
 ]);
 verifie('les pages restent en place : un seul réglage les réaffiche', [true, true],
     [is_file("$RACINE/admin/commandes/index.php"), admin_route_is_allowed('commercial_general', 'commandes/index.php')]);
+
+echo "— accueil du commercial général recentré (décision de la direction, 11/09/2026) —\n";
+require_once "$RACINE/models/model_commercial_accueil.php";
+$s19_page = file_get_contents("$RACINE/admin/commercial/index.php");
+verifie('retirés : tickets en attente, devis ouverts, ventes du mois, compteurs, relances', [false, false, false, false, false, false], [
+    strpos($s19_page, 'id="a-encaisser"') !== false,
+    strpos($s19_page, 'id="devis-ouverts"') !== false,
+    strpos($s19_page, 'id="mes-ventes-du-mois"') !== false,
+    strpos($s19_page, 'class="kpi-line"') !== false,
+    strpos($s19_page, 'id="factures-a-relancer"') !== false,
+    strpos($s19_page, 'id="devis-sans-reponse"') !== false,
+]);
+verifie('gardés et ajoutés : retours, bons en brouillon, pièces presque épuisées, pièces sans prix, geste « Retour client »', [true, true, true, true, true], [
+    strpos($s19_page, 'id="retours-en-attente"') !== false,
+    strpos($s19_page, 'id="bl-brouillons"') !== false,
+    strpos($s19_page, 'id="pieces-presque-epuisees"') !== false,
+    strpos($s19_page, 'id="pieces-sans-prix"') !== false,
+    strpos($s19_page, 'href="../caisse/retour.php"') !== false,
+]);
+
+// Seconde lecture en PHP, indépendante du SQL des fonctions.
+$s19_depuis = (string) $db->query('SELECT CURDATE() - INTERVAL 90 DAY')->fetchColumn();
+$s19_sans_prix = [];
+foreach ($db->query("SELECT l.produit_id, l.vente_id, l.prix_unitaire, l.id AS ligne, v.date_vente, v.statut, p.prix, p.prix_promotion
+    FROM caisse_vente_lignes l INNER JOIN caisse_ventes v ON v.id = l.vente_id INNER JOIN produits p ON p.id = l.produit_id
+    WHERE v.sync_deleted_at IS NULL AND l.sync_deleted_at IS NULL AND p.sync_deleted_at IS NULL")->fetchAll(PDO::FETCH_ASSOC) as $l) {
+    if ($l['statut'] === 'annule' || (float) $l['prix'] > 0 || (float) $l['prix_promotion'] > 0 || $l['date_vente'] < $s19_depuis) {
+        continue;
+    }
+    $s19_sans_prix[(int) $l['produit_id']]['ventes'][(int) $l['vente_id']] = true;
+}
+$s19_attendu = array_map(static function ($x) { return count($x['ventes']); }, $s19_sans_prix);
+$s19_obtenu = [];
+foreach (commercial_pieces_vendues_sans_prix(90, 50) as $p) {
+    $s19_obtenu[(int) $p['id']] = (int) $p['ventes'];
+}
+ksort($s19_attendu);
+ksort($s19_obtenu);
+verifie('pièces vendues sans prix sur 90 jours : mêmes pièces, même nombre de tickets (seconde lecture)', array_slice($s19_attendu, 0, 50, true), $s19_obtenu);
+
+$s19_epuisees = [];
+foreach ($db->query("SELECT l.produit_id, COALESCE(v.date_encaissement, v.date_vente) AS moment FROM caisse_vente_lignes l
+    INNER JOIN caisse_ventes v ON v.id = l.vente_id WHERE v.statut = 'paye' AND v.sync_deleted_at IS NULL AND l.sync_deleted_at IS NULL
+    UNION ALL SELECT bl.produit_id, b.date_bl FROM bl_lignes bl INNER JOIN bons_livraison b ON b.id = bl.bl_id
+    WHERE b.statut IN ('valide', 'paye') AND b.sync_deleted_at IS NULL")->fetchAll(PDO::FETCH_ASSOC) as $l) {
+    if ($l['produit_id'] !== null && substr((string) $l['moment'], 0, 10) >= $s19_depuis) {
+        $s19_epuisees[(int) $l['produit_id']] = true;
+    }
+}
+$s19_attendu_ids = [];
+if ($s19_epuisees) {
+    foreach ($db->query('SELECT id, stock, statut FROM produits WHERE sync_deleted_at IS NULL AND id IN (' . implode(',', array_keys($s19_epuisees)) . ')')->fetchAll(PDO::FETCH_ASSOC) as $p) {
+        if ($p['statut'] === 'rupture_stock' || (int) $p['stock'] <= 2) {
+            $s19_attendu_ids[] = (int) $p['id'];
+        }
+    }
+}
+$s19_obtenu_ids = array_map('intval', array_column(commercial_pieces_vendues_presque_epuisees(2, 90, 50), 'id'));
+sort($s19_attendu_ids);
+sort($s19_obtenu_ids);
+verifie('pièces vendues presque épuisées : mêmes pièces (seconde lecture)', $s19_attendu_ids, $s19_obtenu_ids);
 
 echo "\n$ok OK / $ko KO\n";
 exit($ko === 0 ? 0 : 1);

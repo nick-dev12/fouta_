@@ -9,10 +9,18 @@
  * tickets préparés par les commerciaux généraux), puis les devis (10), puis
  * les bons de livraison (2).
  *
- * L'écran part donc de là : chercher une pièce (la recherche ouvre la caisse,
- * qui montre le prix et le stock et où l'on ajoute au ticket), les gestes du
- * métier, puis CE QUI ATTEND chez lui : ses tickets pas encore encaissés, ses
- * devis sans facture payée, ses bons de livraison restés en brouillon.
+ * L'écran part donc de là : chercher une pièce (la recherche ouvre la vente
+ * directe, qui montre le prix et le stock et où l'on ajoute au ticket), puis
+ * les gestes du métier.
+ *
+ * RECENTRÉ LE 11/09/2026, décision de la direction : le commercial général n'a
+ * pas à suivre ses tickets en attente de caisse, ses devis ouverts ni ses ventes
+ * du mois ; suivre l'argent est le travail de la caisse et de la comptabilité.
+ * Ont été retirés avec eux les compteurs du haut, les factures à relancer et les
+ * devis sans réponse. L'accueil garde ce qui attend son geste (retours clients
+ * en attente de caisse, bons de livraison en brouillon) et montre ce qui l'aide
+ * au comptoir, mesuré en base : les pièces vendues presque épuisées, et les
+ * pièces vendues sans prix au catalogue avec le dernier prix pratiqué.
  *
  * Programmation procédurale uniquement.
  */
@@ -40,32 +48,20 @@ require_once __DIR__ . '/../../models/model_devis.php';  // devis_statut_libelle
 $moi = (int) $_SESSION['admin_id'];
 $peut_bl = admin_can_bl_retours_b2b();
 
-$tickets_attente = [];
-$jour = ['n' => 0, 'total' => 0.0];
-$devis_ouverts = [];
-$bl_brouillons = [];
-$factures_a_relancer = [];
-$devis_sans_reponse = [];
-$ventes_du_mois = [];
+$peut_retour = admin_can_preparer_retour_caisse();
 $retours_attente = [];
+$bl_brouillons = [];
+$pieces_epuisees = [];
+$pieces_sans_prix = [];
 $lecture_ko = false;
 try {
-    $tickets_attente = commercial_tickets_en_attente($moi);
-    $jour = commercial_tickets_du_jour($moi);
-    $devis_ouverts = commercial_devis_ouverts($moi);
-    $bl_brouillons = $peut_bl ? commercial_bl_brouillons($moi) : [];
-    $factures_a_relancer = commercial_factures_a_relancer($moi);
-    $devis_sans_reponse = commercial_devis_sans_reponse($moi, 7);
-    $ventes_du_mois = commercial_ventes_du_mois($moi);
     $retours_attente = commercial_retours_en_attente($moi);
+    $bl_brouillons = $peut_bl ? commercial_bl_brouillons($moi) : [];
+    $pieces_epuisees = commercial_pieces_vendues_presque_epuisees(2, 90, 10);
+    $pieces_sans_prix = commercial_pieces_vendues_sans_prix(90, 10);
 } catch (Throwable $e) {
     error_log('[commercial/index] ' . $e->getMessage());
     $lecture_ko = true;
-}
-
-$total_attente = 0.0;
-foreach ($tickets_attente as $t) {
-    $total_attente += (float) $t['montant_total'];
 }
 
 $fpl_titre_page = 'Accueil';
@@ -106,6 +102,13 @@ $fpl_titre_page = 'Accueil';
         <strong>Nouvelle vente</strong>
         <span>Préparer un ticket de caisse</span>
       </a>
+      <?php if ($peut_retour) : ?>
+      <a class="action-btn" href="../caisse/retour.php">
+        <span class="big"><i class="fas fa-undo" aria-hidden="true"></i></span>
+        <strong>Retour client</strong>
+        <span>Mauvaise pièce ou pièce défectueuse</span>
+      </a>
+      <?php endif; ?>
       <a class="action-btn" href="../devis/devis.php?modal=devis">
         <span class="big"><i class="fas fa-file-invoice" aria-hidden="true"></i></span>
         <strong>Nouveau devis</strong>
@@ -117,57 +120,6 @@ $fpl_titre_page = 'Accueil';
         <strong>Nouveau bon de livraison</strong>
         <span>Pour un client professionnel</span>
       </a>
-      <?php endif; ?>
-    </div>
-
-    <div class="kpi-line" style="margin-bottom:var(--s4)">
-      <div class="card tile">
-        <div class="label">Mes tickets du jour</div>
-        <div class="value"><?php echo (int) $jour['n']; ?></div>
-        <div class="cell-sub"><?php echo fpl_montant($jour['total']); ?> FCFA</div>
-      </div>
-      <a class="card tile" href="#a-encaisser">
-        <div class="label">En attente de caisse</div>
-        <div class="value" style="color:var(--warn)"><?php echo count($tickets_attente); ?></div>
-        <div class="cell-sub"><?php echo fpl_montant($total_attente); ?> FCFA</div>
-      </a>
-      <a class="card tile" href="#devis-ouverts">
-        <div class="label">Devis ouverts</div>
-        <div class="value" style="color:var(--blue-600)"><?php echo count($devis_ouverts); ?></div>
-        <div class="cell-sub">sans facture payée</div>
-      </a>
-    </div>
-
-    <div class="card" id="a-encaisser" style="margin-bottom:var(--s4)">
-      <div class="card-head">
-        <h2>Mes tickets en attente de caisse</h2>
-        <a href="../caisse/index.php" class="btn btn-outline btn-sm">Ouvrir la vente directe</a>
-      </div>
-      <?php if ($tickets_attente === []) : ?>
-        <div class="empty">
-          <span class="big"><?php echo fpl_icone('package', 34); ?></span>
-          Aucun ticket en attente : tout ce que vous avez préparé est encaissé.
-        </div>
-      <?php else : ?>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr><th>Ticket</th><th>Réf. caisse</th><th>Préparé le</th><th class="num">Montant</th><th></th></tr>
-            </thead>
-            <tbody>
-              <?php foreach ($tickets_attente as $t) : ?>
-                <?php $ref = trim((string) ($t['reference'] ?? '')); ?>
-                <tr>
-                  <td><span class="chip-code"><?php echo e($t['numero_ticket']); ?></span></td>
-                  <td><strong class="ca-ref"><?php echo $ref !== '' ? e($ref) : '—'; ?></strong></td>
-                  <td class="muted"><?php echo date('d/m/Y à H:i', strtotime($t['date_vente'])); ?></td>
-                  <td class="num"><span class="qty"><?php echo fpl_montant($t['montant_total']); ?></span> <span class="muted">FCFA</span></td>
-                  <td class="num"><a class="btn btn-outline btn-sm" href="../caisse/index.php?ticket=<?php echo (int) $t['id']; ?>">Voir le ticket</a></td>
-                </tr>
-              <?php endforeach; ?>
-            </tbody>
-          </table>
-        </div>
       <?php endif; ?>
     </div>
 
@@ -205,108 +157,6 @@ $fpl_titre_page = 'Accueil';
     </div>
     <?php endif; ?>
 
-    <?php if ($factures_a_relancer !== []) : ?>
-    <div class="card" id="factures-a-relancer" style="margin-bottom:var(--s4)">
-      <div class="card-head">
-        <h2>Mes factures de devis à relancer</h2>
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr><th>Facture</th><th>Client</th><th>Émise le</th><th class="num">Depuis</th><th class="num">Montant</th><th></th></tr>
-          </thead>
-          <tbody>
-            <?php foreach ($factures_a_relancer as $f) : ?>
-              <?php $client_f = trim((string) $f['client_prenom'] . ' ' . (string) $f['client_nom']); ?>
-              <tr>
-                <td><span class="chip-code"><?php echo e($f['numero_facture']); ?></span></td>
-                <td>
-                  <div class="cell-title"><?php echo $client_f !== '' ? e($client_f) : '—'; ?></div>
-                  <?php if (!empty($f['client_telephone'])) : ?><div class="cell-sub"><?php echo e($f['client_telephone']); ?></div><?php endif; ?>
-                </td>
-                <td class="muted"><?php echo !empty($f['date_facture']) ? date('d/m/Y', strtotime($f['date_facture'])) : '—'; ?></td>
-                <td class="num"><?php echo (int) $f['jours']; ?> j</td>
-                <td class="num"><span class="qty"><?php echo fpl_montant($f['montant_total']); ?></span> <span class="muted">FCFA</span></td>
-                <td class="num"><a class="btn btn-outline btn-sm" href="../devis/details.php?id=<?php echo (int) $f['devis_id']; ?>">Ouvrir</a></td>
-              </tr>
-            <?php endforeach; ?>
-          </tbody>
-        </table>
-      </div>
-    </div>
-    <?php endif; ?>
-
-    <?php if ($devis_sans_reponse !== []) : ?>
-    <div class="card" id="devis-sans-reponse" style="margin-bottom:var(--s4)">
-      <div class="card-head">
-        <h2>Mes devis envoyés sans réponse depuis 7 jours</h2>
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr><th>Devis</th><th>Client</th><th class="num">Envoyé depuis</th><th class="num">Montant</th><th></th></tr>
-          </thead>
-          <tbody>
-            <?php foreach ($devis_sans_reponse as $s) : ?>
-              <?php $client_s = trim((string) $s['client_prenom'] . ' ' . (string) $s['client_nom']); ?>
-              <tr>
-                <td><span class="chip-code"><?php echo e($s['numero_devis']); ?></span></td>
-                <td>
-                  <div class="cell-title"><?php echo $client_s !== '' ? e($client_s) : '—'; ?></div>
-                  <?php if (!empty($s['client_telephone'])) : ?><div class="cell-sub"><?php echo e($s['client_telephone']); ?></div><?php endif; ?>
-                </td>
-                <td class="num"><?php echo (int) $s['jours']; ?> j</td>
-                <td class="num"><span class="qty"><?php echo fpl_montant($s['montant_total']); ?></span> <span class="muted">FCFA</span></td>
-                <td class="num"><a class="btn btn-outline btn-sm" href="../devis/details.php?id=<?php echo (int) $s['id']; ?>">Ouvrir</a></td>
-              </tr>
-            <?php endforeach; ?>
-          </tbody>
-        </table>
-      </div>
-    </div>
-    <?php endif; ?>
-
-    <div class="card" id="devis-ouverts" style="margin-bottom:var(--s4)">
-      <div class="card-head">
-        <h2>Mes devis ouverts</h2>
-        <a href="../devis/devis.php" class="btn btn-outline btn-sm">Tous les devis</a>
-      </div>
-      <?php if ($devis_ouverts === []) : ?>
-        <div class="empty">
-          <span class="big"><?php echo fpl_icone('package', 34); ?></span>
-          Aucun devis ouvert : chacun de vos devis a sa facture payée.
-        </div>
-      <?php else : ?>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr><th>Devis</th><th>Client</th><th>Statut</th><th>Créé le</th><th class="num">Montant</th><th>Facture</th><th></th></tr>
-            </thead>
-            <tbody>
-              <?php foreach ($devis_ouverts as $d) : ?>
-                <?php $client = trim((string) $d['client_prenom'] . ' ' . (string) $d['client_nom']); ?>
-                <tr>
-                  <td><span class="chip-code"><?php echo e($d['numero_devis']); ?></span></td>
-                  <td><div class="cell-title"><?php echo $client !== '' ? e($client) : '—'; ?></div></td>
-                  <td><span class="badge"><?php echo e(devis_statut_libelle($d)); ?></span></td>
-                  <td class="muted"><?php echo date('d/m/Y', strtotime($d['date_creation'])); ?></td>
-                  <td class="num"><span class="qty"><?php echo fpl_montant($d['montant_total']); ?></span> <span class="muted">FCFA</span></td>
-                  <td>
-                    <?php if (!empty($d['numero_facture'])) : ?>
-                      <span class="badge warn"><?php echo e($d['numero_facture']); ?> à payer</span>
-                    <?php else : ?>
-                      <span class="badge">Pas encore facturé</span>
-                    <?php endif; ?>
-                  </td>
-                  <td class="num"><a class="btn btn-outline btn-sm" href="../devis/details.php?id=<?php echo (int) $d['id']; ?>">Ouvrir</a></td>
-                </tr>
-              <?php endforeach; ?>
-            </tbody>
-          </table>
-        </div>
-      <?php endif; ?>
-    </div>
-
     <?php if ($peut_bl && $bl_brouillons !== []) : ?>
     <div class="card" id="bl-brouillons" style="margin-bottom:var(--s4)">
       <div class="card-head">
@@ -334,30 +184,74 @@ $fpl_titre_page = 'Accueil';
     </div>
     <?php endif; ?>
 
-    <?php if ($ventes_du_mois !== []) : ?>
-    <div class="card" id="mes-ventes-du-mois" style="margin-bottom:var(--s4)">
+    <div class="card" id="pieces-presque-epuisees" style="margin-bottom:var(--s4)">
       <div class="card-head">
-        <h2>Mes ventes du mois</h2>
+        <h2>Pièces vendues presque épuisées</h2>
       </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr><th>Chemin</th><th class="num">Nombre</th><th class="num">Montant</th><th>Précision</th></tr>
-          </thead>
-          <tbody>
-            <?php foreach ($ventes_du_mois as $v) : ?>
-              <tr>
-                <td><div class="cell-title"><?php echo e($v['chemin']); ?></div></td>
-                <td class="num"><?php echo (int) $v['nombre']; ?></td>
-                <td class="num"><span class="qty"><?php echo fpl_montant($v['montant']); ?></span> <span class="muted">FCFA</span></td>
-                <td class="muted"><?php echo e($v['detail']); ?></td>
-              </tr>
-            <?php endforeach; ?>
-          </tbody>
-        </table>
-      </div>
+      <p class="muted ca-aide">Vendues ces 90 derniers jours et à 2 pièces ou moins en stock : prévenez le client avant de lui promettre la pièce.</p>
+      <?php if ($pieces_epuisees === []) : ?>
+        <div class="empty">
+          <span class="big"><?php echo fpl_icone('package', 34); ?></span>
+          Aucune pièce vendue ces 90 derniers jours n'est presque épuisée.
+        </div>
+      <?php else : ?>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Pièce</th><th class="num">En stock</th><th>Dernière vente</th><th></th></tr>
+            </thead>
+            <tbody>
+              <?php foreach ($pieces_epuisees as $p) : ?>
+                <tr>
+                  <td>
+                    <div class="cell-title"><?php echo e($p['nom']); ?></div>
+                    <div class="cell-sub"><span class="chip-code"><?php echo e($p['identifiant_interne']); ?></span></div>
+                  </td>
+                  <td class="num"><?php echo (int) $p['stock'] > 0 ? '<span class="qty">' . (int) $p['stock'] . '</span>' : '<span class="badge warn">Rupture</span>'; ?></td>
+                  <td class="muted"><?php echo date('d/m/Y', strtotime((string) $p['derniere_vente'])); ?></td>
+                  <td class="num"><a class="btn btn-outline btn-sm" href="../caisse/index.php?q=<?php echo rawurlencode((string) $p['identifiant_interne']); ?>">Voir en vente directe</a></td>
+                </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        </div>
+      <?php endif; ?>
     </div>
-    <?php endif; ?>
+
+    <div class="card" id="pieces-sans-prix" style="margin-bottom:var(--s4)">
+      <div class="card-head">
+        <h2>Pièces vendues sans prix au catalogue</h2>
+      </div>
+      <p class="muted ca-aide">Ces 90 derniers jours, leur prix a été tapé à la main. Reprenez le dernier prix pratiqué pour vendre au même prix ; la gestion du stock fixe le prix au catalogue.</p>
+      <?php if ($pieces_sans_prix === []) : ?>
+        <div class="empty">
+          <span class="big"><?php echo fpl_icone('package', 34); ?></span>
+          Toutes les pièces vendues ces 90 derniers jours ont un prix au catalogue.
+        </div>
+      <?php else : ?>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Pièce</th><th class="num">Tickets</th><th class="num">Dernier prix pratiqué</th><th>Dernière vente</th><th></th></tr>
+            </thead>
+            <tbody>
+              <?php foreach ($pieces_sans_prix as $p) : ?>
+                <tr>
+                  <td>
+                    <div class="cell-title"><?php echo e($p['nom']); ?></div>
+                    <div class="cell-sub"><span class="chip-code"><?php echo e($p['identifiant_interne']); ?></span></div>
+                  </td>
+                  <td class="num"><?php echo (int) $p['ventes']; ?></td>
+                  <td class="num"><span class="qty"><?php echo fpl_montant($p['dernier_prix']); ?></span> <span class="muted">FCFA</span></td>
+                  <td class="muted"><?php echo date('d/m/Y', strtotime((string) $p['derniere_vente'])); ?></td>
+                  <td class="num"><a class="btn btn-outline btn-sm" href="../caisse/index.php?q=<?php echo rawurlencode((string) $p['identifiant_interne']); ?>">Voir en vente directe</a></td>
+                </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        </div>
+      <?php endif; ?>
+    </div>
 
     </div><!-- .page-commercial-accueil -->
 
@@ -371,6 +265,7 @@ $fpl_titre_page = 'Accueil';
     font-family: var(--mono); font-size: 18px; letter-spacing: .06em; color: var(--navy);
   }
   .page-commercial-accueil td.num { white-space: nowrap; }
+  .page-commercial-accueil .ca-aide { margin: 0 0 var(--s3); max-width: 72ch; }
 </style>
 
 <script>
