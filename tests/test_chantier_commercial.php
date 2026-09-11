@@ -1194,5 +1194,183 @@ if ($base_locale) {
     }
 }
 
+echo "— point 16 : une synthèse comptable unique, quatre chemins, retours déduits, sans double compte —\n";
+require_once "$RACINE/models/model_compta_synthese.php";
+require_once "$RACINE/models/model_paiements_factures.php";
+verifie('le modèle de la synthèse comptable existe', true, function_exists('compta_synthese_periode'));
+$s16_bilan = file_get_contents("$RACINE/admin/comptabilite/bilan.php");
+$s16_hub = file_get_contents("$RACINE/admin/comptabilite/index.php");
+$s16_csv = file_get_contents("$RACINE/admin/comptabilite/bilan-export-csv.php");
+$s16_dash = file_get_contents("$RACINE/admin/dashboard.php");
+verifie('le bilan, le hub, le CSV et le tableau de bord lisent la même synthèse', [true, true, true, true], [
+    strpos($s16_bilan, 'compta_synthese_periode($d1, $d2)') !== false,
+    strpos($s16_hub, 'compta_synthese_periode($h_date_debut, $h_date_fin)') !== false,
+    strpos($s16_csv, 'compta_synthese_periode($d1, $d2)') !== false,
+    strpos($s16_dash, "compta_synthese_ventes(date('Y-m-d'), date('Y-m-d'))") !== false,
+]);
+verifie('plus de « gains » web + caisse, plus de facture du mois ajoutée à ses bons, plus de total tiré d’une liste plafonnée', [false, false, false], [
+    strpos($s16_hub, '$h_ca_web + $h_caisse_ttc') !== false,
+    strpos($s16_csv, "'FAC_MENS'") !== false,
+    strpos($s16_bilan, "\$ct['total_ttc']") !== false,
+]);
+
+if ($base_locale) {
+    $s16_valeur = static function ($sql) use ($db) {
+        return round((float) $db->query($sql)->fetchColumn(), 2);
+    };
+    $s16_large = compta_synthese_periode('2000-01-01', '2099-12-31');
+    $s16_v = $s16_large['ventes'];
+    verifie('caisse : tous les tickets payés, sans plafond de lignes', [
+        $s16_valeur("SELECT COUNT(*) FROM caisse_ventes WHERE statut = 'paye' AND sync_deleted_at IS NULL"),
+        $s16_valeur("SELECT COALESCE(SUM(montant_total), 0) FROM caisse_ventes WHERE statut = 'paye' AND sync_deleted_at IS NULL"),
+    ], [(float) $s16_v['caisse']['nb'], $s16_v['caisse']['brut']]);
+    verifie('factures de devis : toutes, à leur montant', $s16_valeur('SELECT COALESCE(SUM(montant_total), 0) FROM factures_devis WHERE sync_deleted_at IS NULL'), $s16_v['devis']['net']);
+
+    // Le montant dû de chaque bon vient de la fonction du registre des paiements : la règle de TVA de la facture imprimée.
+    $s16_taux = fiscal_taux_tva_pourcent();
+    $s16_valeur_retour = static function (array $bon, $montant) use ($s16_taux) {
+        $tva = bl_tva_columns_ok() && !empty($bon['tva_incluse']);
+        $taux = ($tva && (float) ($bon['taux_tva_pourcent'] ?? 0) > 0) ? (float) $bon['taux_tva_pourcent'] : $s16_taux;
+        return $tva ? round((float) $montant + round((float) $montant * $taux / 100, 2), 2) : round((float) $montant, 2);
+    };
+    $s16_bons = 0.0;
+    $s16_retours = 0.0;
+    foreach ($db->query("SELECT * FROM bons_livraison WHERE statut IN ('valide', 'paye') AND sync_deleted_at IS NULL")->fetchAll(PDO::FETCH_ASSOC) as $b) {
+        $s16_bons += paiement_facture_etat('bl', (int) $b['id'])['du'];
+        foreach ($db->query('SELECT total_ht_retour FROM bons_retour WHERE sync_deleted_at IS NULL AND bl_id = ' . (int) $b['id'])->fetchAll(PDO::FETCH_COLUMN) as $r) {
+            $s16_retours += $s16_valeur_retour($b, $r);
+        }
+    }
+    verifie('bons de livraison : le montant dû de chaque bon validé, bons de retour déduits', [round($s16_bons, 2), round($s16_retours, 2)],
+        [$s16_v['bons']['brut'], $s16_v['bons']['retours']]);
+    verifie('la facture du mois ne s’ajoute pas à ses bons : ventes = caisse + devis + bons + site',
+        round($s16_v['caisse']['net'] + $s16_v['devis']['net'] + $s16_v['bons']['net'] + $s16_v['site']['net'], 2), $s16_v['total']);
+    verifie('la caisse ventilée par moyen retombe sur son total', round($s16_large['encaissements']['caisse']['total']),
+        round(array_sum($s16_large['encaissements']['caisse']['canaux'])));
+
+    $s16_a = $s16_large['a_encaisser'];
+    $s16_reste_devis = 0.0;
+    foreach ($db->query('SELECT id FROM factures_devis WHERE COALESCE(payee, 0) = 0 AND sync_deleted_at IS NULL')->fetchAll(PDO::FETCH_COLUMN) as $fid) {
+        $s16_reste_devis += paiement_facture_etat('facture_devis', (int) $fid)['reste'];
+    }
+    $s16_reste_fm = 0.0;
+    foreach ($db->query("SELECT id FROM factures_mensuelles WHERE statut = 'validee' AND sync_deleted_at IS NULL")->fetchAll(PDO::FETCH_COLUMN) as $fid) {
+        $s16_reste_fm += paiement_facture_etat('facture_mensuelle', (int) $fid)['reste'];
+    }
+    verifie('à encaisser : le reste de chaque facture, calculé comme sur la facture', [round($s16_reste_devis, 2), round($s16_reste_fm, 2)],
+        [$s16_a['devis']['montant'], $s16_a['factures_mois']['montant']]);
+
+    $s16_avoirs = 0.0;
+    $s16_documents = [];
+    $s16_tva_fm = factures_mensuelles_tva_incluse_column_ok() ? ', tva_incluse' : ', 0 AS tva_incluse';
+    foreach ($db->query("SELECT id, numero_facture, total_ht$s16_tva_fm FROM factures_mensuelles WHERE statut IN ('validee', 'payee') AND sync_deleted_at IS NULL ORDER BY id")->fetchAll(PDO::FETCH_ASSOC) as $f) {
+        $ecart = round((float) $f['total_ht'] - facture_mensuelle_montants((int) $f['id'])['net'], 2);
+        if ($ecart > 0.005) {
+            $s16_avoirs += !empty($f['tva_incluse']) ? round($ecart + round($ecart * $s16_taux / 100, 2), 2) : $ecart;
+            $s16_documents[] = (string) $f['numero_facture'];
+        }
+    }
+    foreach ($db->query("SELECT b.* FROM bons_livraison b WHERE b.facture_bl_payee = 1 AND b.sync_deleted_at IS NULL
+        AND NOT EXISTS (SELECT 1 FROM facture_mensuelle_bl x WHERE x.bl_id = b.id) ORDER BY b.numero_bl")->fetchAll(PDO::FETCH_ASSOC) as $b) {
+        $montant = 0.0;
+        foreach ($db->query('SELECT total_ht_retour FROM bons_retour WHERE sync_deleted_at IS NULL AND bl_id = ' . (int) $b['id'])->fetchAll(PDO::FETCH_COLUMN) as $r) {
+            $montant += $s16_valeur_retour($b, $r);
+        }
+        if ($montant > 0.005) {
+            $s16_avoirs += $montant;
+            $s16_documents[] = (string) $b['numero_bl'];
+        }
+    }
+    verifie('avoirs à émettre : les retours arrivés après une facture close', [round($s16_avoirs, 2), $s16_documents],
+        [$s16_a['avoirs']['montant'], array_column($s16_a['avoirs']['lignes'], 'document')]);
+
+    $s16_juin = compta_synthese_encaissements('2026-06-01', '2026-06-30');
+    $s16_sans_ligne = static function ($colonne, $alias) {
+        return " AND NOT EXISTS (SELECT 1 FROM paiements_factures p WHERE p.$colonne = $alias.id AND p.date_annulation IS NULL AND p.sync_deleted_at IS NULL)";
+    };
+    $s16_avant = $s16_valeur("SELECT COALESCE(SUM(f.montant_total), 0) FROM factures_devis f WHERE f.payee = 1 AND f.sync_deleted_at IS NULL
+        AND DATE(f.date_paiement) BETWEEN '2026-06-01' AND '2026-06-30'" . $s16_sans_ligne('facture_devis_id', 'f'));
+    foreach ($db->query("SELECT b.id FROM bons_livraison b WHERE b.facture_bl_payee = 1 AND b.sync_deleted_at IS NULL
+        AND DATE(b.date_paiement_bl) BETWEEN '2026-06-01' AND '2026-06-30'" . $s16_sans_ligne('bl_id', 'b'))->fetchAll(PDO::FETCH_COLUMN) as $bid) {
+        $s16_avant += paiement_facture_etat('bl', (int) $bid)['du'];
+    }
+    foreach ($db->query("SELECT f.id FROM factures_mensuelles f WHERE f.statut = 'payee' AND f.sync_deleted_at IS NULL
+        AND DATE(f.date_paiement) BETWEEN '2026-06-01' AND '2026-06-30'" . $s16_sans_ligne('facture_mensuelle_id', 'f'))->fetchAll(PDO::FETCH_COLUMN) as $fid) {
+        $s16_avant += paiement_facture_etat('facture_mensuelle', (int) $fid)['du'];
+    }
+    verifie('factures payées avant le registre : à leur date de paiement, au montant de la facture', round($s16_avant, 2), $s16_juin['avant_registre']['total']);
+
+    // Essai réel du jour : un acompte, un retour client en caisse, un bon de retour sur un bon d'une facture du mois close.
+    $s16_comptable = (int) $db->query("SELECT id FROM admin WHERE email = 'fpl.compta@local.test' AND role = 'comptabilite'")->fetchColumn();
+    $s16_caissier = (int) $db->query("SELECT id FROM admin WHERE email = 'fpl.caisse@local.test' AND role = 'caissier'")->fetchColumn();
+    $s16_vendeur = (int) $db->query("SELECT id FROM admin WHERE email = 'fpl.commgen@local.test' AND role = 'commercial_general'")->fetchColumn();
+    $s16_facture = $db->query('SELECT * FROM factures_devis WHERE COALESCE(payee, 0) = 0 AND montant_total >= 2000 AND sync_deleted_at IS NULL ORDER BY id LIMIT 1')->fetch(PDO::FETCH_ASSOC);
+    $s16_ticket = (int) $db->query("SELECT id FROM caisse_ventes WHERE statut = 'paye' AND sync_deleted_at IS NULL ORDER BY id LIMIT 1")->fetchColumn();
+    $s16_bon = $db->query("SELECT b.*, f.numero_facture$s16_tva_fm AS fm_tva FROM facture_mensuelle_bl x
+        INNER JOIN factures_mensuelles f ON f.id = x.facture_mensuelle_id INNER JOIN bons_livraison b ON b.id = x.bl_id
+        WHERE f.statut IN ('validee', 'payee') AND f.sync_deleted_at IS NULL AND b.total_ht >= 500
+          AND NOT EXISTS (SELECT 1 FROM bons_retour r WHERE r.bl_id = b.id) ORDER BY b.id LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+    verifie('essai du jour : comptable, caissier, vendeur, facture impayée, ticket payé et bon d’une facture du mois close existent',
+        [true, true, true, true, true, true], [$s16_comptable > 0, $s16_caissier > 0, $s16_vendeur > 0, is_array($s16_facture), $s16_ticket > 0, is_array($s16_bon)]);
+    if ($s16_comptable > 0 && $s16_caissier > 0 && $s16_vendeur > 0 && is_array($s16_facture) && $s16_ticket > 0 && is_array($s16_bon)) {
+        $s16_compter = static function () use ($db) {
+            return [
+                (int) $db->query('SELECT COUNT(*) FROM paiements_factures')->fetchColumn(),
+                (int) $db->query('SELECT COUNT(*) FROM caisse_retours')->fetchColumn(),
+                (int) $db->query('SELECT COUNT(*) FROM bons_retour')->fetchColumn(),
+            ];
+        };
+        $s16_comptes_avant = $s16_compter();
+        $s16_jour = (string) $db->query('SELECT CURDATE()')->fetchColumn();
+        $s16_matin = compta_synthese_periode($s16_jour, $s16_jour);
+        $s16_retour_id = 0;
+        $s16_br_id = 0;
+        try {
+            $r = paiement_facture_enregistrer('facture_devis', (int) $s16_facture['id'], '1000', 'wave', $s16_jour, '', 'Essai : synthese', $s16_comptable);
+            verifie('essai : un acompte de 1 000 enregistré sur une facture de devis', true, !empty($r['ok']));
+            $db->prepare("INSERT INTO caisse_retours (numero_retour, vente_id, statut, motif, solution, explication, montant_rendu, montant_remis,
+                    especes_a_rendre, especes_a_recevoir, admin_id, date_creation, caissier_id, date_validation)
+                VALUES ('RTC-ESSAI-SYNTH', :vente, 'valide', 'mauvaise_piece', 'remboursement', 'Essai : synthese', 900, 0, 900, 0, :vendeur, NOW(), :caissier, NOW())")
+                ->execute(['vente' => $s16_ticket, 'vendeur' => $s16_vendeur, 'caissier' => $s16_caissier]);
+            $s16_retour_id = (int) $db->lastInsertId();
+            $db->prepare("INSERT INTO bons_retour (numero_br, bl_id, admin_createur_id, date_retour, notes, total_ht_retour, date_creation)
+                VALUES ('BR-ESSAI-SYNTH', :bl, :admin, NOW(), 'Essai : synthese', 500, NOW())")
+                ->execute(['bl' => (int) $s16_bon['id'], 'admin' => $s16_comptable]);
+            $s16_br_id = (int) $db->lastInsertId();
+            $s16_soir = compta_synthese_periode($s16_jour, $s16_jour);
+            verifie('le retour client validé retire 900 des ventes et des espèces du jour', [-900.0, -900.0], [
+                round($s16_soir['ventes']['caisse']['net'] - $s16_matin['ventes']['caisse']['net'], 2),
+                round($s16_soir['encaissements']['caisse']['net'] - $s16_matin['encaissements']['caisse']['net'], 2),
+            ]);
+            verifie('l’acompte compte dans l’encaissé du jour, par type et par moyen', [1000.0, 1000.0, 1000.0], [
+                round($s16_soir['encaissements']['factures']['total'] - $s16_matin['encaissements']['factures']['total'], 2),
+                round($s16_soir['encaissements']['factures']['types']['facture_devis'] - $s16_matin['encaissements']['factures']['types']['facture_devis'], 2),
+                round(($s16_soir['encaissements']['factures']['moyens']['wave'] ?? 0) - ($s16_matin['encaissements']['factures']['moyens']['wave'] ?? 0), 2),
+            ]);
+            verifie('et sort de ce qui reste à encaisser', -1000.0, round($s16_soir['a_encaisser']['devis']['montant'] - $s16_matin['a_encaisser']['devis']['montant'], 2));
+            $s16_avoir_attendu = !empty($s16_bon['fm_tva']) ? round(500 + round(500 * $s16_taux / 100, 2), 2) : 500.0;
+            verifie('le bon de retour se déduit des ventes du jour et devient un avoir sur la facture du mois close',
+                [-$s16_valeur_retour($s16_bon, 500), $s16_avoir_attendu, true], [
+                round($s16_soir['ventes']['bons']['net'] - $s16_matin['ventes']['bons']['net'], 2),
+                round($s16_soir['a_encaisser']['avoirs']['montant'] - $s16_matin['a_encaisser']['avoirs']['montant'], 2),
+                in_array((string) $s16_bon['numero_facture'], array_column($s16_soir['a_encaisser']['avoirs']['lignes'], 'document'), true),
+            ]);
+            verifie('le solde est l’encaissé moins les dépenses', round($s16_soir['encaissements']['total'] - $s16_soir['depenses']['montant'], 2), $s16_soir['solde']);
+        } finally {
+            $db->prepare("DELETE FROM paiements_factures WHERE facture_devis_id = ? AND notes LIKE 'Essai : synthese%'")->execute([(int) $s16_facture['id']]);
+            if ($s16_retour_id > 0) {
+                $db->exec("DELETE FROM caisse_retours WHERE id = $s16_retour_id AND numero_retour = 'RTC-ESSAI-SYNTH'");
+            }
+            if ($s16_br_id > 0) {
+                $db->exec("DELETE FROM bons_retour WHERE id = $s16_br_id AND numero_br = 'BR-ESSAI-SYNTH'");
+            }
+        }
+        verifie('base remise à l’état initial : paiements, retours clients, bons de retour et facture d’essai', [$s16_comptes_avant, true], [
+            $s16_compter(),
+            $db->query('SELECT * FROM factures_devis WHERE id = ' . (int) $s16_facture['id'])->fetch(PDO::FETCH_ASSOC) == $s16_facture,
+        ]);
+    }
+}
+
 echo "\n$ok OK / $ko KO\n";
 exit($ko === 0 ? 0 : 1);

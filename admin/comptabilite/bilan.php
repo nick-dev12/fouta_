@@ -25,11 +25,26 @@ $d1 = $periode['date_debut'];
 $d2 = $periode['date_fin'];
 
 $data = bilan_comptable_collecter_donnees($d1, $d2, 400);
-$st = $data['stats_web'];
-$td = $data['totaux_dep'];
-$ct = $data['caisse_totaux'];
-$bls = $data['stats_bl'];
-$fms = $data['stats_fm'];
+
+/* LA SYNTHÈSE COMPTABLE UNIQUE (point 16, 11/09/2026). Les totaux ne viennent
+ * plus des listes : le bilan additionnait au plus 400 tickets, posait côte à
+ * côte les bons et les factures du mois qui les contiennent, et ne déduisait
+ * aucun retour. Un seul calcul : models/model_compta_synthese.php. Les listes
+ * plus bas restent des aperçus. */
+require_once __DIR__ . '/../../models/model_compta_synthese.php';
+$synthese = null;
+try {
+    $synthese = compta_synthese_periode($d1, $d2);
+} catch (Throwable $e) {
+    error_log('[comptabilite/bilan synthese] ' . $e->getMessage());
+}
+$fcfa = static function ($n) {
+    return number_format((float) $n, 0, ',', ' ');
+};
+$signe = static function ($n) {
+    $n = round((float) $n);
+    return ($n < 0 ? '− ' : ($n > 0 ? '+ ' : '')) . number_format(abs($n), 0, ',', ' ');
+};
 
 $export_q = ['b_periode' => $periode['type']];
 if ($periode['type'] === 'jour') {
@@ -57,6 +72,19 @@ $mois_labels = ['', 'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juil
     <?php require_once __DIR__ . '/../../includes/asset_version.php'; ?>
 <?php include __DIR__ . '/..//includes/fpl_head.php'; ?>
     <?php fpl_css_link('compta-bilan.css'); ?>
+    <style>
+        .bilan-synthese { margin-bottom: 1.5rem; }
+        .bilan-synthese__wrap { overflow-x: auto; }
+        .bilan-synthese__table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+        .bilan-synthese__table th, .bilan-synthese__table td { padding: 0.55rem 0.7rem; border-bottom: 1px solid rgba(16, 49, 111, 0.12); text-align: left; vertical-align: top; }
+        .bilan-synthese__table thead th { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; color: #56617A; white-space: nowrap; }
+        .bilan-synthese__table .num { text-align: right; white-space: nowrap; }
+        .bilan-synthese__table td small { display: block; margin-top: 2px; color: #56617A; font-size: 0.82em; line-height: 1.35; }
+        .bilan-synthese__table tfoot th { border-bottom: 0; border-top: 2px solid #10316F; color: #10316F; }
+        .bilan-synthese__groupe td { font-weight: 600; color: #10316F; background: rgba(16, 49, 111, 0.05); }
+        .bilan-synthese__note { margin: 0.75rem 0 0; color: #56617A; font-size: 0.92rem; max-width: 80ch; }
+        .bilan-synthese h3 { margin: 1.25rem 0 0.5rem; font-size: 1rem; color: #10316F; }
+    </style>
 </head>
 <body class="page-compta-bilan">
     <?php include '../includes/nav.php'; ?>
@@ -67,7 +95,7 @@ $mois_labels = ['', 'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juil
                 <div class="bilan-hero__text">
                     <p class="bilan-hero__eyebrow"><i class="fas fa-scale-balanced" aria-hidden="true"></i> Synthèse financière</p>
                     <h1>Bilan comptable</h1>
-                    <p class="bilan-hero__lead">Vue consolidée sur la période choisie : ventes en ligne, caisse magasin, dépenses, BL et factures HT B2B. Export CSV aligné sur les mêmes filtres.</p>
+                    <p class="bilan-hero__lead">Ce qui a été vendu, encaissé et dépensé sur la période, par les quatre chemins de vente, retours déduits, et ce que les clients doivent encore. Le CSV suit les mêmes règles.</p>
                 </div>
                 <div class="bilan-hero__badge" aria-label="Période sélectionnée">
                     <span class="bilan-hero__badge-label">Période</span>
@@ -83,7 +111,7 @@ $mois_labels = ['', 'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juil
 
         <section class="bilan-filter-card" aria-labelledby="bilan-filtre-title">
             <h2 id="bilan-filtre-title" class="bilan-filter-card__title"><i class="fas fa-calendar-days" aria-hidden="true"></i> Filtrer par date</h2>
-            <p class="bilan-filter-card__hint">Les montants e-commerce utilisent la <strong>date de commande</strong> (livrées / payées). La caisse utilise la <strong>date d’encaissement</strong>. Les BL utilisent la <strong>date du bon</strong>. Les dépenses : <strong>date de dépense</strong>. Les factures mensuelles : mois comptable qui <strong>chevauche</strong> l’intervalle.</p>
+            <p class="bilan-filter-card__hint">Ventes : la caisse à la <strong>date d’encaissement</strong>, les factures de devis à leur <strong>date</strong>, les bons de livraison validés à la <strong>date du bon</strong>, le site à la <strong>date de commande</strong> ; un retour compte le <strong>jour où il est fait</strong>. Encaissements : <strong>date du paiement</strong>. Dépenses : <strong>date de dépense</strong>.</p>
 
             <form method="get" action="bilan.php" class="bilan-filter-form" id="bilan-filter-form">
                 <div class="bilan-filter-form__mode-row">
@@ -142,43 +170,166 @@ $mois_labels = ['', 'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juil
             </form>
         </section>
 
-        <section class="bilan-note" role="note">
-            <i class="fas fa-circle-info" aria-hidden="true"></i>
-            <p>Les montants <strong>HT</strong> et <strong>TTC</strong> ne sont pas additionnés dans un « solde net » automatique : le tableau sert de <strong>base documentaire</strong> pour votre tenue de comptes.</p>
+        <?php if (!$synthese): ?>
+        <section class="bilan-note" role="alert">
+            <i class="fas fa-triangle-exclamation" aria-hidden="true"></i>
+            <p>La synthèse de la période n’a pas pu être calculée. Rechargez la page ; si le message revient, prévenez l’informaticien.</p>
         </section>
-
+        <?php else:
+            $sv = $synthese['ventes'];
+            $se = $synthese['encaissements'];
+            $sa = $synthese['a_encaisser'];
+            $sd = $synthese['depenses'];
+        ?>
         <div class="bilan-kpi-grid" aria-label="Indicateurs du bilan">
-            <article class="bilan-kpi bilan-kpi--web">
-                <div class="bilan-kpi__icon" aria-hidden="true"><i class="fas fa-cart-shopping"></i></div>
-                <h3 class="bilan-kpi__title">E-commerce</h3>
-                <p class="bilan-kpi__value"><?php echo number_format($st['ca_total'], 0, ',', ' '); ?> <span class="bilan-kpi__cur">FCFA</span></p>
-                <p class="bilan-kpi__meta"><?php echo (int) $st['nb']; ?> commande(s) · TTC · Livrées / payées</p>
-            </article>
             <article class="bilan-kpi bilan-kpi--caisse">
-                <div class="bilan-kpi__icon" aria-hidden="true"><i class="fas fa-cash-register"></i></div>
-                <h3 class="bilan-kpi__title">Caisse magasin</h3>
-                <p class="bilan-kpi__value"><?php echo number_format($ct['total_ttc'], 0, ',', ' '); ?> <span class="bilan-kpi__cur">FCFA</span></p>
-                <p class="bilan-kpi__meta"><?php echo (int) $ct['nb']; ?> ticket(s) · TTC</p>
+                <div class="bilan-kpi__icon" aria-hidden="true"><i class="fas fa-cart-shopping"></i></div>
+                <h3 class="bilan-kpi__title">Ventes nettes</h3>
+                <p class="bilan-kpi__value"><?php echo $fcfa($sv['total']); ?> <span class="bilan-kpi__cur">FCFA</span></p>
+                <p class="bilan-kpi__meta">Caisse, devis, bons et site, retours déduits</p>
+            </article>
+            <article class="bilan-kpi bilan-kpi--web">
+                <div class="bilan-kpi__icon" aria-hidden="true"><i class="fas fa-hand-holding-dollar"></i></div>
+                <h3 class="bilan-kpi__title">Encaissé</h3>
+                <p class="bilan-kpi__value"><?php echo $fcfa($se['total']); ?> <span class="bilan-kpi__cur">FCFA</span></p>
+                <p class="bilan-kpi__meta">Argent reçu sur la période</p>
             </article>
             <article class="bilan-kpi bilan-kpi--dep">
                 <div class="bilan-kpi__icon" aria-hidden="true"><i class="fas fa-arrow-trend-down"></i></div>
                 <h3 class="bilan-kpi__title">Dépenses</h3>
-                <p class="bilan-kpi__value"><?php echo number_format($td['sum_ttc'], 0, ',', ' '); ?> <span class="bilan-kpi__cur">FCFA TTC</span></p>
-                <p class="bilan-kpi__meta"><?php echo (int) $td['nb']; ?> ligne(s) · HT <?php echo number_format($td['sum_ht'], 0, ',', ' '); ?></p>
-            </article>
-            <article class="bilan-kpi bilan-kpi--bl">
-                <div class="bilan-kpi__icon" aria-hidden="true"><i class="fas fa-truck-fast"></i></div>
-                <h3 class="bilan-kpi__title">BL B2B</h3>
-                <p class="bilan-kpi__value"><?php echo number_format($bls['somme_bl_ht'], 0, ',', ' '); ?> <span class="bilan-kpi__cur">FCFA HT</span></p>
-                <p class="bilan-kpi__meta"><?php echo (int) $bls['nb_bl']; ?> BL · <?php echo (int) $bls['nb_clients']; ?> client(s)</p>
+                <p class="bilan-kpi__value"><?php echo $fcfa($sd['montant']); ?> <span class="bilan-kpi__cur">FCFA</span></p>
+                <p class="bilan-kpi__meta"><?php echo (int) $sd['nb']; ?> dépense(s) saisie(s)</p>
             </article>
             <article class="bilan-kpi bilan-kpi--fm">
-                <div class="bilan-kpi__icon" aria-hidden="true"><i class="fas fa-file-invoice-dollar"></i></div>
-                <h3 class="bilan-kpi__title">Factures mensuelles</h3>
-                <p class="bilan-kpi__value"><?php echo number_format($fms['somme_ht'], 0, ',', ' '); ?> <span class="bilan-kpi__cur">FCFA HT</span></p>
-                <p class="bilan-kpi__meta"><?php echo (int) $fms['nb_factures']; ?> facture(s) · Mois chevauchants</p>
+                <div class="bilan-kpi__icon" aria-hidden="true"><i class="fas fa-scale-balanced"></i></div>
+                <h3 class="bilan-kpi__title">Encaissé moins dépenses</h3>
+                <p class="bilan-kpi__value"><?php echo $synthese['solde'] < 0 ? '− ' . $fcfa(abs($synthese['solde'])) : $fcfa($synthese['solde']); ?> <span class="bilan-kpi__cur">FCFA</span></p>
+                <p class="bilan-kpi__meta">Pas un bénéfice : le coût d’achat des pièces n’est pas compté</p>
+            </article>
+            <article class="bilan-kpi bilan-kpi--bl">
+                <div class="bilan-kpi__icon" aria-hidden="true"><i class="fas fa-hourglass-half"></i></div>
+                <h3 class="bilan-kpi__title">À encaisser à ce jour</h3>
+                <p class="bilan-kpi__value"><?php echo $fcfa($sa['total']); ?> <span class="bilan-kpi__cur">FCFA</span></p>
+                <p class="bilan-kpi__meta">Avoirs à émettre : <?php echo $fcfa($sa['avoirs']['montant']); ?> FCFA</p>
             </article>
         </div>
+
+        <section class="bilan-detail bilan-synthese" aria-labelledby="bilan-ventes-titre">
+            <div class="bilan-detail__head">
+                <h2 id="bilan-ventes-titre">Ventes de la période</h2>
+            </div>
+            <div class="bilan-synthese__wrap">
+                <table class="bilan-synthese__table">
+                    <thead>
+                        <tr><th>Chemin de vente</th><th class="num">Documents</th><th class="num">Vendu</th><th class="num">Retours</th><th class="num">Net</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Caisse magasin<small>Tickets payés, à la date d’encaissement ; retours clients validés à leur date</small></td>
+                            <td class="num"><?php echo (int) $sv['caisse']['nb']; ?> ticket(s)</td>
+                            <td class="num"><?php echo $fcfa($sv['caisse']['brut']); ?></td>
+                            <td class="num"><?php echo $sv['caisse']['retours_nb'] ? $signe($sv['caisse']['remis'] - $sv['caisse']['rendu']) : '—'; ?></td>
+                            <td class="num"><?php echo $fcfa($sv['caisse']['net']); ?></td>
+                        </tr>
+                        <tr>
+                            <td>Factures de devis<small>À la date de la facture</small></td>
+                            <td class="num"><?php echo (int) $sv['devis']['nb']; ?> facture(s)</td>
+                            <td class="num"><?php echo $fcfa($sv['devis']['net']); ?></td>
+                            <td class="num">—</td>
+                            <td class="num"><?php echo $fcfa($sv['devis']['net']); ?></td>
+                        </tr>
+                        <tr>
+                            <td>Bons de livraison<small>Validés, à la date du bon ; bons de retour à leur date. Les factures du mois regroupent ces bons : elles ne s’ajoutent pas.</small></td>
+                            <td class="num"><?php echo (int) $sv['bons']['nb']; ?> bon(s)</td>
+                            <td class="num"><?php echo $fcfa($sv['bons']['brut']); ?></td>
+                            <td class="num"><?php echo $sv['bons']['retours_nb'] ? $signe(-$sv['bons']['retours']) : '—'; ?></td>
+                            <td class="num"><?php echo $fcfa($sv['bons']['net']); ?></td>
+                        </tr>
+                        <tr>
+                            <td>Site<small>Commandes livrées ou payées, à la date de commande</small></td>
+                            <td class="num"><?php echo (int) $sv['site']['nb']; ?> commande(s)</td>
+                            <td class="num"><?php echo $fcfa($sv['site']['net']); ?></td>
+                            <td class="num">—</td>
+                            <td class="num"><?php echo $fcfa($sv['site']['net']); ?></td>
+                        </tr>
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <th>Ventes nettes</th>
+                            <th></th>
+                            <th class="num"><?php echo $fcfa($sv['caisse']['brut'] + $sv['devis']['net'] + $sv['bons']['brut'] + $sv['site']['net']); ?></th>
+                            <th class="num"><?php echo $signe($sv['caisse']['remis'] - $sv['caisse']['rendu'] - $sv['bons']['retours']); ?></th>
+                            <th class="num"><?php echo $fcfa($sv['total']); ?> FCFA</th>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+            <p class="bilan-synthese__note">Pas comptés comme ventes : <?php echo (int) $sv['hors']['tickets_attente']['nb']; ?> ticket(s) en attente de caisse (<?php echo $fcfa($sv['hors']['tickets_attente']['montant']); ?> FCFA) et <?php echo (int) $sv['hors']['bons_brouillon']['nb']; ?> bon(s) de livraison en brouillon (<?php echo $fcfa($sv['hors']['bons_brouillon']['montant']); ?> FCFA). Factures du mois émises sur la période : <?php echo (int) $sv['hors']['factures_mois']['nb']; ?> (<?php echo $fcfa($sv['hors']['factures_mois']['montant']); ?> FCFA), déjà comptées dans leurs bons.</p>
+        </section>
+
+        <section class="bilan-detail bilan-synthese" aria-labelledby="bilan-encaisse-titre">
+            <div class="bilan-detail__head">
+                <h2 id="bilan-encaisse-titre">Encaissements de la période</h2>
+            </div>
+            <div class="bilan-synthese__wrap">
+                <table class="bilan-synthese__table">
+                    <thead><tr><th>Origine</th><th class="num">Montant</th></tr></thead>
+                    <tbody>
+                        <tr class="bilan-synthese__groupe"><td colspan="2">Caisse magasin : <?php echo (int) $se['caisse']['nb']; ?> ticket(s)</td></tr>
+                        <?php foreach ($se['caisse']['canaux'] as $canal => $montant): if ($montant < 0.5) { continue; } ?>
+                        <tr><td><?php echo htmlspecialchars(compta_synthese_libelle_moyen($canal)); ?></td><td class="num"><?php echo $fcfa($montant); ?></td></tr>
+                        <?php endforeach; ?>
+                        <?php if ($se['caisse']['especes_rendues'] >= 0.5 || $se['caisse']['especes_recues'] >= 0.5): ?>
+                        <tr><td>Retours clients : espèces rendues<small>Le jour de la validation par le caissier</small></td><td class="num"><?php echo $signe(-$se['caisse']['especes_rendues']); ?></td></tr>
+                        <tr><td>Retours clients : espèces reçues pour un échange</td><td class="num"><?php echo $signe($se['caisse']['especes_recues']); ?></td></tr>
+                        <?php endif; ?>
+                        <tr class="bilan-synthese__groupe"><td colspan="2">Factures</td></tr>
+                        <tr><td>Paiements enregistrés<small>Registre des paiements, à la date du paiement : devis <?php echo $fcfa($se['factures']['types']['facture_devis']); ?> · bons <?php echo $fcfa($se['factures']['types']['bl']); ?> · factures du mois <?php echo $fcfa($se['factures']['types']['facture_mensuelle']); ?></small></td><td class="num"><?php echo $fcfa($se['factures']['total']); ?></td></tr>
+                        <tr><td>Payées avant le registre<small>Montant de la facture, à la date de paiement notée ; moyen de paiement inconnu (<?php echo (int) $se['avant_registre']['nb']; ?> facture(s))</small></td><td class="num"><?php echo $fcfa($se['avant_registre']['total']); ?></td></tr>
+                        <tr class="bilan-synthese__groupe"><td colspan="2">Site</td></tr>
+                        <tr><td>Commandes payées<small>À la date de livraison, sinon de commande</small></td><td class="num"><?php echo $fcfa($se['site']['total']); ?></td></tr>
+                    </tbody>
+                    <tfoot><tr><th>Encaissé</th><th class="num"><?php echo $fcfa($se['total']); ?> FCFA</th></tr></tfoot>
+                </table>
+            </div>
+        </section>
+
+        <section class="bilan-detail bilan-synthese" aria-labelledby="bilan-reste-titre">
+            <div class="bilan-detail__head">
+                <h2 id="bilan-reste-titre">À encaisser à ce jour</h2>
+            </div>
+            <p class="bilan-synthese__note">Ce que les clients doivent encore aujourd’hui, quelle que soit la période choisie. Un bon regroupé dans une facture du mois validée se compte par sa facture.</p>
+            <div class="bilan-synthese__wrap">
+                <table class="bilan-synthese__table">
+                    <thead><tr><th>Ce qui reste dû</th><th class="num">Documents</th><th class="num">Montant</th></tr></thead>
+                    <tbody>
+                        <tr><td>Factures de devis impayées<small>Montant de la facture moins les paiements enregistrés</small></td><td class="num"><?php echo (int) $sa['devis']['nb']; ?></td><td class="num"><?php echo $fcfa($sa['devis']['montant']); ?></td></tr>
+                        <tr><td>Bons livrés, pas encore sur une facture du mois validée<small>Retours déduits, moins les paiements enregistrés</small></td><td class="num"><?php echo (int) $sa['bons']['nb']; ?></td><td class="num"><?php echo $fcfa($sa['bons']['montant']); ?></td></tr>
+                        <tr><td>Factures du mois validées, impayées</td><td class="num"><?php echo (int) $sa['factures_mois']['nb']; ?></td><td class="num"><?php echo $fcfa($sa['factures_mois']['montant']); ?></td></tr>
+                        <tr><td>Commandes du site livrées, non payées</td><td class="num"><?php echo (int) $sa['site']['nb']; ?></td><td class="num"><?php echo $fcfa($sa['site']['montant']); ?></td></tr>
+                    </tbody>
+                    <tfoot><tr><th>À encaisser</th><th></th><th class="num"><?php echo $fcfa($sa['total']); ?> FCFA</th></tr></tfoot>
+                </table>
+            </div>
+            <h3>Avoirs à émettre</h3>
+            <?php if (!$sa['avoirs']['lignes']): ?>
+            <p class="bilan-empty">Aucun avoir à émettre.</p>
+            <?php else: ?>
+            <p class="bilan-synthese__note">Des pièces sont revenues après une facture qui ne se recalcule plus : la différence se rend au client par un avoir.</p>
+            <div class="bilan-synthese__wrap">
+                <table class="bilan-synthese__table">
+                    <thead><tr><th>Document</th><th>Nature</th><th class="num">Montant</th></tr></thead>
+                    <tbody>
+                        <?php foreach ($sa['avoirs']['lignes'] as $avoir): ?>
+                        <tr><td><code><?php echo htmlspecialchars($avoir['document']); ?></code></td><td><?php echo htmlspecialchars($avoir['nature']); ?></td><td class="num"><?php echo $fcfa($avoir['montant']); ?></td></tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                    <tfoot><tr><th>Avoirs à émettre</th><th></th><th class="num"><?php echo $fcfa($sa['avoirs']['montant']); ?> FCFA</th></tr></tfoot>
+                </table>
+            </div>
+            <?php endif; ?>
+        </section>
+        <?php endif; ?>
 
         <section class="bilan-detail" aria-labelledby="bilan-detail-title">
             <div class="bilan-detail__head">

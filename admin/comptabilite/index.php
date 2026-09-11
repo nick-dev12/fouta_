@@ -510,10 +510,17 @@ $h_synthese_label = depenses_libelle_periode_filtre($h_periode, $h_date_debut, $
 
 $h_depenses_agg = $depenses_ok ? depenses_sommes_agregees_periode($h_date_debut, $h_date_fin) : ['sum_ttc' => 0.0];
 $h_depenses_ttc = (float) ($h_depenses_agg['sum_ttc'] ?? 0);
-$h_ca_web = commandes_ca_vendues_somme_entre_dates($h_date_debut, $h_date_fin);
-$h_caisse_ttc = $caisse_ok ? caisse_compta_somme_ttc_entre_dates($h_date_debut, $h_date_fin) : 0.0;
-$h_gains_total = $h_ca_web + $h_caisse_ttc;
-$h_benefice = $h_gains_total - $h_depenses_ttc;
+/* LA SYNTHÈSE COMPTABLE UNIQUE (point 16, 11/09/2026) : « Gains » ne comptait
+ * que le site et la caisse, et « Bénéfice estimé » retirait les dépenses de
+ * ventes pas forcément encaissées. Les cartes lisent le même calcul que le bilan. */
+require_once __DIR__ . '/../../models/model_compta_synthese.php';
+$h_compta = null;
+try {
+    $h_compta = compta_synthese_periode($h_date_debut, $h_date_fin);
+} catch (Throwable $e) {
+    error_log('[comptabilite/index synthese] ' . $e->getMessage());
+}
+$h_bilan_url = 'bilan.php?' . http_build_query(['b_periode' => 'plage', 'b_date_debut' => $h_date_debut, 'b_date_fin' => $h_date_fin]);
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -652,29 +659,32 @@ $h_benefice = $h_gains_total - $h_depenses_ttc;
                 </div>
             </div>
         </form>
-        <p class="compta-synthese-hub__period"><i class="fas fa-calendar-check" aria-hidden="true"></i> <?php echo htmlspecialchars($h_synthese_label); ?> · gains = commandes web (livrées / payées) + caisse TTC ; dépenses = charges TTC saisies.</p>
+        <p class="compta-synthese-hub__period"><i class="fas fa-calendar-check" aria-hidden="true"></i> <?php echo htmlspecialchars($h_synthese_label); ?> · ventes des quatre chemins, retours déduits ; détail dans le <a href="<?php echo htmlspecialchars($h_bilan_url, ENT_QUOTES, 'UTF-8'); ?>">bilan de la période</a>.</p>
         <div class="compta-synthese-cards">
             <article class="compta-synthese-card compta-synthese-card--depenses">
                 <span class="compta-synthese-card__ic" aria-hidden="true"><i class="fas fa-wallet"></i></span>
                 <div class="compta-synthese-card__body">
-                    <span class="compta-synthese-card__label">Dépenses (TTC)</span>
-                    <span class="compta-synthese-card__value"><?php echo $depenses_ok ? number_format($h_depenses_ttc, 0, ',', ' ') : '—'; ?> <small>FCFA</small></span>
+                    <span class="compta-synthese-card__label">Dépenses</span>
+                    <span class="compta-synthese-card__value"><?php echo $h_compta ? number_format($h_compta['depenses']['montant'], 0, ',', ' ') : '—'; ?> <small>FCFA</small></span>
                 </div>
             </article>
             <article class="compta-synthese-card compta-synthese-card--gains">
                 <span class="compta-synthese-card__ic" aria-hidden="true"><i class="fas fa-sack-dollar"></i></span>
                 <div class="compta-synthese-card__body">
-                    <span class="compta-synthese-card__label">Gains (revenus TTC)</span>
-                    <span class="compta-synthese-card__value"><?php echo number_format($h_gains_total, 0, ',', ' '); ?> <small>FCFA</small></span>
-                    <span class="compta-synthese-card__detail">Web <?php echo number_format($h_ca_web, 0, ',', ' '); ?> + Caisse <?php echo number_format($h_caisse_ttc, 0, ',', ' '); ?></span>
+                    <span class="compta-synthese-card__label">Ventes nettes</span>
+                    <span class="compta-synthese-card__value"><?php echo $h_compta ? number_format($h_compta['ventes']['total'], 0, ',', ' ') : '—'; ?> <small>FCFA</small></span>
+                    <span class="compta-synthese-card__detail"><?php echo $h_compta
+                        ? 'Caisse ' . number_format($h_compta['ventes']['caisse']['net'], 0, ',', ' ') . ' · Devis ' . number_format($h_compta['ventes']['devis']['net'], 0, ',', ' ')
+                            . ' · Bons ' . number_format($h_compta['ventes']['bons']['net'], 0, ',', ' ') . ' · Site ' . number_format($h_compta['ventes']['site']['net'], 0, ',', ' ')
+                        : 'Calcul impossible : rechargez la page'; ?></span>
                 </div>
             </article>
-            <article class="compta-synthese-card compta-synthese-card--benefice<?php echo $h_benefice < 0 ? ' compta-synthese-card--negative' : ''; ?>">
+            <article class="compta-synthese-card compta-synthese-card--benefice<?php echo ($h_compta && $h_compta['solde'] < 0) ? ' compta-synthese-card--negative' : ''; ?>">
                 <span class="compta-synthese-card__ic" aria-hidden="true"><i class="fas fa-scale-balanced"></i></span>
                 <div class="compta-synthese-card__body">
-                    <span class="compta-synthese-card__label">Bénéfice estimé</span>
-                    <span class="compta-synthese-card__value"><?php echo number_format($h_benefice, 0, ',', ' '); ?> <small>FCFA</small></span>
-                    <span class="compta-synthese-card__detail">Gains − dépenses (TTC)</span>
+                    <span class="compta-synthese-card__label">Encaissé moins dépenses</span>
+                    <span class="compta-synthese-card__value"><?php echo $h_compta ? number_format($h_compta['solde'], 0, ',', ' ') : '—'; ?> <small>FCFA</small></span>
+                    <span class="compta-synthese-card__detail"><?php echo $h_compta ? 'Encaissé ' . number_format($h_compta['encaissements']['total'], 0, ',', ' ') . ' − dépenses · pas un bénéfice' : ''; ?></span>
                 </div>
             </article>
         </div>

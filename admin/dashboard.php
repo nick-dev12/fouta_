@@ -43,6 +43,18 @@ $admin_show_catalogue = admin_can_gestion_boutique();
 require_once __DIR__ . '/../models/model_dashboard_stats.php';
 $dash_charts_payload = dashboard_charts_payload((int) date('Y'));
 $dash_stats_jour = dashboard_stats_jour();
+/* VENTES DU JOUR (point 16, 11/09/2026) : « CA du jour » additionnait les
+ * commandes du site (TTC) et les bons de livraison (HT), brouillons compris,
+ * sans la caisse, premier canal de vente. La carte lit la synthèse comptable. */
+if ($dashboard_show_commandes) {
+    require_once __DIR__ . '/../models/model_compta_synthese.php';
+    try {
+        $dash_stats_jour['ca_jour'] = compta_synthese_ventes(date('Y-m-d'), date('Y-m-d'))['total'];
+    } catch (Throwable $e) {
+        error_log('[dashboard ventes du jour] ' . $e->getMessage());
+        $dash_stats_jour['ca_jour'] = null;
+    }
+}
 $produits_top_vendus = $admin_show_catalogue ? dashboard_produits_top_vendus_details(15) : [];
 
 $categories = [];
@@ -177,8 +189,8 @@ $dash_date_longue = fpl_date_longue();
         <div class="dash-today-row" role="region" aria-label="Indicateurs du jour">
             <article class="dash-today-card dash-today-card--navy">
                 <span class="dash-today-card__icon" aria-hidden="true"><i class="fas fa-coins"></i></span>
-                <span class="dash-today-card__value"><?php echo e(fpl_montant($dash_stats_jour['ca_jour'])); ?></span>
-                <span class="dash-today-card__label">CA du jour (FCFA)</span>
+                <span class="dash-today-card__value"><?php echo $dash_stats_jour['ca_jour'] === null ? '—' : e(fpl_montant($dash_stats_jour['ca_jour'])); ?></span>
+                <span class="dash-today-card__label">Ventes du jour, retours déduits (FCFA)</span>
             </article>
             <article class="dash-today-card dash-today-card--blue">
                 <span class="dash-today-card__icon" aria-hidden="true"><i class="fas fa-boxes-stacked"></i></span>

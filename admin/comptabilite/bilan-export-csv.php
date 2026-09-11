@@ -19,6 +19,7 @@ if (!admin_can_comptabilite()) {
 }
 
 require_once __DIR__ . '/../../models/model_bilan_comptable.php';
+require_once __DIR__ . '/../../models/model_compta_synthese.php';
 
 /**
  * Montant pour affichage comptable FR (Excel FR : séparateur ; et nombres avec virgule décimale).
@@ -102,6 +103,8 @@ $periode = bilan_comptable_parse_periode($_GET);
 $d1 = $periode['date_debut'];
 $d2 = $periode['date_fin'];
 $data = bilan_comptable_collecter_donnees($d1, $d2, 0);
+// La synthèse comptable unique (point 16) : sans elle, pas de fichier plutôt qu'un fichier aux totaux faux.
+$synthese = compta_synthese_periode($d1, $d2);
 
 $fn = 'bilan_FPL_' . preg_replace('/[^0-9-]/', '', $d1) . '_au_' . preg_replace('/[^0-9-]/', '', $d2) . '.csv';
 
@@ -196,66 +199,10 @@ $row(['Type de filtre', $types_filtre[$periode['type']] ?? $periode['type'], '',
 
 $blank();
 $banner('RAPPEL MÉTHODOLOGIQUE');
-$row([
-    'E-commerce',
-    'Commandes statuts Livrée / Payée · référence temporelle : date de commande · montants TTC.',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-]);
-$row([
-    'Caisse magasin',
-    'Tickets payés · date retenue : encaissement (ou date vente) · montants TTC.',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-]);
-$row([
-    'Dépenses',
-    'Date de dépense · colonnes HT / TVA / TTC.',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-]);
-$row([
-    'BL B2B',
-    'Date du bon de livraison · statuts validé / payé · montants HT.',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-]);
-$row([
-    'Factures mensuelles',
-    'Période de facturation (mois) qui chevauche l’intervalle exporté · montants HT.',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-]);
-$row([
-    'Important',
-    'Les postes HT et TTC ne sont pas agrégés en un solde unique dans ce fichier — document d’aide à la comptabilité.',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-]);
+$row(['Ventes', 'Caisse : tickets payés, date d’encaissement ; retours clients validés à leur date. Factures de devis : date de facture. Bons de livraison validés : date du bon, bons de retour à leur date ; les factures du mois ne s’ajoutent pas, elles regroupent ces bons. Site : commandes livrées ou payées, date de commande. Montants dus par le client.', '', '', '', '', '', '']);
+$row(['Encaissements', 'Caisse par moyen de paiement, moins les espèces rendues et plus les espèces reçues aux retours validés. Factures : registre des paiements, à la date du paiement ; factures payées avant le registre : montant de la facture à la date de paiement notée.', '', '', '', '', '', '']);
+$row(['À encaisser', 'À la date de l’export, quelle que soit la période : factures et bons pas encore soldés (un bon regroupé dans une facture du mois validée se compte par sa facture), commandes livrées non payées.', '', '', '', '', '', '']);
+$row(['Solde', 'Encaissements moins dépenses. Ce n’est pas un bénéfice : le coût d’achat des pièces n’est pas compté.', '', '', '', '', '', '']);
 
 /* ---------- Bloc 2 : synthèse chiffrée ---------- */
 $blank();
@@ -271,64 +218,41 @@ $row([
     '',
 ]);
 
-$st = $data['stats_web'];
-$row([
-    'WEB',
-    'Chiffre d’affaires e-commerce (livrées + payées)',
-    'TTC',
-    bilan_export_fmt_fcfa($st['ca_total']),
-    'FCFA',
-    (string) (int) $st['nb'],
-    'Livrée : ' . bilan_export_fmt_fcfa($st['ca_livree']) . ' · Payée : ' . bilan_export_fmt_fcfa($st['ca_paye']),
-    '',
-]);
-
-$row([
-    'CAISSE',
-    'Encaissements caisse magasin',
-    'TTC',
-    bilan_export_fmt_fcfa($data['caisse_totaux']['total_ttc']),
-    'FCFA',
-    (string) (int) $data['caisse_totaux']['nb'],
-    'Total tickets sur la période',
-    '',
-]);
-
+$sv = $synthese['ventes'];
+$se = $synthese['encaissements'];
+$sa = $synthese['a_encaisser'];
 $td = $data['totaux_dep'];
-$row([
-    'DEPENSES',
-    'Charges enregistrées',
-    'TTC (et détail HT/TVA ci-contre)',
-    bilan_export_fmt_fcfa($td['sum_ttc']),
-    'FCFA',
-    (string) (int) $td['nb'],
-    'HT ' . bilan_export_fmt_fcfa($td['sum_ht']) . ' · TVA ' . bilan_export_fmt_fcfa($td['sum_tva']),
-    '',
-]);
-
-$bls = $data['stats_bl'];
-$row([
-    'BL',
-    'Bons de livraison B2B (comptabilisés)',
-    'HT',
-    bilan_export_fmt_fcfa($bls['somme_bl_ht']),
-    'FCFA',
-    (string) (int) $bls['nb_bl'],
-    'Clients distincts : ' . (int) $bls['nb_clients'],
-    '',
-]);
-
-$fms = $data['stats_fm'];
-$row([
-    'FAC_MENS',
-    'Factures mensuelles (mois chevauchants)',
-    'HT',
-    bilan_export_fmt_fcfa($fms['somme_ht']),
-    'FCFA',
-    (string) (int) $fms['nb_factures'],
-    'Somme des total HT des fiches concernées',
-    '',
-]);
+$fr = 'bilan_export_fmt_fcfa';
+$row(['V_CAISSE', 'Ventes caisse magasin, retours déduits', 'Dû par le client', $fr($sv['caisse']['net']), 'FCFA', (string) $sv['caisse']['nb'],
+    'Tickets ' . $fr($sv['caisse']['brut']) . ' · retours rendus ' . $fr($sv['caisse']['rendu']) . ' · pièces remises ' . $fr($sv['caisse']['remis']), '']);
+$row(['V_DEVIS', 'Ventes par factures de devis', 'Dû par le client', $fr($sv['devis']['net']), 'FCFA', (string) $sv['devis']['nb'], 'À la date de facture', '']);
+$row(['V_BL', 'Ventes par bons de livraison validés, retours déduits', 'Dû par le client', $fr($sv['bons']['net']), 'FCFA', (string) $sv['bons']['nb'],
+    'Bons ' . $fr($sv['bons']['brut']) . ' · bons de retour ' . $fr($sv['bons']['retours']) . ' · factures du mois non ajoutées', '']);
+$row(['V_SITE', 'Ventes du site (livrées ou payées)', 'TTC', $fr($sv['site']['net']), 'FCFA', (string) $sv['site']['nb'], 'À la date de commande', '']);
+$row(['V_NETTES', 'VENTES NETTES DE LA PÉRIODE', 'Dû par le client', $fr($sv['total']), 'FCFA', '', 'Somme des quatre chemins', '']);
+$canaux_txt = [];
+foreach ($se['caisse']['canaux'] as $canal => $montant) {
+    if ($montant >= 0.5) {
+        $canaux_txt[] = compta_synthese_libelle_moyen($canal) . ' ' . $fr($montant);
+    }
+}
+$row(['E_CAISSE', 'Encaissé en caisse, espèces des retours comprises', 'TTC', $fr($se['caisse']['net']), 'FCFA', (string) $se['caisse']['nb'],
+    implode(' · ', $canaux_txt) . ' · espèces rendues ' . $fr($se['caisse']['especes_rendues']) . ' · reçues ' . $fr($se['caisse']['especes_recues']), '']);
+$row(['E_FACTURES', 'Paiements de factures enregistrés', 'Montant payé', $fr($se['factures']['total']), 'FCFA', (string) $se['factures']['nb'],
+    'Devis ' . $fr($se['factures']['types']['facture_devis']) . ' · bons ' . $fr($se['factures']['types']['bl']) . ' · factures du mois ' . $fr($se['factures']['types']['facture_mensuelle']), '']);
+$row(['E_AVANT_REGISTRE', 'Factures payées avant le registre des paiements', 'Montant de la facture', $fr($se['avant_registre']['total']), 'FCFA', (string) $se['avant_registre']['nb'], 'Moyen de paiement inconnu', '']);
+$row(['E_SITE', 'Commandes du site payées', 'TTC', $fr($se['site']['total']), 'FCFA', (string) $se['site']['nb'], 'À la date de livraison, sinon de commande', '']);
+$row(['E_TOTAL', 'ENCAISSÉ SUR LA PÉRIODE', '', $fr($se['total']), 'FCFA', '', '', '']);
+$row(['DEPENSES', 'Charges enregistrées', 'TTC (et détail HT/TVA ci-contre)', $fr($synthese['depenses']['montant']), 'FCFA', (string) $synthese['depenses']['nb'],
+    'HT ' . $fr($td['sum_ht']) . ' · TVA ' . $fr($td['sum_tva']), '']);
+$row(['SOLDE', 'Encaissé moins dépenses (pas un bénéfice)', '', $fr($synthese['solde']), 'FCFA', '', '', '']);
+$row(['A_ENCAISSER', 'À encaisser à la date de l’export', 'Dû par le client', $fr($sa['total']), 'FCFA', '',
+    'Devis ' . $fr($sa['devis']['montant']) . ' · bons ' . $fr($sa['bons']['montant']) . ' · factures du mois ' . $fr($sa['factures_mois']['montant']) . ' · site ' . $fr($sa['site']['montant']), '']);
+$avoirs_txt = [];
+foreach ($sa['avoirs']['lignes'] as $avoir) {
+    $avoirs_txt[] = $avoir['document'] . ' ' . $fr($avoir['montant']);
+}
+$row(['AVOIRS', 'Avoirs à émettre (retours après une facture close)', 'Dû au client', $fr($sa['avoirs']['montant']), 'FCFA', (string) $sa['avoirs']['nb'], implode(' · ', $avoirs_txt), '']);
 
 /* ---------- Annexes détaillées ---------- */
 $blank();
@@ -393,6 +317,9 @@ foreach ($data['caisse_liste'] as $cv) {
 }
 if ($n === 0) {
     $row(['—', 'Aucun ticket sur cette période.', '', '', '', '', '', '']);
+}
+if ($n < (int) $synthese['ventes']['caisse']['nb']) {
+    $row(['!', 'Liste limitée à ' . $n . ' tickets sur ' . (int) $synthese['ventes']['caisse']['nb'] . ' : le tableau 1 les compte tous.', '', '', '', '', '', '']);
 }
 
 $blank();
