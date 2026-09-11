@@ -912,5 +912,287 @@ if ($base_locale) {
     }
 }
 
+echo "— retours clients en caisse : remboursement en espèces et échange (décisions du 11/09/2026) —\n";
+require_once "$RACINE/models/model_caisse_retours.php";
+require_once "$RACINE/models/model_caisse_cloture.php";
+require_once "$RACINE/models/model_commercial_accueil.php";
+require_once "$RACINE/includes/sync_registry.php";
+verifie('les trois tables des retours existent', true, caisse_retours_tables_ok());
+foreach (['caisse/retour.php', 'caisse/retours.php', 'parametres/caisse-retours.php'] as $p) {
+    verifie("le fichier existe : $p", true, is_file("$RACINE/admin/$p"));
+}
+foreach (['commercial_general' => true, 'commercial' => false, 'caissier' => false, 'comptabilite' => false, 'informaticien' => true] as $role => $attendu) {
+    $_SESSION['admin_role'] = $role;
+    verifie("préparer un retour : « $role »", $attendu, admin_can_preparer_retour_caisse());
+}
+verifie('le caissier ouvre la liste des retours, pas la préparation', [true, false],
+    [admin_route_is_allowed('caissier', 'caisse/retours.php'), admin_route_is_allowed('caissier', 'caisse/retour.php')]);
+verifie('le commercial général ouvre la préparation et la liste', [true, true],
+    [admin_route_is_allowed('commercial_general', 'caisse/retour.php'), admin_route_is_allowed('commercial_general', 'caisse/retours.php')]);
+verifie('le délai de retour se règle chez l’informaticien seulement', [true, false, false], [
+    admin_route_is_allowed('informaticien', 'parametres/caisse-retours.php'),
+    admin_route_is_allowed('commercial_general', 'parametres/caisse-retours.php'),
+    admin_route_is_allowed('admin', 'parametres/caisse-retours.php'),
+]);
+verifie('la page de préparation refuse le commercial simple', true,
+    strpos(file_get_contents("$RACINE/admin/caisse/retour.php"), 'if (!admin_can_preparer_retour_caisse())') !== false);
+$post_retours = str_replace("\r\n", "\n", file_get_contents("$RACINE/admin/caisse/post.php"));
+verifie('seul le commercial général prépare, seul le caissier valide', [true, true], [
+    strpos(bloc_action($post_retours, 'retour_preparer'), 'if (!admin_can_preparer_retour_caisse())') !== false,
+    strpos(bloc_action($post_retours, 'retour_valider'), 'if (!admin_can_encaisser_ticket())') !== false,
+]);
+verifie('la migration est au registre du déploiement', true,
+    strpos(file_get_contents("$RACINE/config/update_entreprise.example.php"), "'migrations/run_caisse_retours.php'") !== false);
+$ordre_retours = sync_registry_priority_tables();
+verifie('les tables se synchronisent après celles qu’elles visent', [true, true, true], [
+    array_search('caisse_retours', $ordre_retours, true) > array_search('caisse_ventes', $ordre_retours, true),
+    array_search('caisse_retours_lignes', $ordre_retours, true) > array_search('caisse_retours', $ordre_retours, true)
+        && array_search('caisse_retours_lignes', $ordre_retours, true) > array_search('caisse_vente_lignes', $ordre_retours, true),
+    array_search('caisse_parametres', $ordre_retours, true) > array_search('admin', $ordre_retours, true),
+]);
+$fk_attendues_retours = [
+    'caisse_parametres.admin_id' => 'admin',
+    'caisse_retours.admin_id' => 'admin',
+    'caisse_retours.annule_par' => 'admin',
+    'caisse_retours.caissier_id' => 'admin',
+    'caisse_retours.vente_id' => 'caisse_ventes',
+    'caisse_retours_lignes.produit_id' => 'produits',
+    'caisse_retours_lignes.retour_id' => 'caisse_retours',
+    'caisse_retours_lignes.vente_ligne_id' => 'caisse_vente_lignes',
+];
+ksort($fk_attendues_retours);
+$fk_base_retours = $db->query("SELECT CONCAT(TABLE_NAME, '.', COLUMN_NAME), REFERENCED_TABLE_NAME FROM information_schema.KEY_COLUMN_USAGE
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('caisse_parametres', 'caisse_retours', 'caisse_retours_lignes')
+      AND REFERENCED_TABLE_NAME IS NOT NULL")->fetchAll(PDO::FETCH_KEY_PAIR);
+ksort($fk_base_retours);
+verifie('les huit vraies clés étrangères existent en base', $fk_attendues_retours, $fk_base_retours);
+$fk_secours_retours = [];
+foreach (['caisse_parametres', 'caisse_retours', 'caisse_retours_lignes'] as $table) {
+    foreach (sync_registry_static_foreign_keys($table) ?: [] as $cle) {
+        $fk_secours_retours[$table . '.' . $cle['COLUMN_NAME']] = $cle['REFERENCED_TABLE_NAME'];
+    }
+}
+ksort($fk_secours_retours);
+verifie('la synchro les retraduit aussi par ses clés de secours', $fk_attendues_retours, $fk_secours_retours);
+verifie('le journal de stock nomme les mouvements des retours', ['Retour client en caisse', 'Échange en caisse'], [
+    stock_mouvement_motif_libelle(['reference_type' => 'retour_caisse']),
+    stock_mouvement_motif_libelle(['reference_type' => 'echange_caisse']),
+]);
+verifie('le délai de retour est une seule ligne, au même uuid sur chaque serveur', 'c1a55e00-7e70-4d0e-8a1a-000000000001',
+    (string) $db->query("SELECT sync_uuid FROM caisse_parametres WHERE cle = 'retour_delai_jours'")->fetchColumn());
+verifie('l’arrêté de caisse garde ce que les retours ont fait au tiroir', true, caisse_cloture_colonnes_retours_ok());
+verifie('le menu mène aux retours : informaticien, commercial général, caissier', 3,
+    substr_count(file_get_contents("$RACINE/admin/includes/nav.php"), 'caisse/retours.php'));
+verifie('un ticket payé propose « Faire un retour » au commercial général', true,
+    strpos(file_get_contents("$RACINE/admin/caisse/index.php"), "\$ticket_statut === 'paye' && admin_can_preparer_retour_caisse()") !== false);
+verifie('le caissier voit les retours à valider et ceux du ticket', [true, true], [
+    strpos(file_get_contents("$RACINE/admin/caisse/encaisser-ticket.php"), "caisse_retours_liste(['statut' => 'en_attente'") !== false,
+    strpos(file_get_contents("$RACINE/admin/caisse/encaisser-ticket.php"), "caisse_retours_liste(['vente_id' =>") !== false,
+]);
+verifie('le rapport du vendeur montre ses retours', true,
+    strpos(file_get_contents("$RACINE/admin/produits/rapport-jour.php"), "m.reference_numero LIKE 'RTC%'") !== false);
+verifie('l’accueil du commercial liste ses retours en attente', true,
+    strpos(file_get_contents("$RACINE/admin/commercial/index.php"), 'commercial_retours_en_attente($moi)') !== false);
+
+if ($base_locale) {
+    $caissier_r = (int) $db->query("SELECT id FROM admin WHERE email = 'fpl.caisse@local.test' AND role = 'caissier'")->fetchColumn();
+    $vendeur_r = (int) $db->query("SELECT id FROM admin WHERE email = 'fpl.commgen@local.test' AND role = 'commercial_general'")->fetchColumn();
+    $autre_r = (int) $db->query("SELECT id FROM admin WHERE email = 'fpl.commercial@local.test'")->fetchColumn();
+    $colonnes_piece = 'id, nom, stock, statut, prix, prix_promotion, date_modification, sync_updated_at, sync_origin_node';
+    $pieces_r = $db->query("SELECT $colonnes_piece FROM produits WHERE statut = 'actif' AND stock >= 50 AND COALESCE(prix, 0) > 0
+        AND sync_deleted_at IS NULL ORDER BY stock DESC, id LIMIT 3")->fetchAll(PDO::FETCH_ASSOC);
+    verifie('un caissier, un commercial général, un autre vendeur et trois pièces bien en stock existent', [true, true, true, 3],
+        [$caissier_r > 0, $vendeur_r > 0, $autre_r > 0, count($pieces_r)]);
+    if ($caissier_r > 0 && $vendeur_r > 0 && $autre_r > 0 && count($pieces_r) === 3) {
+        [$p1, $p2, $p3] = $pieces_r;
+        $compter_r = static function () use ($db) {
+            $n = [];
+            foreach (['caisse_retours', 'caisse_retours_lignes', 'stock_mouvements', 'caisse_ventes', 'caisse_vente_lignes'] as $table) {
+                $n[$table] = (int) $db->query("SELECT COUNT(*) FROM $table")->fetchColumn();
+            }
+            return $n;
+        };
+        $stock_r = static function ($id) use ($db) {
+            return (int) $db->query('SELECT stock FROM produits WHERE id = ' . (int) $id)->fetchColumn();
+        };
+        $statut_r = static function ($id) use ($db) {
+            return (string) $db->query('SELECT statut FROM caisse_retours WHERE id = ' . (int) $id)->fetchColumn();
+        };
+        $journal_r = static function ($id) use ($db) {
+            return $db->query("SELECT CONCAT(type, '|', reference_type, '|', quantite) FROM stock_mouvements
+                WHERE reference_numero LIKE 'RTC%' AND reference_id = " . (int) $id . ' ORDER BY id')->fetchAll(PDO::FETCH_COLUMN);
+        };
+        $refus = static function ($r, $extrait) {
+            return [!empty($r['ok']), strpos((string) ($r['error'] ?? ''), $extrait) !== false];
+        };
+        $attendues_r = static function () {
+            return round((float) ((caisse_cloture_periode_en_cours() ?: [])['especes_attendues'] ?? -1), 2);
+        };
+        $avant_r = $compter_r();
+        $param_r = $db->query("SELECT * FROM caisse_parametres WHERE cle = 'retour_delai_jours'")->fetch(PDO::FETCH_ASSOC);
+        $jour_r = (string) $db->query("SELECT DATE_FORMAT(NOW(), '%Y%m%d')")->fetchColumn();
+        $vid_r = 0;
+        $retours_r = [];
+        $garder = static function ($r) use (&$retours_r) {
+            if (!empty($r['retour_id'])) {
+                $retours_r[] = (int) $r['retour_id'];
+            }
+            return (int) ($r['retour_id'] ?? 0);
+        };
+        try {
+            // Ticket d'essai : 4 × pièce 1 à 1 000 et 1 × pièce 3 à 3 000, remise globale de 10 %, payé 6 300 en espèces il y a 10 jours.
+            $db->prepare("INSERT INTO caisse_ventes (admin_id, caissier_id, numero_ticket, montant_total, montant_ht, montant_tva, tva_incluse,
+                    remise_globale_pct, mode_paiement, montant_especes, statut, date_vente, date_encaissement)
+                VALUES (:vendeur, :caissier, 'TKT-ESSAI-RETOURS', 6300, 6300, 0, 0, 10, 'especes', 6300, 'paye', NOW() - INTERVAL 10 DAY, NOW() - INTERVAL 10 DAY)")
+                ->execute(['vendeur' => $vendeur_r, 'caissier' => $caissier_r]);
+            $vid_r = (int) $db->lastInsertId();
+            $ligne_essai = $db->prepare("INSERT INTO caisse_vente_lignes (vente_id, produit_id, designation, quantite, prix_unitaire, remise_ligne_pct, total_ligne)
+                VALUES (:vente, :piece, :designation, :quantite, :prix, 0, :total)");
+            $ligne_essai->execute(['vente' => $vid_r, 'piece' => (int) $p1['id'], 'designation' => 'Essai retour A', 'quantite' => 4, 'prix' => 1000, 'total' => 4000]);
+            $la = (int) $db->lastInsertId();
+            $ligne_essai->execute(['vente' => $vid_r, 'piece' => (int) $p3['id'], 'designation' => 'Essai retour B', 'quantite' => 1, 'prix' => 3000, 'total' => 3000]);
+            $lb = (int) $db->lastInsertId();
+
+            $etat = caisse_retour_etat_vente($vid_r);
+            verifie('on rend le prix payé : la remise globale se répartit sur les lignes', [3600.0, 900.0, 2700.0, true],
+                [$etat['lignes'][$la]['valeur_ligne'], $etat['lignes'][$la]['valeur_unitaire'], $etat['lignes'][$lb]['valeur_ligne'], $etat['retournable']]);
+
+            $db->exec("UPDATE caisse_ventes SET statut = 'en_attente' WHERE id = $vid_r");
+            verifie('un ticket pas encore payé ne se rembourse pas', [false, true],
+                $refus(caisse_retour_preparer($vid_r, [$la => 1], 'mauvaise_piece', 'remboursement', 'Essai : pas payé', true, false, [], $vendeur_r), 'pas encore payé'));
+            $db->exec("UPDATE caisse_ventes SET statut = 'paye' WHERE id = $vid_r");
+            verifie('une mauvaise pièce montée ou abîmée ne se reprend pas', [false, true],
+                $refus(caisse_retour_preparer($vid_r, [$la => 1], 'mauvaise_piece', 'remboursement', 'Essai : montée', false, false, [], $vendeur_r), 'ne se reprend pas'));
+            verifie('on ne rend pas plus que vendu', [false, true],
+                $refus(caisse_retour_preparer($vid_r, [$la => 5], 'mauvaise_piece', 'remboursement', 'Essai : trop', true, false, [], $vendeur_r), 'au plus'));
+            verifie('le retour s’explique', [false, true],
+                $refus(caisse_retour_preparer($vid_r, [$la => 1], 'mauvaise_piece', 'remboursement', ' ', true, false, [], $vendeur_r), 'Expliquez'));
+            verifie('la même pièce ne s’échange que si elle est défectueuse', [false, true],
+                $refus(caisse_retour_preparer($vid_r, [$la => 1], 'mauvaise_piece', 'echange', 'Essai : même pièce', true, true, [], $vendeur_r), 'défectueuse'));
+            verifie('un échange sans pièce remise est refusé', [false, true],
+                $refus(caisse_retour_preparer($vid_r, [$la => 1], 'mauvaise_piece', 'echange', 'Essai : rien remis', true, false, [], $vendeur_r), 'pièces remises'));
+            verifie('une pièce d’un autre ticket est refusée', [false, true],
+                $refus(caisse_retour_preparer($vid_r, [999999999 => 1], 'defectueuse', 'remboursement', 'Essai : autre ticket', false, false, [], $vendeur_r), 'n’appartient pas'));
+            verifie('au moins une pièce rendue', [false, true],
+                $refus(caisse_retour_preparer($vid_r, [$la => 0], 'defectueuse', 'remboursement', 'Essai : rien', false, false, [], $vendeur_r), 'au moins une pièce'));
+            caisse_parametre_ecrire('retour_delai_jours', '1', 0);
+            verifie('le délai réglé par l’informaticien s’applique depuis l’encaissement', [false, true],
+                $refus(caisse_retour_preparer($vid_r, [$la => 1], 'mauvaise_piece', 'remboursement', 'Essai : trop tard', true, false, [], $vendeur_r), 'délai de retour de 1 jour(s)'));
+            caisse_parametre_ecrire('retour_delai_jours', null, 0);
+            verifie('sans délai fixé, pas de limite', [null, true], [caisse_retour_delai_jours(), caisse_retour_etat_vente($vid_r)['retournable']]);
+            verifie('aucun refus n’a rien écrit', [$avant_r['caisse_retours'], $avant_r['stock_mouvements']],
+                [(int) $db->query('SELECT COUNT(*) FROM caisse_retours')->fetchColumn(), (int) $db->query('SELECT COUNT(*) FROM stock_mouvements')->fetchColumn()]);
+
+            // R1 : préparé puis annulé
+            $r1 = caisse_retour_preparer($vid_r, [$la => 1], 'mauvaise_piece', 'remboursement', 'Essai : mauvais côté', true, false, [], $vendeur_r);
+            $id1 = $garder($r1);
+            verifie('R1 préparé : en attente, numéro RTC du jour, 900 à rendre, stock inchangé',
+                [true, 'en_attente', 'RTC' . $jour_r . str_pad((string) $id1, 6, '0', STR_PAD_LEFT), 900.0, (int) $p1['stock']],
+                [!empty($r1['ok']), $statut_r($id1), (string) ($r1['numero_retour'] ?? ''), (float) ($r1['especes_a_rendre'] ?? -1), $stock_r($p1['id'])]);
+            $ligne_a = caisse_retour_etat_vente($vid_r)['lignes'][$la];
+            verifie('une pièce en attente de retour ne se rend pas deux fois', [1, 3], [$ligne_a['deja_rendue'], $ligne_a['disponible']]);
+            verifie('un autre vendeur ne l’annule pas', [false, true],
+                $refus(caisse_retour_annuler($id1, $autre_r, 'Essai : pas le mien', false), 'Seul le vendeur'));
+            $a1 = caisse_retour_annuler($id1, $vendeur_r, 'Essai : le client garde la pièce', false);
+            verifie('le vendeur l’annule avec un motif : les pièces redeviennent rendables', [true, 'annule', 4],
+                [!empty($a1['ok']), $statut_r($id1), caisse_retour_etat_vente($vid_r)['lignes'][$la]['disponible']]);
+            verifie('un retour annulé ne se valide pas', [false, true], $refus(caisse_retour_valider($id1, $caissier_r), 'plus en attente'));
+
+            // R2 : remboursement en espèces validé par le caissier
+            $attendues_avant2 = $attendues_r();
+            $retours_avant2 = (int) ((caisse_cloture_periode_en_cours() ?: [])['retours']['nb'] ?? -1);
+            $r2 = caisse_retour_preparer($vid_r, [$la => 1], 'mauvaise_piece', 'remboursement', 'Essai : mauvais côté', true, false, [], $vendeur_r);
+            $id2 = $garder($r2);
+            $v2 = caisse_retour_valider($id2, $caissier_r);
+            verifie('R2 validé : la mauvaise pièce intacte rentre en stock, une entrée au journal',
+                [true, (int) $p1['stock'] + 1, ['entree|retour_caisse|1']], [!empty($v2['ok']), $stock_r($p1['id']), $journal_r($id2)]);
+            verifie('le retour validé garde son caissier', [$caissier_r, 'valide'],
+                [(int) $db->query("SELECT caissier_id FROM caisse_retours WHERE id = $id2 AND date_validation IS NOT NULL")->fetchColumn(), $statut_r($id2)]);
+            verifie('la caisse du jour rend les espèces : 900 de moins attendus au tiroir, un retour compté',
+                [round($attendues_avant2 - 900, 2), $retours_avant2 + 1],
+                [$attendues_r(), (int) ((caisse_cloture_periode_en_cours() ?: [])['retours']['nb'] ?? -1)]);
+            verifie('un retour validé ne se valide pas deux fois', [false, true], $refus(caisse_retour_valider($id2, $caissier_r), 'plus en attente'));
+            verifie('un retour validé ne s’annule plus', [false, true],
+                $refus(caisse_retour_annuler($id2, $caissier_r, 'Essai : trop tard', true), 'Seul un retour en attente'));
+
+            // R3 : pièce défectueuse échangée contre la même
+            $stock_avant3 = $stock_r($p1['id']);
+            $attendues_avant3 = $attendues_r();
+            $r3 = caisse_retour_preparer($vid_r, [$la => 1], 'defectueuse', 'echange', 'Essai : ne tient pas', false, true, [], $vendeur_r);
+            $id3 = $garder($r3);
+            verifie('R3 échange de la même pièce défectueuse : aucun argent', [true, 0.0, 0.0],
+                [!empty($r3['ok']), (float) ($r3['especes_a_rendre'] ?? -1), (float) ($r3['especes_a_recevoir'] ?? -1)]);
+            $v3 = caisse_retour_valider($id3, $caissier_r);
+            verifie('la défectueuse entre puis sort comme défectueuse, la neuve sort : stock vendable −1',
+                [true, $stock_avant3 - 1, ['entree|retour_caisse|1', 'sortie|defectueux|1', 'sortie|echange_caisse|1']],
+                [!empty($v3['ok']), $stock_r($p1['id']), $journal_r($id3)]);
+            verifie('un échange sans argent ne touche pas au tiroir', $attendues_avant3, $attendues_r());
+
+            // R4 : mauvaise pièce échangée contre une autre, différence en espèces
+            $prix_p2 = round((float) caisse_prix_unitaire_produit($p2), 2);
+            $stock_p2 = $stock_r($p2['id']);
+            $stock_p3 = $stock_r($p3['id']);
+            $attendues_avant4 = $attendues_r();
+            $difference4 = round(2 * $prix_p2 - 2700, 2);
+            $r4 = caisse_retour_preparer($vid_r, [$lb => 1], 'mauvaise_piece', 'echange', 'Essai : autre modèle', true, false, [(int) $p2['id'] => 2], $vendeur_r);
+            $id4 = $garder($r4);
+            verifie('R4 échange contre une autre pièce au prix du catalogue : la différence se règle en espèces',
+                [true, max(0.0, -$difference4), max(0.0, $difference4)],
+                [!empty($r4['ok']), (float) ($r4['especes_a_rendre'] ?? -1), (float) ($r4['especes_a_recevoir'] ?? -1)]);
+            $v4 = caisse_retour_valider($id4, $caissier_r);
+            verifie('la pièce rendue rentre, les deux pièces remises sortent', [true, $stock_p3 + 1, $stock_p2 - 2],
+                [!empty($v4['ok']), $stock_r($p3['id']), $stock_r($p2['id'])]);
+            verifie('le tiroir compte la différence de l’échange', round($attendues_avant4 + $difference4, 2), $attendues_r());
+            verifie('la ligne B est entièrement rendue', 0, caisse_retour_etat_vente($vid_r)['lignes'][$lb]['disponible']);
+
+            // R5 : la pièce remise n'est plus en stock au moment de valider
+            $r5 = caisse_retour_preparer($vid_r, [$la => 1], 'mauvaise_piece', 'echange', 'Essai : stock parti', true, false, [(int) $p2['id'] => 1], $vendeur_r);
+            $id5 = $garder($r5);
+            verifie('l’accueil du vendeur montre son retour en attente', true,
+                in_array($id5, array_map('intval', array_column(commercial_retours_en_attente($vendeur_r), 'id')), true));
+            $db->exec('UPDATE produits SET stock = 0 WHERE id = ' . (int) $p2['id']);
+            $stock_p1_5 = $stock_r($p1['id']);
+            $mouvements_5 = (int) $db->query('SELECT COUNT(*) FROM stock_mouvements')->fetchColumn();
+            verifie('R5 : stock insuffisant à la validation, rien ne bouge (tout ou rien)',
+                [false, true, $stock_p1_5, 0, $mouvements_5, 'en_attente'],
+                array_merge($refus(caisse_retour_valider($id5, $caissier_r), 'Stock insuffisant'), [
+                    $stock_r($p1['id']), $stock_r($p2['id']), (int) $db->query('SELECT COUNT(*) FROM stock_mouvements')->fetchColumn(), $statut_r($id5),
+                ]));
+            verifie('le caissier annule le retour bloqué', [true, 'annule'],
+                [!empty(caisse_retour_annuler($id5, $caissier_r, 'Essai : pièce plus en stock', true)['ok']), $statut_r($id5)]);
+        } finally {
+            $liste_r = $retours_r ? implode(',', array_map('intval', $retours_r)) : '0';
+            $db->exec("DELETE FROM stock_mouvements WHERE reference_numero LIKE 'RTC%' AND reference_id IN ($liste_r)
+                AND reference_type IN ('retour_caisse', 'echange_caisse', 'defectueux')");
+            $db->exec("DELETE FROM caisse_retours_lignes WHERE retour_id IN ($liste_r)");
+            $db->exec("DELETE FROM caisse_retours WHERE id IN ($liste_r)");
+            if ($vid_r > 0) {
+                $db->exec("DELETE FROM caisse_vente_lignes WHERE vente_id = $vid_r");
+                $db->exec("DELETE FROM caisse_ventes WHERE id = $vid_r AND numero_ticket = 'TKT-ESSAI-RETOURS'");
+            }
+            $db->exec('SET @sync_applying = 1');
+            $remettre_piece = $db->prepare('UPDATE produits SET stock = :s, statut = :st, date_modification = :d, sync_updated_at = :u, sync_origin_node = :o WHERE id = :id');
+            foreach ($pieces_r as $p) {
+                $remettre_piece->execute(['s' => $p['stock'], 'st' => $p['statut'], 'd' => $p['date_modification'], 'u' => $p['sync_updated_at'], 'o' => $p['sync_origin_node'], 'id' => (int) $p['id']]);
+            }
+            if ($param_r) {
+                $db->prepare('UPDATE caisse_parametres SET valeur = :v, admin_id = :a, date_modification = :d, sync_updated_at = :u, sync_origin_node = :o WHERE id = :id')
+                    ->execute(['v' => $param_r['valeur'], 'a' => $param_r['admin_id'], 'd' => $param_r['date_modification'], 'u' => $param_r['sync_updated_at'], 'o' => $param_r['sync_origin_node'], 'id' => (int) $param_r['id']]);
+            }
+            $db->exec('SET @sync_applying = NULL');
+        }
+        $ids_pieces = implode(',', array_map('intval', array_column($pieces_r, 'id')));
+        $pieces_avant = array_column($pieces_r, null, 'id');
+        $pieces_apres = array_column($db->query("SELECT $colonnes_piece FROM produits WHERE id IN ($ids_pieces)")->fetchAll(PDO::FETCH_ASSOC), null, 'id');
+        ksort($pieces_avant);
+        ksort($pieces_apres);
+        verifie('base remise à l’état initial : retours, mouvements, tickets, pièces et délai', [$avant_r, true, true], [
+            $compter_r(),
+            $pieces_apres == $pieces_avant,
+            $db->query("SELECT * FROM caisse_parametres WHERE cle = 'retour_delai_jours'")->fetch(PDO::FETCH_ASSOC) == $param_r,
+        ]);
+    }
+}
+
 echo "\n$ok OK / $ko KO\n";
 exit($ko === 0 ? 0 : 1);

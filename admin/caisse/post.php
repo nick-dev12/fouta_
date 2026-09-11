@@ -444,5 +444,95 @@ if ($action === 'cloturer_caisse') {
     exit;
 }
 
+if ($action === 'retour_preparer') {
+    /* PRÉPARER UN RETOUR CLIENT (11/09/2026) : le commercial général constate la
+     * pièce rendue, le motif et ce que reçoit le client. Rien ne bouge avant la
+     * validation du caissier. Les règles vivent dans caisse_retour_preparer(). */
+    $vente_id = (int) ($_POST['vente_id'] ?? 0);
+    if (!admin_can_preparer_retour_caisse()) {
+        $_SESSION['caisse_flash_error'] = 'Seul le commercial général prépare un retour client.';
+        header('Location: ' . (admin_can_encaisser_ticket() ? 'retours.php' : 'index.php'));
+        exit;
+    }
+    require_once __DIR__ . '/../../models/model_caisse_retours.php';
+    $solution = (string) ($_POST['solution'] ?? '');
+    $meme_piece = $solution === 'echange' && (string) ($_POST['echange_type'] ?? '') === 'meme_piece';
+    $remises = ($solution === 'echange' && !$meme_piece && is_array($_POST['remises'] ?? null)) ? $_POST['remises'] : [];
+    $res = caisse_retour_preparer(
+        $vente_id,
+        is_array($_POST['quantites'] ?? null) ? $_POST['quantites'] : [],
+        (string) ($_POST['motif'] ?? ''),
+        $solution,
+        (string) ($_POST['explication'] ?? ''),
+        !empty($_POST['piece_intacte']),
+        $meme_piece,
+        $remises,
+        (int) $_SESSION['admin_id']
+    );
+    if (empty($res['ok'])) {
+        $_SESSION['caisse_flash_error'] = $res['error'] ?? 'Le retour n’a pas pu être préparé.';
+        header('Location: retour.php?ticket=' . $vente_id);
+        exit;
+    }
+    $montant = static function ($n) {
+        return number_format((float) $n, 0, ',', ' ');
+    };
+    if ($res['especes_a_rendre'] >= 0.5) {
+        $suite = 'le caissier rendra ' . $montant($res['especes_a_rendre']) . ' FCFA en espèces au client.';
+    } elseif ($res['especes_a_recevoir'] >= 0.5) {
+        $suite = 'le client paiera ' . $montant($res['especes_a_recevoir']) . ' FCFA en espèces au caissier.';
+    } else {
+        $suite = 'aucun argent ne change de main.';
+    }
+    $_SESSION['caisse_flash_success'] = 'Retour ' . $res['numero_retour'] . ' préparé. Le client le présente au caissier, qui le valide : ' . $suite;
+    header('Location: retours.php?retour=' . (int) $res['retour_id']);
+    exit;
+}
+
+if ($action === 'retour_valider') {
+    /* VALIDER UN RETOUR CLIENT (11/09/2026) : le caissier rend ou reçoit les
+     * espèces, le stock bouge, tout ou rien. Règles : caisse_retour_valider(). */
+    $retour_id = (int) ($_POST['retour_id'] ?? 0);
+    if (!admin_can_encaisser_ticket()) {
+        $_SESSION['caisse_flash_error'] = 'Seul le caissier valide un retour : c’est lui qui rend ou reçoit l’argent.';
+        header('Location: retours.php?retour=' . $retour_id);
+        exit;
+    }
+    require_once __DIR__ . '/../../models/model_caisse_retours.php';
+    $res = caisse_retour_valider($retour_id, (int) $_SESSION['admin_id']);
+    if (empty($res['ok'])) {
+        $_SESSION['caisse_flash_error'] = $res['error'] ?? 'Le retour n’a pas pu être validé.';
+    } elseif ($res['especes_a_rendre'] >= 0.5) {
+        $_SESSION['caisse_flash_success'] = 'Retour ' . $res['numero_retour'] . ' validé : rendez ' . number_format($res['especes_a_rendre'], 0, ',', ' ') . ' FCFA en espèces au client.';
+    } elseif ($res['especes_a_recevoir'] >= 0.5) {
+        $_SESSION['caisse_flash_success'] = 'Retour ' . $res['numero_retour'] . ' validé : recevez ' . number_format($res['especes_a_recevoir'], 0, ',', ' ') . ' FCFA en espèces du client.';
+    } else {
+        $_SESSION['caisse_flash_success'] = 'Retour ' . $res['numero_retour'] . ' validé. Aucun argent ne change de main.';
+    }
+    header('Location: retours.php?retour=' . $retour_id);
+    exit;
+}
+
+if ($action === 'retour_annuler') {
+    /* ANNULER UN RETOUR EN ATTENTE (11/09/2026), avec un motif : le vendeur qui
+     * l'a préparé, ou le caissier. Règles : caisse_retour_annuler(). */
+    $retour_id = (int) ($_POST['retour_id'] ?? 0);
+    $est_caissier = admin_can_encaisser_ticket();
+    if (!$est_caissier && !admin_can_preparer_retour_caisse()) {
+        $_SESSION['caisse_flash_error'] = 'Seul le vendeur qui a préparé le retour, ou le caissier, peut l’annuler.';
+        header('Location: index.php');
+        exit;
+    }
+    require_once __DIR__ . '/../../models/model_caisse_retours.php';
+    $res = caisse_retour_annuler($retour_id, (int) $_SESSION['admin_id'], (string) ($_POST['motif_annulation'] ?? ''), $est_caissier);
+    if (empty($res['ok'])) {
+        $_SESSION['caisse_flash_error'] = $res['error'] ?? 'Le retour n’a pas pu être annulé.';
+    } else {
+        $_SESSION['caisse_flash_success'] = 'Retour ' . $res['numero_retour'] . ' annulé : ses pièces redeviennent rendables sur le ticket.';
+    }
+    header('Location: retours.php?retour=' . $retour_id);
+    exit;
+}
+
 header('Location: index.php');
 exit;

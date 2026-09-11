@@ -127,6 +127,63 @@ if (!function_exists('sync_registry_static_foreign_keys')) {
       'REFERENCED_COLUMN_NAME' => 'id',
     ),
   ),
+  'caisse_parametres' =>
+  array (
+    0 =>
+    array (
+      'COLUMN_NAME' => 'admin_id',
+      'REFERENCED_TABLE_NAME' => 'admin',
+      'REFERENCED_COLUMN_NAME' => 'id',
+    ),
+  ),
+  'caisse_retours' =>
+  array (
+    0 =>
+    array (
+      'COLUMN_NAME' => 'admin_id',
+      'REFERENCED_TABLE_NAME' => 'admin',
+      'REFERENCED_COLUMN_NAME' => 'id',
+    ),
+    1 =>
+    array (
+      'COLUMN_NAME' => 'annule_par',
+      'REFERENCED_TABLE_NAME' => 'admin',
+      'REFERENCED_COLUMN_NAME' => 'id',
+    ),
+    2 =>
+    array (
+      'COLUMN_NAME' => 'caissier_id',
+      'REFERENCED_TABLE_NAME' => 'admin',
+      'REFERENCED_COLUMN_NAME' => 'id',
+    ),
+    3 =>
+    array (
+      'COLUMN_NAME' => 'vente_id',
+      'REFERENCED_TABLE_NAME' => 'caisse_ventes',
+      'REFERENCED_COLUMN_NAME' => 'id',
+    ),
+  ),
+  'caisse_retours_lignes' =>
+  array (
+    0 =>
+    array (
+      'COLUMN_NAME' => 'produit_id',
+      'REFERENCED_TABLE_NAME' => 'produits',
+      'REFERENCED_COLUMN_NAME' => 'id',
+    ),
+    1 =>
+    array (
+      'COLUMN_NAME' => 'retour_id',
+      'REFERENCED_TABLE_NAME' => 'caisse_retours',
+      'REFERENCED_COLUMN_NAME' => 'id',
+    ),
+    2 =>
+    array (
+      'COLUMN_NAME' => 'vente_ligne_id',
+      'REFERENCED_TABLE_NAME' => 'caisse_vente_lignes',
+      'REFERENCED_COLUMN_NAME' => 'id',
+    ),
+  ),
   'caisse_ventes' =>
   array (
     0 => 

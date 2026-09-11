@@ -135,6 +135,13 @@ $manque_preview = null;
             <div class="caisse-page-head-inner">
                 <h1 class="caisse-page-title"><i class="fas fa-cash-register"></i>
                     <?php echo htmlspecialchars($page_title); ?></h1>
+                <?php if (admin_can_preparer_retour_caisse()): ?>
+                <?php /* Retours clients (11/09/2026) : le client rapporte une pièce. */ ?>
+                <div class="caisse-retours-acces no-print" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px">
+                    <a href="retour.php" class="btn-secondary"><i class="fas fa-undo" aria-hidden="true"></i> Retour client</a>
+                    <a href="retours.php" class="btn-secondary"><i class="fas fa-list" aria-hidden="true"></i> Retours clients</a>
+                </div>
+                <?php endif; ?>
             </div>
         </header>
 
@@ -263,6 +270,9 @@ $manque_preview = null;
                 <?php endif; ?>
                 <?php else: ?>
                 <a href="index.php" class="btn-secondary">Nouvelle vente</a>
+                <?php if ($ticket_statut === 'paye' && admin_can_preparer_retour_caisse()): ?>
+                <a href="retour.php?ticket=<?php echo (int) ($ticket_data['id'] ?? 0); ?>" class="btn-secondary"><i class="fas fa-undo" aria-hidden="true"></i> Faire un retour</a>
+                <?php endif; ?>
                 <?php endif; ?>
             </div>
             </div>

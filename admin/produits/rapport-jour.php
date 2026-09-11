@@ -44,6 +44,11 @@ if (!empty($_GET['user']) && admin_can_gestion_stock_etendue()) {
 
 $mouvements = [];
 try {
+    /* LES RETOURS CLIENTS DU VENDEUR (11/09/2026) : un retour validé est écrit
+     * au nom du caissier ; le rapport du vendeur qui l'a préparé le montre
+     * aussi, comme ses ventes. Clause posée seulement si la table existe. */
+    $avec_retours = (int) $db->query("SELECT COUNT(*) FROM information_schema.TABLES
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'caisse_retours'")->fetchColumn() > 0;
     $st = $db->prepare("SELECT m.*, p.nom AS produit_nom, p.identifiant_interne AS produit_code,
                                ns.nom AS source_nom, nd.nom AS destination_nom
                         FROM stock_mouvements m
@@ -54,7 +59,12 @@ try {
                           AND (m.admin_id = :a
                                OR (:vendeur = 1 AND m.reference_type = 'caisse_vente'
                                    AND EXISTS (SELECT 1 FROM caisse_ventes v
-                                               WHERE v.id = m.reference_id AND v.admin_id = :a2)))
+                                               WHERE v.id = m.reference_id AND v.admin_id = :a2))"
+        . ($avec_retours ? "
+                               OR (:vendeur2 = 1 AND m.reference_type IN ('retour_caisse', 'echange_caisse', 'defectueux')
+                                   AND m.reference_numero LIKE 'RTC%'
+                                   AND EXISTS (SELECT 1 FROM caisse_retours r
+                                               WHERE r.id = m.reference_id AND r.admin_id = :a3))" : '') . ")
                           AND DATE(m.date_mouvement) = :d
                         ORDER BY m.date_mouvement, m.id");
     /* LE RAPPORT D'UN VENDEUR (10/09/2026) : une sortie de caisse est
@@ -62,7 +72,12 @@ try {
      * rapport d'un commercial restait vide alors qu'il a vendu toute la
      * journée : on y ajoute les sorties des tickets qu'il a préparés. */
     $vendeur = in_array($cible_role, ['commercial', 'commercial_general'], true) ? 1 : 0;
-    $st->execute(['a' => $cible_id, 'a2' => $cible_id, 'vendeur' => $vendeur, 'd' => $date]);
+    $parametres = ['a' => $cible_id, 'a2' => $cible_id, 'vendeur' => $vendeur, 'd' => $date];
+    if ($avec_retours) {
+        $parametres['a3'] = $cible_id;
+        $parametres['vendeur2'] = $vendeur;
+    }
+    $st->execute($parametres);
     $mouvements = $st->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
     $mouvements = [];

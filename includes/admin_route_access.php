@@ -316,6 +316,8 @@ if (!function_exists('admin_route_relative_path')) {
                     || $p === 'caisse/depenses.php'
                     // Clôture de caisse (10/09/2026) : compter le tiroir, constater l'écart.
                     || $p === 'caisse/cloture.php'
+                    // Retours clients (11/09/2026) : valider, rendre ou recevoir les espèces.
+                    || $p === 'caisse/retours.php'
                     || $p === 'caisse/post.php';
 
             case 'gestion_stock':

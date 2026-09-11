@@ -215,6 +215,11 @@ include __DIR__ . '/../../includes/pwa_admin_boot.php';
                 <span class="menu-item-icon ico" aria-hidden="true"><i class="fas fa-lock"></i></span>
                 <span class="menu-item-text">Clôture de caisse</span>
             </a>
+            <a href="<?php echo $admin_nav_base; ?>caisse/retours.php"
+                class="menu-item mi-retours-caisse<?php echo ($is_caisse && ($current_page === 'retours.php' || $current_page === 'retour.php')) ? ' active' : ''; ?>">
+                <span class="menu-item-icon ico" aria-hidden="true"><i class="fas fa-undo"></i></span>
+                <span class="menu-item-text">Retours clients</span>
+            </a>
             <a href="<?php echo $admin_nav_base; ?>zones-livraison/index.php"
                 class="menu-item mi-zones<?php echo $is_zones_livraison ? ' active' : ''; ?>">
                 <span class="menu-item-icon ico" aria-hidden="true"><i class="fas fa-map-location-dot"></i></span>
@@ -234,6 +239,13 @@ include __DIR__ . '/../../includes/pwa_admin_boot.php';
                 <span class="menu-item-icon ico" aria-hidden="true"><i class="fas fa-cash-register"></i></span>
                 <span class="menu-item-text">Caisse magasin</span>
             </a>
+            <?php if ($admin_role === 'commercial_general'): ?>
+            <a href="<?php echo $admin_nav_base; ?>caisse/retours.php"
+                class="menu-item mi-retours-caisse<?php echo ($is_caisse && ($current_page === 'retours.php' || $current_page === 'retour.php')) ? ' active' : ''; ?>">
+                <span class="menu-item-icon ico" aria-hidden="true"><i class="fas fa-undo"></i></span>
+                <span class="menu-item-text">Retours clients</span>
+            </a>
+            <?php endif; ?>
             <?php if ($nav_can_devis): ?>
             <a href="<?php echo $admin_nav_base; ?>devis/devis.php"
                 class="menu-item mi-devis<?php echo $is_nav_devis_section ? ' active' : ''; ?>">
@@ -280,6 +292,11 @@ include __DIR__ . '/../../includes/pwa_admin_boot.php';
                 class="menu-item mi-cloture-caisse<?php echo ($is_caisse && $current_page === 'cloture.php') ? ' active' : ''; ?>">
                 <span class="menu-item-icon ico" aria-hidden="true"><i class="fas fa-lock"></i></span>
                 <span class="menu-item-text">Clôture de caisse</span>
+            </a>
+            <a href="<?php echo $admin_nav_base; ?>caisse/retours.php"
+                class="menu-item mi-retours-caisse<?php echo ($is_caisse && ($current_page === 'retours.php' || $current_page === 'retour.php')) ? ' active' : ''; ?>">
+                <span class="menu-item-icon ico" aria-hidden="true"><i class="fas fa-undo"></i></span>
+                <span class="menu-item-text">Retours clients</span>
             </a>
             <a href="<?php echo $admin_nav_base; ?>caisse/depenses.php"
                 class="menu-item mi-depenses-caisse<?php echo $is_caisse_depenses ? ' active' : ''; ?>">

@@ -196,3 +196,30 @@ function commercial_ventes_du_mois($admin_id)
     }
     return $lignes;
 }
+
+/**
+ * Ses retours clients préparés et pas encore validés par le caissier
+ * (11/09/2026). Vide tant que la base n'a pas la table des retours.
+ */
+function commercial_retours_en_attente($admin_id)
+{
+    $table = commercial_lire(
+        "SELECT COUNT(*) AS n FROM information_schema.TABLES
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'caisse_retours'",
+        []
+    );
+    if ((int) ($table[0]['n'] ?? 0) === 0) {
+        return [];
+    }
+    return commercial_lire(
+        "SELECT r.id, r.numero_retour, r.solution, r.especes_a_rendre, r.especes_a_recevoir, r.date_creation, v.numero_ticket
+         FROM caisse_retours r
+         INNER JOIN caisse_ventes v ON v.id = r.vente_id
+         WHERE r.sync_deleted_at IS NULL
+           AND r.statut = 'en_attente'
+           AND r.admin_id = :moi
+         ORDER BY r.date_creation DESC, r.id DESC
+         LIMIT 100",
+        ['moi' => (int) $admin_id]
+    );
+}

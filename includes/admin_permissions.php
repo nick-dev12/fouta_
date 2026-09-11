@@ -147,6 +147,17 @@ if (!function_exists('admin_current_role')) {
     }
 
     /**
+     * Préparer un retour client en caisse (11/09/2026) : le commercial général
+     * constate, choisit le motif et la solution. Le caissier valide ensuite : il
+     * rend ou reçoit les espèces (admin_can_encaisser_ticket). Le commercial
+     * simple n'en a pas encore : ses droits se définissent après ce chantier.
+     */
+    function admin_can_preparer_retour_caisse() {
+        $r = admin_current_role();
+        return in_array($r, ['commercial_general', 'informaticien', 'developpeur'], true);
+    }
+
+    /**
      * Enregistrer ou annuler le paiement d'une facture : facture de devis, facture
      * de bon de livraison, facture mensuelle (10/09/2026). Réglé sur la comptabilité
      * en attendant la décision de la direction (« qui a le droit de dire qu'une

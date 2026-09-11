@@ -176,6 +176,9 @@ $pastille_ecart = static function ($ecart) use ($fcfa) {
                 </table>
             </div>
             <dl class="cloture-bilan">
+                <?php if ((int) ($vue['nb_retours'] ?? 0) > 0): ?>
+                <div><dt>Retours clients</dt><dd><?php echo (int) $vue['nb_retours']; ?> : <?php echo $fcfa($vue['retours_especes_rendues']); ?> FCFA rendus, <?php echo $fcfa($vue['retours_especes_recues']); ?> FCFA reçus</dd></div>
+                <?php endif; ?>
                 <div><dt>Espèces attendues</dt><dd><?php echo $fcfa($vue['especes_attendues']); ?> FCFA</dd></div>
                 <div><dt>Espèces comptées</dt><dd><?php echo $fcfa($vue['especes_comptees']); ?> FCFA</dd></div>
                 <div><dt>Écart</dt><dd><?php echo $pastille_ecart($vue['ecart']); ?></dd></div>
@@ -251,6 +254,9 @@ $pastille_ecart = static function ($ecart) use ($fcfa) {
             <div>
                 <?php if ($en_cours['depenses'] > 0): ?>
                 <p class="cloture-note"><i class="fas fa-wallet" aria-hidden="true"></i> Dépenses saisies sur ces dates : <strong><?php echo $fcfa($en_cours['depenses']); ?> FCFA</strong>. Elles ne sont pas déduites, car la saisie ne dit pas si elles ont été payées avec l’argent du tiroir. Si c’est le cas, dites-le dans le commentaire.</p>
+                <?php endif; ?>
+                <?php if (!empty($en_cours['retours']['nb'])): ?>
+                <p class="cloture-note"><i class="fas fa-undo" aria-hidden="true"></i> <?php echo (int) $en_cours['retours']['nb']; ?> retour(s) client validé(s) sur la période : <strong><?php echo $fcfa($en_cours['retours']['especes_rendues']); ?> FCFA</strong> rendus et <strong><?php echo $fcfa($en_cours['retours']['especes_recues']); ?> FCFA</strong> reçus en espèces, déjà comptés dans les espèces attendues (<?php echo $fcfa($en_cours['especes_encaissees']); ?> FCFA encaissés en espèces).</p>
                 <?php endif; ?>
                 <?php if ($en_cours['corrections'] > 0): ?>
                 <p class="cloture-note"><i class="fas fa-edit" aria-hidden="true"></i> <?php echo (int) $en_cours['corrections']; ?> correction(s) de paiement sur la période, détaillées plus bas.</p>

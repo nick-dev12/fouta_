@@ -157,6 +157,27 @@ function caisse_cloture_calculer_periode($debut, $fin)
         WHERE sync_deleted_at IS NULL AND date_correction <= :fin' . ($debut !== null ? ' AND date_correction > :debut' : ''));
     $corr->execute($bind);
 
+    /* LES RETOURS CLIENTS (11/09/2026) : un retour compte dans la caisse du jour
+     * où le caissier le valide. Les espèces rendues sortent du tiroir, celles
+     * reçues pour un échange plus cher y entrent. Une clôture passée n'est
+     * jamais rouverte : le retour d'un vieux ticket tombe dans la caisse en cours. */
+    $retours = ['nb' => 0, 'especes_rendues' => 0.0, 'especes_recues' => 0.0];
+    try {
+        $ret = $db->prepare("SELECT COUNT(*) AS nb, COALESCE(SUM(especes_a_rendre), 0) AS rendues, COALESCE(SUM(especes_a_recevoir), 0) AS recues
+            FROM caisse_retours
+            WHERE statut = 'valide' AND sync_deleted_at IS NULL AND date_validation <= :fin" . ($debut !== null ? ' AND date_validation > :debut' : ''));
+        $ret->execute($bind);
+        $ligne = $ret->fetch(PDO::FETCH_ASSOC) ?: [];
+        $retours = [
+            'nb' => (int) ($ligne['nb'] ?? 0),
+            'especes_rendues' => round((float) ($ligne['rendues'] ?? 0), 2),
+            'especes_recues' => round((float) ($ligne['recues'] ?? 0), 2),
+        ];
+    } catch (PDOException $e) {
+        // pas encore de table des retours sur ce serveur : rien à retirer du tiroir
+    }
+    $especes_encaissees = (float) ($canaux['especes']['montant'] ?? 0.0);
+
     return [
         'debut' => $debut,
         'fin' => (string) $fin,
@@ -164,10 +185,33 @@ function caisse_cloture_calculer_periode($debut, $fin)
         'nb' => count($tickets),
         'total' => round($total, 2),
         'canaux' => $canaux,
-        'especes_attendues' => $canaux['especes']['montant'] ?? 0.0,
+        'especes_encaissees' => round($especes_encaissees, 2),
+        'retours' => $retours,
+        'especes_attendues' => round($especes_encaissees - $retours['especes_rendues'] + $retours['especes_recues'], 2),
         'depenses' => round($depenses, 2),
         'corrections' => (int) $corr->fetchColumn(),
     ];
+}
+
+/**
+ * Les colonnes des retours clients existent-elles sur caisse_clotures ?
+ * (migrations/run_caisse_retours.php, 11/09/2026)
+ */
+function caisse_cloture_colonnes_retours_ok()
+{
+    global $db;
+    static $ok = null;
+    if ($ok !== null) {
+        return $ok;
+    }
+    try {
+        $n = (int) $db->query("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE()
+            AND TABLE_NAME = 'caisse_clotures' AND COLUMN_NAME IN ('nb_retours', 'retours_especes_rendues', 'retours_especes_recues')")->fetchColumn();
+        $ok = ($n === 3);
+    } catch (PDOException $e) {
+        $ok = false;
+    }
+    return $ok;
 }
 
 /**
@@ -244,13 +288,12 @@ function caisse_cloturer($caissier_id, $especes_comptees_saisie, $commentaire)
             ];
         }
 
-        $ins = $db->prepare('INSERT INTO caisse_clotures
-            (caissier_id, periode_debut, periode_fin, nb_tickets, total_encaisse, montant_especes, montant_carte,
+        $colonnes = 'caissier_id, periode_debut, periode_fin, nb_tickets, total_encaisse, montant_especes, montant_carte,
              montant_orange_money, montant_wave, montant_cheque, montant_autre, especes_attendues, especes_comptees,
-             ecart, commentaire, date_creation)
-            VALUES (:caissier, :debut, :fin, :nb, :total, :especes, :carte, :orange, :wave, :cheque, :autre,
-                    :attendues, :comptees, :ecart, :commentaire, NOW())');
-        $ins->execute([
+             ecart, commentaire, date_creation';
+        $valeurs = ':caissier, :debut, :fin, :nb, :total, :especes, :carte, :orange, :wave, :cheque, :autre,
+                    :attendues, :comptees, :ecart, :commentaire, NOW()';
+        $parametres = [
             'caissier' => $caissier_id,
             'debut' => $debut,
             'fin' => $fin,
@@ -266,7 +309,17 @@ function caisse_cloturer($caissier_id, $especes_comptees_saisie, $commentaire)
             'comptees' => $comptees,
             'ecart' => $ecart,
             'commentaire' => $commentaire !== '' ? $commentaire : null,
-        ]);
+        ];
+        // Ce que les retours clients ont fait au tiroir, gardé sur l'arrêté (11/09/2026).
+        if (caisse_cloture_colonnes_retours_ok()) {
+            $colonnes .= ', nb_retours, retours_especes_rendues, retours_especes_recues';
+            $valeurs .= ', :nb_retours, :retours_rendues, :retours_recues';
+            $parametres['nb_retours'] = (int) $p['retours']['nb'];
+            $parametres['retours_rendues'] = $p['retours']['especes_rendues'];
+            $parametres['retours_recues'] = $p['retours']['especes_recues'];
+        }
+        $ins = $db->prepare("INSERT INTO caisse_clotures ($colonnes) VALUES ($valeurs)");
+        $ins->execute($parametres);
         $id = (int) $db->lastInsertId();
         $db->commit();
 

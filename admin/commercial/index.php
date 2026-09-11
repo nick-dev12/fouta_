@@ -47,6 +47,7 @@ $bl_brouillons = [];
 $factures_a_relancer = [];
 $devis_sans_reponse = [];
 $ventes_du_mois = [];
+$retours_attente = [];
 $lecture_ko = false;
 try {
     $tickets_attente = commercial_tickets_en_attente($moi);
@@ -56,6 +57,7 @@ try {
     $factures_a_relancer = commercial_factures_a_relancer($moi);
     $devis_sans_reponse = commercial_devis_sans_reponse($moi, 7);
     $ventes_du_mois = commercial_ventes_du_mois($moi);
+    $retours_attente = commercial_retours_en_attente($moi);
 } catch (Throwable $e) {
     error_log('[commercial/index] ' . $e->getMessage());
     $lecture_ko = true;
@@ -168,6 +170,40 @@ $fpl_titre_page = 'Accueil';
         </div>
       <?php endif; ?>
     </div>
+
+    <?php if ($retours_attente !== []) : ?>
+    <div class="card" id="retours-en-attente" style="margin-bottom:var(--s4)">
+      <div class="card-head">
+        <h2>Mes retours clients en attente de caisse</h2>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Retour</th><th>Ticket</th><th>Préparé le</th><th>Espèces</th><th></th></tr>
+          </thead>
+          <tbody>
+            <?php foreach ($retours_attente as $r) : ?>
+              <tr>
+                <td><strong class="ca-ref"><?php echo e($r['numero_retour']); ?></strong></td>
+                <td class="muted"><?php echo e($r['numero_ticket']); ?></td>
+                <td class="muted"><?php echo date('d/m/Y à H:i', strtotime($r['date_creation'])); ?></td>
+                <td><?php
+                  if ((float) $r['especes_a_rendre'] >= 0.5) {
+                      echo fpl_montant($r['especes_a_rendre']) . ' FCFA à rendre';
+                  } elseif ((float) $r['especes_a_recevoir'] >= 0.5) {
+                      echo fpl_montant($r['especes_a_recevoir']) . ' FCFA à recevoir';
+                  } else {
+                      echo 'aucun argent';
+                  }
+                ?></td>
+                <td class="num"><a class="btn btn-outline btn-sm" href="../caisse/retours.php?retour=<?php echo (int) $r['id']; ?>">Voir le retour</a></td>
+              </tr>
+            <?php endforeach; ?>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <?php endif; ?>
 
     <?php if ($factures_a_relancer !== []) : ?>
     <div class="card" id="factures-a-relancer" style="margin-bottom:var(--s4)">

@@ -60,6 +60,10 @@ $ticket_statut = $vente ? caisse_vente_statut($vente) : null;
 require_once __DIR__ . '/../../models/model_caisse_cloture.php';
 $ticket_corrections = ($vente && $ticket_statut === 'paye') ? caisse_corrections_liste((int) $vente['id'], 20) : [];
 $ticket_cloture = ($vente && $ticket_statut === 'paye') ? caisse_cloture_couvrant_vente($vente) : null;
+/* Retours clients (11/09/2026) : ceux de ce ticket, et ceux qui attendent le caissier. */
+require_once __DIR__ . '/../../models/model_caisse_retours.php';
+$ticket_retours = ($vente && $ticket_statut === 'paye') ? caisse_retours_liste(['vente_id' => (int) $vente['id'], 'limite' => 20]) : [];
+$retours_a_valider = caisse_retours_liste(['statut' => 'en_attente', 'limite' => 100]);
 $ticket_barcode_src = ($vente && $ticket_recap) ? caisse_ticket_get_barcode_web_path($vente) : '';
 $ticket_barcode_payload = ($vente && $ticket_recap) ? caisse_ticket_valeur_code_barres($vente) : '';
 
@@ -158,6 +162,13 @@ $auto_print = isset($_GET['imprimer']) && $_GET['imprimer'] === '1';
 
     <?php if ($ticket_introuvable): ?>
     <div class="caisse-banner caisse-banner--warn page-caisse-encaisser__notfound" role="status">Aucun ticket trouvé pour cette recherche.</div>
+    <?php endif; ?>
+
+    <?php if ($retours_a_valider): ?>
+    <div class="caisse-banner caisse-banner--warn no-print" role="status">
+        <i class="fas fa-undo" aria-hidden="true"></i>
+        <span><?php echo count($retours_a_valider); ?> retour(s) client en attente de validation : le client attend son argent ou sa pièce. <a href="retours.php">Voir les retours clients</a></span>
+    </div>
     <?php endif; ?>
 
     <?php if ($tables_ok): ?>
@@ -270,6 +281,16 @@ $auto_print = isset($_GET['imprimer']) && $_GET['imprimer'] === '1';
                 <p class="caisse-ticket-pay">Paiement : <strong><?php echo htmlspecialchars(caisse_compta_libelle_paiement_ticket($vente)); ?></strong></p>
                 <?php if ($ticket_cloture): ?>
                 <p class="caisse-ticket-cloture no-print" style="margin:6px 0 0;font-size:.85em;color:#4A5468"><i class="fas fa-lock" aria-hidden="true"></i> Caisse clôturée le <?php echo htmlspecialchars(date('d/m/Y à H:i', strtotime((string) $ticket_cloture['periode_fin']))); ?> : ce paiement ne se corrige plus.</p>
+                <?php endif; ?>
+                <?php if ($ticket_retours): ?>
+                <details class="caisse-ticket-retours no-print" style="margin-top:8px;font-size:.85em" open>
+                    <summary style="cursor:pointer">Retours client sur ce ticket : <?php echo count($ticket_retours); ?></summary>
+                    <ul style="margin:6px 0 0;padding-left:18px">
+                        <?php foreach ($ticket_retours as $rt): ?>
+                        <li><a href="retours.php?retour=<?php echo (int) $rt['id']; ?>"><code><?php echo htmlspecialchars((string) $rt['numero_retour']); ?></code></a> du <?php echo htmlspecialchars(date('d/m/Y H:i', strtotime((string) $rt['date_creation']))); ?> : <?php echo htmlspecialchars(caisse_retour_solutions()[$rt['solution']] ?? (string) $rt['solution']); ?>, <?php echo htmlspecialchars(mb_strtolower(caisse_retour_statut_libelle($rt['statut']))); ?></li>
+                        <?php endforeach; ?>
+                    </ul>
+                </details>
                 <?php endif; ?>
                 <?php if ($ticket_corrections): ?>
                 <details class="caisse-ticket-corrections no-print" style="margin-top:8px;font-size:.85em">

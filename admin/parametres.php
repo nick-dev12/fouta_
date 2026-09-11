@@ -245,6 +245,22 @@ if (isset($_SESSION['success_message'])) {
             </article>
             <?php endif; ?>
 
+            <?php if (in_array(admin_current_role(), ['informaticien', 'developpeur'], true)): ?>
+            <article class="parametre-card parametre-card--retours-caisse" role="listitem">
+                <div class="parametre-card__body">
+                    <div class="parametre-card__head">
+                        <div class="parametre-icon" aria-hidden="true"><i class="fas fa-undo"></i></div>
+                        <h3 class="parametre-title">Retours en caisse</h3>
+                    </div>
+                    <a href="parametres/caisse-retours.php" class="parametre-link">
+                        <span class="parametre-link__txt"><i class="fas fa-sliders-h" aria-hidden="true"></i> Délai de retour des pièces</span>
+                        <i class="fas fa-chevron-right parametre-link__chev" aria-hidden="true"></i>
+                    </a>
+                    <p class="parametre-card__hint">Nombre de jours pendant lesquels un client peut rapporter une pièce achetée en caisse. Aucune limite tant qu’il n’est pas fixé.</p>
+                </div>
+            </article>
+            <?php endif; ?>
+
             <article class="parametre-card parametre-card--alertes-stock" role="listitem">
                 <div class="parametre-card__body">
                     <div class="parametre-card__head">

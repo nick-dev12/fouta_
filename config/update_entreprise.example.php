@@ -42,6 +42,8 @@ return [
         'migrations/run_caisse_cloture.php',
         // Paiements des factures (devis, BL, facture du mois) avec montant, moyen et auteur (10/09/2026) : sur foutasvr ET le VPS.
         'migrations/run_paiements_factures.php',
+        // Retours clients en caisse : remboursement en espèces, échange, délai réglable (11/09/2026) : sur foutasvr ET le VPS.
+        'migrations/run_caisse_retours.php',
     ],
 
     // Migrations lourdes / ponctuelles — exclues du mode --all-migrations
