@@ -113,7 +113,7 @@ $mois_labels = ['', 'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juil
 
         <section class="bilan-filter-card" aria-labelledby="bilan-filtre-title">
             <h2 id="bilan-filtre-title" class="bilan-filter-card__title"><i class="fas fa-calendar-days" aria-hidden="true"></i> Filtrer par date</h2>
-            <p class="bilan-filter-card__hint">Ventes : la caisse à la <strong>date d’encaissement</strong>, les factures de devis à leur <strong>date</strong>, les bons de livraison validés à la <strong>date du bon</strong>, le site à la <strong>date de commande</strong> ; un retour compte le <strong>jour où il est fait</strong>. Encaissements : <strong>date du paiement</strong>. Dépenses : <strong>date de dépense</strong>.</p>
+            <p class="bilan-filter-card__hint">Ventes : la vente directe à la <strong>date d’encaissement</strong>, les factures de devis à leur <strong>date</strong>, les bons de livraison validés à la <strong>date du bon</strong>, le site à la <strong>date de commande</strong> ; un retour compte le <strong>jour où il est fait</strong>. Encaissements : <strong>date du paiement</strong>. Dépenses : <strong>date de dépense</strong>.</p>
 
             <form method="get" action="bilan.php" class="bilan-filter-form" id="bilan-filter-form">
                 <div class="bilan-filter-form__mode-row">
@@ -188,7 +188,7 @@ $mois_labels = ['', 'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juil
                 <div class="bilan-kpi__icon" aria-hidden="true"><i class="fas fa-cart-shopping"></i></div>
                 <h3 class="bilan-kpi__title">Ventes nettes</h3>
                 <p class="bilan-kpi__value"><?php echo $fcfa($sv['total']); ?> <span class="bilan-kpi__cur">FCFA</span></p>
-                <p class="bilan-kpi__meta">Caisse, devis, bons et site, retours déduits</p>
+                <p class="bilan-kpi__meta">Vente directe, devis, bons et site, retours déduits</p>
             </article>
             <article class="bilan-kpi bilan-kpi--web">
                 <div class="bilan-kpi__icon" aria-hidden="true"><i class="fas fa-hand-holding-dollar"></i></div>
@@ -227,7 +227,7 @@ $mois_labels = ['', 'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juil
                     </thead>
                     <tbody>
                         <tr>
-                            <td>Caisse magasin<small>Tickets payés, à la date d’encaissement ; retours clients validés à leur date</small></td>
+                            <td>Vente directe<small>Tickets payés, à la date d’encaissement ; retours clients validés à leur date</small></td>
                             <td class="num"><?php echo (int) $sv['caisse']['nb']; ?> ticket(s)</td>
                             <td class="num"><?php echo $fcfa($sv['caisse']['brut']); ?></td>
                             <td class="num"><?php echo $sv['caisse']['retours_nb'] ? $signe($sv['caisse']['remis'] - $sv['caisse']['rendu']) : '—'; ?></td>
@@ -277,7 +277,7 @@ $mois_labels = ['', 'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juil
                 <table class="bilan-synthese__table">
                     <thead><tr><th>Origine</th><th class="num">Montant</th></tr></thead>
                     <tbody>
-                        <tr class="bilan-synthese__groupe"><td colspan="2">Caisse magasin : <?php echo (int) $se['caisse']['nb']; ?> ticket(s)</td></tr>
+                        <tr class="bilan-synthese__groupe"><td colspan="2">Vente directe : <?php echo (int) $se['caisse']['nb']; ?> ticket(s)</td></tr>
                         <?php foreach ($se['caisse']['canaux'] as $canal => $montant): if ($montant < 0.5) { continue; } ?>
                         <tr><td><?php echo htmlspecialchars(compta_synthese_libelle_moyen($canal)); ?></td><td class="num"><?php echo $fcfa($montant); ?></td></tr>
                         <?php endforeach; ?>

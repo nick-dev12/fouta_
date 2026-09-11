@@ -130,7 +130,7 @@ $argent = static function (array $r) use ($fcfa) {
                 <?php if ($est_caissier): ?>
                 <a href="encaisser-ticket.php" class="btn-secondary"><i class="fas fa-cash-register"></i> Encaissement des tickets</a>
                 <?php else: ?>
-                <a href="index.php" class="btn-secondary"><i class="fas fa-cash-register"></i> Caisse magasin</a>
+                <a href="index.php" class="btn-secondary"><i class="fas fa-cash-register"></i> Vente directe</a>
                 <?php endif; ?>
             </div>
         </div>

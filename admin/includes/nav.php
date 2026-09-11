@@ -198,7 +198,7 @@ include __DIR__ . '/../../includes/pwa_admin_boot.php';
             <a href="<?php echo $admin_nav_base; ?>caisse/index.php"
                 class="menu-item mi-caisse<?php echo ($is_caisse && $current_page === 'index.php') ? ' active' : ''; ?>">
                 <span class="menu-item-icon ico" aria-hidden="true"><i class="fas fa-cash-register"></i></span>
-                <span class="menu-item-text">Caisse magasin</span>
+                <span class="menu-item-text">Vente directe</span>
             </a>
             <a href="<?php echo $admin_nav_base; ?>caisse/encaisser-ticket.php"
                 class="menu-item mi-encaisse<?php echo $is_caisse_encaisser ? ' active' : ''; ?>">
@@ -237,7 +237,7 @@ include __DIR__ . '/../../includes/pwa_admin_boot.php';
             <a href="<?php echo $admin_nav_base; ?>caisse/index.php"
                 class="menu-item mi-caisse<?php echo ($is_caisse && $current_page === 'index.php') ? ' active' : ''; ?>">
                 <span class="menu-item-icon ico" aria-hidden="true"><i class="fas fa-cash-register"></i></span>
-                <span class="menu-item-text">Caisse magasin</span>
+                <span class="menu-item-text">Vente directe</span>
             </a>
             <?php if ($admin_role === 'commercial_general'): ?>
             <a href="<?php echo $admin_nav_base; ?>caisse/retours.php"

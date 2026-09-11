@@ -204,7 +204,7 @@ $page_title = $titre_liste . ' — ' . htmlspecialchars($admin_cible['prenom'] .
                                 <td><?php echo htmlspecialchars($row['statut'] ?? ''); ?></td>
                                 <td><?php echo isset($row['montant_total']) ? number_format((float) $row['montant_total'], 0, ',', ' ') . ' FCFA' : '—'; ?></td>
                                 <td><?php echo htmlspecialchars($row['mode_paiement'] ?? '—'); ?></td>
-                                <td><a href="../caisse/index.php">Caisse</a></td>
+                                <td><a href="../caisse/index.php">Vente directe</a></td>
                             <?php elseif ($type === 'produits_crees' || $type === 'produits_modifies'): ?>
                                 <td><?php echo htmlspecialchars($row['nom'] ?? ''); ?></td>
                                 <td><?php echo isset($row['stock']) ? (int) $row['stock'] : '—'; ?></td>

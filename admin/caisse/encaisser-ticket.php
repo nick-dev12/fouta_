@@ -117,7 +117,7 @@ $auto_print = isset($_GET['imprimer']) && $_GET['imprimer'] === '1';
     <header class="caisse-page-head page-caisse-encaisser__hero">
         <div class="caisse-page-head-inner page-caisse-encaisser__head-inner">
             <div class="page-caisse-encaisser__head-text">
-                <p class="page-caisse-encaisser__eyebrow">Caisse magasin</p>
+                <p class="page-caisse-encaisser__eyebrow">Vente directe</p>
                 <h1 class="caisse-page-title" id="page-encaisser-title"><i class="fas fa-money-bill-wave" aria-hidden="true"></i> <?php echo htmlspecialchars($page_title); ?></h1>
             </div>
             <div class="caisse-encaisse-toolbar no-print page-caisse-encaisser__toolbar" role="toolbar" aria-label="Actions rapides">

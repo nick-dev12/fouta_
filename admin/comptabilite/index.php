@@ -674,7 +674,7 @@ $h_bilan_url = 'bilan.php?' . http_build_query(['b_periode' => 'plage', 'b_date_
                     <span class="compta-synthese-card__label">Ventes nettes</span>
                     <span class="compta-synthese-card__value"><?php echo $h_compta ? number_format($h_compta['ventes']['total'], 0, ',', ' ') : '—'; ?> <small>FCFA</small></span>
                     <span class="compta-synthese-card__detail"><?php echo $h_compta
-                        ? 'Caisse ' . number_format($h_compta['ventes']['caisse']['net'], 0, ',', ' ') . ' · Devis ' . number_format($h_compta['ventes']['devis']['net'], 0, ',', ' ')
+                        ? 'Vente directe ' . number_format($h_compta['ventes']['caisse']['net'], 0, ',', ' ') . ' · Devis ' . number_format($h_compta['ventes']['devis']['net'], 0, ',', ' ')
                             . ' · Bons ' . number_format($h_compta['ventes']['bons']['net'], 0, ',', ' ') . ' · Site ' . number_format($h_compta['ventes']['site']['net'], 0, ',', ' ')
                         : 'Calcul impossible : rechargez la page'; ?></span>
                 </div>
@@ -717,7 +717,7 @@ $h_bilan_url = 'bilan.php?' . http_build_query(['b_periode' => 'plage', 'b_date_
                 <button type="button" class="compta-tab compta-tab--caisse <?php echo $tab_caisse_active ? 'is-active' : ''; ?>" id="compta-tab-caisse" role="tab" aria-selected="<?php echo $tab_caisse_active ? 'true' : 'false'; ?>" aria-controls="compta-panel-caisse" data-compta-tab="caisse">
                     <span class="compta-tab__ic" aria-hidden="true"><i class="fas fa-cash-register"></i></span>
                     <span class="compta-tab__txt">
-                        <span class="compta-tab__label">Caisse magasin</span>
+                        <span class="compta-tab__label">Vente directe</span>
                         <span class="compta-tab__hint">Tickets TTC, filtres</span>
                     </span>
                 </button>
@@ -1258,8 +1258,8 @@ $h_bilan_url = 'bilan.php?' . http_build_query(['b_periode' => 'plage', 'b_date_
             ?>
             <div class="compta-hero compta-hero--caisse compta-caisse-hero compta-caisse-hero--premium">
                 <div class="compta-hero__copy">
-                    <p class="compta-caisse-eyebrow">Caisse magasin · TTC · <?php echo htmlspecialchars($c_caisse_periode_label); ?></p>
-                    <h2 class="compta-hero__title" id="compta-caisse-hero-title">Caisse magasin</h2>
+                    <p class="compta-caisse-eyebrow">Vente directe · TTC · <?php echo htmlspecialchars($c_caisse_periode_label); ?></p>
+                    <h2 class="compta-hero__title" id="compta-caisse-hero-title">Vente directe</h2>
                 </div>
             </div>
 
@@ -1312,7 +1312,7 @@ $h_bilan_url = 'bilan.php?' . http_build_query(['b_periode' => 'plage', 'b_date_
                 </div>
                 <?php endif; ?>
 
-                <div class="compta-caisse-filter-hub" aria-label="Filtres caisse magasin">
+                <div class="compta-caisse-filter-hub" aria-label="Filtres vente directe">
                     <form method="get" action="index.php" class="compta-ventes-filter compta-synthese-filter compta-caisse-compact-filter" id="compta-caisse-filters-form">
                         <input type="hidden" name="tab" value="caisse">
                         <?php if ($c_canal !== ''): ?>

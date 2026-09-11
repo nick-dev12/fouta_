@@ -113,7 +113,7 @@ $fcfa = static function ($n) {
             <p class="caisse-page-lead">Le client rapporte une pièce ? Retrouvez son ticket, choisissez ce qu’il rend et ce qu’il reçoit. Le caissier validera le retour : c’est lui qui rend l’argent.</p>
             <div class="caisse-hist-head-actions">
                 <a href="retours.php" class="btn-secondary"><i class="fas fa-list"></i> Retours clients</a>
-                <a href="index.php" class="btn-secondary"><i class="fas fa-cash-register"></i> Caisse magasin</a>
+                <a href="index.php" class="btn-secondary"><i class="fas fa-cash-register"></i> Vente directe</a>
             </div>
         </div>
     </header>

@@ -1372,5 +1372,24 @@ if ($base_locale) {
     }
 }
 
+echo "— libellé « Vente directe » (demande de la direction, 11/09/2026) —\n";
+$s17_restes = [];
+$s17_parcours = new RecursiveIteratorIterator(new RecursiveDirectoryIterator("$RACINE/admin", FilesystemIterator::SKIP_DOTS));
+foreach ($s17_parcours as $s17_fichier) {
+    if ($s17_fichier->getExtension() !== 'php') {
+        continue;
+    }
+    // Un commentaire de code peut garder l'ancien nom ; un libellé affiché, non.
+    foreach (preg_split('/\R/', (string) file_get_contents($s17_fichier->getPathname())) as $s17_n => $s17_ligne) {
+        if (stripos($s17_ligne, 'caisse magasin') !== false && !preg_match('#^\s*(\*|//|/\*|\#)#', $s17_ligne)) {
+            $s17_restes[] = basename($s17_fichier->getPathname()) . ':' . ($s17_n + 1);
+        }
+    }
+}
+verifie('plus aucun libellé « Caisse magasin » affiché dans l’administration', [], $s17_restes);
+verifie('le menu mène à la « Vente directe » : informaticien et commerciaux', 2,
+    substr_count(str_replace("\r\n", "\n", file_get_contents("$RACINE/admin/includes/nav.php")), '<span class="menu-item-text">Vente directe</span>'));
+verifie('la page porte son nouveau nom', true, strpos(file_get_contents("$RACINE/admin/caisse/index.php"), "\$page_title = 'Vente directe';") !== false);
+
 echo "\n$ok OK / $ko KO\n";
 exit($ko === 0 ? 0 : 1);

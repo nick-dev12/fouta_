@@ -199,7 +199,7 @@ $row(['Type de filtre', $types_filtre[$periode['type']] ?? $periode['type'], '',
 
 $blank();
 $banner('RAPPEL MÉTHODOLOGIQUE');
-$row(['Ventes', 'Caisse : tickets payés, date d’encaissement ; retours clients validés à leur date. Factures de devis : date de facture. Bons de livraison validés : date du bon, bons de retour à leur date ; les factures du mois ne s’ajoutent pas, elles regroupent ces bons. Site : commandes livrées ou payées, date de commande. Montants dus par le client.', '', '', '', '', '', '']);
+$row(['Ventes', 'Vente directe : tickets payés, date d’encaissement ; retours clients validés à leur date. Factures de devis : date de facture. Bons de livraison validés : date du bon, bons de retour à leur date ; les factures du mois ne s’ajoutent pas, elles regroupent ces bons. Site : commandes livrées ou payées, date de commande. Montants dus par le client.', '', '', '', '', '', '']);
 $row(['Encaissements', 'Caisse par moyen de paiement, moins les espèces rendues et plus les espèces reçues aux retours validés. Factures : registre des paiements, à la date du paiement ; factures payées avant le registre : montant de la facture à la date de paiement notée.', '', '', '', '', '', '']);
 $row(['À encaisser', 'À la date de l’export, quelle que soit la période : factures et bons pas encore soldés (un bon regroupé dans une facture du mois validée se compte par sa facture), commandes livrées non payées.', '', '', '', '', '', '']);
 $row(['Solde', 'Encaissements moins dépenses. Ce n’est pas un bénéfice : le coût d’achat des pièces n’est pas compté.', '', '', '', '', '', '']);
@@ -223,7 +223,7 @@ $se = $synthese['encaissements'];
 $sa = $synthese['a_encaisser'];
 $td = $data['totaux_dep'];
 $fr = 'bilan_export_fmt_fcfa';
-$row(['V_CAISSE', 'Ventes caisse magasin, retours déduits', 'Dû par le client', $fr($sv['caisse']['net']), 'FCFA', (string) $sv['caisse']['nb'],
+$row(['V_CAISSE', 'Ventes directes, retours déduits', 'Dû par le client', $fr($sv['caisse']['net']), 'FCFA', (string) $sv['caisse']['nb'],
     'Tickets ' . $fr($sv['caisse']['brut']) . ' · retours rendus ' . $fr($sv['caisse']['rendu']) . ' · pièces remises ' . $fr($sv['caisse']['remis']), '']);
 $row(['V_DEVIS', 'Ventes par factures de devis', 'Dû par le client', $fr($sv['devis']['net']), 'FCFA', (string) $sv['devis']['nb'], 'À la date de facture', '']);
 $row(['V_BL', 'Ventes par bons de livraison validés, retours déduits', 'Dû par le client', $fr($sv['bons']['net']), 'FCFA', (string) $sv['bons']['nb'],

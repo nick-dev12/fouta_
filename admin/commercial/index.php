@@ -141,7 +141,7 @@ $fpl_titre_page = 'Accueil';
     <div class="card" id="a-encaisser" style="margin-bottom:var(--s4)">
       <div class="card-head">
         <h2>Mes tickets en attente de caisse</h2>
-        <a href="../caisse/index.php" class="btn btn-outline btn-sm">Ouvrir la caisse</a>
+        <a href="../caisse/index.php" class="btn btn-outline btn-sm">Ouvrir la vente directe</a>
       </div>
       <?php if ($tickets_attente === []) : ?>
         <div class="empty">

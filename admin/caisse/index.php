@@ -108,7 +108,7 @@ $ticket_barcode_src = $ticket_data ? caisse_ticket_get_barcode_web_path($ticket_
 $ticket_barcode_payload = $ticket_data ? caisse_ticket_valeur_code_barres($ticket_data) : '';
 
 $tables_ok = caisse_tables_exist();
-$page_title = 'Caisse';
+$page_title = 'Vente directe';
 
 $preview_recu = null;
 $monnaie_preview = null;
@@ -169,7 +169,7 @@ $manque_preview = null;
 
         <?php if ($ticket_introuvable): ?>
         <div class="caisse-banner caisse-banner--warn">
-            Ticket introuvable. <a href="index.php">Retour à la caisse</a>
+            Ticket introuvable. <a href="index.php">Retour à la vente directe</a>
         </div>
         <?php endif; ?>
 
