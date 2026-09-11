@@ -408,7 +408,7 @@ h1.piece { font-family: var(--cond); font-size: 32px; line-height: 1.1; color: v
 
     <?php endif; ?>
 
-    <img class="slogan" src="/image/vitrine/slogan-manuscrit.png" alt="Conduire avec assurance — ak jomtukay you worr">
+    <img class="slogan" src="/image/vitrine/slogan-manuscrit.png?v=<?= (int) @filemtime(__DIR__ . '/image/vitrine/slogan-manuscrit.png') ?>" alt="Conduire avec assurance — ak jomtukay you worr">
 
     <nav class="liens" aria-label="Aller plus loin">
         <a href="/produits.php">Voir le catalogue</a>
