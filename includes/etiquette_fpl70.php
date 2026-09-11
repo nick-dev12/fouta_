@@ -35,6 +35,14 @@ define('ETQ70_BASE', 1654);
 /** Le côté logique du dessin de l'atelier. */
 define('ETQ70_LOGIQUE', 1080);
 
+/**
+ * L'ESPACE ENTRE LES LETTRES DE L'APPELLATION (Anton), en unités logiques.
+ * 11/09/2026, « agrandis les écritures appellation de même que nom français » :
+ * les titres montent de 40 à 48 px de capitale et ces lettres se resserrent de
+ * 5,3 à 2,0. Voir etiquette70_titres_disposer().
+ */
+define('ETQ70_ESPACE_APPEL', 2.0);
+
 /** Le marine du dessin ('#03215D'). */
 function etiquette70_marine($img)
 {
@@ -646,7 +654,7 @@ function etiquette70_donnees_pour_produit(array $produit)
  * « MÊME TAILLE » SE MESURE EN HAUTEUR DE CAPITALE, jamais au corps : à corps
  * égal, Anton monte 1,22 fois plus haut que Barlow Condensed. On cherche donc
  * UNE hauteur commune, la plus grande qui laisse les deux lignes tenir dans
- * leur largeur, plafonnée à 40 px.
+ * leur largeur, plafonnée à 48 px (40 jusqu'au 11/09/2026, voir plus bas).
  *
  * LE PLAFOND EST À 40, PAS À 56 (09/09/2026, second retour de la direction sur
  * 7750408447 : « les écritures sont grosses et pas à la même taille que les
@@ -657,6 +665,14 @@ function etiquette70_donnees_pour_produit(array $produit)
  * à 56, 77 % seulement. Et 40, c'est la taille que la direction a validée sur
  * les deux rétroviseurs du matin. Seuls les noms les plus longs descendent
  * encore en dessous.
+ *
+ * AGRANDIS LE 11/09/2026 (direction : « agrandis les écritures appellation de
+ * même que nom français ») : plafond 48 et lettres de l'appellation resserrées
+ * (ETQ70_ESPACE_APPEL, 5,3 → 2,0). La hauteur reste commune au catalogue :
+ * sur les 3 325 pièces de foutasvr, 94,0 % sortent à 48, autant qu'à 40 avec
+ * l'ancien espacement (93,7 %) ; à 48 sans resserrer, 84,8 % seulement. Le bloc
+ * garde son haut à 310 ; avec deux lignes, la barre bleue finit vers 455, sous
+ * le texte et au-dessus du slogan (492).
  *
  * LA LARGEUR : 730 unités depuis x = 285, soit jusqu'à 1015 sur les 1080 de
  * la toile logique. Les anciens budgets (520 / 560) laissaient un tiers de la
@@ -681,7 +697,7 @@ function etiquette70_donnees_pour_produit(array $produit)
  */
 function etiquette70_titres_disposer($wolof, $francais)
 {
-    $CAP_PLAFOND = 40.0;
+    $CAP_PLAFOND = 48.0;
     $CAP_PLANCHER = 26.0;
     $LARG_APPEL = 730.0;
     $LARG_FR = 730.0;
@@ -693,7 +709,7 @@ function etiquette70_titres_disposer($wolof, $francais)
     while ($cap > $CAP_PLANCHER) {
         $ca = etiquette70_corps_pour_cap('anton', $cap);
         $cf = etiquette70_corps_pour_cap('barlow_condensed_700', $cap);
-        $tient_appel = $wolof === '' || etiquette70_largeur_texte('anton', $wolof, $ca, 5.3) <= $LARG_APPEL;
+        $tient_appel = $wolof === '' || etiquette70_largeur_texte('anton', $wolof, $ca, ETQ70_ESPACE_APPEL) <= $LARG_APPEL;
         $tient_fr = $francais === '' || etiquette70_largeur_texte('barlow_condensed_700', $francais, $cf, 0.9) <= $LARG_FR;
         if ($tient_appel && $tient_fr) {
             break;
@@ -705,7 +721,7 @@ function etiquette70_titres_disposer($wolof, $francais)
     $cap_appel = $cap;
     $corps_appel = etiquette70_corps_pour_cap('anton', $cap_appel);
     while ($corps_appel > 14 && $wolof !== ''
-        && etiquette70_largeur_texte('anton', $wolof, $corps_appel, 5.3) > $LARG_APPEL) {
+        && etiquette70_largeur_texte('anton', $wolof, $corps_appel, ETQ70_ESPACE_APPEL) > $LARG_APPEL) {
         $corps_appel -= 1.0;
         $cap_appel = etiquette70_cap_hauteur('anton', $corps_appel);
     }
@@ -824,7 +840,7 @@ function etiquette70_rendu(array $donnees, $cote)
     $francais = mb_strtoupper(trim((string) $donnees['nom_francais']), 'UTF-8');
     $t = etiquette70_titres_disposer($wolof, $francais);
     if ($wolof !== '') {
-        etiquette70_texte($img, 285 * $s, $t['base_appel'] * $s, $wolof, 'anton', $t['corps_appel'] * $s, $encre, 5.3 * $s);
+        etiquette70_texte($img, 285 * $s, $t['base_appel'] * $s, $wolof, 'anton', $t['corps_appel'] * $s, $encre, ETQ70_ESPACE_APPEL * $s);
     }
     if ($francais !== '') {
         etiquette70_texte($img, 285 * $s, $t['base_fr'] * $s, $francais, 'barlow_condensed_700', $t['corps_fr'] * $s, $noir_titre, 0.9 * $s);

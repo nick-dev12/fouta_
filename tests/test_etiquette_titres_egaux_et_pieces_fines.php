@@ -63,12 +63,12 @@ $cas = [
 foreach ($cas as $c) {
     $t = etiquette70_titres_disposer($c[0], $c[1]);
     vrai("« $c[0] » / « " . mb_substr($c[1], 0, 28) . "… » : mêmes hauteurs à 1 px", abs($t['cap_appel'] - $t['cap_fr']) <= 1.0);
-    vrai("  … et l'appellation ne dépasse plus 40 px (elle faisait 79, puis 56)", $t['cap_appel'] <= 40.5);
+    vrai("  … et l'appellation ne dépasse pas 48 px (79, puis 56, puis 40 ; agrandie le 11/09)", $t['cap_appel'] <= 48.5);
     vrai("  … et le nom français dépasse 30 px (il faisait 30)", $t['cap_fr'] > 30.5);
     vrai('  … le nom français tient dans sa largeur (730)',
         etiquette70_largeur_texte('barlow_condensed_700', $c[1], $t['corps_fr'], 0.9) <= 730.0);
     vrai('  … l\'appellation tient dans sa largeur (730)',
-        etiquette70_largeur_texte('anton', $c[0], $t['corps_appel'], 5.3) <= 730.0);
+        etiquette70_largeur_texte('anton', $c[0], $t['corps_appel'], ETQ70_ESPACE_APPEL) <= 730.0);
     vrai('  … le bloc commence toujours au même endroit (haut à 310)', abs(($t['base_appel'] - $t['cap_appel']) - 310.0) <= 0.5);
     vrai('  … le nom français est SOUS l\'appellation, sans se toucher', $t['base_fr'] - $t['cap_fr'] >= $t['base_appel'] + 17.5);
 }
@@ -242,11 +242,18 @@ if ($res !== null) {
 echo "— une hauteur commune à TOUT le catalogue, et la barre bleue qui suit le texte —\n";
 /* Second retour de la direction (7750408447) : « les écritures sont grosses
    et pas à la même taille que les autres ». Un nom court doit sortir à la
-   même hauteur qu'un nom moyen : le plafond est commun, 40 px. */
+   même hauteur qu'un nom moyen : le plafond est commun, 48 px depuis le 11/09 (40 avant). */
 $court = etiquette70_titres_disposer('SETTU', 'CÂBLE DE VITESSE');
-$moyen = etiquette70_titres_disposer('SETTU', "RÉTROVISEUR D'ANTÉVISON MERCEDES BENZ");
-vrai('un nom court sort à 40 px, pas plus', abs($court['cap_fr'] - 40.0) <= 1.0 && abs($court['cap_appel'] - 40.0) <= 1.0);
+/* Le nom « moyen » est un nom de longueur MÉDIANE : 23 lettres, la médiane du
+   catalogue étant à 22 (mesuré le 11/09/2026 sur 3 235 noms). L'ancien exemple
+   (37 lettres) est plus long que 94 % des noms : il a son propre contrôle. */
+$moyen = etiquette70_titres_disposer('SETTU', "RÉTROVISEUR D'ANTÉVISON");
+$long = etiquette70_titres_disposer('SETTU', "RÉTROVISEUR D'ANTÉVISON MERCEDES BENZ");
+vrai('un nom court sort à 48 px, pas plus', abs($court['cap_fr'] - 48.0) <= 1.0 && abs($court['cap_appel'] - 48.0) <= 1.0);
+vrai('agrandi le 11/09 : les lettres de l’appellation sont resserrées (2,0 au lieu de 5,3)', ETQ70_ESPACE_APPEL === 2.0);
+vrai('… et la mesure comme le dessin lisent ce même espacement', substr_count((string) file_get_contents($RACINE . '/includes/etiquette_fpl70.php'), 'ETQ70_ESPACE_APPEL') >= 4);
 vrai('un nom moyen sort à la même hauteur que le court', abs($moyen['cap_fr'] - $court['cap_fr']) <= 1.0);
+vrai('un nom parmi les 6 % les plus longs ne descend pas sous 40 px (la taille d’avant)', $long['cap_fr'] >= 39.5);
 
 /* La barre bleue : effacée de la couche fixe, dessinée par le moteur à 35 px
    sous la ligne de base du nom français. On rend une étiquette avec la photo
@@ -272,7 +279,7 @@ $donnees = [
 ];
 $rendu = etiquette70_rendu($donnees, ETQ70_BASE);
 $s = ETQ70_BASE / ETQ70_LOGIQUE;
-$attendu_y = (int) round($moyen['base_fr'] * $s) + 35;
+$attendu_y = (int) round($long['base_fr'] * $s) + 35;   // les titres rendus sont ceux de $long
 $xm = (int) ((439 + 566) / 2);
 $c = imagecolorat($rendu, $xm, $attendu_y + 6);
 $r_ = ($c >> 16) & 255; $g_ = ($c >> 8) & 255; $b_ = $c & 255;
@@ -305,6 +312,26 @@ vrai('le cache du détourage est reparti (clé v14)', strpos($detour, "'|v14'") 
 vrai('le sauvetage des glaces est branché avant les portes', strpos($detour, '$diag_glaces = fpl_detour_sauver_glaces(') !== false);
 vrai('le garde-fou « squelettique » regarde le vide avant de refuser', strpos($detour, '$vrai_vide = ($remplissage >= 0.12 && $partIntrus < 0.10);') !== false);
 vrai('… à la tolérance SERRÉE du fond de studio (±10), pas à celle des diagnostics', strpos($detour, '$mR, $mV, $mB, $mSom, $nbModes, 10, true)) {') !== false);
+
+echo '— le slogan « Conduire avec assurance / ak jomtukay you worr » (11/09/2026) —' . PHP_EOL;
+$sl = imagecreatefrompng($RACINE . '/image/etiquette70/dessus-1654.png');
+$encre_zone = function ($x0, $x1, $y0, $y1) use ($sl) {
+    $n = 0;
+    for ($y = $y0; $y <= $y1; $y++) {
+        for ($x = $x0; $x <= $x1; $x++) {
+            $c = imagecolorat($sl, $x, $y);
+            if (((($c >> 24) & 127) < 60) && (($c & 255) > ((($c >> 16) & 255) + 25)) && ((($c >> 16) & 255) < 120)) {
+                $n++;
+            }
+        }
+    }
+    return $n;
+};
+vrai('« nd » de « ndakh » est effacé de la couche fixe', $encre_zone(410, 450, 850, 882) === 0);
+vrai('« ak » est posé plus à droite, juste avant « jomtukay »', $encre_zone(500, 556, 830, 876) > 300);
+vrai('le « b » de « jombtukay » est effacé (sa hampe ne monte plus au-dessus du « m »)', $encre_zone(612, 621, 819, 835) === 0);
+vrai('la page du QR dit la même phrase', strpos((string) file_get_contents($RACINE . '/p.php'), 'alt="Conduire avec assurance — ak jomtukay you worr"') !== false);
+imagedestroy($sl);
 
 echo "\n$ok OK / $ko KO\n";
 exit($ko === 0 ? 0 : 1);
