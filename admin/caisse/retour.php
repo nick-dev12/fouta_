@@ -234,8 +234,8 @@ $fcfa = static function ($n) {
             </fieldset>
 
             <div class="retour-bilan" aria-live="polite">
-                <span>Valeur rendue au prix payé : <strong id="bilan-rendu">0</strong> FCFA</span>
-                <span>Valeur des pièces remises : <strong id="bilan-remis">0</strong> FCFA</span>
+                <span>Valeur rendue au prix payé : <strong id="bilan-rendu">0</strong>&nbsp;FCFA</span>
+                <span>Valeur des pièces remises : <strong id="bilan-remis">0</strong>&nbsp;FCFA</span>
                 <strong id="bilan-especes">Aucun argent à échanger</strong>
             </div>
             <button type="submit" class="btn-primary"><i class="fas fa-undo"></i> Préparer le retour</button>
@@ -258,7 +258,7 @@ $fcfa = static function ($n) {
     var csrf = form.querySelector('input[name="csrf_token"]').value;
     var remises = document.getElementById('retour-remises');
     var fcfa = function (n) {
-        return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+        return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0');
     };
     var choisi = function (nom) {
         var c = form.querySelector('input[name="' + nom + '"]:checked');
@@ -295,8 +295,8 @@ $fcfa = static function ($n) {
         document.getElementById('bilan-especes').textContent = Math.abs(difference) < 0.5
             ? 'Aucun argent à échanger'
             : (difference < 0
-                ? 'Le caissier rendra ' + fcfa(-difference) + ' FCFA en espèces'
-                : 'Le client paiera ' + fcfa(difference) + ' FCFA en espèces au caissier');
+                ? 'Le caissier rendra ' + fcfa(-difference) + '\u00a0FCFA en espèces'
+                : 'Le client paiera ' + fcfa(difference) + '\u00a0FCFA en espèces au caissier');
     }
     function ajouterPiece() {
         var champ = document.getElementById('retour-code');
