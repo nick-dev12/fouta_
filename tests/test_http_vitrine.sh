@@ -31,7 +31,10 @@ PAGE=$(curl -s "$BASE/p/$EAN")
 dit "— la page vit et dit vrai —"
 verifie "/p/{ean13} répond 200" test "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/p/$EAN")" = 200
 verifie "le nom de la pièce s'affiche" grep -qi "filotre a air" <<<"$PAGE"
-verifie "la référence aérée s'affiche (FPL 001 004 648)" grep -q "FPL 001 004 648" <<<"$PAGE"
+REF_AFFICHEE=$("$PHP" -r 'require $argv[1]."/conn/conn.php"; require $argv[1]."/includes/fpl_ui.php";
+$r = trim((string) $db->query("SELECT reference_fpl FROM produits WHERE id = 2")->fetchColumn());
+echo $r !== "" ? fpl_code_afficher(strtoupper($r)) : "FPL 001 004 648";' "$RACINE")
+verifie "la référence de l'étiquette s'affiche ($REF_AFFICHEE, règle du 07/09)" grep -qF "$REF_AFFICHEE" <<<"$PAGE"
 verifie "le numéro du code-barres s'affiche ($EAN)" grep -q "$EAN" <<<"$PAGE"
 verifie "l'identité maison est là" grep -q "FOUTA POIDS LOURDS" <<<"$PAGE"
 verifie "le slogan manuscrit est posé" grep -q "slogan-manuscrit.png" <<<"$PAGE"
@@ -82,6 +85,23 @@ echo produit_emplacement_extraire_fpl_du_scan("https://e.foutapoidslourds.com/p/
 verifie "douchette sur le QR (URL ean13) → FPL001004648" test "$(cut -d'|' -f1 <<<"$SCANS")" = "FPL001004648"
 verifie "douchette sur un QR /p/FPL… → FPL001004648" test "$(cut -d'|' -f2 <<<"$SCANS")" = "FPL001004648"
 verifie "douchette sur le code-barres nu → FPL001004648" test "$(cut -d'|' -f3 <<<"$SCANS")" = "FPL001004648"
+
+dit "— la photo sans son fond (11/09/2026) —"
+PHOTO=$("$PHP" -r 'require $argv[1]."/conn/conn.php"; require $argv[1]."/includes/produit_vitrine.php";
+foreach ($db->query("SELECT id, identifiant_interne, image_principale, images, image_etiquette_fpl FROM produits WHERE sync_deleted_at IS NULL AND LENGTH(image_principale) > 0 ORDER BY id DESC LIMIT 400")->fetchAll(PDO::FETCH_ASSOC) as $p) {
+    if (fpl_vitrine_photos_chemins($p, $argv[1]."/upload") !== []) { echo fpl_vitrine_ean13_pour_produit($p); break; }
+}' "$RACINE")
+if [ -n "$PHOTO" ]; then
+    PAGEP=$(curl -s "$BASE/p/$PHOTO")
+    ADRESSE="$BASE/p-photo.php?code=$PHOTO&n=0&t=900"
+    verifie "la photo de la page passe par /p-photo.php" grep -q "p-photo.php?code=$PHOTO" <<<"$PAGEP"
+    verifie "l'aperçu partagé garde la photo d'origine" grep -q 'og:image" content="[^"]*/upload/' <<<"$PAGEP"
+    verifie "la photo servie est un WebP" test "$(curl -s -o /dev/null -w '%{content_type}' "$ADRESSE")" = "image/webp"
+    verifie "…dont le fond est transparent" test "$("$PHP" -r '$im = @imagecreatefromstring((string) @file_get_contents($argv[1])); echo $im ? ((imagecolorat($im, 1, 1) >> 24) & 127) : -1;' "$ADRESSE")" = 127
+    verifie "une photo qui n'existe pas → 404" test "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/p-photo.php?code=$PHOTO&n=99")" = 404
+else
+    dit "  (aucune pièce avec une photo dans cette base : section sautée)"
+fi
 
 dit "— fidélisation —"
 VC=$(curl -s "$BASE/p/$EAN?vcard=1")

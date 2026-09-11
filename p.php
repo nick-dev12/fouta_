@@ -119,26 +119,18 @@ if ($piece) {
         $ref_aeree = 'FPL ' . implode(' ', str_split($m[1], 3));
     }
 
-    $bruts = [];
-    if (!empty($piece['image_principale'])) {
-        $bruts[] = (string) $piece['image_principale'];
-    }
-    $galerie = json_decode((string) ($piece['images'] ?? ''), true);
-    if (is_array($galerie)) {
-        foreach ($galerie as $g) {
-            if (is_string($g) && $g !== '') {
-                $bruts[] = $g;
-            }
-        }
-    }
-    if ($bruts === [] && !empty($piece['image_etiquette_fpl'])) {
-        $bruts[] = (string) $piece['image_etiquette_fpl'];
-    }
-    foreach (array_values(array_unique($bruts)) as $chemin) {
-        $chemin = ltrim(str_replace('\\', '/', $chemin), '/');
-        if (is_file(__DIR__ . '/upload/' . $chemin)) {
-            $photos[] = '/upload/' . implode('/', array_map('rawurlencode', explode('/', $chemin)));
-        }
+    /* LA PIÈCE SANS SON FOND (11/09/2026, direction : « enlève le fond blanc de
+       l'image quand on scanne le code QR »). Chaque photo passe par
+       /p-photo.php, qui sert la pièce détourée comme sur l'étiquette ; l'aperçu
+       partagé (og:image) garde la photo d'origine. */
+    $code_photo = $ean13 !== '' ? $ean13 : (string) $piece['identifiant_interne'];
+    foreach (fpl_vitrine_photos_chemins($piece, __DIR__ . '/upload') as $rang => $chemin) {
+        $adresse = '/p-photo.php?code=' . rawurlencode($code_photo) . '&n=' . $rang . '&v=' . filemtime(__DIR__ . '/upload/' . $chemin);
+        $photos[] = [
+            'grande' => $adresse . '&t=900',
+            'vignette' => $adresse . '&t=180',
+            'originale' => '/upload/' . implode('/', array_map('rawurlencode', explode('/', $chemin))),
+        ];
     }
 
     $dispo = ($piece['statut'] === 'actif' && (int) $piece['stock'] > 0);
@@ -202,7 +194,7 @@ header('Expires: 0');
 <meta property="og:title" content="<?= fpl_e($titre) ?>">
 <meta property="og:description" content="<?= fpl_e($meta_desc) ?>">
 <?php if ($photos !== []): ?>
-<meta property="og:image" content="<?= fpl_e($origine . $photos[0]) ?>">
+<meta property="og:image" content="<?= fpl_e($origine . $photos[0]['originale']) ?>">
 <?php endif; ?>
 <style>
 /* La boutique qui vous répond — une colonne, lumière chaude, l'outremer de
@@ -333,11 +325,11 @@ h1.piece { font-family: var(--cond); font-size: 32px; line-height: 1.1; color: v
 
     <section class="carte photo-carte">
         <?php if ($photos !== []): ?>
-        <div class="visuel"><img id="photo-principale" src="<?= fpl_e($photos[0]) ?>" alt="<?= fpl_e($piece['nom']) ?>"></div>
+        <div class="visuel"><img id="photo-principale" src="<?= fpl_e($photos[0]['grande']) ?>" alt="<?= fpl_e($piece['nom']) ?>"></div>
         <?php if (count($photos) > 1): ?>
         <div class="vignettes">
             <?php foreach ($photos as $i => $ph): ?>
-            <button type="button" class="<?= $i === 0 ? 'active' : '' ?>" data-src="<?= fpl_e($ph) ?>" aria-label="Photo <?= $i + 1 ?>"><img src="<?= fpl_e($ph) ?>" alt=""></button>
+            <button type="button" class="<?= $i === 0 ? 'active' : '' ?>" data-src="<?= fpl_e($ph['grande']) ?>" aria-label="Photo <?= $i + 1 ?>"><img src="<?= fpl_e($ph['vignette']) ?>" alt=""></button>
             <?php endforeach; ?>
         </div>
         <?php endif; ?>
