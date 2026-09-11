@@ -743,10 +743,10 @@ $h_bilan_url = 'bilan.php?' . http_build_query(['b_periode' => 'plage', 'b_date_
                 <div class="compta-hero__copy">
                     <h2 class="compta-hero__title">Ventes &amp; commandes e-commerce</h2>
                     <div class="compta-hero__actions">
-                        <?php if (!admin_is_restricted_admin_account()): ?>
+                        <?php if (!admin_is_restricted_admin_account() && admin_commandes_site_visibles()): ?>
                         <a href="../commandes/index.php" class="compta-btn compta-btn--primary"><i class="fas fa-list" aria-hidden="true"></i> Ouvrir les commandes</a>
                         <?php endif; ?>
-                        <?php if ($is_admin_role): ?>
+                        <?php if ($is_admin_role && admin_commandes_site_visibles()): ?>
                             <a href="../commandes/historique-ventes.php" class="compta-btn compta-btn--secondary"><i class="fas fa-chart-line" aria-hidden="true"></i> Historique des ventes</a>
                         <?php endif; ?>
                     </div>

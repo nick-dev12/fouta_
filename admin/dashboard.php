@@ -287,7 +287,7 @@ $dash_date_longue = fpl_date_longue();
         </div>
         <script type="application/json" id="dashChartsData"><?php echo json_encode($dash_charts_payload, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP); ?></script>
 
-        <?php if ($dashboard_show_commandes && ($en_attente > 0 || $prise_en_charge > 0)): ?>
+        <?php if ($dashboard_show_commandes && admin_commandes_site_visibles() && ($en_attente > 0 || $prise_en_charge > 0)): ?>
             <div class="alert-box alert-box--dashboard">
                 <p>
                     <i class="fas fa-exclamation-circle"></i>

@@ -167,7 +167,8 @@ include __DIR__ . '/../../includes/pwa_admin_boot.php';
                 <span class="menu-item-icon ico" aria-hidden="true"><?php echo fpl_icone('layers', 16); ?></span>
                 <span class="menu-item-text">Structure de l'entrepôt</span>
             </a>
-            <?php if ($admin_nav_is_tech_full): ?>
+            <?php /* Commandes du site masquées tant qu'elles ne servent pas (11/09/2026) : admin_commandes_site_visibles(). */ ?>
+            <?php if ($admin_nav_is_tech_full && admin_commandes_site_visibles()): ?>
             <a href="<?php echo $admin_nav_base; ?>commandes/index.php"
                 class="menu-item mi-commandes<?php echo ($is_commandes && ($current_page == 'index.php' || $current_page == 'livrees.php' || $current_page == 'annulees.php' || $current_page == 'details.php' || $current_page == 'historique-ventes.php')) ? ' active' : ''; ?>">
                 <span class="menu-item-icon ico" aria-hidden="true"><i class="fas fa-shopping-cart"></i></span>
@@ -260,11 +261,13 @@ include __DIR__ . '/../../includes/pwa_admin_boot.php';
                 <span class="menu-item-text">BL &amp; retours</span>
             </a>
             <?php endif; ?>
+            <?php if (admin_commandes_site_visibles()): ?>
             <a href="<?php echo $admin_nav_base; ?>commandes/index.php"
                 class="menu-item mi-commandes<?php echo ($is_commandes && ($current_page == 'index.php' || $current_page == 'livrees.php' || $current_page == 'annulees.php' || $current_page == 'details.php' || $current_page == 'historique-ventes.php')) ? ' active' : ''; ?>">
                 <span class="menu-item-icon ico" aria-hidden="true"><i class="fas fa-shopping-cart"></i></span>
                 <span class="menu-item-text">Commandes</span>
             </a>
+            <?php endif; ?>
             <?php if ($admin_role === 'commercial_general'): ?>
             <a href="<?php echo $admin_nav_base; ?>stock/mouvements.php"
                 class="menu-item mi-mouvements<?php echo $current_page == 'mouvements.php' ? ' active' : ''; ?>">
@@ -319,11 +322,13 @@ include __DIR__ . '/../../includes/pwa_admin_boot.php';
                 <span class="menu-item-icon ico" aria-hidden="true"><i class="fas fa-address-book"></i></span>
                 <span class="menu-item-text">Contacts</span>
             </a>
+            <?php if (admin_commandes_site_visibles()): ?>
             <a href="<?php echo $admin_nav_base; ?>commandes/historique-ventes.php"
                 class="menu-item mi-hist-ventes<?php echo ($is_commandes && $current_page === 'historique-ventes.php') ? ' active' : ''; ?>">
                 <span class="menu-item-icon ico" aria-hidden="true"><i class="fas fa-chart-line"></i></span>
                 <span class="menu-item-text">Historique des ventes</span>
             </a>
+            <?php endif; ?>
             <?php elseif ($admin_role === 'rh'): ?>
             <a href="<?php echo $admin_nav_base; ?>contacts/index.php"
                 class="menu-item mi-contacts<?php echo $is_contacts ? ' active' : ''; ?>">

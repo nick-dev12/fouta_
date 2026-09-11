@@ -147,6 +147,17 @@ if (!function_exists('admin_current_role')) {
     }
 
     /**
+     * La page « Commandes » du site est-elle montrée ? (11/09/2026)
+     * Décision de la direction : masquée tant qu'elle ne sert pas (aucune commande
+     * du site enregistrée, aucune zone de livraison). Les entrées du menu et les
+     * boutons qui y mènent disparaissent ; les pages restent en place et s'ouvrent
+     * par leur adresse. Remettre true pour les réafficher partout.
+     */
+    function admin_commandes_site_visibles() {
+        return false;
+    }
+
+    /**
      * Préparer un retour client en caisse (11/09/2026) : le commercial général
      * constate, choisit le motif et la solution. Le caissier valide ensuite : il
      * rend ou reçoit les espèces (admin_can_encaisser_ticket). Le commercial

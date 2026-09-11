@@ -1391,5 +1391,16 @@ verifie('le menu mène à la « Vente directe » : informaticien et commerciaux'
     substr_count(str_replace("\r\n", "\n", file_get_contents("$RACINE/admin/includes/nav.php")), '<span class="menu-item-text">Vente directe</span>'));
 verifie('la page porte son nouveau nom', true, strpos(file_get_contents("$RACINE/admin/caisse/index.php"), "\$page_title = 'Vente directe';") !== false);
 
+echo "— la page Commandes du site est masquée (demande de la direction, 11/09/2026) —\n";
+verifie('le réglage masque les commandes du site', false, admin_commandes_site_visibles());
+verifie('les trois entrées du menu passent par le réglage', 3,
+    substr_count(file_get_contents("$RACINE/admin/includes/nav.php"), 'admin_commandes_site_visibles()') - 1);
+verifie('les deux boutons de la comptabilité et l’alerte du tableau de bord aussi', [2, 1], [
+    substr_count(file_get_contents("$RACINE/admin/comptabilite/index.php"), 'admin_commandes_site_visibles()'),
+    substr_count(file_get_contents("$RACINE/admin/dashboard.php"), 'admin_commandes_site_visibles()'),
+]);
+verifie('les pages restent en place : un seul réglage les réaffiche', [true, true],
+    [is_file("$RACINE/admin/commandes/index.php"), admin_route_is_allowed('commercial_general', 'commandes/index.php')]);
+
 echo "\n$ok OK / $ko KO\n";
 exit($ko === 0 ? 0 : 1);
