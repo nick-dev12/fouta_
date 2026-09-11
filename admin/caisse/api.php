@@ -93,6 +93,10 @@ if ($action === 'resolve_product') {
     if (!$res['ok']) {
         caisse_api_out(['ok' => false, 'error' => $res['error'] ?? 'Produit introuvable.']);
     }
+    // Le prix vient du catalogue (11/09/2026) : une pièce sans prix se demande, elle ne s'ajoute pas.
+    if (caisse_prix_unitaire_produit($res['produit']) <= 0) {
+        caisse_api_out(['ok' => false, 'sans_prix' => true, 'produit_id' => (int) $res['produit']['id'], 'error' => caisse_message_sans_prix($res['produit']['nom'] ?? '')]);
+    }
     caisse_api_out([
         'ok' => true,
         'type' => 'produit',
@@ -110,7 +114,25 @@ if ($action === 'get_product') {
     if ((int) ($p['stock'] ?? 0) <= 0) {
         caisse_api_out(['ok' => false, 'error' => 'Produit en rupture de stock.']);
     }
+    if (caisse_prix_unitaire_produit($p) <= 0) {
+        caisse_api_out(['ok' => false, 'sans_prix' => true, 'produit_id' => (int) $p['id'], 'error' => caisse_message_sans_prix($p['nom'] ?? '')]);
+    }
     caisse_api_out(['ok' => true, 'produit' => caisse_produit_api_format($p)]);
+}
+
+if ($action === 'demander_prix') {
+    /* DEMANDER LE PRIX D'UNE PIÈCE (11/09/2026) : le vendeur ne tape plus de prix ;
+     * le responsable de stock le fixe au catalogue. Règles : model_demandes_prix.php. */
+    if (!admin_can_caisse_vendeur()) {
+        caisse_api_out(['ok' => false, 'error' => 'Action non autorisée.'], 403);
+    }
+    caisse_api_check_csrf($input);
+    require_once __DIR__ . '/../../models/model_demandes_prix.php';
+    $res = demande_prix_creer((int) ($input['produit_id'] ?? 0), (int) $_SESSION['admin_id']);
+    if (empty($res['ok'])) {
+        caisse_api_out(['ok' => false, 'error' => $res['error'] ?? 'La demande de prix a été refusée.']);
+    }
+    caisse_api_out(['ok' => true, 'message' => demandes_prix_message_demande($res)]);
 }
 
 if ($action === 'generer_ticket') {
@@ -124,7 +146,7 @@ if ($action === 'generer_ticket') {
     }
     $built = caisse_build_cart_from_payload($payload);
     if (!$built['ok']) {
-        caisse_api_out(['ok' => false, 'error' => $built['error'] ?? 'Panier invalide.']);
+        caisse_api_out(['ok' => false, 'error' => $built['error'] ?? 'Panier invalide.', 'sans_prix' => !empty($built['sans_prix']), 'produit_id' => (int) ($built['produit_id'] ?? 0)]);
     }
     $res = caisse_creer_ticket_en_attente((int) $_SESSION['admin_id'], $built['cart']);
     if (!$res['ok']) {
@@ -156,7 +178,7 @@ if ($action === 'encaisser') {
     }
     $built = caisse_build_cart_from_payload($payload);
     if (!$built['ok']) {
-        caisse_api_out(['ok' => false, 'error' => $built['error'] ?? 'Panier invalide.']);
+        caisse_api_out(['ok' => false, 'error' => $built['error'] ?? 'Panier invalide.', 'sans_prix' => !empty($built['sans_prix']), 'produit_id' => (int) ($built['produit_id'] ?? 0)]);
     }
     $cart = $built['cart'];
     $mode = trim((string) ($input['mode_paiement'] ?? 'especes'));

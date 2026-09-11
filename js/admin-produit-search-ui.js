@@ -214,6 +214,74 @@
         if (hidden) {
             hidden.value = effectiveLineUnitPrice(row, calc);
         }
+        marquerLigneSansPrix(row, calc);
+    }
+
+    /* LE PRIX VIENT DU CATALOGUE (11/09/2026), décision de la direction : le
+       vendeur ne tape plus aucun prix. Une ligne dont la pièce n'a pas le prix
+       choisi pour le total le dit, et propose de le demander au responsable de
+       stock. Le serveur refuse de toute façon un document qui en contient une. */
+    function marquerLigneSansPrix(row, calc) {
+        var totalCell = row.querySelector('.ligne-bl-cell-total');
+        var note = row.querySelector('.ligne-sans-prix-note');
+        var champPid = row.querySelector('input[name$="[produit_id]"]');
+        var pid = row.getAttribute('data-produit-id') || (champPid ? champPid.value : '');
+        var sansPrix = !!row.querySelector('.ligne-prix-champ') && pid !== '' && effectiveLineUnitPrice(row, calc) <= 0;
+        row.classList.toggle('ligne-sans-prix', sansPrix);
+        if (!sansPrix || !totalCell) {
+            if (note) {
+                note.remove();
+            }
+            return;
+        }
+        if (note && note.getAttribute('data-champ') === calc) {
+            return;
+        }
+        if (!note) {
+            note = document.createElement('div');
+            note.className = 'ligne-sans-prix-note';
+            totalCell.appendChild(note);
+        }
+        note.setAttribute('data-champ', calc);
+        note.textContent = '';
+        var texte = document.createElement('span');
+        texte.textContent = 'Sans prix au catalogue';
+        var bouton = document.createElement('button');
+        bouton.type = 'button';
+        bouton.className = 'ligne-demander-prix';
+        bouton.setAttribute('data-produit-id', pid);
+        bouton.setAttribute('data-champ', calc);
+        bouton.textContent = 'Demander le prix';
+        note.appendChild(texte);
+        note.appendChild(bouton);
+    }
+
+    function demanderPrixLigne(bouton) {
+        var form = bouton.closest('form');
+        var jeton = form ? form.querySelector('input[name="csrf_token"]') : null;
+        var corps = new FormData();
+        corps.append('csrf_token', jeton ? jeton.value : '');
+        corps.append('produit_id', bouton.getAttribute('data-produit-id') || '');
+        corps.append('champ', bouton.getAttribute('data-champ') || 'prix');
+        bouton.disabled = true;
+        bouton.textContent = 'Demande en cours…';
+        fetch(global.FoutaDemanderPrixUrl || 'ajax_demander_prix.php', { method: 'POST', body: corps, credentials: 'same-origin' })
+            .then(function (r) {
+                return r.json();
+            })
+            .then(function (res) {
+                var reponse = document.createElement('span');
+                reponse.className = 'ligne-prix-demande' + (res && res.ok ? '' : ' ligne-prix-demande--refus');
+                reponse.textContent = res && res.ok ? 'Prix demandé au responsable de stock' : ((res && res.error) || 'La demande n’a pas abouti.');
+                if (res && res.message) {
+                    reponse.title = res.message;
+                }
+                bouton.replaceWith(reponse);
+            })
+            .catch(function () {
+                bouton.disabled = false;
+                bouton.textContent = 'Réessayer la demande';
+            });
     }
 
     function updateAllLigneTotals(container, calcSlug) {
@@ -261,6 +329,13 @@
         }
         container.addEventListener('input', onLineFieldChange);
         container.addEventListener('change', onLineFieldChange);
+        container.addEventListener('click', function (ev) {
+            var bouton = ev.target && ev.target.closest ? ev.target.closest('.ligne-demander-prix') : null;
+            if (bouton && !bouton.disabled) {
+                ev.preventDefault();
+                demanderPrixLigne(bouton);
+            }
+        });
     }
 
     function slugVisible(slug) {
@@ -404,11 +479,12 @@
                 esc(ch.slug) +
                 ']" value="' +
                 displayVal +
-                '" min="0" step="0.01" class="ligne-prix-champ" data-slug="' +
+                '" min="0" step="0.01" class="ligne-prix-champ" readonly tabindex="-1" placeholder="Sans prix"' +
+                ' title="Prix du catalogue : seul le responsable de stock le fixe" data-slug="' +
                 esc(ch.slug) +
                 '" aria-label="' +
                 esc(ch.label) +
-                ' en FCFA" inputmode="decimal">' +
+                ' en FCFA, prix du catalogue" inputmode="decimal">' +
                 '<span class="ligne-unit-fcfa">FCFA</span>' +
                 '</div>' +
                 '</div>';

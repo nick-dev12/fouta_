@@ -47,28 +47,25 @@ $zone_livraison_id = isset($_POST['zone_livraison_id']) && $_POST['zone_livraiso
 $frais_livraison = (float) ($_POST['frais_livraison'] ?? 0);
 $user_id = isset($_POST['user_id']) && $_POST['user_id'] !== '' ? (int) $_POST['user_id'] : null;
 
-$items = [];
-if (!empty($_POST['lignes']) && is_array($_POST['lignes'])) {
-    foreach (array_values($_POST['lignes']) as $l) {
-        $produit_id = (int) ($l['produit_id'] ?? 0);
-        $quantite = (int) ($l['quantite'] ?? 1);
-        $pu = produit_formulaire_devis_prix_unitaire_depuis_ligne($l, $champ_prix_calcul);
-        if ($produit_id > 0 && $quantite > 0 && $pu > 0) {
-            $items[] = [
-                'produit_id' => $produit_id,
-                'quantite' => $quantite,
-                'prix_unitaire' => $pu,
-                'nom_produit' => isset($l['nom_produit']) ? trim($l['nom_produit']) : null
-            ];
-        }
-    }
-}
+/* LE PRIX VIENT DU CATALOGUE (11/09/2026), décision de la direction : le vendeur
+ * ne tape plus aucun prix. Chaque ligne reprend le prix de sa pièce au catalogue,
+ * dans la colonne choisie pour le total ; le prix envoyé par l'écran est ignoré.
+ * Une pièce sans ce prix refuse le document, et son prix est demandé au
+ * responsable de stock. Règles : models/model_demandes_prix.php. */
+require_once __DIR__ . '/../../models/model_demandes_prix.php';
+$lignes_catalogue = demandes_prix_lignes_document(
+    !empty($_POST['lignes']) && is_array($_POST['lignes']) ? $_POST['lignes'] : [],
+    $champ_prix_calcul
+);
+$items = $lignes_catalogue['items'];
 
 $erreur = null;
 if (empty($client_nom)) {
     $erreur = 'Le nom du client est requis.';
 } elseif (empty($client_telephone)) {
     $erreur = 'Le téléphone du client est requis.';
+} elseif ($lignes_catalogue['sans_prix'] !== []) {
+    $erreur = demandes_prix_refus_document($lignes_catalogue['sans_prix'], (int) $_SESSION['admin_id']);
 } elseif (empty($items)) {
     $erreur = 'Ajoutez au moins un produit au devis.';
 }

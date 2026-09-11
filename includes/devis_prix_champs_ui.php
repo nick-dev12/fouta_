@@ -191,6 +191,15 @@ function devis_prix_ligne_cellules_render($idx, array $ligne, $champ_calcul_slug
     }
     $prix_champs = isset($ligne['prix_champs']) && is_array($ligne['prix_champs']) ? $ligne['prix_champs'] : [];
     $pu_calc = produit_formulaire_devis_prix_unitaire_depuis_ligne($ligne, $champ_calcul_slug);
+    /* LE PRIX VIENT DU CATALOGUE (11/09/2026) : une ligne dont on connaît la pièce
+     * montre son prix au catalogue, jamais un montant renvoyé par le formulaire. */
+    if ($produit !== null) {
+        foreach ($champs as $ch_calc) {
+            if ((string) ($ch_calc['slug'] ?? '') === (string) $champ_calcul_slug) {
+                $pu_calc = produit_formulaire_devis_prix_valeur_produit($produit, $ch_calc);
+            }
+        }
+    }
     foreach ($champs as $ch) {
         $slug = (string) ($ch['slug'] ?? '');
         if ($slug === '' || !in_array($slug, $slugs_visibles, true)) {
@@ -198,11 +207,11 @@ function devis_prix_ligne_cellules_render($idx, array $ligne, $champ_calcul_slug
         }
         $label = (string) ($ch['label'] ?? $slug);
         $val = '';
-        if (isset($prix_champs[$slug]) && $prix_champs[$slug] !== '') {
-            $val = (string) $prix_champs[$slug];
-        } elseif ($produit !== null) {
+        if ($produit !== null) {
             $num = produit_formulaire_devis_prix_valeur_produit($produit, $ch);
             $val = $num > 0 ? (string) $num : '';
+        } elseif (isset($prix_champs[$slug]) && $prix_champs[$slug] !== '') {
+            $val = (string) $prix_champs[$slug];
         } elseif ($slug === $champ_calcul_slug && isset($ligne['prix_unitaire'])) {
             $val = (string) $ligne['prix_unitaire'];
         }
@@ -212,8 +221,9 @@ function devis_prix_ligne_cellules_render($idx, array $ligne, $champ_calcul_slug
         echo '<div class="ligne-bl-prix-row">';
         echo '<input type="number" name="lignes[' . (int) $idx . '][prix_champs][' . htmlspecialchars($slug, ENT_QUOTES, 'UTF-8') . ']"';
         echo ' value="' . htmlspecialchars($val, ENT_QUOTES, 'UTF-8') . '" min="0" step="0.01"';
-        echo ' class="ligne-prix-champ" data-slug="' . htmlspecialchars($slug, ENT_QUOTES, 'UTF-8') . '"';
-        echo ' aria-label="' . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . ' en FCFA" inputmode="decimal">';
+        echo ' class="ligne-prix-champ" readonly tabindex="-1" placeholder="Sans prix" title="Prix du catalogue : seul le responsable de stock le fixe"';
+        echo ' data-slug="' . htmlspecialchars($slug, ENT_QUOTES, 'UTF-8') . '"';
+        echo ' aria-label="' . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . ' en FCFA, prix du catalogue" inputmode="decimal">';
         echo '<span class="ligne-unit-fcfa">FCFA</span>';
         echo '</div></div>';
     }

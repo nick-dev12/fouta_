@@ -255,3 +255,23 @@
     font-size: 0.85rem;
   }
 }
+
+/* PRIX DEMANDÉS (11/09/2026) : l'entrée du menu et le nombre de prix qui attendent */
+.admin-sidebar .mi-prix-demandes .menu-item-icon {
+  background: rgba(180, 83, 9, 0.12);
+  color: #B45309;
+}
+
+.admin-sidebar .menu-item-compte {
+  flex: 0 0 auto;
+  min-width: 24px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #B45309;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.35;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}

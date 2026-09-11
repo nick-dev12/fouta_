@@ -880,3 +880,36 @@ body.admin-caisse-page .caisse-ticket-view-modal--fullscreen .caisse-ticket-card
     border-radius: 0 !important;
   }
 }
+
+/* LE PRIX VIENT DU CATALOGUE (11/09/2026) : lu, jamais tapé ; une pièce sans prix se demande. */
+.caisse-prix-catalogue {
+  display: inline-block;
+  min-width: 72px;
+  padding: 6px 4px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.caisse-demander-prix {
+  margin-left: 8px;
+  padding: 4px 12px;
+  border: 1px solid #10316F;
+  border-radius: 6px;
+  background: #FFFFFF;
+  color: #10316F;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.caisse-demander-prix:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.caisse-demander-prix:focus-visible {
+  outline: 2px solid #10316F;
+  outline-offset: 2px;
+}

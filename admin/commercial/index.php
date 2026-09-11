@@ -19,8 +19,9 @@
  * Ont été retirés avec eux les compteurs du haut, les factures à relancer et les
  * devis sans réponse. L'accueil garde ce qui attend son geste (retours clients
  * en attente de caisse, bons de livraison en brouillon) et montre ce qui l'aide
- * au comptoir, mesuré en base : les pièces vendues presque épuisées, et les
- * pièces vendues sans prix au catalogue avec le dernier prix pratiqué.
+ * au comptoir, mesuré en base : les pièces vendues presque épuisées, et ses
+ * demandes de prix. Depuis le 11/09/2026 le vendeur ne tape plus aucun prix :
+ * une pièce sans prix se demande au responsable de stock, qui le fixe.
  *
  * Programmation procédurale uniquement.
  */
@@ -43,6 +44,7 @@ if (!admin_can_caisse_vendeur()) {
 require_once __DIR__ . '/../../includes/fpl_texte.php';  // fpl_e(), appelé par le menu
 require_once __DIR__ . '/../../includes/fpl_ui.php';
 require_once __DIR__ . '/../../models/model_commercial_accueil.php';
+require_once __DIR__ . '/../../models/model_demandes_prix.php';
 require_once __DIR__ . '/../../models/model_devis.php';  // devis_statut_libelle()
 
 $moi = (int) $_SESSION['admin_id'];
@@ -52,13 +54,14 @@ $peut_retour = admin_can_preparer_retour_caisse();
 $retours_attente = [];
 $bl_brouillons = [];
 $pieces_epuisees = [];
-$pieces_sans_prix = [];
+$demandes_prix = [];
 $lecture_ko = false;
 try {
     $retours_attente = commercial_retours_en_attente($moi);
     $bl_brouillons = $peut_bl ? commercial_bl_brouillons($moi) : [];
     $pieces_epuisees = commercial_pieces_vendues_presque_epuisees(2, 90, 10);
-    $pieces_sans_prix = commercial_pieces_vendues_sans_prix(90, 10);
+    demandes_prix_solder_prix_poses();
+    $demandes_prix = demandes_prix_du_vendeur($moi, 7, 20);
 } catch (Throwable $e) {
     error_log('[commercial/index] ' . $e->getMessage());
     $lecture_ko = true;
@@ -218,33 +221,39 @@ $fpl_titre_page = 'Accueil';
       <?php endif; ?>
     </div>
 
-    <div class="card" id="pieces-sans-prix" style="margin-bottom:var(--s4)">
+    <div class="card" id="mes-demandes-prix" style="margin-bottom:var(--s4)">
       <div class="card-head">
-        <h2>Pièces vendues sans prix au catalogue</h2>
+        <h2>Mes demandes de prix</h2>
+        <a href="../caisse/index.php" class="btn btn-outline btn-sm">Vente directe</a>
       </div>
-      <p class="muted ca-aide">Ces 90 derniers jours, leur prix a été tapé à la main. Reprenez le dernier prix pratiqué pour vendre au même prix ; la gestion du stock fixe le prix au catalogue.</p>
-      <?php if ($pieces_sans_prix === []) : ?>
+      <p class="muted ca-aide">Une pièce sans prix au catalogue ne se vend pas : demandez son prix depuis la vente directe, le responsable de stock le fixe. Les prix fixés ces 7 derniers jours restent ici pour rappeler le client.</p>
+      <?php if ($demandes_prix === []) : ?>
         <div class="empty">
           <span class="big"><?php echo fpl_icone('package', 34); ?></span>
-          Toutes les pièces vendues ces 90 derniers jours ont un prix au catalogue.
+          Aucune demande de prix en cours.
         </div>
       <?php else : ?>
         <div class="table-wrap">
           <table>
             <thead>
-              <tr><th>Pièce</th><th class="num">Tickets</th><th class="num">Dernier prix pratiqué</th><th>Dernière vente</th><th></th></tr>
+              <tr><th>Pièce</th><th>Demandée le</th><th>État</th><th></th></tr>
             </thead>
             <tbody>
-              <?php foreach ($pieces_sans_prix as $p) : ?>
+              <?php foreach ($demandes_prix as $d) : ?>
                 <tr>
                   <td>
-                    <div class="cell-title"><?php echo e($p['nom']); ?></div>
-                    <div class="cell-sub"><span class="chip-code"><?php echo e($p['identifiant_interne']); ?></span></div>
+                    <div class="cell-title"><?php echo e($d['nom']); ?></div>
+                    <div class="cell-sub"><span class="chip-code"><?php echo e($d['identifiant_interne']); ?></span></div>
                   </td>
-                  <td class="num"><?php echo (int) $p['ventes']; ?></td>
-                  <td class="num"><span class="qty"><?php echo fpl_montant($p['dernier_prix']); ?></span> <span class="muted">FCFA</span></td>
-                  <td class="muted"><?php echo date('d/m/Y', strtotime((string) $p['derniere_vente'])); ?></td>
-                  <td class="num"><a class="btn btn-outline btn-sm" href="../caisse/index.php?q=<?php echo rawurlencode((string) $p['identifiant_interne']); ?>">Voir en vente directe</a></td>
+                  <td class="muted"><?php echo date('d/m/Y à H:i', strtotime((string) $d['date_demande'])); ?></td>
+                  <td>
+                    <?php if ($d['statut'] === 'traitee') : ?>
+                      <span class="badge ok"><?php echo e($d['champ'] === 'prix' ? 'Prix fixé' : $d['libelle'] . ' fixé'); ?> : <?php echo fpl_montant($d['prix_fixe']); ?>&nbsp;FCFA</span>
+                    <?php else : ?>
+                      <span class="badge warn"><?php echo e($d['champ'] === 'prix' ? 'En attente du responsable de stock' : $d['libelle'] . ' en attente du responsable de stock'); ?></span>
+                    <?php endif; ?>
+                  </td>
+                  <td class="num"><a class="btn btn-outline btn-sm" href="../caisse/index.php?q=<?php echo rawurlencode((string) $d['identifiant_interne']); ?>">Voir en vente directe</a></td>
                 </tr>
               <?php endforeach; ?>
             </tbody>

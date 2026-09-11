@@ -175,14 +175,14 @@ function bl_modifier_esc_attr($v): string
                                 <div class="ligne-bl-cell ligne-bl-cell-prix">
                                     <span class="ligne-bl-label">Prix unitaire</span>
                                     <div class="ligne-bl-prix-row">
-                                        <input type="number" name="lignes[<?php echo $idx; ?>][prix_unitaire]" value="<?php echo bl_modifier_esc_attr($pu); ?>" min="0" step="0.01" class="ligne-prix" aria-label="Prix unitaire en FCFA">
+                                        <input type="number" name="lignes[<?php echo $idx; ?>][prix_unitaire]" value="<?php echo bl_modifier_esc_attr($pu); ?>" min="0" step="0.01" class="ligne-prix" readonly tabindex="-1" title="Prix enregistré sur le bon : il ne se tape pas" aria-label="Prix unitaire en FCFA, enregistré sur le bon">
                                         <span class="ligne-unit-fcfa">FCFA</span>
                                     </div>
                                 </div>
                                 <div class="ligne-bl-cell ligne-bl-cell-prix">
                                     <span class="ligne-bl-label">Prix promo</span>
                                     <div class="ligne-bl-prix-row">
-                                        <input type="number" name="lignes[<?php echo $idx; ?>][prix_promotion]" value="" min="0" step="0.01" placeholder="Optionnel" class="ligne-prix-promo" aria-label="Prix promotionnel en FCFA">
+                                        <input type="number" name="lignes[<?php echo $idx; ?>][prix_promotion]" value="" min="0" step="0.01" placeholder="—" class="ligne-prix-promo" readonly tabindex="-1" aria-label="Prix promotionnel en FCFA">
                                         <span class="ligne-unit-fcfa">FCFA</span>
                                     </div>
                                 </div>
@@ -396,14 +396,14 @@ function bl_modifier_esc_attr($v): string
                 '<div class="ligne-bl-cell ligne-bl-cell-prix">' +
                     '<span class="ligne-bl-label">Prix unitaire</span>' +
                     '<div class="ligne-bl-prix-row">' +
-                        '<input type="number" name="lignes[' + idx + '][prix_unitaire]" value="' + (prixPromo || prix) + '" min="0" step="0.01" class="ligne-prix" aria-label="Prix unitaire en FCFA">' +
+                        '<input type="number" name="lignes[' + idx + '][prix_unitaire]" value="' + ((prixPromo || prix) || '') + '" min="0" step="0.01" class="ligne-prix" readonly tabindex="-1" placeholder="Sans prix" title="Prix du catalogue : seul le responsable de stock le fixe" aria-label="Prix unitaire en FCFA, prix du catalogue">' +
                         '<span class="ligne-unit-fcfa">FCFA</span>' +
                     '</div>' +
                 '</div>' +
                 '<div class="ligne-bl-cell ligne-bl-cell-prix">' +
                     '<span class="ligne-bl-label">Prix promo</span>' +
                     '<div class="ligne-bl-prix-row">' +
-                        '<input type="number" name="lignes[' + idx + '][prix_promotion]" value="' + (prixPromo || '') + '" min="0" step="0.01" placeholder="Optionnel" class="ligne-prix-promo" aria-label="Prix promotionnel en FCFA">' +
+                        '<input type="number" name="lignes[' + idx + '][prix_promotion]" value="' + (prixPromo || '') + '" min="0" step="0.01" placeholder="—" class="ligne-prix-promo" readonly tabindex="-1" aria-label="Prix promotionnel en FCFA">' +
                         '<span class="ligne-unit-fcfa">FCFA</span>' +
                     '</div>' +
                 '</div>' +

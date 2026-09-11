@@ -44,6 +44,8 @@ return [
         'migrations/run_paiements_factures.php',
         // Retours clients en caisse : remboursement en espèces, échange, délai réglable (11/09/2026) : sur foutasvr ET le VPS.
         'migrations/run_caisse_retours.php',
+        // Demandes de prix : le vendeur ne tape plus de prix, le responsable de stock le fixe (11/09/2026) : sur foutasvr ET le VPS.
+        'migrations/run_demandes_prix.php',
     ],
 
     // Migrations lourdes / ponctuelles — exclues du mode --all-migrations

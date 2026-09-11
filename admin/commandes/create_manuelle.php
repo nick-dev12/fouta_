@@ -33,30 +33,19 @@ $notes = trim($_POST['notes'] ?? '');
 $zone_livraison_id = isset($_POST['zone_livraison_id']) && $_POST['zone_livraison_id'] !== '' && $_POST['zone_livraison_id'] !== 'custom' ? (int) $_POST['zone_livraison_id'] : null;
 $frais_livraison = (float) ($_POST['frais_livraison'] ?? 0);
 
-$items = [];
-if (!empty($_POST['lignes']) && is_array($_POST['lignes'])) {
-    foreach (array_values($_POST['lignes']) as $l) {
-        $produit_id = (int) ($l['produit_id'] ?? 0);
-        $quantite = (int) ($l['quantite'] ?? 1);
-        $prix_unitaire = (float) str_replace(',', '.', $l['prix_unitaire'] ?? '0');
-        $prix_promotion = isset($l['prix_promotion']) && $l['prix_promotion'] !== '' ? (float) str_replace(',', '.', $l['prix_promotion']) : null;
-        if ($produit_id > 0 && $quantite > 0 && $prix_unitaire > 0) {
-            $items[] = [
-                'produit_id' => $produit_id,
-                'quantite' => $quantite,
-                'prix_unitaire' => $prix_unitaire,
-                'prix_promotion' => $prix_promotion,
-                'nom_produit' => isset($l['nom_produit']) ? trim($l['nom_produit']) : null
-            ];
-        }
-    }
-}
+/* LE PRIX VIENT DU CATALOGUE (11/09/2026), décision de la direction : le vendeur
+ * ne tape plus aucun prix. Prix et promotion de chaque ligne sont repris au
+ * catalogue ; le prix envoyé par l'écran est ignoré. Règles : models/model_demandes_prix.php. */
+require_once __DIR__ . '/../../models/model_demandes_prix.php';
+$lignes_catalogue = demandes_prix_lignes_commande(!empty($_POST['lignes']) && is_array($_POST['lignes']) ? $_POST['lignes'] : []);
+$items = $lignes_catalogue['items'];
 
 $erreur = null;
 if (empty($client_nom)) $erreur = 'Le nom du client est requis.';
 elseif (empty($client_prenom)) $erreur = 'Le prénom du client est requis.';
 elseif (empty($client_telephone)) $erreur = 'Le téléphone du client est requis.';
 elseif (empty($adresse_livraison)) $erreur = "L'adresse de livraison est requise.";
+elseif ($lignes_catalogue['sans_prix'] !== []) $erreur = demandes_prix_refus_document($lignes_catalogue['sans_prix'], (int) $_SESSION['admin_id']);
 elseif (empty($items)) $erreur = 'Ajoutez au moins un produit à la commande.';
 
 if ($erreur) {

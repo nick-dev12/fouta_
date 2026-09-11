@@ -313,7 +313,7 @@ if ($base_locale) {
     verifie('nettoyage : aucun ticket d’essai restant', 0, (int) $db->query("SELECT COUNT(*) FROM caisse_ventes WHERE numero_ticket LIKE 'ESSAI-%'")->fetchColumn());
 }
 
-echo "— point 6 : pas de remise cachée, et le prix tapé à la main se voit —\n";
+echo "— point 6 : pas de remise cachée ; le prix vient du catalogue (règle du 11/09/2026) —\n";
 $role_avant_6 = $_SESSION['admin_role'] ?? null;
 verifie('plafond de remise des vendeurs à 0 tant que la direction ne l’a pas fixé', 0.0, (float) CAISSE_REMISE_MAX_VENDEUR_PCT);
 $_SESSION['admin_role'] = 'commercial_general';
@@ -328,7 +328,8 @@ if ($base_locale) {
     $_SESSION['admin_role'] = 'commercial_general';
     $prix_du_catalogue = round((float) caisse_prix_unitaire_produit($piece_prix), 2);
     $panier = caisse_build_cart_from_payload(['lines' => [['produit_id' => (int) $piece_prix['id'], 'quantite' => 1, 'prix_unitaire' => (string) ($prix_du_catalogue + 500)]]]);
-    verifie('panier construit avec un prix tapé à la main', true, !empty($panier['ok']));
+    verifie('un prix tapé à la main est ignoré : le panier garde le prix du catalogue', [true, $prix_du_catalogue],
+        [!empty($panier['ok']), round((float) (array_values($panier['cart']['lines'] ?? [])[0]['prix_unitaire'] ?? 0), 2)]);
     $nb_tickets_avant = (int) $db->query('SELECT COUNT(*) FROM caisse_ventes')->fetchColumn();
     $res_ticket = !empty($panier['ok']) ? caisse_creer_ticket_en_attente(38, $panier['cart']) : ['ok' => false];
     $vente_essai = (int) ($res_ticket['vente_id'] ?? 0);
@@ -336,7 +337,7 @@ if ($base_locale) {
         verifie('ticket d’essai créé', true, !empty($res_ticket['ok']));
         $ligne_essai = $db->query("SELECT prix_unitaire, prix_catalogue, prix_saisi FROM caisse_vente_lignes WHERE vente_id = $vente_essai")->fetch(PDO::FETCH_ASSOC);
         verifie('la ligne garde le prix du catalogue du jour', $prix_du_catalogue, round((float) ($ligne_essai['prix_catalogue'] ?? 0), 2));
-        verifie('la ligne est marquée « prix saisi »', 1, (int) ($ligne_essai['prix_saisi'] ?? 0));
+        verifie('la ligne n’est jamais marquée « prix saisi » : le vendeur ne tape plus de prix', 0, (int) ($ligne_essai['prix_saisi'] ?? 0));
         $panier_remise = $panier['cart'];
         $panier_remise['remise_globale_pct'] = 50;
         $refus = caisse_creer_ticket_en_attente(38, $panier_remise);
@@ -1413,11 +1414,11 @@ verifie('retirés : tickets en attente, devis ouverts, ventes du mois, compteurs
     strpos($s19_page, 'id="factures-a-relancer"') !== false,
     strpos($s19_page, 'id="devis-sans-reponse"') !== false,
 ]);
-verifie('gardés et ajoutés : retours, bons en brouillon, pièces presque épuisées, pièces sans prix, geste « Retour client »', [true, true, true, true, true], [
+verifie('gardés et ajoutés : retours, bons en brouillon, pièces presque épuisées, demandes de prix, geste « Retour client »', [true, true, true, true, true], [
     strpos($s19_page, 'id="retours-en-attente"') !== false,
     strpos($s19_page, 'id="bl-brouillons"') !== false,
     strpos($s19_page, 'id="pieces-presque-epuisees"') !== false,
-    strpos($s19_page, 'id="pieces-sans-prix"') !== false,
+    strpos($s19_page, 'id="mes-demandes-prix"') !== false,
     strpos($s19_page, 'href="../caisse/retour.php"') !== false,
 ]);
 
@@ -1517,6 +1518,219 @@ if ($base_locale) {
         ]);
     }
 }
+
+echo "— le vendeur ne tape plus aucun prix ; une pièce sans prix se demande, le responsable de stock la fixe (décision de la direction, 11/09/2026) —\n";
+require_once "$RACINE/models/model_caisse.php";
+require_once "$RACINE/models/model_produits.php";
+require_once "$RACINE/models/model_produit_formulaire_champs.php";
+require_once "$RACINE/models/model_demandes_prix.php";
+$s21_role_avant = $_SESSION['admin_role'] ?? null;
+$s21_lire = static function ($chemin) use ($RACINE) {
+    return (string) file_get_contents("$RACINE/$chemin");
+};
+$s21_api = $s21_lire('admin/caisse/api.php');
+$s21_js = $s21_lire('js/admin-caisse-panier.js');
+verifie('la vente directe n’a plus de champ de prix, et sait demander un prix', [false, true, true], [
+    strpos($s21_js, 'data-field="prix"') !== false,
+    strpos($s21_js, "apiCall('demander_prix'") !== false,
+    strpos($s21_api, "\$action === 'demander_prix'") !== false,
+]);
+$s21_docs = [];
+foreach (['admin/devis/create.php', 'admin/devis/update.php', 'admin/devis/bl_enregistrer.php'] as $f) {
+    $src = $s21_lire($f);
+    $s21_docs[$f] = [strpos($src, 'demandes_prix_lignes_document(') !== false, strpos($src, 'demandes_prix_refus_document(') !== false,
+        strpos($src, 'produit_formulaire_devis_prix_unitaire_depuis_ligne') !== false];
+}
+verifie('devis créé, devis modifié, bon créé : les lignes reprennent le catalogue et refusent une pièce sans prix', [
+    'admin/devis/create.php' => [true, true, false], 'admin/devis/update.php' => [true, true, false],
+    'admin/devis/bl_enregistrer.php' => [true, true, false]], $s21_docs);
+$s21_bl_src = $s21_lire('admin/devis/bl_maj.php');
+$s21_cmd_src = $s21_lire('admin/commandes/create_manuelle.php');
+verifie('bon modifié et commande manuelle : le prix envoyé par l’écran est ignoré', [true, false, true, false], [
+    strpos($s21_bl_src, 'demandes_prix_lignes_bl(') !== false && strpos($s21_bl_src, 'demandes_prix_message_lignes_libres(') !== false,
+    strpos($s21_bl_src, 'produit_formulaire_devis_prix_unitaire_depuis_ligne') !== false,
+    strpos($s21_cmd_src, 'demandes_prix_lignes_commande(') !== false,
+    strpos($s21_cmd_src, "\$l['prix_unitaire']") !== false,
+]);
+$s21_ui = $s21_lire('js/admin-produit-search-ui.js');
+verifie('les écrans de devis, de bon et de commande montent les prix en lecture seule, avec « Demander le prix »', [true, true, true, 2, 1], [
+    strpos($s21_ui, 'class="ligne-prix-champ" readonly') !== false && strpos($s21_ui, 'ajax_demander_prix.php') !== false,
+    strpos($s21_ui, "'ligne-demander-prix'") !== false,
+    strpos($s21_lire('includes/devis_prix_champs_ui.php'), 'class="ligne-prix-champ" readonly') !== false,
+    substr_count($s21_lire('admin/devis/bl_modifier.php'), 'class="ligne-prix" readonly'),
+    substr_count($s21_lire('admin/commandes/index.php'), 'class="ligne-prix" readonly'),
+]);
+$s21_point = $s21_lire('admin/devis/ajax_demander_prix.php');
+$s21_page = $s21_lire('admin/produits/prix-demandes.php');
+$s21_nav = $s21_lire('admin/includes/nav.php');
+verifie('« Demander le prix » d’un devis : jeton vérifié, demande enregistrée au nom du vendeur', [true, true], [
+    strpos($s21_point, 'hash_equals(') !== false,
+    strpos($s21_point, "demande_prix_creer((int) (\$_POST['produit_id'] ?? 0), (int) \$_SESSION['admin_id']") !== false,
+]);
+$s21_garde = strpos($s21_page, "if (!produit_formulaire_champ_modifiable('prix')) {");
+verifie('la page « Prix demandés » suit le droit d’écrire le prix, vérifie le jeton et le droit de chaque colonne', [true, true, true, true], [
+    $s21_garde !== false && $s21_garde < strpos($s21_page, '<!DOCTYPE html>'),
+    strpos($s21_page, 'hash_equals(') !== false,
+    strpos($s21_page, "produit_formulaire_champ_modifiable((string) \$demande['champ'])") !== false,
+    strpos($s21_page, 'demande_prix_fixer(') !== false,
+]);
+verifie('le menu montre « Prix demandés » et son nombre à qui fixe les prix (administration, informatique, stock)', [true, 3], [
+    strpos($s21_nav, 'demandes_prix_nb_en_attente()') !== false && strpos($s21_nav, "produit_formulaire_champ_modifiable('prix')") !== false,
+    substr_count($s21_nav, '<?php echo $nav_prix_demandes_html; ?>'),
+]);
+$s21_routes = [];
+foreach (['commercial_general', 'commercial', 'caissier', 'comptabilite', 'gestion_stock_general', 'admin', 'informaticien'] as $r) {
+    $s21_routes[$r] = [admin_route_is_allowed($r, 'devis/ajax_demander_prix.php'), admin_route_is_allowed($r, 'produits/prix-demandes.php')];
+}
+verifie('portes : le vendeur demande le prix, le stock le fixe', [
+    'commercial_general' => [true, false], 'commercial' => [true, false], 'caissier' => [false, false], 'comptabilite' => [false, false],
+    'gestion_stock_general' => [false, true], 'admin' => [true, true], 'informaticien' => [true, true]], $s21_routes);
+$s21_droits = [];
+foreach (['gestion_stock_general', 'admin', 'informaticien', 'commercial_general', 'commercial', 'caissier', 'gestion_stock'] as $r) {
+    $_SESSION['admin_role'] = $r;
+    $s21_droits[$r] = produit_formulaire_champ_modifiable('prix', $r);
+}
+verifie('écrire le prix : le responsable de stock, l’administration et l’informatique ; jamais un vendeur ni le caissier', [
+    'gestion_stock_general' => true, 'admin' => true, 'informaticien' => true,
+    'commercial_general' => false, 'commercial' => false, 'caissier' => false, 'gestion_stock' => false], $s21_droits);
+$s21_fk = $s21_lire('includes/sync_fk_static.php');
+$s21_fk_debut = (int) strpos($s21_fk, "'demandes_prix' =>");
+verifie('la grille des prix exige le droit d’écrire ; la table des demandes est synchronisée et migrée à chaque mise à jour', [true, true, true, 4, true, true], [
+    strpos($s21_lire('models/model_produits.php'), "\$can_prix = produit_formulaire_champ_modifiable('prix');") !== false,
+    strpos($s21_lire('models/model_produits.php'), "\$sets[] = 'sync_updated_at = NOW()';   // la synchro doit voir chaque prix modifié") !== false,
+    strpos($s21_lire('includes/sync_registry.php'), "'demandes_prix',") !== false,
+    substr_count(substr($s21_fk, $s21_fk_debut, max(0, (int) strpos($s21_fk, "'depenses' =>") - $s21_fk_debut)), "'REFERENCED_COLUMN_NAME' => 'id'"),
+    strpos($s21_lire('config/update_entreprise.example.php'), "'migrations/run_demandes_prix.php'") !== false,
+    demandes_prix_table_ok(),
+]);
+
+if ($base_locale) {
+    $_SESSION['admin_role'] = 'commercial_general';
+    $s21_sans_id = (int) $db->query("SELECT p.id FROM produits p WHERE p.statut = 'actif' AND p.stock > 0
+        AND COALESCE(p.prix, 0) = 0 AND COALESCE(p.prix_promotion, 0) = 0 AND COALESCE(p.prix_entreprise, 0) = 0 AND p.sync_deleted_at IS NULL
+        AND NOT EXISTS (SELECT 1 FROM demandes_prix d WHERE d.produit_id = p.id) ORDER BY p.id LIMIT 1")->fetchColumn();
+    $s21_avec_id = (int) $db->query("SELECT p.id FROM produits p WHERE p.statut = 'actif' AND p.stock > 0 AND p.prix > 0
+        AND COALESCE(p.prix_promotion, 0) = 0 AND COALESCE(p.prix_entreprise, 0) = 0 AND p.sync_deleted_at IS NULL
+        AND NOT EXISTS (SELECT 1 FROM demandes_prix d WHERE d.produit_id = p.id) ORDER BY p.id LIMIT 1")->fetchColumn();
+    $s21_sans = $s21_sans_id ? get_produit_by_id_sans_filtre_acces($s21_sans_id) : null;
+    $s21_avec = $s21_avec_id ? get_produit_by_id_sans_filtre_acces($s21_avec_id) : null;
+    verifie('une pièce sans prix et une pièce avec prix existent', [true, true], [is_array($s21_sans), is_array($s21_avec)]);
+    if (is_array($s21_sans) && is_array($s21_avec)) {
+        $s21_panier = ['lines' => [], 'remise_globale_pct' => 0, 'inclure_tva' => 0];
+        $r = caisse_cart_add_produit($s21_panier, $s21_sans, 1);
+        verifie('vente directe : une pièce sans prix ne s’ajoute pas au panier, elle se demande', [false, true, $s21_sans_id],
+            [!empty($r['ok']), !empty($r['sans_prix']), (int) ($r['produit_id'] ?? 0)]);
+        $s21_prix = round((float) caisse_prix_unitaire_produit($s21_avec), 2);
+        caisse_cart_add_produit($s21_panier, $s21_avec, 1);
+        $s21_cle = caisse_line_key($s21_avec_id);
+        caisse_cart_set_prix_ligne($s21_panier, $s21_cle, '1');
+        verifie('vente directe : un prix tapé sur une ligne est ignoré', $s21_prix, round((float) $s21_panier['lines'][$s21_cle]['prix_unitaire'], 2));
+        $s21_envoye = caisse_build_cart_from_payload(['lines' => [['produit_id' => $s21_avec_id, 'quantite' => 1, 'prix_unitaire' => 1]]]);
+        $s21_ligne_envoyee = array_values($s21_envoye['cart']['lines'] ?? [])[0] ?? [];
+        verifie('vente directe : un prix envoyé par l’écran est ignoré, rien n’est marqué « prix saisi »', [$s21_prix, false],
+            [round((float) ($s21_ligne_envoyee['prix_unitaire'] ?? 0), 2), isset($s21_ligne_envoyee['prix_manuel'])]);
+        $s21_refus = caisse_build_cart_from_payload(['lines' => [['produit_id' => $s21_sans_id, 'quantite' => 1, 'prix_unitaire' => 5000]]]);
+        verifie('vente directe : un ticket envoyé avec une pièce sans prix est refusé', [false, true], [!empty($s21_refus['ok']), !empty($s21_refus['sans_prix'])]);
+
+        $s21_colonnes = 'prix, prix_promotion, prix_entreprise, date_modification, sync_updated_at, sync_origin_node, admin_dernier_modificateur_id';
+        $s21_etat = static function ($id) use ($db, $s21_colonnes) {
+            return $db->query("SELECT $s21_colonnes FROM produits WHERE id = " . (int) $id)->fetch(PDO::FETCH_ASSOC);
+        };
+        $s21_avant = [$s21_sans_id => $s21_etat($s21_sans_id), $s21_avec_id => $s21_etat($s21_avec_id)];
+        $s21_nb_avant = (int) $db->query('SELECT COUNT(*) FROM demandes_prix')->fetchColumn();
+        $s21_cache = "$RACINE/cache/caisse_catalog_live_test_s21.json";
+        try {
+            $r1 = demande_prix_creer($s21_sans_id, 38);
+            $r2 = demande_prix_creer($s21_sans_id, 38);
+            $r3 = demande_prix_creer($s21_sans_id, 37);
+            $s21_ouvertes = $db->query("SELECT * FROM demandes_prix WHERE produit_id = $s21_sans_id AND champ = 'prix' AND statut = 'en_attente'")->fetchAll(PDO::FETCH_ASSOC);
+            verifie('une seule demande par pièce et par prix : le même vendeur qui insiste compte une fois, un autre vendeur s’ajoute',
+                [true, false, true, true, 1, 2, 37], [
+                !empty($r1['ok']), !empty($r1['deja']), !empty($r2['deja']), !empty($r3['deja']),
+                count($s21_ouvertes), (int) ($s21_ouvertes[0]['nb_demandes'] ?? 0), (int) ($s21_ouvertes[0]['dernier_demandeur_id'] ?? 0),
+            ]);
+            $s21_deja = demande_prix_creer($s21_avec_id, 38);
+            verifie('ne se demandent pas : le prix d’une pièce qui en a un, une promotion', [false, true, false], [
+                !empty($s21_deja['ok']), !empty($s21_deja['a_deja_prix']), !empty(demande_prix_creer($s21_avec_id, 38, 'prix_promotion')['ok'])]);
+            $r4 = demande_prix_creer($s21_avec_id, 38, 'prix_entreprise');
+            verifie('le Prix Entreprise d’une pièce qui a un prix de vente se demande, sous son nom', [true, 'Prix Entreprise'],
+                [!empty($r4['ok']), (string) ($r4['libelle'] ?? '')]);
+            $s21_file = array_values(array_filter(demandes_prix_en_attente(500), static function ($d) use ($s21_sans_id, $s21_avec_id) {
+                return in_array((int) $d['produit_id'], [$s21_sans_id, $s21_avec_id], true);
+            }));
+            verifie('le responsable de stock voit les deux prix à fixer, le plus demandé d’abord', [[$s21_sans_id, 'prix'], [$s21_avec_id, 'prix_entreprise']],
+                array_map(static function ($d) { return [(int) $d['produit_id'], (string) $d['champ']]; }, $s21_file));
+            $s21_doc = demandes_prix_lignes_document([
+                ['produit_id' => $s21_avec_id, 'quantite' => 2, 'prix_unitaire' => 1, 'prix_champs' => ['prix' => 1]],
+                ['produit_id' => $s21_sans_id, 'quantite' => 1, 'prix_unitaire' => 5000, 'prix_champs' => ['prix' => 5000]],
+            ], 'prix');
+            verifie('un devis reprend le prix du catalogue et met à part la pièce sans prix', [[$s21_avec_id], [$s21_prix], [$s21_sans_id]], [
+                array_column($s21_doc['items'], 'produit_id'), array_map('floatval', array_column($s21_doc['items'], 'prix_unitaire')),
+                array_column($s21_doc['sans_prix'], 'produit_id')]);
+            verifie('une colonne que le vendeur ne voit pas cède la place au prix de vente', 'prix',
+                (string) (demandes_prix_prix_document($s21_avec_id, 'prix_achat')['champ'] ?? ''));
+            $s21_cmd = demandes_prix_lignes_commande([['produit_id' => $s21_avec_id, 'quantite' => 1, 'prix_unitaire' => 1, 'prix_promotion' => 1],
+                ['produit_id' => $s21_sans_id, 'quantite' => 1, 'prix_unitaire' => 900]]);
+            verifie('une commande manuelle reprend prix et promotion du catalogue', [$s21_prix, null, [$s21_sans_id]], [
+                (float) ($s21_cmd['items'][0]['prix_unitaire'] ?? 0), array_key_exists('prix_promotion', $s21_cmd['items'][0] ?? []) ? $s21_cmd['items'][0]['prix_promotion'] : 'absente', array_column($s21_cmd['sans_prix'], 'produit_id')]);
+            $s21_bl = demandes_prix_lignes_bl([
+                ['produit_id' => $s21_avec_id, 'designation' => 'A', 'quantite' => 1, 'prix_unitaire' => 1],
+                ['produit_id' => $s21_sans_id, 'designation' => 'B', 'quantite' => 1, 'prix_unitaire' => 900],
+                ['produit_id' => '', 'designation' => 'Main d’œuvre', 'quantite' => 1, 'prix_unitaire' => 5000],
+                ['produit_id' => '', 'designation' => 'Transport', 'quantite' => 1, 'prix_unitaire' => 99999],
+            ], [['produit_id' => $s21_avec_id, 'designation' => 'A', 'prix_unitaire_ht' => 777], ['produit_id' => null, 'designation' => 'transport', 'prix_unitaire_ht' => 3000]]);
+            verifie('un bon modifié garde ses prix enregistrés, refuse la pièce sans prix et la ligne hors catalogue tapée', [[777.0, 3000.0], [$s21_sans_id], ['Main d’œuvre']], [
+                array_map('floatval', array_column($s21_bl['lignes'], 'prix_unitaire_ht')), array_column($s21_bl['sans_prix'], 'produit_id'), $s21_bl['libres']]);
+            $s21_msg = demandes_prix_refus_document([['produit_id' => $s21_sans_id, 'nom' => (string) $s21_sans['nom'], 'champ' => 'prix', 'libelle' => 'Prix de vente']], 36);
+            verifie('refuser un document nomme la pièce et demande son prix au nom du vendeur', [true, true, 3], [
+                strpos($s21_msg, '« ' . $s21_sans['nom'] . ' »') !== false, strpos($s21_msg, 'demandé au responsable de stock') !== false,
+                (int) $db->query("SELECT nb_demandes FROM demandes_prix WHERE produit_id = $s21_sans_id AND champ = 'prix' AND statut = 'en_attente'")->fetchColumn()]);
+            verifie('un montant se lit comme on le tape : 12 500, 12.500, 12500,5 ; une case vide attend ; un mot est refusé', [12500.0, 12500.0, 12500.5, null, false],
+                array_map('demandes_prix_lire_montant', ['12 500', '12.500', '12500,5', '', 'douze']));
+
+            $s21_id_sans = (int) $s21_ouvertes[0]['id'];
+            file_put_contents($s21_cache, '[]');
+            $s21_fixe = demande_prix_fixer($s21_id_sans, 12500, 36);
+            $s21_piece = $s21_etat($s21_sans_id);
+            $s21_dem = $db->query("SELECT statut, traite_par, prix_fixe FROM demandes_prix WHERE id = $s21_id_sans")->fetch(PDO::FETCH_ASSOC);
+            verifie('fixer un prix : il va au catalogue au nom du responsable de stock, la demande se solde, la vente directe le voit aussitôt',
+                [true, 12500.0, 36, 'traitee', 36, 12500.0, false, true], [
+                !empty($s21_fixe['ok']), (float) $s21_piece['prix'], (int) $s21_piece['admin_dernier_modificateur_id'],
+                (string) $s21_dem['statut'], (int) $s21_dem['traite_par'], (float) $s21_dem['prix_fixe'], is_file($s21_cache),
+                (string) $s21_piece['sync_updated_at'] !== (string) $s21_avant[$s21_sans_id]['sync_updated_at'],
+            ]);
+            verifie('un prix fixé ne se fixe pas deux fois ; un montant nul est refusé', [false, false],
+                [!empty(demande_prix_fixer($s21_id_sans, 13000, 36)['ok']), !empty(demande_prix_fixer($s21_id_sans, 0, 36)['ok'])]);
+            $s21_vendeur = array_values(array_filter(demandes_prix_du_vendeur(38, 7, 100), static function ($d) use ($s21_sans_id) {
+                return (int) $d['produit_id'] === $s21_sans_id;
+            }));
+            verifie('le vendeur retrouve le prix fixé sur son accueil', ['traitee', 12500.0],
+                [(string) ($s21_vendeur[0]['statut'] ?? ''), (float) ($s21_vendeur[0]['prix_fixe'] ?? 0)]);
+            $db->prepare('UPDATE produits SET prix_entreprise = 8000 WHERE id = :id')->execute(['id' => $s21_avec_id]);
+            $s21_soldees = demandes_prix_solder_prix_poses();
+            $s21_ent = $db->query("SELECT statut, traite_par, prix_fixe FROM demandes_prix WHERE produit_id = $s21_avec_id AND champ = 'prix_entreprise' ORDER BY id DESC LIMIT 1")->fetch(PDO::FETCH_ASSOC) ?: [];
+            verifie('un prix posé depuis la fiche solde aussi sa demande, sans nom de responsable ; solder de nouveau n’écrit rien', [1, 'traitee', null, 8000.0, 0], [
+                $s21_soldees, (string) ($s21_ent['statut'] ?? ''), array_key_exists('traite_par', $s21_ent) ? $s21_ent['traite_par'] : 'absent', (float) ($s21_ent['prix_fixe'] ?? 0), demandes_prix_solder_prix_poses()]);
+        } finally {
+            @unlink($s21_cache);
+            $db->exec("DELETE FROM demandes_prix WHERE produit_id IN ($s21_sans_id, $s21_avec_id)");
+            $db->exec('SET @sync_applying = 1');
+            $s21_remise = $db->prepare('UPDATE produits SET prix = :prix, prix_promotion = :prix_promotion, prix_entreprise = :prix_entreprise,
+                date_modification = :date_modification, sync_updated_at = :sync_updated_at, sync_origin_node = :sync_origin_node,
+                admin_dernier_modificateur_id = :admin_dernier_modificateur_id WHERE id = :id');
+            foreach ($s21_avant as $s21_id => $s21_ligne) {
+                $s21_remise->execute($s21_ligne + ['id' => $s21_id]);
+            }
+            $db->exec('SET @sync_applying = NULL');
+        }
+        verifie('base remise à l’état initial : demandes de prix et pièces', [$s21_nb_avant, true, true], [
+            (int) $db->query('SELECT COUNT(*) FROM demandes_prix')->fetchColumn(),
+            $s21_etat($s21_sans_id) == $s21_avant[$s21_sans_id],
+            $s21_etat($s21_avec_id) == $s21_avant[$s21_avec_id],
+        ]);
+    }
+}
+$_SESSION['admin_role'] = $s21_role_avant;
 
 echo "\n$ok OK / $ko KO\n";
 exit($ko === 0 ? 0 : 1);

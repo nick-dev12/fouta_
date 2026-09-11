@@ -37,6 +37,25 @@ $admin_nav_is_tech_full = ($admin_role === 'informaticien' || $admin_role === 'd
 require_once __DIR__ . '/../../includes/admin_permissions.php';
 $nav_can_devis = admin_can_devis();
 $nav_can_bl_hub = admin_can_bl_retours_b2b();
+/* PRIX DEMANDÉS (11/09/2026) : le vendeur ne tape plus de prix. Qui a le droit
+ * d'écrire le prix de la fiche pièce voit au menu les prix qui attendent, et
+ * combien. Le droit se lit dans les champs de la fiche, pas dans une liste de rôles. */
+$nav_prix_demandes_html = '';
+if (in_array($admin_role, ['admin', 'gestion_stock_general', 'gestion_stock', 'informaticien', 'developpeur'], true)) {
+    require_once __DIR__ . '/../../models/model_produit_formulaire_champs.php';
+    if (produit_formulaire_champ_modifiable('prix')) {
+        require_once __DIR__ . '/../../models/model_demandes_prix.php';
+        $nav_nb_prix_demandes = demandes_prix_nb_en_attente();
+        $nav_prix_demandes_html = '<a href="' . $admin_nav_base . 'produits/prix-demandes.php" class="menu-item mi-prix-demandes'
+            . (($is_produits && $current_page === 'prix-demandes.php') ? ' active' : '') . '">'
+            . '<span class="menu-item-icon ico" aria-hidden="true"><i class="fas fa-tags"></i></span>'
+            . '<span class="menu-item-text">Prix demandés</span>'
+            . ($nav_nb_prix_demandes > 0
+                ? '<span class="menu-item-compte" title="' . $nav_nb_prix_demandes . ' prix en attente">' . $nav_nb_prix_demandes . '</span>'
+                : '')
+            . '</a>';
+    }
+}
 $is_nav_devis_section = $is_devis && (
     $current_page === 'devis.php'
     || in_array($current_page, ['details.php', 'modifier.php', 'facture.php', 'devis_par_client.php', 'create.php', 'generer_facture.php', 'update.php', 'supprimer_devis.php'], true)
@@ -128,10 +147,11 @@ include __DIR__ . '/../../includes/pwa_admin_boot.php';
             </a>
             <?php endif; ?>
             <a href="<?php echo $admin_nav_base; ?>produits/index.php"
-                class="menu-item mi-produits<?php echo ($is_produits) ? ' active' : ''; ?>">
+                class="menu-item mi-produits<?php echo ($is_produits && $current_page !== 'prix-demandes.php') ? ' active' : ''; ?>">
                 <span class="menu-item-icon ico" aria-hidden="true"><?php echo fpl_icone('tool', 16); ?></span>
                 <span class="menu-item-text">Pièces</span>
             </a>
+            <?php echo $nav_prix_demandes_html; ?>
             <a href="<?php echo $admin_nav_base; ?>produits/etiquettes.php"
                 class="menu-item mi-etiquettes<?php echo $current_page == 'etiquettes.php' ? ' active' : ''; ?>">
                 <span class="menu-item-icon ico" aria-hidden="true"><?php echo fpl_icone('printer', 16); ?></span>
@@ -356,6 +376,7 @@ include __DIR__ . '/../../includes/pwa_admin_boot.php';
                 <span class="menu-item-icon ico" aria-hidden="true"><?php echo fpl_icone('tool', 16); ?></span>
                 <span class="menu-item-text">Pièces</span>
             </a>
+            <?php echo $nav_prix_demandes_html; ?>
 
             <a href="<?php echo $admin_nav_base; ?>produits/etiquettes.php"
                 class="menu-item mi-etiquettes<?php echo $current_page == 'etiquettes.php' ? ' active' : ''; ?>">
@@ -413,6 +434,7 @@ include __DIR__ . '/../../includes/pwa_admin_boot.php';
                 <span class="menu-item-icon ico" aria-hidden="true"><?php echo fpl_icone('tool', 16); ?></span>
                 <span class="menu-item-text">Pièces</span>
             </a>
+            <?php echo $nav_prix_demandes_html; ?>
 
             <a href="<?php echo $admin_nav_base; ?>produits/etiquettes.php"
                 class="menu-item mi-etiquettes<?php echo $current_page == 'etiquettes.php' ? ' active' : ''; ?>">

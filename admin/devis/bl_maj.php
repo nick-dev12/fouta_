@@ -35,29 +35,18 @@ $date_bl = trim($_POST['date_bl'] ?? '');
 $notes = trim($_POST['notes'] ?? '');
 $adresse_client = trim($_POST['adresse_client'] ?? '');
 
-require_once __DIR__ . '/../../models/model_produit_formulaire_champs.php';
-$champ_prix_calcul = trim((string) ($_POST['champ_prix_calcul'] ?? 'prix'));
-
-$lignes = [];
-if (!empty($_POST['lignes']) && is_array($_POST['lignes'])) {
-    foreach ($_POST['lignes'] as $l) {
-        if (!is_array($l)) {
-            continue;
-        }
-        $designation = trim((string) ($l['designation'] ?? $l['nom_produit'] ?? ''));
-        $quantite_raw = $l['quantite'] ?? 0;
-        $quantite = is_numeric($quantite_raw) ? (float) $quantite_raw : (float) str_replace(',', '.', (string) $quantite_raw);
-        $pu = produit_formulaire_devis_prix_unitaire_depuis_ligne($l, $champ_prix_calcul);
-        $lignes[] = [
-            'produit_id' => !empty($l['produit_id']) ? (int) $l['produit_id'] : null,
-            'designation' => $designation,
-            'quantite' => $quantite,
-            'prix_unitaire_ht' => $pu,
-        ];
-    }
-}
-
 require_once __DIR__ . '/../../models/model_bl.php';
+require_once __DIR__ . '/../../models/model_demandes_prix.php';
+
+/* LE PRIX VIENT DU CATALOGUE (11/09/2026), décision de la direction : le vendeur
+ * ne tape plus aucun prix. Une pièce déjà sur le bon garde son prix enregistré,
+ * une pièce ajoutée prend son prix au catalogue, et le prix envoyé par l'écran
+ * est ignoré. Règles : models/model_demandes_prix.php. */
+$lignes_catalogue = demandes_prix_lignes_bl(
+    !empty($_POST['lignes']) && is_array($_POST['lignes']) ? $_POST['lignes'] : [],
+    $bl_id > 0 ? get_lignes_bl($bl_id) : []
+);
+$lignes = $lignes_catalogue['lignes'];
 
 if ($bl_id <= 0) {
     header('Location: index.php');
@@ -74,6 +63,19 @@ if (!$bl) {
 if (bl_est_statut_verrouille($bl['statut'] ?? '')) {
     $_SESSION['bl_erreur'] = 'Ce bon est validé pour la comptabilité : modification des lignes et de l’en-tête impossible.';
     header('Location: bl_voir.php?id=' . $bl_id);
+    exit;
+}
+
+if ($lignes_catalogue['sans_prix'] !== [] || $lignes_catalogue['libres'] !== []) {
+    $motifs = [];
+    if ($lignes_catalogue['sans_prix'] !== []) {
+        $motifs[] = demandes_prix_refus_document($lignes_catalogue['sans_prix'], (int) $_SESSION['admin_id']);
+    }
+    if ($lignes_catalogue['libres'] !== []) {
+        $motifs[] = demandes_prix_message_lignes_libres($lignes_catalogue['libres']);
+    }
+    $_SESSION['bl_erreur'] = implode(' ', $motifs) . ' Le bon n’a pas été modifié.';
+    header('Location: bl_modifier.php?id=' . $bl_id);
     exit;
 }
 

@@ -239,6 +239,16 @@ function caisse_prix_unitaire_produit(array $p)
     return $promo !== null ? $promo : $base;
 }
 
+/**
+ * LE VENDEUR NE TAPE PLUS AUCUN PRIX (11/09/2026), décision de la direction.
+ * Une pièce sans prix au catalogue ne se vend pas : le vendeur demande son prix
+ * (models/model_demandes_prix.php), et seul le responsable de stock le fixe.
+ */
+function caisse_message_sans_prix($nom)
+{
+    return '« ' . trim((string) $nom) . ' » n’a pas de prix au catalogue : demandez-le au responsable de stock, il le fixera.';
+}
+
 /** Nombre max d’articles dans le catalogue live caisse.
  *  Relevé de 2500 à 10000 le 04/09 : à 2500 (ORDER BY nom ASC) les 741 pièces
  *  en stock au-delà du rang alphabétique 2500 (noms après ~R) étaient
@@ -711,6 +721,10 @@ function caisse_cart_add_produit(array &$cart, array $produit, $quantite = 1)
 
     $pu = caisse_prix_unitaire_produit($produit);
     $sans_prix_catalogue = $pu <= 0;
+    // Le prix vient du catalogue (11/09/2026) : une pièce sans prix ne s'ajoute pas, elle se demande.
+    if ($sans_prix_catalogue) {
+        return ['ok' => false, 'sans_prix' => true, 'produit_id' => (int) $produit['id'], 'error' => caisse_message_sans_prix($produit['nom'] ?? '')];
+    }
 
     if (isset($cart['lines'][$key])) {
         $cart['lines'][$key]['quantite'] = $ex + $quantite;
@@ -744,32 +758,24 @@ function caisse_cart_add_produit(array &$cart, array $produit, $quantite = 1)
  */
 function caisse_cart_set_prix_ligne(array &$cart, $line_key, $prix_saisi)
 {
+    /* LE PRIX VIENT DU CATALOGUE (11/09/2026), décision de la direction : le
+     * vendeur ne tape plus aucun prix. Le prix envoyé par l'écran est ignoré ; la
+     * ligne reprend le prix de la pièce au catalogue, et une pièce sans prix se
+     * refuse. */
     $key = trim((string) $line_key);
     if ($key === '' || !isset($cart['lines'][$key])) {
         return ['ok' => false, 'error' => 'Ligne panier introuvable.'];
     }
-    $prix = caisse_parse_montant_saisi($prix_saisi);
-    if ($prix === null || $prix <= 0) {
-        $nom_ligne = trim((string) ($cart['lines'][$key]['nom'] ?? ''));
-        $msg = 'Le prix unitaire doit être un montant supérieur à zéro.';
-        if ($nom_ligne !== '') {
-            $msg = 'Indiquez un prix unitaire pour « ' . $nom_ligne . ' ».';
-        }
-        return ['ok' => false, 'error' => $msg];
-    }
-    $prix = round($prix, 2);
-
     require_once __DIR__ . '/model_produits.php';
     $pid = (int) ($cart['lines'][$key]['produit_id'] ?? 0);
-    $p = $pid > 0 ? get_produit_by_id($pid) : null;
+    $p = $pid > 0 ? get_produit_by_id_sans_filtre_acces($pid) : null;
     $prix_catalogue = $p ? round((float) caisse_prix_unitaire_produit($p), 2) : 0.0;
-
-    $cart['lines'][$key]['prix_unitaire'] = $prix;
-    if ($prix_catalogue > 0 && abs($prix - $prix_catalogue) < 0.005) {
-        unset($cart['lines'][$key]['prix_manuel']);
-    } else {
-        $cart['lines'][$key]['prix_manuel'] = 1;
+    if ($prix_catalogue <= 0) {
+        return ['ok' => false, 'sans_prix' => true, 'produit_id' => $pid, 'error' => caisse_message_sans_prix($p['nom'] ?? ($cart['lines'][$key]['nom'] ?? ''))];
     }
+    $cart['lines'][$key]['prix_unitaire'] = $prix_catalogue;
+    $cart['lines'][$key]['prix_catalogue'] = $prix_catalogue;
+    unset($cart['lines'][$key]['prix_manuel']);
     return ['ok' => true];
 }
 
@@ -1004,11 +1010,11 @@ function caisse_build_cart_from_payload(array $payload)
             return ['ok' => false, 'error' => 'Stock insuffisant pour « ' . ($p['nom'] ?? '') . ' » (disponible : ' . $stock . ').'];
         }
 
-        $prix = caisse_parse_montant_saisi($raw['prix_unitaire'] ?? null);
-        if ($prix === null || $prix <= 0) {
-            return ['ok' => false, 'error' => 'Prix invalide pour « ' . ($p['nom'] ?? '') . ' ».'];
+        /* Le prix vient du catalogue (11/09/2026) : celui envoyé par l'écran est ignoré. */
+        $prix = round((float) caisse_prix_unitaire_produit($p), 2);
+        if ($prix <= 0) {
+            return ['ok' => false, 'sans_prix' => true, 'produit_id' => $pid, 'error' => caisse_message_sans_prix($p['nom'] ?? '')];
         }
-        $prix = round($prix, 2);
 
         $remise = min(100, max(0, (float) ($raw['remise_ligne_pct'] ?? 0)));
         $key = caisse_line_key($pid);

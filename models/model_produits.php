@@ -2547,8 +2547,10 @@ function export_catalogue_maj_prix_produits(array $rows, $admin_id = null)
     require_once __DIR__ . '/model_produit_formulaire_champs.php';
     $has_prix_achat = produits_has_column('prix_achat');
     $has_admin_mod = produits_has_column('admin_dernier_modificateur_id');
-    $can_prix = produit_formulaire_champ_visible('prix');
-    $can_prix_achat = $has_prix_achat && produit_formulaire_champ_visible('prix_achat');
+    /* ÉCRIRE UN PRIX EST UN DROIT (11/09/2026) : voir le prix ne suffit pas, il faut
+     * le droit de l'écrire dans la fiche pièce. Le vendeur ne tape plus de prix. */
+    $can_prix = produit_formulaire_champ_modifiable('prix');
+    $can_prix_achat = $has_prix_achat && produit_formulaire_champ_modifiable('prix_achat');
     if (!$can_prix && !$can_prix_achat) {
         return ['success' => false, 'message' => 'Vous n’avez pas l’autorisation de modifier les prix.', 'updated' => 0];
     }
@@ -2625,6 +2627,9 @@ function export_catalogue_maj_prix_produits(array $rows, $admin_id = null)
                 continue;
             }
             $sets[] = 'date_modification = NOW()';
+            if (produits_has_column('sync_updated_at')) {
+                $sets[] = 'sync_updated_at = NOW()';   // la synchro doit voir chaque prix modifié (08/09)
+            }
             if ($has_admin_mod && $admin_id !== null && (int) $admin_id > 0) {
                 $sets[] = 'admin_dernier_modificateur_id = :admin_mod';
                 $params[':admin_mod'] = (int) $admin_id;
@@ -2635,6 +2640,10 @@ function export_catalogue_maj_prix_produits(array $rows, $admin_id = null)
             $updated++;
         }
         $db->commit();
+        if ($updated > 0) {
+            require_once __DIR__ . '/model_caisse.php';
+            caisse_catalog_live_cache_invalidate();   // la vente directe voit le nouveau prix tout de suite
+        }
     } catch (PDOException $e) {
         if ($db->inTransaction()) {
             $db->rollBack();

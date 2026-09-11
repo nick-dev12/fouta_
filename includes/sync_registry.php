@@ -56,6 +56,7 @@ if (!function_exists('sync_registry_priority_tables')) {
             'caisse_clotures',
             'caisse_parametres',
             'caisse_retours',
+            'demandes_prix',
             'stock_mouvements',
             'depenses',
             'commandes_personnalisees',

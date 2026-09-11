@@ -404,7 +404,7 @@
         if (showPrix) {
           prixPart = p.prix > 0
             ? fmtFcfa(p.prix) + ' FCFA</strong> HT'
-            : 'Prix à saisir</strong>';
+            : 'Sans prix au catalogue</strong>';
         }
         var stockPart = showStock ? esc(String(p.stock)) : '';
         if (showPrix && showStock) {
@@ -439,7 +439,7 @@
         categorieHtml +
         refFourn +
         metaHtml +
-        '<span class="caisse-live-hint-add">Cliquer pour ajouter au panier</span>' +
+        '<span class="caisse-live-hint-add">' + (p.prix > 0 ? 'Cliquer pour ajouter au panier' : 'Sans prix : cliquer pour le demander') + '</span>' +
         '</div>' +
         '</div></li>';
     }

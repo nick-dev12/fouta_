@@ -29,10 +29,9 @@
     return String(Math.round(Number(n))).replace(/\B(?=(\d{3})+(?!\d))/g, '\u202f');
   }
 
+  /* LE PRIX VIENT DU CATALOGUE (11/09/2026), décision de la direction : le vendeur
+     ne tape plus aucun prix ; une pièce sans prix se demande au responsable de stock. */
   function linePrix(ln) {
-    if (ln.prix_saisie != null && String(ln.prix_saisie).trim() !== '') {
-      return parseMontant(ln.prix_saisie);
-    }
     return parseMontant(ln.prix_unitaire);
   }
 
@@ -98,18 +97,6 @@
     if (!mount) {
       return;
     }
-    mount.querySelectorAll('[data-field="prix"]').forEach(function (inp) {
-      var pid = parseInt(inp.getAttribute('data-pid'), 10);
-      var ln = findLine(pid);
-      if (!ln) {
-        return;
-      }
-      ln.prix_saisie = inp.value;
-      ln.prix_unitaire = parseMontant(inp.value);
-      if (String(inp.value).trim() !== '') {
-        ln.prix_manuel = 1;
-      }
-    });
     mount.querySelectorAll('[data-field="qty"]').forEach(function (inp) {
       var pid = parseInt(inp.getAttribute('data-pid'), 10);
       var ln = findLine(pid);
@@ -121,16 +108,6 @@
         ln.quantite = q;
       }
     });
-  }
-
-  function prixInputValue(ln) {
-    if (ln.prix_saisie != null && String(ln.prix_saisie).trim() !== '') {
-      return String(ln.prix_saisie);
-    }
-    if (ln.prix_unitaire > 0) {
-      return String(Math.round(parseMontant(ln.prix_unitaire)));
-    }
-    return '';
   }
 
   function apiCall(action, extra) {
@@ -149,7 +126,7 @@
     });
   }
 
-  function flash(msg, isErr) {
+  function flash(msg, isErr, demande) {
     var el = document.getElementById('caisse-flash-live');
     if (!el) return;
     if (!msg) {
@@ -160,6 +137,35 @@
     el.hidden = false;
     el.className = 'caisse-flash-live ' + (isErr ? 'caisse-flash-live--err' : 'caisse-flash-live--ok');
     el.textContent = msg;
+    if (demande && demande.produit_id) {
+      var bouton = document.createElement('button');
+      bouton.type = 'button';
+      bouton.className = 'caisse-demander-prix';
+      bouton.textContent = 'Demander le prix';
+      bouton.addEventListener('click', function () {
+        demanderPrix(demande.produit_id, bouton);
+      });
+      el.appendChild(document.createTextNode(' '));
+      el.appendChild(bouton);
+    }
+  }
+
+  function messageSansPrix(nom) {
+    return '« ' + (nom || 'Cette pièce') + ' » n’a pas de prix au catalogue : demandez-le au responsable de stock, il le fixera.';
+  }
+
+  function demanderPrix(pid, bouton) {
+    if (bouton) bouton.disabled = true;
+    apiCall('demander_prix', { produit_id: pid }).then(function (res) {
+      flash(res.ok ? res.message : (res.error || 'La demande de prix a été refusée.'), !res.ok);
+    }).catch(function () {
+      if (bouton) bouton.disabled = false;
+      flash('Erreur réseau : réessayez.', true, { produit_id: pid });
+    });
+  }
+
+  function flashRefus(res, defaut) {
+    flash((res && res.error) || defaut, true, res && res.sans_prix && res.produit_id ? { produit_id: res.produit_id } : null);
   }
 
   /* LE PANIER SURVIT À UN RECHARGEMENT (10/09/2026). Il ne vivait que dans la
@@ -185,7 +191,8 @@
     try {
       var lu = JSON.parse(global.sessionStorage.getItem(CLE_PANIER) || 'null');
       if (lu && Array.isArray(lu.lines) && lu.vendeur === (cfg.vendeur_id || 0)) {
-        state.lines = lu.lines;
+        // Les lignes d'un panier gardé avant le 11/09/2026 dont le prix avait été tapé ne reviennent pas.
+        state.lines = lu.lines.filter(function (l) { return !l.prix_manuel && !l.sans_prix_catalogue && parseMontant(l.prix_unitaire) > 0; });
         state.inclure_tva = lu.inclure_tva ? 1 : 0;
       }
     } catch (e) { /* panier illisible : on repart d'un panier vide */ }
@@ -250,17 +257,13 @@
       var rows = '';
       state.lines.forEach(function (ln) {
         var tl = Math.round(lineTotal(ln));
-        var prixCls = ln.prix_manuel || ln.sans_prix_catalogue ? ' caisse-prix-input--manuel' : '';
         var refHtml = ln.ref ? '<span class="caisse-cart-ref"><code>' + esc(ln.ref) + '</code></span>' : '';
         rows +=
           '<tr class="caisse-cart-row" data-produit-id="' + ln.produit_id + '">' +
           '<td><div class="caisse-cart-produit-cell">' +
           '<div class="caisse-cart-produit-line1"><span class="caisse-cart-nom">' + esc(ln.nom) + '</span></div>' +
           refHtml + '</div></td>' +
-          '<td><div class="caisse-prix-cell">' +
-          '<input type="text" class="caisse-prix-input' + prixCls + '" data-field="prix" data-pid="' + ln.produit_id + '" ' +
-          'value="' + esc(prixInputValue(ln)) + '" inputmode="decimal" autocomplete="off" ' +
-          (ln.sans_prix_catalogue ? 'placeholder="Prix à saisir"' : '') + '></div></td>' +
+          '<td><div class="caisse-prix-cell"><span class="caisse-prix-catalogue" title="Prix du catalogue">' + fmtFcfa(linePrix(ln)) + '</span></div></td>' +
           '<td><div class="caisse-qty-cell caisse-qty-cell--solo">' +
           '<input type="number" class="caisse-qty-input" data-field="qty" data-pid="' + ln.produit_id + '" ' +
           'min="1" max="' + Math.max(1, ln.stock) + '" value="' + esc(ln.quantite) + '" inputmode="numeric"></div></td>' +
@@ -285,7 +288,7 @@
           : '') +
         '<button type="button" class="btn-primary caisse-btn-generer-ticket" id="caisse-btn-generer"' +
         (cfg.tables_ok ? '' : ' disabled') + '><i class="fas fa-ticket-alt"></i> Générer le ticket</button>' +
-        (totals.ttc <= 0 ? '<p class="caisse-generer-ticket-hint">Saisissez le prix de chaque ligne avant de générer le ticket.</p>' : '');
+        (totals.ttc <= 0 ? '<p class="caisse-generer-ticket-hint">Ce panier n’a pas de montant : retirez les pièces sans prix.</p>' : '');
     }
 
     updateRecapOnly();
@@ -304,14 +307,6 @@
       var pid = parseInt(inp.getAttribute('data-pid'), 10);
       var ln = findLine(pid);
       if (!ln) return;
-      if (inp.getAttribute('data-field') === 'prix') {
-        ln.prix_saisie = inp.value;
-        ln.prix_unitaire = parseMontant(inp.value);
-        ln.prix_manuel = 1;
-        inp.classList.add('caisse-prix-input--manuel');
-        updateRecapOnly();
-        return;
-      }
       if (inp.getAttribute('data-field') === 'qty') {
         var q = parseInt(inp.value, 10);
         if (isNaN(q) || q < 1) q = 1;
@@ -359,6 +354,11 @@
 
   function addProduct(produit, qty, silent) {
     if (!produit || !produit.id) return;
+    if (produit.sans_prix_catalogue || !(Number(produit.prix) > 0)) {
+      flash(messageSansPrix(produit.nom), true, { produit_id: produit.id });
+      dismissLiveResults();
+      return;
+    }
     qty = Math.max(1, parseInt(qty, 10) || 1);
     var existing = findLine(produit.id);
     if (existing) {
@@ -368,6 +368,7 @@
         return;
       }
       existing.quantite = nq;
+      existing.prix_unitaire = produit.prix;
     } else {
       if (qty > produit.stock) {
         flash('Stock insuffisant pour « ' + produit.nom + ' ».', true);
@@ -378,12 +379,9 @@
         nom: produit.nom || '',
         ref: produit.ref || '',
         stock: produit.stock || 0,
-        prix_unitaire: produit.prix > 0 ? produit.prix : 0,
-        prix_saisie: produit.prix > 0 ? String(Math.round(produit.prix)) : '',
+        prix_unitaire: produit.prix,
         quantite: qty,
-        remise_ligne_pct: 0,
-        prix_manuel: produit.sans_prix_catalogue ? 1 : 0,
-        sans_prix_catalogue: !!produit.sans_prix_catalogue
+        remise_ligne_pct: 0
       });
     }
     if (!silent) {
@@ -400,7 +398,7 @@
     if (!pid) return Promise.resolve();
     return apiCall('get_product', { produit_id: pid }).then(function (res) {
       if (!res.ok || !res.produit) {
-        flash(res.error || 'Produit introuvable.', true);
+        flashRefus(res, 'Produit introuvable.');
         return res;
       }
       addProduct(res.produit, qty || 1);
@@ -423,7 +421,8 @@
     }
     for (var i = 0; i < payload.lines.length; i++) {
       if (payload.lines[i].prix_unitaire <= 0) {
-        flash('Saisissez le prix de chaque ligne avant de générer le ticket.', true);
+        var ligneSansPrix = findLine(payload.lines[i].produit_id);
+        flash(messageSansPrix(ligneSansPrix ? ligneSansPrix.nom : ''), true, { produit_id: payload.lines[i].produit_id });
         return;
       }
     }
@@ -432,7 +431,7 @@
     apiCall('generer_ticket', { cart: payload }).then(function (res) {
       if (btn) btn.disabled = false;
       if (!res.ok) {
-        flash(res.error || 'Erreur.', true);
+        flashRefus(res, 'Erreur.');
         return;
       }
       state.lines = [];
@@ -495,7 +494,7 @@
         encaisser(fd).then(function (res) {
           if (btn) btn.disabled = false;
           if (!res.ok) {
-            flash(res.error || 'Erreur encaissement.', true);
+            flashRefus(res, 'Erreur encaissement.');
             return;
           }
           state.lines = [];
@@ -526,7 +525,7 @@
     resolveAndAdd: function (code, qty) {
       return apiCall('resolve_product', { code: code }).then(function (res) {
         if (!res.ok) {
-          flash(res.error || 'Introuvable.', true);
+          flashRefus(res, 'Introuvable.');
           return res;
         }
         if (res.type === 'ticket' && res.redirect) {

@@ -320,7 +320,7 @@ $fcfa = static function ($n) {
             }
             var p = res.produit;
             if (p.prix <= 0) {
-                message.textContent = '« ' + p.nom + ' » n’a pas de prix : elle se vend par un ticket.';
+                message.textContent = '« ' + p.nom + ' » n’a pas de prix au catalogue : demandez-le au responsable de stock.';
                 return;
             }
             if (p.stock <= 0) {

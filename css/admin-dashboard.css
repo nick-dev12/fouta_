@@ -11254,3 +11254,26 @@ body.caisse-modal-open {
   opacity: 0.65;
   cursor: wait;
 }
+
+/* LE PRIX VIENT DU CATALOGUE (11/09/2026) : dans un devis ou un bon, les prix se lisent, ils ne se tapent pas */
+.ligne-prix-champ[readonly],
+.ligne-prix[readonly],
+.ligne-prix-promo[readonly] {
+  background: #F4F6FA;
+  color: #1E293B;
+  cursor: default;
+  box-shadow: none;
+}
+.ligne-sans-prix .ligne-total-value { color: #B91C1C; }
+.ligne-sans-prix-note {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
+  margin-top: 4px; font-size: 12px; font-weight: 600; line-height: 1.3; color: #B91C1C;
+}
+.ligne-demander-prix {
+  font: inherit; font-size: 12px; font-weight: 600; color: #fff; background: #10316F;
+  border: 0; border-radius: 6px; padding: 4px 9px; cursor: pointer;
+}
+.ligne-demander-prix:hover { background: #0B2454; }
+.ligne-demander-prix:disabled { opacity: 0.7; cursor: progress; }
+.ligne-prix-demande { font-size: 12px; font-weight: 600; color: #0369A1; }
+.ligne-prix-demande--refus { color: #B91C1C; }

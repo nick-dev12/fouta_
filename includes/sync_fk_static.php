@@ -319,6 +319,33 @@ if (!function_exists('sync_registry_static_foreign_keys')) {
       'REFERENCED_COLUMN_NAME' => 'id',
     ),
   ),
+  'demandes_prix' =>
+  array (
+    0 =>
+    array (
+      'COLUMN_NAME' => 'admin_id',
+      'REFERENCED_TABLE_NAME' => 'admin',
+      'REFERENCED_COLUMN_NAME' => 'id',
+    ),
+    1 =>
+    array (
+      'COLUMN_NAME' => 'dernier_demandeur_id',
+      'REFERENCED_TABLE_NAME' => 'admin',
+      'REFERENCED_COLUMN_NAME' => 'id',
+    ),
+    2 =>
+    array (
+      'COLUMN_NAME' => 'produit_id',
+      'REFERENCED_TABLE_NAME' => 'produits',
+      'REFERENCED_COLUMN_NAME' => 'id',
+    ),
+    3 =>
+    array (
+      'COLUMN_NAME' => 'traite_par',
+      'REFERENCED_TABLE_NAME' => 'admin',
+      'REFERENCED_COLUMN_NAME' => 'id',
+    ),
+  ),
   'depenses' => 
   array (
     0 => 

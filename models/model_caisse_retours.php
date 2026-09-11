@@ -346,7 +346,7 @@ function caisse_retour_preparer($vente_id, array $quantites, $motif, $solution, 
                     }
                     $prix = round((float) caisse_prix_unitaire_produit($piece), 2);
                     if ($prix <= 0) {
-                        throw new RuntimeException('« ' . $piece['nom'] . ' » n’a pas de prix : elle se vend par un ticket, pas par un échange.');
+                        throw new RuntimeException(caisse_message_sans_prix($piece['nom']));
                     }
                     if ((int) $piece['stock'] < $quantite) {
                         throw new RuntimeException('Stock insuffisant pour « ' . $piece['nom'] . ' » : ' . (int) $piece['stock'] . ' en stock.');

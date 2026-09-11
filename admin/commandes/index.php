@@ -561,10 +561,10 @@ $montant_total_a_traiter = array_sum(array_column($commandes, 'montant_total'));
                 '" placeholder="Nom du produit (modifiable)" class="ligne-nom-input" title="Modifier le nom affiché">' +
                 '<input type="number" name="lignes[' + idx + '][quantite]" value="1" min="1" max="' + (produit
                     .stock_dispo || produit.stock || 999) + '" class="ligne-qte" title="Quantité">' +
-                '<input type="number" name="lignes[' + idx + '][prix_unitaire]" value="' + (prixPromo || prix) +
-                '" min="0" step="0.01" class="ligne-prix" title="Prix unitaire (FCFA)">' +
+                '<input type="number" name="lignes[' + idx + '][prix_unitaire]" value="' + ((prixPromo || prix) || '') +
+                '" min="0" step="0.01" class="ligne-prix" readonly tabindex="-1" placeholder="Sans prix" title="Prix du catalogue : seul le responsable de stock le fixe">' +
                 '<input type="number" name="lignes[' + idx + '][prix_promotion]" value="' + (prixPromo || '') +
-                '" min="0" step="0.01" placeholder="Optionnel" class="ligne-prix-promo" title="Prix promo (optionnel)">' +
+                '" min="0" step="0.01" placeholder="—" class="ligne-prix-promo" readonly tabindex="-1" title="Promotion du catalogue">' +
                 '<button type="button" class="ligne-remove" aria-label="Retirer"><i class="fas fa-trash"></i></button>';
             if (lignesEmpty) lignesEmpty.style.display = 'none';
             div.querySelector('.ligne-remove').addEventListener('click', function() {
