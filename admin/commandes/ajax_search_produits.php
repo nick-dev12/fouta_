@@ -19,7 +19,7 @@ $offset = max(0, (int) ($_GET['offset'] ?? 0));
 
 require_once __DIR__ . '/../../models/model_produits.php';
 $fetchLimit = $limit + 1;
-$items = search_produits_en_stock_commande_manuelle($recherche, $fetchLimit, $offset);
+$items = search_produits_pour_document($recherche, $fetchLimit, $offset);
 $hasMore = count($items) > $limit;
 if ($hasMore) {
     array_pop($items);

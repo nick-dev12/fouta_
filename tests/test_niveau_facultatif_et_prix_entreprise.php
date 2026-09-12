@@ -67,7 +67,7 @@ if ($a_la_colonne) {
     if ($nom === '') {
         echo "  --  aucune pièce en stock avec un prix entreprise : recherche non éprouvée ici\n";
     } else {
-        $items = search_produits_en_stock_commande_manuelle(mb_substr($nom, 0, 12), 5, 0);
+        $items = search_produits_pour_document(mb_substr($nom, 0, 12), 5, 0);
         $trouve = null;
         foreach ($items as $it) {
             if (array_key_exists('prix_entreprise', $it)) {

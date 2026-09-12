@@ -137,5 +137,36 @@ foreach ($comptes as $id) {
     verifie("compte $id : BL en brouillon = seconde lecture ($nbl)", $nbl, count(commercial_bl_brouillons($id)));
 }
 
+/* LA RECHERCHE DU COMPTOIR (12/09/2026, constat de la direction) : elle ne
+   regardait PAS la référence OEM et ne rendait que les pièces en stock. Un
+   commercial qui tapait la référence donnée par le client ne trouvait rien,
+   là où l'informaticien trouvait la pièce. On le prouve sur des pièces réelles. */
+echo "— la recherche du comptoir —\n";
+require_once $RACINE . '/models/model_produits.php';
+$trouve = function ($terme, $id) {
+    foreach (search_produits_pour_document($terme, 30, 0) as $r) {
+        if ((int) ($r['id'] ?? 0) === (int) $id) {
+            return true;
+        }
+    }
+    return false;
+};
+$temoin = $db->query("SELECT id, identifiant_interne, reference_oem FROM produits
+                      WHERE sync_deleted_at IS NULL AND statut = 'actif' AND stock > 0
+                        AND reference_oem IS NOT NULL AND reference_oem <> ''
+                      ORDER BY id LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+verifie('une pièce en stock porte une référence OEM (sinon rien à prouver)', true, (bool) $temoin);
+if ($temoin) {
+    verifie("la référence OEM {$temoin['reference_oem']} retrouve sa pièce", true, $trouve($temoin['reference_oem'], $temoin['id']));
+    verifie('…même tapée avec des O à la place des 0', true, $trouve(str_replace('0', 'O', (string) $temoin['reference_oem']), $temoin['id']));
+    verifie('…et le code FPL retrouve la même pièce', true, $trouve($temoin['identifiant_interne'], $temoin['id']));
+}
+$rupture = $db->query("SELECT id, identifiant_interne FROM produits
+                       WHERE sync_deleted_at IS NULL AND statut = 'rupture_stock'
+                       ORDER BY id LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+if ($rupture) {
+    verifie('une pièce en rupture se trouve quand même (c est celle qu on commande)', true, $trouve($rupture['identifiant_interne'], $rupture['id']));
+}
+
 echo "\n$ok OK / $ko KO\n";
 exit($ko === 0 ? 0 : 1);

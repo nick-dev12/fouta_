@@ -2816,7 +2816,16 @@ function increment_produit_stock($produit_id, $quantite)
  * @param int $offset Décalage pagination
  * @return array Produits avec stock > 0
  */
-function search_produits_en_stock_commande_manuelle($recherche = '', $limit = 30, $offset = 0)
+/**
+ * LA RECHERCHE DU COMPTOIR (devis, BL, commande manuelle).
+ *
+ * Elle s'appelait search_produits_en_stock_commande_manuelle et ne rendait que
+ * les pièces en stock : le commercial ne voyait donc PAS les pièces en rupture
+ * — justement celles que le client demande et qu'il faut commander (constat de
+ * la direction, 12/09/2026). Le nom dit maintenant ce qu'elle fait ; l'ancien
+ * nom reste juste en dessous pour ne rien casser.
+ */
+function search_produits_pour_document($recherche = '', $limit = 30, $offset = 0)
 {
     global $db;
 
@@ -2838,6 +2847,11 @@ function search_produits_en_stock_commande_manuelle($recherche = '', $limit = 30
         if (produits_has_column('reference_fournisseur')) {
             $sql .= ', p.reference_fournisseur';
         }
+        /* LA REFERENCE OEM PART AVEC LA PIECE (12/09/2026) : le commercial la
+           cherche et doit la RELIRE sur la ligne trouvee, comme l'informaticien. */
+        if (produits_has_column('reference_oem')) {
+            $sql .= ', p.reference_oem';
+        }
         if (produits_has_column('prix_achat')) {
             $sql .= ', p.prix_achat';
         }
@@ -2855,7 +2869,7 @@ function search_produits_en_stock_commande_manuelle($recherche = '', $limit = 30
             FROM produits p
             LEFT JOIN categories c ON p.categorie_id = c.id
             $joinx
-            WHERE p.statut = 'actif' AND p.stock > 0
+            " . (produits_has_column('sync_deleted_at') ? 'WHERE p.sync_deleted_at IS NULL AND ' : 'WHERE ') . "p.statut IN ('actif', 'rupture_stock')
         ";
 
         $params = [];
@@ -2870,9 +2884,31 @@ function search_produits_en_stock_commande_manuelle($recherche = '', $limit = 30
                 $or[] = 'p.description LIKE :st_desc';
                 $params['st_desc'] = '%' . $tr . '%';
             }
+            /* LES REFERENCES, COMME CHEZ L'INFORMATICIEN (12/09/2026) : la
+               recherche des devis, BL et commandes ne regardait PAS la
+               reference OEM, et comparait les references telles quelles.
+               Un commercial qui tapait la reference OEM du client ne
+               trouvait rien, la ou l'informaticien trouvait la piece. On
+               cherche donc aussi l'OEM, et on compare EN PLUS la forme
+               normalisee (majuscules, sans espaces ni tirets, O ramene a 0)
+               pour retrouver la piece quelle que soit la facon de taper. */
+            $norm = produits_ref_normalise($tr);
+            $utilise_norm = false;
             if (produits_has_column('reference_fournisseur')) {
                 $or[] = 'p.reference_fournisseur LIKE :st_rf';
                 $params['st_rf'] = '%' . $tr . '%';
+                if ($norm !== '') {
+                    $or[] = produits_ref_normalise_sql('p.reference_fournisseur') . ' LIKE :st_norm';
+                    $utilise_norm = true;
+                }
+            }
+            if (produits_has_column('reference_oem')) {
+                $or[] = 'p.reference_oem LIKE :st_oem';
+                $params['st_oem'] = '%' . $tr . '%';
+                if ($norm !== '') {
+                    $or[] = produits_ref_normalise_sql('p.reference_oem') . ' LIKE :st_norm';
+                    $utilise_norm = true;
+                }
             }
             if (produits_has_column('identifiant_interne')) {
                 if (preg_match('/^FPL(\d{6}|\d{9})$/i', $tr)) {
@@ -2887,12 +2923,23 @@ function search_produits_en_stock_commande_manuelle($recherche = '', $limit = 30
                         $or[] = 'p.reference_fpl LIKE :st_idlike';
                     }
                     $params['st_idlike'] = '%' . $tr . '%';
+                    if ($norm !== '') {
+                        $or[] = produits_ref_normalise_sql('p.identifiant_interne') . ' LIKE :st_norm';
+                        if (produits_has_column('reference_fpl')) {
+                            $or[] = produits_ref_normalise_sql('p.reference_fpl') . ' LIKE :st_norm';
+                        }
+                        $utilise_norm = true;
+                    }
                 }
+            }
+            if ($utilise_norm) {
+                $params['st_norm'] = '%' . $norm . '%';
             }
             $sql .= ' AND (' . implode(' OR ', $or) . ')';
         }
 
-        $sql .= ' ORDER BY p.nom ASC LIMIT ' . $offset . ', ' . $limit;
+        // les pieces disponibles en tete, les ruptures ensuite (elles restent visibles)
+        $sql .= ' ORDER BY (p.stock > 0) DESC, p.nom ASC LIMIT ' . $offset . ', ' . $limit;
         $stmt = $db->prepare($sql);
         foreach ($params as $k => $v) {
             $stmt->bindValue(':' . $k, $v, PDO::PARAM_STR);
@@ -2914,6 +2961,7 @@ function search_produits_en_stock_commande_manuelle($recherche = '', $limit = 30
                 'fournisseur_nom' => produits_fournisseur_nom_affichage($r),
                 'ref_fournisseur' => (produits_has_column('reference_fournisseur') ? trim((string) ($r['reference_fournisseur'] ?? '')) : ''),
                 'ref_produit' => (produits_has_column('identifiant_interne') ? strtoupper(trim((string) ($r['identifiant_interne'] ?? ''))) : ''),
+                'ref_oem' => (produits_has_column('reference_oem') ? trim((string) ($r['reference_oem'] ?? '')) : ''),
                 'desc_excerpt' => produits_description_excerpt($r['description'] ?? '', 20),
             ];
             if (produits_has_column('prix_achat')) {
@@ -3907,4 +3955,13 @@ function produit_modeles_ids($produit_id)
     } catch (PDOException $e) {
         return [];
     }
+}
+
+/**
+ * @deprecated 12/09/2026 — nom d'avant : la recherche ne se limite plus au stock.
+ * Gardé pour les appels qui traînent ; il passe la main à search_produits_pour_document().
+ */
+function search_produits_en_stock_commande_manuelle($recherche = '', $limit = 30, $offset = 0)
+{
+    return search_produits_pour_document($recherche, $limit, $offset);
 }

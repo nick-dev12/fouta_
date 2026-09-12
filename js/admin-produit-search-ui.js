@@ -353,6 +353,8 @@
         var fourn = slugVisible('fournisseur_id') ? esc(p.fournisseur_nom || '') : '';
         var rff = slugVisible('reference_fournisseur') ? esc(p.ref_fournisseur || '') : '';
         var rfp = slugVisible('identifiant_interne') ? esc(p.ref_produit || '') : '';
+        // la reference OEM : c'est celle que le client donne au comptoir (12/09)
+        var roem = esc(p.ref_oem || '');
         var cat = slugVisible('categorie_id') ? esc(p.categorie_nom || 'Sans catégorie') : '';
         var stock = slugVisible('stock') ? (p.stock_dispo || p.stock || 0) : null;
         var calcSlug = getChampCalculSlug();
@@ -379,6 +381,9 @@
         if (rfp) {
             refParts.push('<span class="sr-ref">Réf. prod. <strong>' + rfp + '</strong></span>');
         }
+        if (roem) {
+            refParts.push('<span class="sr-ref">Réf. OEM <strong>' + roem + '</strong></span>');
+        }
         var refsBlock = refParts.length
             ? '<div class="sr-refs">' + refParts.join(' <span class="sr-ref-sep">·</span> ') + '</div>'
             : '';
@@ -394,7 +399,10 @@
                     : prix > 0
                         ? '<span class="sr-meta"><strong class="sr-prix">' + formatFcfa(prix) + ' FCFA</strong> HT</span>'
                         : '';
-        return line1 + fournLine + (cat ? catLine : '') + refsBlock + meta;
+        /* LA RUPTURE SE DIT (12/09) : les pieces a stock 0 reviennent dans la
+           recherche — il faut donc les reconnaitre d'un coup d'oeil. */
+        var rupture = (stock !== null && stock <= 0) ? '<span class="sr-rupture">Rupture de stock</span>' : '';
+        return line1 + fournLine + (cat ? catLine : '') + refsBlock + rupture + meta;
     }
 
     function buildLigneThumbHtml(produit) {
