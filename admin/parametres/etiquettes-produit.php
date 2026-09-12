@@ -12,7 +12,9 @@ if (!isset($_SESSION['admin_id']) || !isset($_SESSION['admin_email'])) {
 require_once __DIR__ . '/../includes/require_access.php';
 require_once __DIR__ . '/../../includes/admin_permissions.php';
 
-if (!admin_can_gestion_stock_etendue()) {
+/* 12/09/2026 : l'infographiste entre ici aussi — c'est la conception de
+   l'étiquette de pièce, son métier (admin_can_conception_etiquettes). */
+if (!admin_can_conception_etiquettes()) {
     header('Location: ../dashboard.php');
     exit;
 }
@@ -37,9 +39,14 @@ if ($produit_id_retour < 0) {
     $produit_id_retour = 0;
 }
 
+$est_infographiste = function_exists('admin_current_role') && admin_current_role() === 'photographe';
+/* L'infographiste n'a pas la fiche de la pièce (prix, stock) : son retour est
+   l'étiquette en grand, sinon la liste des étiquettes. */
 $retour_url = $produit_id_retour > 0
-    ? ('../produits/ajuster-stock.php?id=' . $produit_id_retour)
-    : '../parametres.php';
+    ? ($est_infographiste
+        ? ('../produits/etiquette-piece-voir.php?id=' . $produit_id_retour)
+        : ('../produits/ajuster-stock.php?id=' . $produit_id_retour))
+    : ($est_infographiste ? '../produits/etiquettes.php?type=pieces' : '../parametres.php');
 $retour_label = $produit_id_retour > 0 ? 'Retour au produit' : 'Retour';
 
 $error_message = '';

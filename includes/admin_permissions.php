@@ -126,6 +126,26 @@ if (!function_exists('admin_current_role')) {
         return admin_can_gestion_stock() || admin_current_role() === 'photographe';
     }
 
+    /**
+     * LA CONCEPTION DE L'ÉTIQUETTE (12/09/2026, demande de la direction) :
+     * l'infographiste dessine l'étiquette et juge son rendu ; il doit donc
+     * atteindre le même écran que l'informaticien — les dimensions
+     * d'impression de l'étiquette de pièce.
+     */
+    function admin_can_conception_etiquettes() {
+        return admin_can_gestion_stock_etendue() || admin_current_role() === 'photographe';
+    }
+
+    /**
+     * LES DEUX RÉFÉRENCES DE LA PIÈCE — OEM et fournisseur (12/09/2026, demande
+     * de la direction) : ce sont elles qui s'impriment sur l'étiquette et qui
+     * servent à retrouver la pièce ; l'infographiste les corrige depuis SON
+     * éditeur, sans toucher au reste de la fiche (ni prix, ni stock).
+     */
+    function admin_can_modifier_references_piece() {
+        return admin_can_gestion_stock_etendue() || admin_current_role() === 'photographe';
+    }
+
     /** Périmètre étendu stocks : catégories complètes, paramètres stock, entrepôt, alertes. */
     function admin_can_gestion_stock_etendue() {
         $r = admin_current_role();

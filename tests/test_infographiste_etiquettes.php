@@ -43,6 +43,12 @@ $ouvertes = [
     'produits/ajax_etiquette_imprimee.php',
     'produits/etiquette-barre.php',
     'parametres/emplacement-noeud-etiquette.php',
+    /* 12/09/2026 : « il voit les étiquettes comme l'informaticien les voit »
+       — la conception (dimensions d'impression), le lot en un seul PDF, et
+       l'enregistrement des deux références de la pièce. */
+    'parametres/etiquettes-produit.php',
+    'produits/etiquette-piece-pdf-lot.php',
+    'produits/ajax_references_enregistrer.php',
 ];
 foreach ($ouvertes as $r) {
     verifie("ouverte : $r", true, admin_route_is_allowed('photographe', $r));
@@ -54,7 +60,6 @@ $fermees = [
     'produits/index.php',              // le catalogue avec les prix
     'dashboard.php',                   // les chiffres
     'produits/detourage-lot.php',      // l'outil de lot de l'informaticien
-    'parametres/etiquettes-produit.php',// le réglage des dimensions
 ];
 foreach ($fermees as $r) {
     verifie("fermée : $r", false, admin_route_is_allowed('photographe', $r));
@@ -81,7 +86,22 @@ foreach ($cas as $role => $attendu) {
     verifie("admin_can_voir_etiquettes() pour « $role »", $attendu, admin_can_voir_etiquettes());
 }
 
-echo "— régler la disposition reste au responsable —\n";
+echo "— les deux droits nommés du 12/09 —\n";
+$cas_conception = [
+    'photographe' => true,          // il dessine l'étiquette : il la règle
+    'gestion_stock_general' => true,
+    'informaticien' => true,
+    'gestion_stock' => false,       // le rayonniste imprime, il ne conçoit pas
+    'caissier' => false,
+    'commercial_general' => false,
+];
+foreach ($cas_conception as $role => $attendu) {
+    $_SESSION['admin_role'] = $role;
+    verifie("admin_can_conception_etiquettes() pour « $role »", $attendu, admin_can_conception_etiquettes());
+    verifie("admin_can_modifier_references_piece() pour « $role »", $attendu, admin_can_modifier_references_piece());
+}
+
+echo "— le périmètre stock lui reste fermé —\n";
 $_SESSION['admin_role'] = 'photographe';
 verifie('le photographe ne règle pas la disposition', false, admin_can_gestion_stock_etendue());
 verifie("le photographe n'a pas le périmètre stock", false, admin_can_gestion_stock());

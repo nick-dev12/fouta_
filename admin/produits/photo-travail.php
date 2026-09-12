@@ -319,7 +319,8 @@ $fpl_titre_page = 'Espace infographiste';
                             + '<a class="pt-thumb' + (p.image ? '' : ' vide') + '" href="photo-editer.php?id=' + encodeURIComponent(p.id) + '">' + img + '</a>'
                             + '<div class="pt-meta"><div class="pt-nom">' + esc(p.name) + '</div>'
                             + '<div class="pt-refs"><span class="pt-ref">' + esc(p.code) + '</span>'
-                            + (p.oem ? '<span class="pt-oem">OEM ' + esc(p.oem) + '</span>' : '') + '</div></div>'
+                            + (p.oem ? '<span class="pt-oem">OEM ' + esc(p.oem) + '</span>' : '')
+                            + (p.ref_fournisseur ? '<span class="pt-ref">Fourn. ' + esc(p.ref_fournisseur) + '</span>' : '') + '</div></div>'
                             + '<div class="pt-actions"><a class="pt-act pt-act-web" target="_blank" rel="noopener" href="' + lienImages(p) + '">Chercher des images</a>'
                             + '<a class="pt-act pt-act-open" href="photo-editer.php?id=' + encodeURIComponent(p.id) + '">Ouvrir</a></div></article>';
                     }).join('');

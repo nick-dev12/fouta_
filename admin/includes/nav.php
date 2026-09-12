@@ -289,6 +289,13 @@ include __DIR__ . '/../../includes/pwa_admin_boot.php';
             </a>
             <?php endif; ?>
             <?php if ($admin_role === 'commercial_general'): ?>
+            <?php /* LA CONCEPTION DE L'ÉTIQUETTE (12/09) : les dimensions d'impression,
+                     le même écran que l'informaticien. */ ?>
+            <a href="<?php echo $admin_nav_base; ?>parametres/etiquettes-produit.php"
+                class="menu-item mi-conception<?php echo $current_page == 'etiquettes-produit.php' ? ' active' : ''; ?>">
+                <span class="menu-item-icon ico" aria-hidden="true"><?php echo fpl_icone('settings', 16); ?></span>
+                <span class="menu-item-text">Conception de l'étiquette</span>
+            </a>
             <a href="<?php echo $admin_nav_base; ?>stock/mouvements.php"
                 class="menu-item mi-mouvements<?php echo $current_page == 'mouvements.php' ? ' active' : ''; ?>">
                 <span class="menu-item-icon ico" aria-hidden="true"><?php echo fpl_icone('clock', 16); ?></span>

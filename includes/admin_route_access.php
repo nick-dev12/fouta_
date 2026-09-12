@@ -113,6 +113,12 @@ if (!function_exists('admin_route_relative_path')) {
         if ($p === 'parametres/etiquettes-produit.php' || $p === 'parametres/etiquettes-entrepot.php') {
             return true;
         }
+        /* Les deux références de la pièce (OEM, fournisseur) s'enregistrent aussi
+           depuis l'éditeur d'images (12/09/2026) : le droit nommé est
+           admin_can_modifier_references_piece(), le Responsable stock l'a. */
+        if ($p === 'produits/ajax_references_enregistrer.php') {
+            return true;
+        }
         if (strpos($p, 'parametres/emplacement-') === 0) {
             return true;
         }
@@ -141,6 +147,14 @@ if (!function_exists('admin_route_relative_path')) {
             'produits/ajax_etiquette_imprimee.php',// la trace « imprimée le … par … »
             'produits/etiquette-barre.php',
             'parametres/emplacement-noeud-etiquette.php',
+            /* LA CONCEPTION DE L'ÉTIQUETTE (12/09/2026, demande de la direction) :
+             * « il voit les étiquettes comme l'informaticien les voit ». Il règle
+             * donc les dimensions d'impression et sort un lot en un seul PDF. */
+            'parametres/etiquettes-produit.php',
+            'produits/etiquette-piece-pdf-lot.php',
+            /* Il corrige AUSSI les deux références de la pièce (OEM et fournisseur)
+             * depuis son éditeur : ce sont elles qui s'impriment sur l'étiquette. */
+            'produits/ajax_references_enregistrer.php',
             /* HISTORIQUE DES MOUVEMENTS + RAPPORT JOURNALIER (07/09, demande de la
              * direction) : il suit ce qui entre et bouge, pour savoir quoi illustrer. */
             'stock/mouvements.php',

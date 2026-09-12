@@ -38,7 +38,8 @@ $piece = null;
 if ($id > 0) {
     try {
         $st = $db->prepare(
-            "SELECT p.id, p.identifiant_interne, p.reference_fpl, p.nom, p.nom_wolof, p.reference_oem, p.description,
+            "SELECT p.id, p.identifiant_interne, p.reference_fpl, p.nom, p.nom_wolof, p.reference_oem,
+                    p.reference_fournisseur, p.description,
                     p.images, p.image_principale, p.image_etiquette_fpl,
                     c.nom AS categorie_nom, sc.nom AS sous_categorie_nom, m.nom AS marque_nom
                FROM produits p
@@ -92,6 +93,11 @@ if (!empty($piece['reference_fpl'])) {
     $ref = fpl_code_afficher(strtoupper(trim((string) $piece['reference_fpl'])));
 }
 $oem = trim((string) ($piece['reference_oem'] ?? ''));
+/* LES DEUX RÉFÉRENCES SE CORRIGENT ICI (12/09/2026, demande de la direction) :
+   elles s'impriment sur l'étiquette et servent à retrouver la pièce ; c'est
+   l'infographiste qui prépare l'étiquette, il doit pouvoir les remettre droit. */
+$reference_fournisseur = trim((string) ($piece['reference_fournisseur'] ?? ''));
+$peut_modifier_refs = function_exists('admin_can_modifier_references_piece') && admin_can_modifier_references_piece();
 $marque = trim((string) ($piece['marque_nom'] ?? ''));
 $famille = trim((string) ($piece['categorie_nom'] ?? ''));
 if (!empty($piece['sous_categorie_nom'])) {
@@ -171,6 +177,16 @@ $fpl_titre_page = 'Images de la pièce';
     .pe-chip.oem { background: #ECF2FC; color: var(--navy, #10316F); font-family: Consolas, monospace; font-weight: 700; letter-spacing: .3px; }
     .pe-chip.oem button { border: 0; background: var(--navy, #10316F); color: #fff; border-radius: 6px; font-size: 11px; padding: 2px 8px; cursor: pointer; font-family: inherit; }
     .pe-ref { font-family: Consolas, monospace; background: #ECF2FC; color: var(--navy, #10316F); border-radius: 8px; padding: 3px 10px; font-weight: 700; letter-spacing: .5px; }
+    .pe-refs { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; margin-top: 12px; padding: 12px 14px; background: #F7F9FD; border: 1px solid #E1E8F4; border-radius: 12px; }
+    .pe-refs-champ { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #5C6A85; }
+    .pe-refs-champ input { font-family: Consolas, monospace; font-size: 14px; font-weight: 700; color: var(--navy, #10316F); letter-spacing: .3px; border: 1.5px solid #DBE2EE; border-radius: 9px; padding: 8px 10px; min-width: 210px; background: #fff; }
+    .pe-refs-champ input:focus { outline: none; border-color: var(--navy, #10316F); box-shadow: 0 0 0 3px rgba(16,49,111,.12); }
+    .pe-refs-ok { border: 0; background: var(--navy, #10316F); color: #fff; border-radius: 9px; font-size: 13px; font-weight: 700; padding: 9px 16px; cursor: pointer; }
+    .pe-refs .pe-copier { border: 1px solid #DBE2EE; background: #fff; color: var(--navy, #10316F); border-radius: 9px; font-size: 12px; padding: 8px 12px; cursor: pointer; }
+    .pe-refs-etat { font-size: 12.5px; font-weight: 700; color: #5C6A85; }
+    .pe-refs-etat.ok { color: #0F7A3D; }
+    .pe-refs-etat.ko { color: #9B1C1C; }
+    .pe-refs-aide { flex: 1 1 100%; margin: 2px 0 0; font-size: 12px; color: #6B7890; }
     .pe-desc { margin-top: 10px; font-size: 13.5px; color: #33415A; white-space: pre-line; max-height: 4.6em; overflow: hidden; }
     .pe-heritee { display: flex; align-items: center; gap: 12px; margin-top: 12px; background: #FFF8E6; border: 1px solid #F1E1B3; border-radius: 10px; padding: 8px 12px; font-size: 12.5px; color: #5C4A1A; }
     .pe-heritee img { width: 64px; height: 64px; object-fit: contain; background: #fff; border-radius: 8px; border: 1px solid #F1E1B3; }
@@ -253,12 +269,33 @@ $fpl_titre_page = 'Images de la pièce';
                     <span class="pe-ref"><?php echo fpl_e($ref); ?></span>
                     <?php if ($marque !== ''): ?><span class="pe-chip">Marque <b><?php echo fpl_e($marque); ?></b></span><?php endif; ?>
                     <?php if ($famille !== ''): ?><span class="pe-chip">Famille <b><?php echo fpl_e($famille); ?></b></span><?php endif; ?>
-                    <?php if ($oem !== ''): ?>
-                        <span class="pe-chip oem">OEM <?php echo fpl_e($oem); ?> <button type="button" class="pe-copier" data-copie="<?php echo fpl_e($oem); ?>" title="Copier la référence OEM">Copier</button></span>
-                    <?php else: ?>
-                        <span class="pe-chip">Pas de référence OEM — cherchez par marque et nom</span>
+                    <?php if (!$peut_modifier_refs): ?>
+                        <?php if ($oem !== ''): ?>
+                            <span class="pe-chip oem">OEM <?php echo fpl_e($oem); ?> <button type="button" class="pe-copier" data-copie="<?php echo fpl_e($oem); ?>" title="Copier la référence OEM">Copier</button></span>
+                        <?php else: ?>
+                            <span class="pe-chip">Pas de référence OEM — cherchez par marque et nom</span>
+                        <?php endif; ?>
                     <?php endif; ?>
                 </div>
+                <?php if ($peut_modifier_refs): ?>
+                <!-- LES DEUX RÉFÉRENCES, MODIFIABLES (12/09) -->
+                <form class="pe-refs" id="pe-refs" data-id="<?php echo (int) $piece['id']; ?>" data-oem="<?php echo fpl_e($oem); ?>">
+                    <label class="pe-refs-champ">
+                        <span>Référence OEM</span>
+                        <input type="text" name="reference_oem" value="<?php echo fpl_e($oem); ?>" maxlength="100" autocomplete="off" spellcheck="false" placeholder="celle du constructeur">
+                    </label>
+                    <label class="pe-refs-champ">
+                        <span>Référence fournisseur</span>
+                        <input type="text" name="reference_fournisseur" value="<?php echo fpl_e($reference_fournisseur); ?>" maxlength="120" autocomplete="off" spellcheck="false" placeholder="celle du fournisseur">
+                    </label>
+                    <button type="submit" class="pe-refs-ok">Enregistrer</button>
+                    <?php if ($oem !== ''): ?>
+                    <button type="button" class="pe-copier" data-copie="<?php echo fpl_e($oem); ?>" title="Copier la référence OEM">Copier</button>
+                    <?php endif; ?>
+                    <span class="pe-refs-etat" role="status"></span>
+                    <p class="pe-refs-aide">Ces deux références s'impriment sur l'étiquette et servent à retrouver la pièce. La référence FPL est recalculée à partir de l'OEM.</p>
+                </form>
+                <?php endif; ?>
                 <?php if ($description !== ''): ?><div class="pe-desc"><?php echo fpl_e($description); ?></div><?php endif; ?>
                 <?php if ($image_etiquette !== ''): ?>
                 <div class="pe-heritee">
@@ -355,6 +392,52 @@ $fpl_titre_page = 'Images de la pièce';
             else { var i = document.createElement('input'); i.value = txt; document.body.appendChild(i); i.select(); try { document.execCommand('copy'); } catch (e) {} i.remove(); ok(); }
         });
     });
+    </script>
+    <script>
+    // LES DEUX RÉFÉRENCES (12/09) : on les corrige sans quitter l'éditeur ; les
+    // recherches internet, qui partent de l'OEM, suivent la nouvelle valeur.
+    (function () {
+        var f = document.getElementById('pe-refs');
+        if (!f) { return; }
+        var etat = f.querySelector('.pe-refs-etat');
+        var meta = document.querySelector('meta[name="csrf-token"]');
+        var jeton = meta ? meta.getAttribute('content') : '';
+        f.addEventListener('submit', function (e) {
+            e.preventDefault();
+            var oemAvant = f.getAttribute('data-oem') || '';
+            var corps = new FormData(f);
+            corps.append('id', f.getAttribute('data-id') || '0');
+            corps.append('_jeton', jeton);
+            etat.className = 'pe-refs-etat';
+            etat.textContent = 'Enregistrement…';
+            fetch('ajax_references_enregistrer.php', {
+                method: 'POST', body: corps, credentials: 'same-origin', headers: { 'X-CSRF-TOKEN': jeton }
+            }).then(function (r) { return r.json(); }).then(function (d) {
+                if (!d || !d.ok) {
+                    etat.className = 'pe-refs-etat ko';
+                    etat.textContent = (d && d.error) || "L'enregistrement a échoué.";
+                    return;
+                }
+                var oem = d.reference_oem || '';
+                f.setAttribute('data-oem', oem);
+                var copier = f.querySelector('.pe-copier');
+                if (copier) { copier.setAttribute('data-copie', oem); }
+                if (oemAvant && oemAvant !== oem) {
+                    document.querySelectorAll('.pe-lien').forEach(function (a) {
+                        a.href = a.href.split(encodeURIComponent(oemAvant)).join(encodeURIComponent(oem));
+                        var q = a.querySelector('.q');
+                        if (q) { q.textContent = q.textContent.split(oemAvant).join(oem); }
+                    });
+                }
+                etat.className = 'pe-refs-etat ok';
+                etat.textContent = oemAvant !== oem ? 'Enregistré — référence FPL recalculée' : 'Enregistré';
+                setTimeout(function () { etat.className = 'pe-refs-etat'; etat.textContent = ''; }, 3000);
+            }).catch(function () {
+                etat.className = 'pe-refs-etat ko';
+                etat.textContent = 'Réseau indisponible.';
+            });
+        });
+    })();
     </script>
 </body>
 </html>

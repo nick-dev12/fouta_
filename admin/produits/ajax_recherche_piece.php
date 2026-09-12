@@ -40,9 +40,10 @@ try {
        références se comparent en forme NORMALISÉE (majuscules, sans espaces
        ni tirets, O ramené à 0) pour retrouver la pièce quelle que soit la
        façon dont on tape ou dont la base a stocké la référence. Le résultat
-       n'expose JAMAIS la valeur de la référence fournisseur : seulement la
-       pièce, son code FPL, sa réf OEM et son emplacement — la règle « le
-       stock simple ne voit pas le fournisseur » reste tenue. */
+       n'expose la référence fournisseur QU'À CEUX QUI ONT LE DROIT DE LA
+       CORRIGER (12/09/2026 : l'infographiste, en plus des profils étendus) —
+       la règle « le stock simple ne voit pas le fournisseur » reste tenue
+       pour tous les autres. */
     $like = '%' . $q . '%';
     $norm = '%' . produits_ref_normalise($q) . '%';
     $or = ['p.nom LIKE :q_like'];
@@ -63,7 +64,8 @@ try {
         $or[] = produits_ref_normalise_sql('p.reference_fournisseur') . ' LIKE :q_norm';
     }
     $col_ref_fpl = produits_has_column('reference_fpl') ? 'p.reference_fpl' : 'NULL AS reference_fpl';
-    $stmt = $db->prepare("SELECT p.id, p.nom, p.identifiant_interne, $col_ref_fpl, p.reference_oem, p.stock,
+    $col_ref_f = produits_has_column('reference_fournisseur') ? 'p.reference_fournisseur' : "'' AS reference_fournisseur";
+    $stmt = $db->prepare("SELECT p.id, p.nom, p.identifiant_interne, $col_ref_fpl, p.reference_oem, $col_ref_f, p.stock,
                                  p.image_principale, p.entrepot_noeud_id,
                                  c.nom AS categorie_nom, sc.nom AS sous_categorie_nom
                           FROM produits p
@@ -79,6 +81,10 @@ try {
     $rows = [];
 }
 
+/* Qui lit la référence fournisseur ici : ceux qui ont le droit de la corriger
+   (profils étendus et, depuis le 12/09, l'infographiste). */
+$voit_fournisseur = function_exists('admin_can_modifier_references_piece') && admin_can_modifier_references_piece();
+
 $products = [];
 foreach ($rows as $r) {
     $chemin = '';
@@ -90,6 +96,7 @@ foreach ($rows as $r) {
         'name' => fpl_texte((string) $r['nom']),
         'code' => function_exists('fpl_reference_piece') ? fpl_reference_piece($r) : (string) $r['identifiant_interne'],
         'oem' => fpl_texte((string) ($r['reference_oem'] ?? '')),
+        'ref_fournisseur' => $voit_fournisseur ? fpl_texte((string) ($r['reference_fournisseur'] ?? '')) : '',
         'categorie' => fpl_texte(trim((string) ($r['categorie_nom'] ?? '')
             . ((!empty($r['categorie_nom']) && !empty($r['sous_categorie_nom'])) ? ' › ' : '')
             . (string) ($r['sous_categorie_nom'] ?? ''))),
